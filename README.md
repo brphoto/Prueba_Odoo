@@ -1,1 +1,1 @@
-# Prueba_Odoo
+Prueba de Odoo
