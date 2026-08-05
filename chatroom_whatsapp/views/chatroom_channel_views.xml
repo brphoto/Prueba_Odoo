@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_chatroom_channel_kanban" model="ir.ui.view">
+        <field name="name">chatroom.channel.kanban</field>
+        <field name="model">chatroom.channel</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_small_column" default_group_by="state">
+                <field name="display_name"/>
+                <field name="last_message_preview"/>
+                <field name="unread_count"/>
+                <field name="channel_type"/>
+                <field name="assigned_user_id"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_global_click p-2">
+                            <div class="d-flex justify-content-between">
+                                <strong><field name="display_name"/></strong>
+                                <span class="badge text-bg-danger" t-if="record.unread_count.raw_value">
+                                    <field name="unread_count"/>
+                                </span>
+                            </div>
+                            <div class="text-muted text-truncate">
+                                <field name="last_message_preview"/>
+                            </div>
+                            <div class="d-flex justify-content-between mt-1">
+                                <span class="badge text-bg-secondary">
+                                    <field name="channel_type"/>
+                                </span>
+                                <field name="assigned_user_id" widget="many2one_avatar_user"/>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_chatroom_channel_list" model="ir.ui.view">
+        <field name="name">chatroom.channel.list</field>
+        <field name="model">chatroom.channel</field>
+        <field name="arch" type="xml">
+            <list decoration-bf="unread_count &gt; 0">
+                <field name="display_name" string="Conversación"/>
+                <field name="channel_type"/>
+                <field name="last_message_preview" string="Último mensaje"/>
+                <field name="last_message_date"/>
+                <field name="assigned_user_id"/>
+                <field name="unread_count"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'open'"
+                       decoration-warning="state == 'pending'"
+                       decoration-muted="state == 'closed'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_message_thread_list" model="ir.ui.view">
+        <field name="name">chatroom.message.thread.list</field>
+        <field name="model">chatroom.message</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" create="false" delete="false" edit="false">
+                <field name="date"/>
+                <field name="direction" widget="badge"
+                       decoration-info="direction == 'inbound'"
+                       decoration-success="direction == 'outbound'"/>
+                <field name="message_type"/>
+                <field name="body"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_channel_form" model="ir.ui.view">
+        <field name="name">chatroom.channel.form</field>
+        <field name="model">chatroom.channel</field>
+        <field name="arch" type="xml">
+            <form string="Conversación">
+                <header>
+                    <button name="action_send_ai_suggestion" type="object"
+                            string="Enviar sugerencia IA" class="btn-primary"
+                            invisible="not ai_suggested_reply"/>
+                    <button name="action_ai_suggest_reply" type="object"
+                            string="Sugerir respuesta con IA" class="btn-secondary"/>
+                    <button name="action_create_lead" type="object"
+                            string="Crear Oportunidad" class="btn-secondary"/>
+                    <button name="action_create_quotation" type="object"
+                            string="Crear Presupuesto" class="btn-secondary"/>
+                    <button name="action_close" type="object"
+                            string="Cerrar conversación"
+                            invisible="state == 'closed'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="display_name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="channel_type"/>
+                            <field name="external_id"/>
+                        </group>
+                        <group>
+                            <field name="assigned_user_id"/>
+                            <field name="last_message_date"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Sugerencia de IA" invisible="not ai_suggested_reply">
+                        <field name="ai_suggested_reply" nolabel="1"/>
+                    </group>
+                    <notebook>
+                        <page string="Mensajes">
+                            <field name="message_ids" mode="list">
+                                <list editable="bottom" create="false" delete="false" edit="false">
+                                    <field name="date"/>
+                                    <field name="direction" widget="badge"/>
+                                    <field name="message_type"/>
+                                    <field name="body"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_chatroom_channel_search" model="ir.ui.view">
+        <field name="name">chatroom.channel.search</field>
+        <field name="model">chatroom.channel</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="display_name" string="Conversación"/>
+                <field name="partner_id"/>
+                <field name="external_id"/>
+                <filter name="my_channels" string="Mis conversaciones"
+                        domain="[('assigned_user_id', '=', uid)]"/>
+                <filter name="unread" string="No leídos"
+                        domain="[('unread_count', '&gt;', 0)]"/>
+                <separator/>
+                <filter name="open" string="Abiertas" domain="[('state', '=', 'open')]"/>
+                <filter name="pending" string="Pendientes" domain="[('state', '=', 'pending')]"/>
+                <filter name="closed" string="Cerradas" domain="[('state', '=', 'closed')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_channel_type" string="Canal" context="{'group_by': 'channel_type'}"/>
+                    <filter name="group_assigned" string="Agente" context="{'group_by': 'assigned_user_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_chatroom_channel" model="ir.actions.act_window">
+        <field name="name">Chatroom</field>
+        <field name="res_model">chatroom.channel</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_chatroom_channel_search"/>
+        <field name="context">{'search_default_open': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aún no hay conversaciones de WhatsApp o redes sociales.
+            </p>
+            <p>
+                Las conversaciones se crean automáticamente cuando un
+                contacto escribe por primera vez a tu número de WhatsApp
+                Business.
+            </p>
+        </field>
+    </record>
+
+</odoo>

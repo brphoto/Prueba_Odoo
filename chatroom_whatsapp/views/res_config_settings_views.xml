@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_res_config_settings_chatroom" model="ir.ui.view">
+        <field name="name">res.config.settings.chatroom.whatsapp</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('settings')]" position="inside">
+                <div class="app_settings_block" data-string="Chatroom WhatsApp"
+                     string="Chatroom WhatsApp" data-key="chatroom_whatsapp">
+                    <h2>WhatsApp Business Cloud API (Meta)</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="whatsapp_phone_number_id" string="Phone Number ID"/>
+                                <div class="text-muted">
+                                    Obtenlo en Meta Business Suite &gt; WhatsApp &gt; API Setup.
+                                </div>
+                                <field name="whatsapp_phone_number_id"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="whatsapp_business_account_id"/>
+                                <field name="whatsapp_business_account_id"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="whatsapp_access_token" string="Token de acceso permanente"/>
+                                <div class="text-muted">
+                                    Token de un System User de Meta Business. No pasa por
+                                    ningún proveedor externo: se usa directo contra graph.facebook.com.
+                                </div>
+                                <field name="whatsapp_access_token" password="True"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="whatsapp_graph_api_version"/>
+                                <field name="whatsapp_graph_api_version"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="whatsapp_webhook_verify_token"/>
+                                <field name="whatsapp_webhook_verify_token"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="whatsapp_app_secret"/>
+                                <field name="whatsapp_app_secret" password="True"/>
+                            </div>
+                        </div>
+                        <div class="col-12 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="whatsapp_webhook_url" string="URL del Webhook"/>
+                                <div class="text-muted">
+                                    Copia esta URL y el Verify Token en el panel de la App
+                                    de Meta (WhatsApp &gt; Configuration &gt; Webhook).
+                                </div>
+                                <field name="whatsapp_webhook_url" readonly="1"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2>Sugerencias de respuesta con IA</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="chatroom_ai_enabled"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="chatroom_ai_enabled" string="Activar sugerencias con IA"/>
+                                <div class="content-group" invisible="not chatroom_ai_enabled">
+                                    <div class="mt8">
+                                        <label for="chatroom_ai_provider_url" string="Endpoint API"/>
+                                        <field name="chatroom_ai_provider_url"/>
+                                    </div>
+                                    <div class="mt8">
+                                        <label for="chatroom_ai_api_key" string="API Key"/>
+                                        <field name="chatroom_ai_api_key" password="True"/>
+                                    </div>
+                                    <div class="mt8">
+                                        <label for="chatroom_ai_model" string="Modelo"/>
+                                        <field name="chatroom_ai_model"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
