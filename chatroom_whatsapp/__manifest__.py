@@ -47,7 +47,7 @@ Requisitos
     'category': 'Discuss',
     'version': '19.0.1.0.0',
 
-    'depends': ['base', 'mail', 'contacts'],
+    'depends': ['base', 'mail', 'bus', 'contacts'],
 
     'data': [
         'security/chatroom_security.xml',
@@ -58,6 +58,14 @@ Requisitos
         'views/res_config_settings_views.xml',
         'views/chatroom_menus.xml',
     ],
+
+    'assets': {
+        'web.assets_backend': [
+            'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.js',
+            'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml',
+            'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.scss',
+        ],
+    },
 
     'demo': [],
 

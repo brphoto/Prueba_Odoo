@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
+import base64
 import logging
+import mimetypes
 
 import requests
 
@@ -158,7 +160,117 @@ class ChatroomChannel(models.Model):
             'last_message_date': fields.Datetime.now(),
             'state': 'open',
         })
+        self._notify_thread_update()
         return message
+
+    @staticmethod
+    def _meta_media_type(mimetype):
+        mimetype = mimetype or ''
+        if mimetype.startswith('image/'):
+            return 'image'
+        if mimetype.startswith('video/'):
+            return 'video'
+        if mimetype.startswith('audio/'):
+            return 'audio'
+        return 'document'
+
+    def _upload_whatsapp_media(self, attachment):
+        """Sube un archivo al Graph API de Meta y devuelve el media id
+        que luego se referencia en el mensaje saliente."""
+        self.ensure_one()
+        token, phone_number_id, api_version = self._get_meta_credentials()
+        url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/media"
+        mimetype = attachment.mimetype or mimetypes.guess_type(attachment.name or '')[0] \
+            or 'application/octet-stream'
+        files = {
+            'file': (attachment.name, base64.b64decode(attachment.datas), mimetype),
+        }
+        response = requests.post(
+            url, headers={"Authorization": f"Bearer {token}"},
+            data={'messaging_product': 'whatsapp'}, files=files, timeout=60)
+        response.raise_for_status()
+        return response.json()['id']
+
+    def action_send_message(self, body=False, attachments=None):
+        """Punto de entrada único usado por la interfaz de chat: envía
+        texto y/o uno o varios archivos adjuntos (arrastrados o
+        seleccionados) en la misma conversación.
+
+        :param attachments: lista de dicts {name, mimetype, data(base64)}
+        """
+        self.ensure_one()
+        if self.channel_type != 'whatsapp':
+            raise UserError(_("El envío directo aún solo está implementado "
+                               "para WhatsApp en este módulo base."))
+        attachments = attachments or []
+        if not attachments:
+            if not body:
+                raise UserError(_("Escribe un mensaje o adjunta un archivo."))
+            return self.action_send_text(body)
+
+        token, phone_number_id, api_version = self._get_meta_credentials()
+        url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
+        headers = {"Authorization": f"Bearer {token}"}
+        messages = self.env['chatroom.message']
+
+        for index, att_vals in enumerate(attachments):
+            attachment = self.env['ir.attachment'].create({
+                'name': att_vals.get('name') or 'archivo',
+                'mimetype': att_vals.get('mimetype'),
+                'datas': att_vals['data'],
+            })
+            media_type = self._meta_media_type(attachment.mimetype)
+            caption = body if index == 0 else False
+
+            message = self.env['chatroom.message'].create({
+                'channel_id': self.id,
+                'direction': 'outbound',
+                'message_type': media_type,
+                'body': caption,
+                'state': 'sent',
+                'date': fields.Datetime.now(),
+                'attachment_ids': [(4, attachment.id)],
+            })
+
+            try:
+                media_id = self._upload_whatsapp_media(attachment)
+                media_payload = {'id': media_id}
+                if caption and media_type in ('image', 'video', 'document'):
+                    media_payload['caption'] = caption
+                payload = {
+                    "messaging_product": "whatsapp",
+                    "to": self.external_id,
+                    "type": media_type,
+                    media_type: media_payload,
+                }
+                response = requests.post(url, json=payload, headers=headers, timeout=60)
+                response.raise_for_status()
+                data = response.json()
+                wa_message_id = data.get('messages', [{}])[0].get('id')
+                message.write({'wa_message_id': wa_message_id})
+            except (requests.RequestException, KeyError) as exc:
+                _logger.error("Error enviando adjunto de WhatsApp: %s", exc)
+                message.write({'state': 'failed'})
+                messages |= message
+                self._notify_thread_update()
+                raise UserError(_("No se pudo enviar el archivo: %s") % exc)
+
+            messages |= message
+
+        self.write({
+            'last_message_date': fields.Datetime.now(),
+            'state': 'open',
+        })
+        self._notify_thread_update()
+        return messages
+
+    def _notify_thread_update(self):
+        """Notifica por el bus a quien tenga abierta la conversación para
+        refrescar el chat en tiempo real, sin recargar la página."""
+        for rec in self:
+            self.env['bus.bus']._sendone(
+                f'chatroom_channel_{rec.id}', 'chatroom.message/new',
+                {'channel_id': rec.id})
 
     # ------------------------------------------------------------------
     # Sugerencia de respuesta con IA

@@ -1,0 +1,222 @@
+.o_chatroom_thread {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 560px;
+    max-height: 70vh;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: var(--o-view-background-color, #fff);
+}
+
+.o_chatroom_thread_header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background-color: var(--o-brand-primary, #714B67);
+    color: #fff;
+    cursor: pointer;
+    flex: 0 0 auto;
+
+    .o_chatroom_avatar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background-color: rgba(255, 255, 255, 0.25);
+        font-weight: bold;
+        flex: 0 0 auto;
+    }
+
+    .o_chatroom_header_name {
+        font-weight: 600;
+    }
+
+    .o_chatroom_header_channel {
+        font-size: 0.8em;
+        opacity: 0.85;
+        text-transform: capitalize;
+    }
+}
+
+.o_chatroom_thread_messages {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background-color: #e9edf1;
+    background-image:
+        radial-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+    background-size: 16px 16px;
+}
+
+.o_chatroom_loading,
+.o_chatroom_empty {
+    margin: auto;
+    text-align: center;
+}
+
+.o_chatroom_bubble {
+    max-width: 70%;
+    padding: 6px 10px;
+    border-radius: 10px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.o_chatroom_bubble_in {
+    align-self: flex-start;
+    background-color: #fff;
+    border-top-left-radius: 2px;
+}
+
+.o_chatroom_bubble_out {
+    align-self: flex-end;
+    background-color: #dcf8c6;
+    border-top-right-radius: 2px;
+}
+
+.o_chatroom_bubble_body {
+    font-size: 0.95em;
+}
+
+.o_chatroom_bubble_meta {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+    font-size: 0.7em;
+    color: #667781;
+}
+
+.o_chatroom_bubble_image {
+    max-width: 100%;
+    max-height: 220px;
+    border-radius: 6px;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.o_chatroom_bubble_file {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    color: inherit;
+    text-decoration: none;
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+.o_chatroom_dropzone {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(113, 75, 103, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    pointer-events: none;
+
+    .o_chatroom_dropzone_label {
+        color: #fff;
+        font-size: 1.2em;
+        font-weight: 600;
+    }
+}
+
+.o_chatroom_composer {
+    flex: 0 0 auto;
+    border-top: 1px solid var(--border-color, #dee2e6);
+    background-color: var(--o-view-background-color, #fff);
+    padding: 8px;
+}
+
+.o_chatroom_composer_attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.o_chatroom_pending_attachment {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background-color: #f0f2f5;
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-size: 0.8em;
+    max-width: 160px;
+
+    img {
+        width: 20px;
+        height: 20px;
+        object-fit: cover;
+        border-radius: 4px;
+    }
+
+    span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 90px;
+    }
+
+    .o_chatroom_remove_attachment {
+        cursor: pointer;
+        opacity: 0.6;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+}
+
+.o_chatroom_composer_input {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+.o_chatroom_attach_btn {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+}
+
+.o_chatroom_composer_textarea {
+    flex: 1 1 auto;
+    resize: none;
+    height: 38px;
+    max-height: 120px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 18px;
+    padding: 8px 14px;
+    font-size: 0.9em;
+
+    &:focus {
+        outline: none;
+        border-color: var(--o-brand-primary, #714B67);
+    }
+}
+
+.o_chatroom_send_btn {
+    flex: 0 0 auto;
+    border-radius: 50%;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}

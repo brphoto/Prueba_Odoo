@@ -78,23 +78,26 @@ class WhatsAppWebhookController(http.Controller):
                 'whatsapp', wa_id, profile_name)
 
             msg_type = msg.get('type', 'text')
-            body, attachment_url = self._extract_body(msg, msg_type)
+            body, media_id = self._extract_body(msg, msg_type)
 
-            env['chatroom.message'].create({
+            message = env['chatroom.message'].create({
                 'channel_id': channel.id,
                 'direction': 'inbound',
                 'message_type': msg_type if msg_type in dict(
                     env['chatroom.message']._fields['message_type'].selection
                 ) else 'other',
                 'body': body,
-                'attachment_url': attachment_url,
                 'wa_message_id': msg.get('id'),
                 'state': 'received',
             })
+            if media_id:
+                message._fetch_whatsapp_media(media_id)
+
             channel.write({
                 'last_message_date': fields.Datetime.now(),
                 'state': 'pending',
             })
+            channel._notify_thread_update()
 
     def _process_statuses(self, env, statuses):
         state_map = {

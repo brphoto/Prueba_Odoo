@@ -55,22 +55,6 @@
         </field>
     </record>
 
-    <record id="view_chatroom_message_thread_list" model="ir.ui.view">
-        <field name="name">chatroom.message.thread.list</field>
-        <field name="model">chatroom.message</field>
-        <field name="arch" type="xml">
-            <list editable="bottom" create="false" delete="false" edit="false">
-                <field name="date"/>
-                <field name="direction" widget="badge"
-                       decoration-info="direction == 'inbound'"
-                       decoration-success="direction == 'outbound'"/>
-                <field name="message_type"/>
-                <field name="body"/>
-                <field name="state" widget="badge"/>
-            </list>
-        </field>
-    </record>
-
     <record id="view_chatroom_channel_form" model="ir.ui.view">
         <field name="name">chatroom.channel.form</field>
         <field name="model">chatroom.channel</field>
@@ -110,19 +94,7 @@
                     <group string="Sugerencia de IA" invisible="not ai_suggested_reply">
                         <field name="ai_suggested_reply" nolabel="1"/>
                     </group>
-                    <notebook>
-                        <page string="Mensajes">
-                            <field name="message_ids" mode="list">
-                                <list editable="bottom" create="false" delete="false" edit="false">
-                                    <field name="date"/>
-                                    <field name="direction" widget="badge"/>
-                                    <field name="message_type"/>
-                                    <field name="body"/>
-                                    <field name="state" widget="badge"/>
-                                </list>
-                            </field>
-                        </page>
-                    </notebook>
+                    <field name="message_ids" widget="chatroom_thread" nolabel="1"/>
                 </sheet>
                 <chatter/>
             </form>
