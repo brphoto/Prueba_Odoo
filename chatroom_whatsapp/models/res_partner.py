@@ -10,6 +10,14 @@ class ResPartner(models.Model):
         help="Número en formato internacional tal como lo entrega Meta "
              "(sin '+', sin espacios). Se completa automáticamente al "
              "recibir el primer mensaje.")
+    whatsapp_opt_out = fields.Boolean(
+        string="Dado de baja de WhatsApp", copy=False, tracking=True,
+        help="El contacto pidió no recibir más mensajes (escribió una "
+             "palabra clave de baja, o se marcó manualmente aquí). "
+             "Mientras esté activo, el chatroom bloquea el envío de "
+             "mensajes a este contacto.")
+    whatsapp_opt_out_date = fields.Datetime(
+        string="Fecha de baja", copy=False, readonly=True)
     chatroom_channel_ids = fields.One2many(
         'chatroom.channel', 'partner_id', string="Conversaciones")
     chatroom_channel_count = fields.Integer(

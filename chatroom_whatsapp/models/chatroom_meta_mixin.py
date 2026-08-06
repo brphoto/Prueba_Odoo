@@ -30,3 +30,16 @@ class ChatroomMetaMixin(models.AbstractModel):
                 "Configura el Token de acceso y el WhatsApp Business "
                 "Account ID en Ajustes > Chatroom WhatsApp."))
         return token, waba_id, api_version
+
+    def _get_meta_page_credentials(self):
+        """Credenciales para Messenger/Instagram: usan el Token de Página
+        de Meta, distinto del token de WhatsApp aunque estén en la misma
+        App (Facebook Login for Business > Page Access Token)."""
+        icp = self.env['ir.config_parameter'].sudo()
+        token = icp.get_param('chatroom_whatsapp.meta_page_access_token')
+        api_version = icp.get_param('chatroom_whatsapp.graph_api_version', 'v20.0')
+        if not token:
+            raise UserError(_(
+                "Configura el Token de Página de Meta en Ajustes > "
+                "Chatroom WhatsApp para enviar por Messenger/Instagram."))
+        return token, api_version

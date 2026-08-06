@@ -6,16 +6,21 @@
         <field name="sequence">20</field>
     </record>
 
+    <record id="privilege_chatroom" model="res.groups.privilege">
+        <field name="name">Chatroom WhatsApp</field>
+        <field name="category_id" ref="module_category_chatroom"/>
+    </record>
+
     <record id="group_chatroom_user" model="res.groups">
         <field name="name">Agente</field>
-        <field name="category_id" ref="module_category_chatroom"/>
+        <field name="privilege_id" ref="privilege_chatroom"/>
     </record>
 
     <record id="group_chatroom_manager" model="res.groups">
         <field name="name">Administrador</field>
-        <field name="category_id" ref="module_category_chatroom"/>
+        <field name="privilege_id" ref="privilege_chatroom"/>
         <field name="implied_ids" eval="[(4, ref('group_chatroom_user'))]"/>
-        <field name="users" eval="[(4, ref('base.user_admin'))]"/>
+        <field name="user_ids" eval="[(4, ref('base.user_admin'))]"/>
     </record>
 
     <record id="chatroom_channel_rule_agent" model="ir.rule">

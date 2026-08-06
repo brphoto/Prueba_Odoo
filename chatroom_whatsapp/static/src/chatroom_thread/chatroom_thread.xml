@@ -17,7 +17,12 @@
                 </div>
             </div>
 
-            <div class="o_chatroom_session_banner" t-if="!state.loading and !state.isSessionOpen">
+            <div class="o_chatroom_opt_out_banner" t-if="!state.loading and state.partnerOptedOut">
+                <i class="fa fa-ban"/>
+                <span>Este contacto se dio de baja de los mensajes. No se le puede escribir.</span>
+            </div>
+            <div class="o_chatroom_session_banner"
+                 t-elif="!state.loading and !state.isSessionOpen">
                 <i class="fa fa-info-circle"/>
                 <span>La ventana de 24h para responder libremente expiró.</span>
                 <button class="btn btn-sm btn-light" t-on-click="openSendTemplate">Enviar plantilla</button>

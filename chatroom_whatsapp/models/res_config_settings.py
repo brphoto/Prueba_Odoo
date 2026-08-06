@@ -46,6 +46,29 @@ class ResConfigSettings(models.TransientModel):
              "grupo 'Chatroom / Agente', priorizando al que menos "
              "conversaciones abiertas tenga.")
 
+    # -- Messenger / Instagram (misma App de Meta, token de Página) --
+    chatroom_meta_page_access_token = fields.Char(
+        string="Token de Página (Messenger/Instagram)",
+        config_parameter='chatroom_whatsapp.meta_page_access_token',
+        help="Page Access Token de la Página de Facebook/Instagram "
+             "conectada a tu App de Meta. Solo se usa para enviar por "
+             "Messenger/Instagram; WhatsApp usa su propio token arriba.")
+
+    # -- Cumplimiento: opt-out / consentimiento --
+    chatroom_opt_out_keywords = fields.Char(
+        string="Palabras clave de baja",
+        config_parameter='chatroom_whatsapp.opt_out_keywords',
+        default='stop,baja,cancelar,unsubscribe',
+        help="Lista separada por comas. Si un cliente escribe exactamente "
+             "una de estas palabras, se marca como dado de baja y no se le "
+             "vuelve a escribir hasta que se dé de alta.")
+    chatroom_opt_in_keywords = fields.Char(
+        string="Palabras clave de alta",
+        config_parameter='chatroom_whatsapp.opt_in_keywords',
+        default='iniciar,start,alta',
+        help="Lista separada por comas para reactivar a un contacto dado "
+             "de baja.")
+
     # -- Sugerencias de respuesta con IA (cualquier proveedor LLM) --
     chatroom_ai_enabled = fields.Boolean(
         string="Activar sugerencias con IA",

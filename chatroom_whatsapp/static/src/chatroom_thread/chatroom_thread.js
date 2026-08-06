@@ -57,6 +57,7 @@ export class ChatroomThread extends Component {
             recording: false,
             recordSeconds: 0,
             isSessionOpen: true,
+            partnerOptedOut: false,
             quickButtonsOpen: false,
             quickButtons: ["", "", ""],
         });
@@ -109,6 +110,14 @@ export class ChatroomThread extends Component {
         this.state.partnerId = channel.partner_id ? channel.partner_id[0] : false;
         this.state.channelType = channel.channel_type;
         this.state.isSessionOpen = channel.is_session_open;
+
+        if (this.state.partnerId) {
+            const [partner] = await this.orm.read(
+                "res.partner", [this.state.partnerId], ["whatsapp_opt_out"]);
+            this.state.partnerOptedOut = partner.whatsapp_opt_out;
+        } else {
+            this.state.partnerOptedOut = false;
+        }
     }
 
     openSendTemplate() {

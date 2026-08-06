@@ -46,10 +46,10 @@ class ChatroomChannel(models.Model):
         default=lambda self: self.env.user)
     message_ids = fields.One2many(
         'chatroom.message', 'channel_id', string="Mensajes")
-    message_count = fields.Integer(compute='_compute_message_stats')
-    unread_count = fields.Integer(compute='_compute_message_stats')
+    message_count = fields.Integer(compute='_compute_message_stats', store=True)
+    unread_count = fields.Integer(compute='_compute_message_stats', store=True)
     last_message_date = fields.Datetime(index=True)
-    last_message_preview = fields.Char(compute='_compute_message_stats')
+    last_message_preview = fields.Char(compute='_compute_message_stats', store=True)
     ai_suggested_reply = fields.Text(string="Sugerencia de IA")
     ai_intent = fields.Selection(
         [('consulta', "Consulta"),
@@ -61,9 +61,12 @@ class ChatroomChannel(models.Model):
     company_id = fields.Many2one(
         'res.company', default=lambda self: self.env.company)
 
-    pinned_lead_id = fields.Many2one(
-        'crm.lead', string="Oportunidad vinculada",
-        domain="[('partner_id', '=', partner_id)]")
+    # No es un Many2one a 'crm.lead': CRM es un módulo opcional (no está
+    # en 'depends'), y un campo relacional a un modelo no instalado rompe
+    # la carga del registro. Se guarda el id "a mano" y se resuelve solo
+    # si CRM está instalado (ver _compute_related_counts).
+    pinned_lead_id = fields.Integer(string="ID de oportunidad vinculada", copy=False)
+    pinned_lead_name = fields.Char(compute='_compute_related_counts')
     crm_installed = fields.Boolean(compute='_compute_related_counts')
     sale_installed = fields.Boolean(compute='_compute_related_counts')
     account_installed = fields.Boolean(compute='_compute_related_counts')
@@ -78,10 +81,15 @@ class ChatroomChannel(models.Model):
              "durante las 24h siguientes al último mensaje del cliente. "
              "Fuera de esa ventana hay que usar una plantilla aprobada.")
 
-    _sql_constraints = [
-        ('external_id_type_uniq', 'unique(external_id, channel_type, company_id)',
-         "Ya existe una conversación abierta para este contacto en este canal."),
-    ]
+    first_response_minutes = fields.Float(
+        string="Primera respuesta (min)", compute='_compute_first_response_minutes', store=True,
+        help="Minutos entre el primer mensaje del cliente y la primera "
+             "respuesta saliente de un agente.")
+
+    _external_id_type_uniq = models.Constraint(
+        'unique(external_id, channel_type, company_id)',
+        "Ya existe una conversación abierta para este contacto en este canal.",
+    )
 
     @api.depends('partner_id', 'external_id', 'channel_type')
     def _compute_display_name(self):
@@ -103,10 +111,19 @@ class ChatroomChannel(models.Model):
         crm_installed = 'crm.lead' in self.env
         sale_installed = 'sale.order' in self.env
         account_installed = 'account.move' in self.env
+        pinned_leads = {}
+        if crm_installed:
+            pinned_ids = [rec.pinned_lead_id for rec in self if rec.pinned_lead_id]
+            if pinned_ids:
+                pinned_leads = {
+                    lead.id: lead.display_name
+                    for lead in self.env['crm.lead'].browse(pinned_ids).exists()
+                }
         for rec in self:
             rec.crm_installed = crm_installed
             rec.sale_installed = sale_installed
             rec.account_installed = account_installed
+            rec.pinned_lead_name = pinned_leads.get(rec.pinned_lead_id, False)
             partner = rec.partner_id
             rec.lead_count = (
                 self.env['crm.lead'].search_count([('partner_id', '=', partner.id)])
@@ -131,6 +148,21 @@ class ChatroomChannel(models.Model):
             else:
                 rec.window_expires_at = False
                 rec.is_session_open = False
+
+    @api.depends('message_ids.direction', 'message_ids.date')
+    def _compute_first_response_minutes(self):
+        for rec in self:
+            messages = rec.message_ids.sorted('date')
+            first_inbound = next((m for m in messages if m.direction == 'inbound'), None)
+            first_outbound = next((
+                m for m in messages
+                if m.direction == 'outbound' and (not first_inbound or m.date > first_inbound.date)
+            ), None) if first_inbound else None
+            if first_inbound and first_outbound:
+                delta = first_outbound.date - first_inbound.date
+                rec.first_response_minutes = round(delta.total_seconds() / 60.0, 2)
+            else:
+                rec.first_response_minutes = 0.0
 
     # ------------------------------------------------------------------
     # Helpers de contacto / canal
@@ -170,7 +202,7 @@ class ChatroomChannel(models.Model):
         icp = self.env['ir.config_parameter'].sudo()
         if icp.get_param('chatroom_whatsapp.auto_assign', 'True') == 'False':
             return self.env.user
-        agents = self.env.ref('chatroom_whatsapp.group_chatroom_user').users
+        agents = self.env.ref('chatroom_whatsapp.group_chatroom_user').user_ids
         if not agents:
             return self.env.user
         open_counts = self.env['chatroom.channel']._read_group(
@@ -211,16 +243,65 @@ class ChatroomChannel(models.Model):
         return res
 
     # ------------------------------------------------------------------
+    # Cumplimiento: opt-out / consentimiento
+    # ------------------------------------------------------------------
+    def _check_can_send(self):
+        self.ensure_one()
+        if self.partner_id and self.partner_id.whatsapp_opt_out:
+            raise UserError(_(
+                "%s se dio de baja de los mensajes de este número; no se "
+                "le pueden enviar mensajes hasta que vuelva a escribir la "
+                "palabra clave de alta.") % self.partner_id.name)
+
+    def _handle_opt_keywords(self, message):
+        """Detecta palabras clave de baja/alta en un mensaje entrante
+        (ej. 'STOP', 'BAJA', 'INICIAR') y actualiza el consentimiento del
+        contacto. Evita mandar mensajes a quien pidió no recibir más,
+        que es la causa más común de que Meta bloquee un número."""
+        self.ensure_one()
+        if not self.partner_id or not message.body:
+            return
+        icp = self.env['ir.config_parameter'].sudo()
+        stop_words = {
+            w.strip().lower() for w in icp.get_param(
+                'chatroom_whatsapp.opt_out_keywords', 'stop,baja,cancelar,unsubscribe'
+            ).split(',') if w.strip()
+        }
+        start_words = {
+            w.strip().lower() for w in icp.get_param(
+                'chatroom_whatsapp.opt_in_keywords', 'iniciar,start,alta'
+            ).split(',') if w.strip()
+        }
+        text = message.body.strip().lower()
+
+        if text in stop_words and not self.partner_id.whatsapp_opt_out:
+            try:
+                self.action_send_text(_(
+                    "Has cancelado tu suscripción a los mensajes de este "
+                    "número. Escribe INICIAR si quieres volver a recibirlos."))
+            except UserError as exc:
+                _logger.warning("No se pudo confirmar la baja en canal %s: %s", self.id, exc)
+            self.partner_id.write({
+                'whatsapp_opt_out': True,
+                'whatsapp_opt_out_date': fields.Datetime.now(),
+            })
+        elif text in start_words and self.partner_id.whatsapp_opt_out:
+            self.partner_id.write({'whatsapp_opt_out': False, 'whatsapp_opt_out_date': False})
+            try:
+                self.action_send_text(_("Listo, has vuelto a activar los mensajes de este número."))
+            except UserError as exc:
+                _logger.warning("No se pudo confirmar el alta en canal %s: %s", self.id, exc)
+
+    # ------------------------------------------------------------------
     # Envío de mensajes (API directa de Meta, sin proveedores externos)
     # ------------------------------------------------------------------
     def action_send_text(self, body):
         """Envía un mensaje de texto directo al Graph API de Meta y guarda
-        el registro saliente. Solo aplica a WhatsApp por ahora; Messenger e
-        Instagram usan el mismo patrón sobre /me/messages."""
+        el registro saliente."""
         self.ensure_one()
+        self._check_can_send()
         if self.channel_type != 'whatsapp':
-            raise UserError(_("El envío directo aún solo está implementado "
-                               "para WhatsApp en este módulo base."))
+            return self._send_meta_page_text(body)
 
         token, phone_number_id, api_version = self._get_meta_credentials()
         url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
@@ -256,6 +337,41 @@ class ChatroomChannel(models.Model):
             'last_message_date': fields.Datetime.now(),
             'state': 'open',
         })
+        self._notify_thread_update()
+        return message
+
+    def _send_meta_page_text(self, body):
+        """Envía texto por Messenger/Instagram con el token de Página de
+        Meta (distinto del token de WhatsApp: ambos productos usan
+        credenciales separadas dentro de la misma App de Meta)."""
+        self.ensure_one()
+        token, api_version = self._get_meta_page_credentials()
+        url = f"https://graph.facebook.com/{api_version}/me/messages"
+        payload = {
+            "recipient": {"id": self.external_id},
+            "message": {"text": body},
+            "messaging_type": "RESPONSE",
+        }
+        headers = {"Authorization": f"Bearer {token}"}
+
+        message = self.env['chatroom.message'].create({
+            'channel_id': self.id,
+            'direction': 'outbound',
+            'message_type': 'text',
+            'body': body,
+            'state': 'sent',
+            'date': fields.Datetime.now(),
+        })
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=15)
+            response.raise_for_status()
+            message.write({'wa_message_id': response.json().get('message_id')})
+        except requests.RequestException as exc:
+            _logger.error("Error enviando mensaje Messenger/Instagram: %s", exc)
+            message.write({'state': 'failed'})
+            raise UserError(_("No se pudo enviar el mensaje: %s") % exc)
+
+        self.write({'last_message_date': fields.Datetime.now(), 'state': 'open'})
         self._notify_thread_update()
         return message
 
@@ -295,8 +411,9 @@ class ChatroomChannel(models.Model):
         :param attachments: lista de dicts {name, mimetype, data(base64)}
         """
         self.ensure_one()
+        self._check_can_send()
         if self.channel_type != 'whatsapp':
-            raise UserError(_("El envío directo aún solo está implementado "
+            raise UserError(_("Los adjuntos aún solo están implementados "
                                "para WhatsApp en este módulo base."))
         attachments = attachments or []
         if not attachments:
@@ -364,6 +481,7 @@ class ChatroomChannel(models.Model):
         """Envía una plantilla aprobada por Meta (HSM). Es la única forma
         de iniciar/retomar conversación fuera de la ventana de 24h."""
         self.ensure_one()
+        self._check_can_send()
         if self.channel_type != 'whatsapp':
             raise UserError(_("El envío directo aún solo está implementado "
                                "para WhatsApp en este módulo base."))
@@ -414,6 +532,7 @@ class ChatroomChannel(models.Model):
         (WhatsApp Interactive Messages). La respuesta del cliente llega
         por el webhook como un mensaje 'interactive' normal."""
         self.ensure_one()
+        self._check_can_send()
         if self.channel_type != 'whatsapp':
             raise UserError(_("El envío directo aún solo está implementado "
                                "para WhatsApp en este módulo base."))
@@ -594,6 +713,18 @@ class ChatroomChannel(models.Model):
             'type': 'ir.actions.act_window',
             'res_model': 'crm.lead',
             'res_id': lead.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def action_open_pinned_lead(self):
+        self.ensure_one()
+        if not self.crm_installed or not self.pinned_lead_id:
+            return False
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'crm.lead',
+            'res_id': self.pinned_lead_id,
             'view_mode': 'form',
             'target': 'current',
         }

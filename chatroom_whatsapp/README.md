@@ -147,15 +147,64 @@ respuestas del cliente llegan por el webhook igual que cualquier mensaje
 entrante. No incluye listas largas ni catálogo de productos (requieren
 Meta Commerce Manager) — queda como extensión futura.
 
+## Messenger / Instagram
+
+Comparten el mismo modelo de datos y el mismo webhook que WhatsApp
+(`chatroom.channel.channel_type`), con **texto entrante y saliente
+funcionando end-to-end**: el webhook detecta el payload de Messenger/
+Instagram (`object: "page"` o `"instagram"`), crea el contacto y la
+conversación igual que WhatsApp, y descarga los adjuntos entrantes
+(las URLs de Messenger/Instagram son públicas, a diferencia de las de
+WhatsApp). Para enviar hay que configurar el **Token de Página** en
+Ajustes (es distinto del token de WhatsApp, aunque compartan App de
+Meta). Adjuntos salientes, plantillas y botones interactivos por estos
+dos canales quedan como extensión futura — hoy son exclusivos de
+WhatsApp.
+
+## Opt-out / consentimiento
+
+En Ajustes puedes definir palabras clave de baja y de alta (por
+defecto `stop,baja,cancelar,unsubscribe` / `iniciar,start,alta`). Si un
+contacto escribe una de baja, el chatroom se lo confirma, marca
+`res.partner.whatsapp_opt_out` y **bloquea el envío de cualquier
+mensaje** a ese contacto (texto, adjunto, plantilla o botones) hasta que
+vuelva a escribir la palabra de alta o un agente lo reactive a mano
+desde la ficha del contacto. Es la protección más simple y más
+importante contra que Meta bloquee tu número por spam.
+
+## Validado contra un Odoo 19 real
+
+Este módulo se instaló y probó en una instancia real de Odoo 19.0
+(clonada de `github.com/odoo/odoo`, rama `19.0`) con PostgreSQL, no solo
+con revisión de sintaxis. Esa prueba encontró y corrigió varios cambios
+de API que rompen módulos escritos "a la manera de Odoo 17/18":
+
+- `_sql_constraints` fue reemplazado por `models.Constraint(...)`.
+- `res.groups` ya no tiene `category_id` ni `users`: ahora es
+  `privilege_id` (a través de `res.groups.privilege`) y `user_ids`.
+- Un `Many2one` a un modelo de un módulo no instalado (p. ej. `crm.lead`
+  cuando CRM es opcional) rompe la carga del registro completo; se
+  cambió `pinned_lead_id` a un id plano + resolución manual.
+- Los filtros de búsqueda sobre campos computados exigen que el campo
+  sea `store=True`.
+- El `<group>` de "Agrupar por" en las vistas de búsqueda ya no acepta
+  `expand`/`string`.
+- Las vistas de Ajustes cambiaron de `<div class="settings">` +
+  Bootstrap a bloques declarativos `<app>`/`<block>`/`<setting>`.
+
+Se verificó con capturas de pantalla (Playwright + Chromium headless)
+que el kanban, el formulario con el widget de chat, el panel de botones
+rápidos, el envío con manejo de errores, Ajustes, Métricas y el asistente
+de plantillas cargan sin errores de consola.
+
 ## Alcance de esta versión
 
 - Envío/recepción de texto, imagen, audio (incluye notas de voz), video,
   documento, plantillas y botones interactivos para WhatsApp,
   end-to-end (subida/bajada de media contra la Graph API de Meta).
-- Messenger/Instagram comparten el mismo modelo de datos
-  (`chatroom.channel.channel_type`) pero el webhook y el envío directo
-  para esos canales quedan como extensión (misma Graph API de Meta, otro
-  formato de payload).
+- Messenger/Instagram: texto entrante y saliente funcionando; adjuntos
+  salientes, plantillas y botones interactivos son exclusivos de
+  WhatsApp por ahora.
 - La sugerencia y la clasificación de IA usan el historial de los
   últimos 10 mensajes de la conversación como contexto.
 - El panel de accesos rápidos (Oportunidades/Presupuestos/Facturas) es
@@ -163,3 +212,5 @@ Meta Commerce Manager) — queda como extensión futura.
   desde el propio chat.
 - Las listas interactivas y el catálogo de productos de WhatsApp no
   están implementados, solo botones de respuesta rápida (máx. 3).
+- No hay tests automatizados (`tests/`) todavía — la validación fue
+  manual sobre una instancia real, no vía CI.

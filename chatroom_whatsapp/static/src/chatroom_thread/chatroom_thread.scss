@@ -43,13 +43,12 @@
     }
 }
 
-.o_chatroom_session_banner {
+.o_chatroom_session_banner,
+.o_chatroom_opt_out_banner {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 6px 12px;
-    background-color: #fff3cd;
-    color: #664d03;
     font-size: 0.85em;
     flex: 0 0 auto;
 
@@ -60,6 +59,16 @@
     button {
         margin-left: auto;
     }
+}
+
+.o_chatroom_session_banner {
+    background-color: #fff3cd;
+    color: #664d03;
+}
+
+.o_chatroom_opt_out_banner {
+    background-color: #f8d7da;
+    color: #58151c;
 }
 
 .o_chatroom_thread_messages {

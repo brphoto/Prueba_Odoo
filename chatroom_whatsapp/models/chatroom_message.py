@@ -75,3 +75,23 @@ class ChatroomMessage(models.Model):
             'datas': base64.b64encode(file_resp.content),
         })
         self.attachment_ids = [(4, attachment.id)]
+
+    def _fetch_generic_attachment(self, url):
+        """Descarga un adjunto entrante de Messenger/Instagram: a
+        diferencia de WhatsApp, esas URLs son públicas y no requieren el
+        token en el header."""
+        self.ensure_one()
+        try:
+            response = requests.get(url, timeout=30)
+            response.raise_for_status()
+        except requests.RequestException as exc:
+            _logger.error("No se pudo descargar el adjunto %s: %s", url, exc)
+            return
+
+        name = (url.split('?')[0].rstrip('/').split('/')[-1]) or 'archivo'
+        attachment = self.env['ir.attachment'].create({
+            'name': name,
+            'mimetype': response.headers.get('Content-Type', 'application/octet-stream'),
+            'datas': base64.b64encode(response.content),
+        })
+        self.attachment_ids = [(4, attachment.id)]

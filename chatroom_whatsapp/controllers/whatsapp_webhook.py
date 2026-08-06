@@ -35,20 +35,28 @@ class WhatsAppWebhookController(http.Controller):
     @http.route('/chatroom_whatsapp/webhook', type='http', auth='public',
                 methods=['POST'], csrf=False)
     def whatsapp_webhook_receive(self, **kwargs):
-        """Recibe mensajes entrantes y actualizaciones de estado."""
+        """Recibe eventos de WhatsApp, Messenger e Instagram: los tres
+        productos de Meta pueden compartir la misma App y el mismo
+        webhook; 'object' en el payload indica cuál es."""
         raw_body = request.httprequest.get_data()
         if not self._is_valid_signature(raw_body):
             _logger.warning("Firma inválida en webhook de WhatsApp, se descarta")
             return request.make_response('Forbidden', status=403)
 
         payload = request.get_json_data() or {}
+        object_type = payload.get('object')
         env = request.env(su=True)
 
         for entry in payload.get('entry', []):
-            for change in entry.get('changes', []):
-                value = change.get('value', {})
-                self._process_statuses(env, value.get('statuses', []))
-                self._process_messages(env, value)
+            if object_type == 'whatsapp_business_account':
+                for change in entry.get('changes', []):
+                    value = change.get('value', {})
+                    self._process_statuses(env, value.get('statuses', []))
+                    self._process_messages(env, value)
+            elif object_type in ('page', 'instagram'):
+                channel_type = 'instagram' if object_type == 'instagram' else 'messenger'
+                for messaging_event in entry.get('messaging', []):
+                    self._process_messenger_event(env, channel_type, messaging_event)
 
         return request.make_response('EVENT_RECEIVED')
 
@@ -97,9 +105,50 @@ class WhatsAppWebhookController(http.Controller):
                 'last_message_date': fields.Datetime.now(),
                 'state': 'pending',
             })
+            channel._handle_opt_keywords(message)
             channel._ai_process_inbound_message(message)
             channel._notify_assigned_agent(message)
             channel._notify_thread_update()
+
+    def _process_messenger_event(self, env, channel_type, event):
+        """Mensaje entrante de Messenger o Instagram Direct (mismo Send
+        API de Meta, payload distinto al de WhatsApp)."""
+        sender_id = (event.get('sender') or {}).get('id')
+        message_data = event.get('message')
+        if not sender_id or not message_data or message_data.get('is_echo'):
+            # is_echo = eco del propio mensaje que el negocio envió
+            return
+
+        channel = env['chatroom.channel']._find_or_create_from_webhook(channel_type, sender_id)
+        body = message_data.get('text')
+        attachments = message_data.get('attachments') or []
+        message_type = 'text'
+        if not body and attachments:
+            message_type = {
+                'image': 'image', 'video': 'video', 'audio': 'audio', 'file': 'document',
+            }.get(attachments[0].get('type'), 'other')
+
+        message = env['chatroom.message'].create({
+            'channel_id': channel.id,
+            'direction': 'inbound',
+            'message_type': message_type,
+            'body': body,
+            'wa_message_id': message_data.get('mid'),
+            'state': 'received',
+        })
+        for attachment in attachments:
+            url = (attachment.get('payload') or {}).get('url')
+            if url:
+                message._fetch_generic_attachment(url)
+
+        channel.write({
+            'last_message_date': fields.Datetime.now(),
+            'state': 'pending',
+        })
+        channel._handle_opt_keywords(message)
+        channel._ai_process_inbound_message(message)
+        channel._notify_assigned_agent(message)
+        channel._notify_thread_update()
 
     def _process_statuses(self, env, statuses):
         state_map = {

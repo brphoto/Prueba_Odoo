@@ -74,7 +74,7 @@
                 <group>
                     <field name="channel_id" invisible="1"/>
                     <field name="template_id"/>
-                    <field name="variable_count"/>
+                    <field name="variable_count" string="Cantidad de variables"/>
                     <field name="variables_text"
                            invisible="not variable_count"
                            placeholder="Un valor por línea, en orden"/>

@@ -55,10 +55,10 @@ class ChatroomTemplate(models.Model):
     footer_text = fields.Char()
     variable_count = fields.Integer(compute='_compute_variable_count')
 
-    _sql_constraints = [
-        ('name_language_uniq', 'unique(name, language)',
-         "Ya existe una plantilla con ese nombre e idioma."),
-    ]
+    _name_language_uniq = models.Constraint(
+        'unique(name, language)',
+        "Ya existe una plantilla con ese nombre e idioma.",
+    )
 
     @api.depends('body')
     def _compute_variable_count(self):

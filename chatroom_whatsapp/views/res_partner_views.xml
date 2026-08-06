@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_partner_form_chatroom" model="ir.ui.view">
+        <field name="name">res.partner.form.chatroom.whatsapp</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <field name="website" position="after">
+                <field name="whatsapp_id" invisible="not whatsapp_id"/>
+                <field name="whatsapp_opt_out"/>
+                <field name="whatsapp_opt_out_date" invisible="not whatsapp_opt_out" readonly="1"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>

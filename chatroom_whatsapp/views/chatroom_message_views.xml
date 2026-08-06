@@ -32,11 +32,11 @@
                         <group>
                             <field name="date"/>
                             <field name="wa_message_id"/>
-                            <field name="attachment_url" widget="url"/>
                         </group>
                     </group>
                     <group>
                         <field name="body"/>
+                        <field name="attachment_ids" widget="many2many_binary"/>
                     </group>
                 </sheet>
             </form>
