@@ -2,7 +2,12 @@
 <templates xml:space="preserve">
 
     <t t-name="chatroom_whatsapp.ChatroomThread">
-        <div class="o_chatroom_thread"
+        <div class="o_chatroom_thread o_chatroom_thread_unsaved" t-if="!channelId">
+            <div class="o_chatroom_empty text-muted">
+                <i class="fa fa-save"/> Guarda el registro para ver la conversación.
+            </div>
+        </div>
+        <div t-else="" class="o_chatroom_thread"
              t-on-dragover="onDragOver"
              t-on-dragleave="onDragLeave"
              t-on-drop="onDrop">

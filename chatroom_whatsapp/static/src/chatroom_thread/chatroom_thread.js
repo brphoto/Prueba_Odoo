@@ -8,6 +8,7 @@ import {
     useState,
     useRef,
     onWillStart,
+    onWillUpdateProps,
     onMounted,
     onPatched,
     onWillUnmount,
@@ -42,8 +43,7 @@ export class ChatroomThread extends Component {
         this.fileInput = useRef("fileInput");
         this.messagesRef = useRef("messages");
 
-        this.channelId = this.props.record.resId;
-        this.busChannel = `chatroom_channel_${this.channelId}`;
+        this._busChannel = false;
 
         this.state = useState({
             loading: true,
@@ -68,16 +68,9 @@ export class ChatroomThread extends Component {
         this._shouldScroll = true;
         this._onBusNotification = this._onBusNotification.bind(this);
 
-        onWillStart(async () => {
-            await Promise.all([
-                this._loadChannel(),
-                this._loadMessages(),
-                this._loadCannedResponses(),
-            ]);
-        });
+        onWillStart(() => this._loadForCurrentRecord());
 
         onMounted(() => {
-            this.busService.addChannel(this.busChannel);
             this.busService.addEventListener("notification", this._onBusNotification);
             this._scrollToBottom();
         });
@@ -89,12 +82,54 @@ export class ChatroomThread extends Component {
             }
         });
 
+        onWillUpdateProps((nextProps) => {
+            if (nextProps.record.resId !== this.props.record.resId) {
+                // El registro pasó de "nuevo" (sin guardar) a guardado, o
+                // cambió de conversación (paginador): recarga todo.
+                return this._loadForCurrentRecord(nextProps.record.resId);
+            }
+        });
+
         onWillUnmount(() => {
             this.busService.removeEventListener("notification", this._onBusNotification);
-            this.busService.deleteChannel(this.busChannel);
+            this._unsubscribeBus();
             this._stopMediaStream();
             clearInterval(this._recordingInterval);
         });
+    }
+
+    get channelId() {
+        return this.props.record.resId;
+    }
+
+    _subscribeBus(channelId) {
+        if (channelId) {
+            this._busChannel = `chatroom_channel_${channelId}`;
+            this.busService.addChannel(this._busChannel);
+        }
+    }
+
+    _unsubscribeBus() {
+        if (this._busChannel) {
+            this.busService.deleteChannel(this._busChannel);
+            this._busChannel = false;
+        }
+    }
+
+    async _loadForCurrentRecord(channelId = this.channelId) {
+        this._unsubscribeBus();
+        if (!channelId) {
+            // Registro nuevo sin guardar: no hay conversación que cargar.
+            this.state.loading = false;
+            this.state.messages = [];
+            return;
+        }
+        this._subscribeBus(channelId);
+        await Promise.all([
+            this._loadChannel(channelId),
+            this._loadMessages(channelId),
+            this._loadCannedResponses(),
+        ]);
     }
 
     _onBusNotification({ detail: notifications }) {
@@ -106,10 +141,13 @@ export class ChatroomThread extends Component {
         }
     }
 
-    async _loadChannel() {
+    async _loadChannel(channelId = this.channelId) {
+        if (!channelId) {
+            return;
+        }
         const [channel] = await this.orm.read(
             "chatroom.channel",
-            [this.channelId],
+            [channelId],
             ["display_name", "partner_id", "channel_type", "is_session_open"]
         );
         this.state.channelName = channel.display_name;
@@ -143,16 +181,23 @@ export class ChatroomThread extends Component {
     }
 
     openSendTemplate() {
+        if (!this.channelId) {
+            return;
+        }
         this.action.doAction("chatroom_whatsapp.action_chatroom_send_template_wizard", {
             additionalContext: { default_channel_id: this.channelId },
             onClose: () => this._loadMessages(),
         });
     }
 
-    async _loadMessages() {
+    async _loadMessages(channelId = this.channelId) {
+        if (!channelId) {
+            this.state.loading = false;
+            return;
+        }
         const messages = await this.orm.searchRead(
             "chatroom.message",
-            [["channel_id", "=", this.channelId]],
+            [["channel_id", "=", channelId]],
             MESSAGE_FIELDS,
             { order: "date asc" }
         );
@@ -175,7 +220,7 @@ export class ChatroomThread extends Component {
 
         const hasUnread = messages.some((m) => m.direction === "inbound" && m.state !== "read");
         if (hasUnread) {
-            this.orm.call("chatroom.channel", "action_mark_read", [this.channelId]);
+            this.orm.call("chatroom.channel", "action_mark_read", [channelId]);
         }
     }
 
@@ -409,6 +454,9 @@ export class ChatroomThread extends Component {
     }
 
     async send() {
+        if (!this.channelId) {
+            return;
+        }
         const body = this.state.composerText.trim();
         const attachments = this.state.pendingAttachments;
         const buttons = this.state.quickButtonsOpen
