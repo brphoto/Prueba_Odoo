@@ -20,7 +20,7 @@ class ChatroomChannel(models.Model):
     """
     _name = 'chatroom.channel'
     _description = "Conversación de Chatroom (WhatsApp / Redes Sociales)"
-    _inherit = ['mail.thread']
+    _inherit = ['mail.thread', 'chatroom.meta.mixin']
     _order = 'last_message_date desc'
     _rec_name = 'display_name'
 
@@ -71,6 +71,13 @@ class ChatroomChannel(models.Model):
     sale_order_count = fields.Integer(compute='_compute_related_counts')
     invoice_count = fields.Integer(compute='_compute_related_counts')
 
+    window_expires_at = fields.Datetime(compute='_compute_session_window')
+    is_session_open = fields.Boolean(
+        compute='_compute_session_window',
+        help="La API de WhatsApp solo permite mensajes de texto libres "
+             "durante las 24h siguientes al último mensaje del cliente. "
+             "Fuera de esa ventana hay que usar una plantilla aprobada.")
+
     _sql_constraints = [
         ('external_id_type_uniq', 'unique(external_id, channel_type, company_id)',
          "Ya existe una conversación abierta para este contacto en este canal."),
@@ -113,6 +120,18 @@ class ChatroomChannel(models.Model):
                     ('move_type', 'in', ('out_invoice', 'out_refund')),
                 ]) if account_installed and partner else 0)
 
+    def _compute_session_window(self):
+        now = fields.Datetime.now()
+        for rec in self:
+            last_inbound = rec.message_ids.filtered(
+                lambda m: m.direction == 'inbound').sorted('date', reverse=True)[:1]
+            if last_inbound:
+                rec.window_expires_at = fields.Datetime.add(last_inbound.date, hours=24)
+                rec.is_session_open = now < rec.window_expires_at
+            else:
+                rec.window_expires_at = False
+                rec.is_session_open = False
+
     # ------------------------------------------------------------------
     # Helpers de contacto / canal
     # ------------------------------------------------------------------
@@ -140,22 +159,60 @@ class ChatroomChannel(models.Model):
             'channel_type': channel_type,
             'external_id': external_id,
             'partner_id': partner.id,
+            'assigned_user_id': self._get_next_assignee().id,
         })
+
+    @api.model
+    def _get_next_assignee(self):
+        """Reparte las conversaciones nuevas entre los agentes del grupo
+        'Chatroom / Agente', asignando al que menos conversaciones abiertas
+        tenga en este momento (balanceo de carga simple)."""
+        icp = self.env['ir.config_parameter'].sudo()
+        if icp.get_param('chatroom_whatsapp.auto_assign', 'True') == 'False':
+            return self.env.user
+        agents = self.env.ref('chatroom_whatsapp.group_chatroom_user').users
+        if not agents:
+            return self.env.user
+        open_counts = self.env['chatroom.channel']._read_group(
+            [('assigned_user_id', 'in', agents.ids), ('state', 'in', ('open', 'pending'))],
+            ['assigned_user_id'], ['__count'])
+        counts = {user.id: count for user, count in open_counts}
+        least_busy = min(agents, key=lambda u: counts.get(u.id, 0))
+        return least_busy
+
+    def _notify_assigned_agent(self, message):
+        """Avisa al agente asignado por el sistema nativo de notificaciones
+        de Odoo (bandeja/campanita de Discuss), sin infraestructura extra."""
+        self.ensure_one()
+        if not self.assigned_user_id or not self.assigned_user_id.partner_id:
+            return
+        self.message_post(
+            body=_("Nuevo mensaje de %(who)s: %(body)s") % {
+                'who': self.partner_id.name or self.external_id,
+                'body': (message.body or _("(adjunto)"))[:140],
+            },
+            partner_ids=[self.assigned_user_id.partner_id.id],
+            subtype_xmlid='mail.mt_comment',
+        )
+
+    def write(self, vals):
+        previous_assignees = {rec.id: rec.assigned_user_id for rec in self} if 'assigned_user_id' in vals else {}
+        res = super().write(vals)
+        if 'assigned_user_id' in vals:
+            for rec in self:
+                if rec.assigned_user_id and rec.assigned_user_id != previous_assignees.get(rec.id) \
+                        and rec.assigned_user_id.partner_id:
+                    rec.message_post(
+                        body=_("Te asignaron la conversación de %s.") % (
+                            rec.partner_id.name or rec.external_id),
+                        partner_ids=[rec.assigned_user_id.partner_id.id],
+                        subtype_xmlid='mail.mt_comment',
+                    )
+        return res
 
     # ------------------------------------------------------------------
     # Envío de mensajes (API directa de Meta, sin proveedores externos)
     # ------------------------------------------------------------------
-    def _get_meta_credentials(self):
-        icp = self.env['ir.config_parameter'].sudo()
-        token = icp.get_param('chatroom_whatsapp.access_token')
-        phone_number_id = icp.get_param('chatroom_whatsapp.phone_number_id')
-        api_version = icp.get_param('chatroom_whatsapp.graph_api_version', 'v20.0')
-        if not token or not phone_number_id:
-            raise UserError(_(
-                "Configura el Token de acceso y el Phone Number ID en "
-                "Ajustes > Chatroom WhatsApp antes de enviar mensajes."))
-        return token, phone_number_id, api_version
-
     def action_send_text(self, body):
         """Envía un mensaje de texto directo al Graph API de Meta y guarda
         el registro saliente. Solo aplica a WhatsApp por ahora; Messenger e
@@ -302,6 +359,109 @@ class ChatroomChannel(models.Model):
         })
         self._notify_thread_update()
         return messages
+
+    def action_send_template(self, template_name, language_code, variables=None):
+        """Envía una plantilla aprobada por Meta (HSM). Es la única forma
+        de iniciar/retomar conversación fuera de la ventana de 24h."""
+        self.ensure_one()
+        if self.channel_type != 'whatsapp':
+            raise UserError(_("El envío directo aún solo está implementado "
+                               "para WhatsApp en este módulo base."))
+        token, phone_number_id, api_version = self._get_meta_credentials()
+        url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
+        components = []
+        if variables:
+            components.append({
+                "type": "body",
+                "parameters": [{"type": "text", "text": value} for value in variables],
+            })
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": self.external_id,
+            "type": "template",
+            "template": {
+                "name": template_name,
+                "language": {"code": language_code},
+                "components": components,
+            },
+        }
+        headers = {"Authorization": f"Bearer {token}"}
+
+        message = self.env['chatroom.message'].create({
+            'channel_id': self.id,
+            'direction': 'outbound',
+            'message_type': 'template',
+            'body': _("[Plantilla: %s]") % template_name,
+            'state': 'sent',
+            'date': fields.Datetime.now(),
+        })
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=15)
+            response.raise_for_status()
+            wa_message_id = response.json().get('messages', [{}])[0].get('id')
+            message.write({'wa_message_id': wa_message_id})
+        except requests.RequestException as exc:
+            _logger.error("Error enviando plantilla de WhatsApp: %s", exc)
+            message.write({'state': 'failed'})
+            raise UserError(_("No se pudo enviar la plantilla: %s") % exc)
+
+        self.write({'last_message_date': fields.Datetime.now(), 'state': 'open'})
+        self._notify_thread_update()
+        return message
+
+    def action_send_interactive_buttons(self, body, buttons):
+        """Envía un mensaje con hasta 3 botones de respuesta rápida
+        (WhatsApp Interactive Messages). La respuesta del cliente llega
+        por el webhook como un mensaje 'interactive' normal."""
+        self.ensure_one()
+        if self.channel_type != 'whatsapp':
+            raise UserError(_("El envío directo aún solo está implementado "
+                               "para WhatsApp en este módulo base."))
+        buttons = [b.strip() for b in (buttons or []) if b and b.strip()][:3]
+        if not buttons:
+            raise UserError(_("Agrega al menos un botón."))
+
+        token, phone_number_id, api_version = self._get_meta_credentials()
+        url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": self.external_id,
+            "type": "interactive",
+            "interactive": {
+                "type": "button",
+                "body": {"text": body or _("Elige una opción:")},
+                "action": {
+                    "buttons": [
+                        {"type": "reply", "reply": {"id": f"btn_{index}", "title": label[:20]}}
+                        for index, label in enumerate(buttons)
+                    ],
+                },
+            },
+        }
+        headers = {"Authorization": f"Bearer {token}"}
+
+        message = self.env['chatroom.message'].create({
+            'channel_id': self.id,
+            'direction': 'outbound',
+            'message_type': 'interactive',
+            'body': "\n".join([body] + [f"[{label}]" for label in buttons]) if body
+                    else "\n".join(f"[{label}]" for label in buttons),
+            'state': 'sent',
+            'date': fields.Datetime.now(),
+        })
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=15)
+            response.raise_for_status()
+            wa_message_id = response.json().get('messages', [{}])[0].get('id')
+            message.write({'wa_message_id': wa_message_id})
+        except requests.RequestException as exc:
+            _logger.error("Error enviando botones de WhatsApp: %s", exc)
+            message.write({'state': 'failed'})
+            raise UserError(_("No se pudo enviar el mensaje: %s") % exc)
+
+        self.write({'last_message_date': fields.Datetime.now(), 'state': 'open'})
+        self._notify_thread_update()
+        return message
 
     def _notify_thread_update(self):
         """Notifica por el bus a quien tenga abierta la conversación para

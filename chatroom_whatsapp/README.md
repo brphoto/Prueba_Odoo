@@ -108,11 +108,50 @@ Cualquier error de IA (endpoint caído, credenciales inválidas, respuesta
 inesperada) se registra en el log del servidor y **no interrumpe** la
 recepción de mensajes por el webhook.
 
-## Alcance de esta primera versión
+## Plantillas de WhatsApp (HSM) — mensajes fuera de la ventana de 24h
 
-- Envío/recepción de texto, imagen, audio (incluye notas de voz),
-  video y documento para WhatsApp implementado end-to-end (subida/bajada
-  de media contra la Graph API de Meta).
+La Cloud API solo permite texto libre durante las 24h siguientes al
+último mensaje del cliente (`chatroom.channel.is_session_open`). Pasada
+esa ventana, **la única forma de volver a escribirle es con una plantilla
+aprobada por Meta**:
+
+1. Registra y espera la aprobación de tus plantillas en Meta Business
+   Suite (WhatsApp Manager > Plantillas de mensajes).
+2. En Odoo, ve a **Chatroom > Configuración > Plantillas de WhatsApp** y
+   pulsa **Sincronizar con Meta** — trae nombre, idioma, categoría,
+   estado y cuerpo de cada plantilla vía Graph API (requiere el
+   `WhatsApp Business Account ID` configurado en Ajustes).
+3. Cuando la ventana está cerrada, el chat muestra un aviso con un botón
+   **Enviar plantilla**; también está disponible siempre en el
+   encabezado de la conversación. El asistente pide la plantilla y un
+   valor por cada variable `{{1}}`, `{{2}}`... con vista previa antes de
+   enviar.
+
+## Asignación automática y notificaciones
+
+- Cada conversación **nueva** se reparte automáticamente entre los
+  usuarios del grupo *Chatroom / Agente*, priorizando al que menos
+  conversaciones abiertas tenga (se puede desactivar en Ajustes:
+  *Asignación automática de conversaciones*).
+- El agente asignado recibe una **notificación nativa de Odoo** (aparece
+  en la campanita/bandeja de Discuss, no solo si tiene la conversación
+  abierta) cada vez que llega un mensaje nuevo o cuando le reasignan una
+  conversación — usa `mail.thread`, no infraestructura adicional.
+
+## Botones de respuesta rápida (WhatsApp Interactive Messages)
+
+El ícono de lista en el composer del chat abre un panel para definir
+hasta 3 botones (máx. 20 caracteres cada uno); al enviar, el cliente ve
+un mensaje con botones tocables en vez de tener que escribir texto. Las
+respuestas del cliente llegan por el webhook igual que cualquier mensaje
+entrante. No incluye listas largas ni catálogo de productos (requieren
+Meta Commerce Manager) — queda como extensión futura.
+
+## Alcance de esta versión
+
+- Envío/recepción de texto, imagen, audio (incluye notas de voz), video,
+  documento, plantillas y botones interactivos para WhatsApp,
+  end-to-end (subida/bajada de media contra la Graph API de Meta).
 - Messenger/Instagram comparten el mismo modelo de datos
   (`chatroom.channel.channel_type`) pero el webhook y el envío directo
   para esos canales quedan como extensión (misma Graph API de Meta, otro
@@ -122,3 +161,5 @@ recepción de mensajes por el webhook.
 - El panel de accesos rápidos (Oportunidades/Presupuestos/Facturas) es
   de solo navegación; no permite crear/editar líneas de factura o pedido
   desde el propio chat.
+- Las listas interactivas y el catálogo de productos de WhatsApp no
+  están implementados, solo botones de respuesta rápida (máx. 3).

@@ -17,6 +17,12 @@
                 </div>
             </div>
 
+            <div class="o_chatroom_session_banner" t-if="!state.loading and !state.isSessionOpen">
+                <i class="fa fa-info-circle"/>
+                <span>La ventana de 24h para responder libremente expiró.</span>
+                <button class="btn btn-sm btn-light" t-on-click="openSendTemplate">Enviar plantilla</button>
+            </div>
+
             <div class="o_chatroom_thread_messages" t-ref="messages">
                 <t t-if="state.loading">
                     <div class="o_chatroom_loading">
@@ -98,28 +104,45 @@
                         <i class="fa fa-check"/>
                     </button>
                 </div>
-                <div class="o_chatroom_composer_input" t-else="">
-                    <input type="file" t-ref="fileInput" class="d-none" multiple="multiple"
-                           t-on-change="onFileChange"/>
-                    <button class="btn btn-link o_chatroom_attach_btn" title="Adjuntar archivo"
-                            t-on-click="triggerFilePicker">
-                        <i class="fa fa-paperclip"/>
-                    </button>
-                    <textarea
-                        class="o_chatroom_composer_textarea"
-                        placeholder="Escribe un mensaje..."
-                        t-model="state.composerText"
-                        t-on-keydown="onComposerKeydown"
-                        t-att-disabled="state.sending"/>
-                    <button class="btn btn-link o_chatroom_attach_btn" title="Grabar nota de voz"
-                            t-on-click="toggleRecording">
-                        <i class="fa fa-microphone"/>
-                    </button>
-                    <button class="btn btn-primary o_chatroom_send_btn"
-                            t-att-disabled="state.sending"
-                            t-on-click="send">
-                        <i class="fa fa-paper-plane"/>
-                    </button>
+                <div t-else="">
+                    <div class="o_chatroom_quick_buttons_panel" t-if="state.quickButtonsOpen">
+                        <div class="o_chatroom_quick_buttons_hint text-muted">
+                            Hasta 3 botones de respuesta rápida:
+                        </div>
+                        <t t-foreach="state.quickButtons" t-as="qb" t-key="qb_index">
+                            <input type="text" class="o_chatroom_quick_button_input" maxlength="20"
+                                   t-att-placeholder="'Botón ' + (qb_index + 1)"
+                                   t-att-value="qb"
+                                   t-on-input="(ev) => this.setQuickButton(qb_index, ev.target.value)"/>
+                        </t>
+                    </div>
+                    <div class="o_chatroom_composer_input">
+                        <input type="file" t-ref="fileInput" class="d-none" multiple="multiple"
+                               t-on-change="onFileChange"/>
+                        <button class="btn btn-link o_chatroom_attach_btn" title="Adjuntar archivo"
+                                t-on-click="triggerFilePicker">
+                            <i class="fa fa-paperclip"/>
+                        </button>
+                        <button t-attf-class="btn btn-link o_chatroom_attach_btn {{ state.quickButtonsOpen ? 'text-primary' : '' }}"
+                                title="Botones de respuesta rápida" t-on-click="toggleQuickButtons">
+                            <i class="fa fa-list-ul"/>
+                        </button>
+                        <textarea
+                            class="o_chatroom_composer_textarea"
+                            placeholder="Escribe un mensaje..."
+                            t-model="state.composerText"
+                            t-on-keydown="onComposerKeydown"
+                            t-att-disabled="state.sending"/>
+                        <button class="btn btn-link o_chatroom_attach_btn" title="Grabar nota de voz"
+                                t-on-click="toggleRecording">
+                            <i class="fa fa-microphone"/>
+                        </button>
+                        <button class="btn btn-primary o_chatroom_send_btn"
+                                t-att-disabled="state.sending"
+                                t-on-click="send">
+                            <i class="fa fa-paper-plane"/>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

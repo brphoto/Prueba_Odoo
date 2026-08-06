@@ -28,6 +28,7 @@ class ChatroomMessage(models.Model):
          ('audio', "Audio"),
          ('video', "Video"),
          ('template', "Plantilla"),
+         ('interactive', "Botones/lista"),
          ('other', "Otro")],
         default='text', required=True)
     body = fields.Text()

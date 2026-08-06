@@ -56,6 +56,9 @@ export class ChatroomThread extends Component {
             pendingAttachments: [],
             recording: false,
             recordSeconds: 0,
+            isSessionOpen: true,
+            quickButtonsOpen: false,
+            quickButtons: ["", "", ""],
         });
 
         this._shouldScroll = true;
@@ -91,6 +94,7 @@ export class ChatroomThread extends Component {
         for (const { type, payload } of notifications) {
             if (type === "chatroom.message/new" && payload && payload.channel_id === this.channelId) {
                 this._loadMessages();
+                this._loadChannel();
             }
         }
     }
@@ -99,11 +103,19 @@ export class ChatroomThread extends Component {
         const [channel] = await this.orm.read(
             "chatroom.channel",
             [this.channelId],
-            ["display_name", "partner_id", "channel_type"]
+            ["display_name", "partner_id", "channel_type", "is_session_open"]
         );
         this.state.channelName = channel.display_name;
         this.state.partnerId = channel.partner_id ? channel.partner_id[0] : false;
         this.state.channelType = channel.channel_type;
+        this.state.isSessionOpen = channel.is_session_open;
+    }
+
+    openSendTemplate() {
+        this.action.doAction("chatroom_whatsapp.action_chatroom_send_template_wizard", {
+            additionalContext: { default_channel_id: this.channelId },
+            onClose: () => this._loadMessages(),
+        });
     }
 
     async _loadMessages() {
@@ -338,25 +350,54 @@ export class ChatroomThread extends Component {
         return `${m}:${String(s).padStart(2, "0")}`;
     }
 
+    // ------------------------------------------------------------------
+    // Botones de respuesta rápida (WhatsApp Interactive Messages)
+    // ------------------------------------------------------------------
+    toggleQuickButtons() {
+        this.state.quickButtonsOpen = !this.state.quickButtonsOpen;
+        if (!this.state.quickButtonsOpen) {
+            this.state.quickButtons = ["", "", ""];
+        }
+    }
+
+    setQuickButton(index, value) {
+        this.state.quickButtons[index] = value;
+    }
+
     async send() {
         const body = this.state.composerText.trim();
         const attachments = this.state.pendingAttachments;
-        if (!body && !attachments.length) {
+        const buttons = this.state.quickButtonsOpen
+            ? this.state.quickButtons.filter((b) => b.trim())
+            : [];
+        if (!body && !attachments.length && !buttons.length) {
             return;
         }
         this.state.sending = true;
         try {
-            await this.orm.call("chatroom.channel", "action_send_message", [this.channelId], {
-                body: body || false,
-                attachments: attachments.map(({ name, mimetype, data }) => ({
-                    name,
-                    mimetype,
-                    data,
-                })),
-            });
+            if (buttons.length) {
+                await this.orm.call(
+                    "chatroom.channel",
+                    "action_send_interactive_buttons",
+                    [this.channelId],
+                    { body: body || false, buttons }
+                );
+                this.state.quickButtonsOpen = false;
+                this.state.quickButtons = ["", "", ""];
+            } else {
+                await this.orm.call("chatroom.channel", "action_send_message", [this.channelId], {
+                    body: body || false,
+                    attachments: attachments.map(({ name, mimetype, data }) => ({
+                        name,
+                        mimetype,
+                        data,
+                    })),
+                });
+            }
             this.state.composerText = "";
             this.state.pendingAttachments = [];
             await this._loadMessages();
+            await this._loadChannel();
         } catch (error) {
             this.notification.add(error.data ? error.data.message : error.message, {
                 type: "danger",

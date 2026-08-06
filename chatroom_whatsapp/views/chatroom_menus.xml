@@ -19,4 +19,8 @@
               parent="menu_chatroom_config" sequence="10"
               action="base_setup.action_general_configuration"/>
 
+    <menuitem id="menu_chatroom_config_templates" name="Plantillas de WhatsApp"
+              parent="menu_chatroom_config" sequence="20"
+              action="action_chatroom_template"/>
+
 </odoo>

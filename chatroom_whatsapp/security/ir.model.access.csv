@@ -3,3 +3,6 @@ access_chatroom_channel_user,chatroom.channel.user,model_chatroom_channel,group_
 access_chatroom_channel_manager,chatroom.channel.manager,model_chatroom_channel,group_chatroom_manager,1,1,1,1
 access_chatroom_message_user,chatroom.message.user,model_chatroom_message,group_chatroom_user,1,1,1,0
 access_chatroom_message_manager,chatroom.message.manager,model_chatroom_message,group_chatroom_manager,1,1,1,1
+access_chatroom_template_user,chatroom.template.user,model_chatroom_template,group_chatroom_user,1,0,0,0
+access_chatroom_template_manager,chatroom.template.manager,model_chatroom_template,group_chatroom_manager,1,1,1,1
+access_chatroom_send_template_wizard_user,chatroom.send.template.wizard.user,model_chatroom_send_template_wizard,group_chatroom_user,1,1,1,1

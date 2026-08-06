@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_chatroom_template_list" model="ir.ui.view">
+        <field name="name">chatroom.template.list</field>
+        <field name="model">chatroom.template</field>
+        <field name="arch" type="xml">
+            <list>
+                <button name="action_sync_templates" type="object"
+                        string="Sincronizar con Meta" class="btn-primary"/>
+                <field name="name"/>
+                <field name="language"/>
+                <field name="category"/>
+                <field name="variable_count" string="Variables"/>
+                <field name="status" widget="badge"
+                       decoration-success="status == 'approved'"
+                       decoration-warning="status == 'pending'"
+                       decoration-danger="status in ('rejected', 'disabled')"
+                       decoration-muted="status == 'paused'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_template_form" model="ir.ui.view">
+        <field name="name">chatroom.template.form</field>
+        <field name="model">chatroom.template</field>
+        <field name="arch" type="xml">
+            <form string="Plantilla de WhatsApp">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="language" readonly="1"/>
+                            <field name="category" readonly="1"/>
+                            <field name="status" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="header_type" readonly="1"/>
+                            <field name="header_text" readonly="1"/>
+                            <field name="footer_text" readonly="1"/>
+                            <field name="variable_count" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Cuerpo">
+                        <field name="body" nolabel="1" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_chatroom_template" model="ir.actions.act_window">
+        <field name="name">Plantillas de WhatsApp</field>
+        <field name="res_model">chatroom.template</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aún no hay plantillas sincronizadas.
+            </p>
+            <p>
+                Usa "Sincronizar con Meta" para traer las plantillas
+                aprobadas de tu cuenta de WhatsApp Business.
+            </p>
+        </field>
+    </record>
+
+    <record id="view_chatroom_send_template_wizard_form" model="ir.ui.view">
+        <field name="name">chatroom.send.template.wizard.form</field>
+        <field name="model">chatroom.send.template.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Enviar plantilla de WhatsApp">
+                <group>
+                    <field name="channel_id" invisible="1"/>
+                    <field name="template_id"/>
+                    <field name="variable_count"/>
+                    <field name="variables_text"
+                           invisible="not variable_count"
+                           placeholder="Un valor por línea, en orden"/>
+                </group>
+                <group string="Vista previa" invisible="not template_id">
+                    <field name="preview" nolabel="1" readonly="1"/>
+                </group>
+                <footer>
+                    <button name="action_send" type="object" string="Enviar"
+                            class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_chatroom_send_template_wizard" model="ir.actions.act_window">
+        <field name="name">Enviar plantilla</field>
+        <field name="res_model">chatroom.send.template.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

@@ -43,6 +43,25 @@
     }
 }
 
+.o_chatroom_session_banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background-color: #fff3cd;
+    color: #664d03;
+    font-size: 0.85em;
+    flex: 0 0 auto;
+
+    .flex-grow-1 {
+        flex-grow: 1;
+    }
+
+    button {
+        margin-left: auto;
+    }
+}
+
 .o_chatroom_thread_messages {
     flex: 1 1 auto;
     overflow-y: auto;
@@ -194,6 +213,36 @@
     display: flex;
     align-items: flex-end;
     gap: 6px;
+}
+
+.o_chatroom_quick_buttons_panel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    padding: 6px 8px;
+    background-color: #f0f2f5;
+    border-radius: 8px;
+}
+
+.o_chatroom_quick_buttons_hint {
+    flex-basis: 100%;
+    font-size: 0.75em;
+}
+
+.o_chatroom_quick_button_input {
+    flex: 1 1 120px;
+    min-width: 100px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 14px;
+    padding: 4px 10px;
+    font-size: 0.85em;
+
+    &:focus {
+        outline: none;
+        border-color: var(--o-brand-primary, #714B67);
+    }
 }
 
 .o_chatroom_recording_bar {

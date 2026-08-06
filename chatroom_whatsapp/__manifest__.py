@@ -53,6 +53,7 @@ Requisitos
         'security/chatroom_security.xml',
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
+        'views/chatroom_template_views.xml',
         'views/chatroom_channel_views.xml',
         'views/chatroom_message_views.xml',
         'views/res_config_settings_views.xml',

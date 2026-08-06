@@ -73,6 +73,9 @@
                             invisible="not ai_suggested_reply"/>
                     <button name="action_ai_suggest_reply" type="object"
                             string="Sugerir respuesta con IA" class="btn-secondary"/>
+                    <button name="%(action_chatroom_send_template_wizard)d" type="action"
+                            string="Enviar plantilla" class="btn-secondary"
+                            context="{'default_channel_id': id}"/>
                     <button name="action_create_lead" type="object"
                             string="Crear Oportunidad" class="btn-secondary"/>
                     <button name="action_create_quotation" type="object"

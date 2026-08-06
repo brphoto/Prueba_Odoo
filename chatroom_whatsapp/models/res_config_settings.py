@@ -39,6 +39,12 @@ class ResConfigSettings(models.TransientModel):
              "que la petición viene realmente de Meta.")
     whatsapp_webhook_url = fields.Char(
         string="Webhook URL", compute='_compute_whatsapp_webhook_url')
+    chatroom_auto_assign = fields.Boolean(
+        string="Asignación automática de conversaciones",
+        config_parameter='chatroom_whatsapp.auto_assign', default=True,
+        help="Reparte las conversaciones nuevas entre los agentes del "
+             "grupo 'Chatroom / Agente', priorizando al que menos "
+             "conversaciones abiertas tenga.")
 
     # -- Sugerencias de respuesta con IA (cualquier proveedor LLM) --
     chatroom_ai_enabled = fields.Boolean(
