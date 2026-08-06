@@ -1,0 +1,222 @@
+.o_chatroom_app {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background-color: var(--o-view-background-color, #fff);
+
+    // El widget de hilo reutilizado (chatroom_thread_core) vive dentro de
+    // .o_chatroom_app_main: acá lo estiramos para que ocupe todo el panel
+    // en vez del alto fijo que usa cuando está embebido en un formulario.
+    .o_chatroom_thread {
+        height: 100%;
+        max-height: none;
+        border: none;
+        border-radius: 0;
+    }
+}
+
+.o_chatroom_app_sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 340px;
+    min-width: 280px;
+    max-width: 40%;
+    border-right: 1px solid var(--border-color, #dee2e6);
+    background-color: var(--o-view-background-color, #fff);
+}
+
+.o_chatroom_app_sidebar_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+
+    h4 {
+        margin: 0;
+        font-size: 1.1em;
+        white-space: nowrap;
+        i {
+            color: #25d366;
+        }
+    }
+
+    .o_chatroom_number_select {
+        max-width: 160px;
+        font-size: 0.8em;
+    }
+}
+
+.o_chatroom_app_search {
+    position: relative;
+    padding: 8px 14px;
+
+    i {
+        position: absolute;
+        left: 26px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #8696a0;
+        font-size: 0.85em;
+    }
+
+    input {
+        width: 100%;
+        border: none;
+        background-color: #f0f2f5;
+        border-radius: 18px;
+        padding: 6px 12px 6px 30px;
+        font-size: 0.9em;
+
+        &:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(37, 211, 102, 0.35);
+        }
+    }
+}
+
+.o_chatroom_app_filters {
+    display: flex;
+    gap: 6px;
+    padding: 0 14px 8px;
+
+    .btn {
+        border-radius: 14px;
+    }
+}
+
+.o_chatroom_app_list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+}
+
+.o_chatroom_app_list_item {
+    display: flex;
+    gap: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color, #f0f0f0);
+
+    &:hover {
+        background-color: #f5f6f6;
+    }
+
+    &.o_active {
+        background-color: #e9edf1;
+    }
+
+    .o_chatroom_avatar {
+        position: relative;
+        flex: 0 0 auto;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background-color: var(--o-brand-primary, #714B67);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+
+    .o_chatroom_app_list_channel_icon {
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+        background-color: #fff;
+        border-radius: 50%;
+        padding: 2px;
+        font-size: 0.75em;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+    }
+
+    .o_chatroom_channel_icon_whatsapp { color: #25d366; }
+    .o_chatroom_channel_icon_messenger { color: #0084ff; }
+    .o_chatroom_channel_icon_instagram { color: #e1306c; }
+}
+
+.o_chatroom_app_list_body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.o_chatroom_app_list_row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+}
+
+.o_chatroom_app_list_name {
+    font-weight: 500;
+}
+
+.o_chatroom_app_list_time {
+    font-size: 0.75em;
+    color: #8696a0;
+    flex: 0 0 auto;
+}
+
+.o_chatroom_app_list_preview {
+    font-size: 0.85em;
+    color: #667781;
+}
+
+.o_chatroom_app_list_item.o_unread {
+    .o_chatroom_app_list_name,
+    .o_chatroom_app_list_preview {
+        font-weight: 600;
+        color: #111b21;
+    }
+}
+
+.o_chatroom_app_main {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.o_chatroom_app_back_btn {
+    display: none;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 5;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background-color: rgba(255, 255, 255, 0.25);
+    color: #fff;
+}
+
+@media (max-width: 768px) {
+    .o_chatroom_app_sidebar {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .o_chatroom_app_main {
+        display: none;
+    }
+
+    .o_chatroom_app.o_chatroom_app_chat_open {
+        .o_chatroom_app_sidebar {
+            display: none;
+        }
+
+        .o_chatroom_app_main {
+            display: flex;
+        }
+
+        .o_chatroom_app_back_btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+    }
+}

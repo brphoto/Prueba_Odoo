@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="chatroom_whatsapp.ChatroomDashboard">
+        <div class="o_chatroom_dashboard">
+            <div class="o_chatroom_dashboard_header">
+                <h3><i class="fa fa-whatsapp"/> Dashboard de Chatroom</h3>
+            </div>
+
+            <t t-if="state.loading">
+                <div class="o_chatroom_loading"><i class="fa fa-spin fa-circle-o-notch"/></div>
+            </t>
+            <t t-else="">
+                <div class="o_chatroom_kpi_row">
+                    <div class="o_chatroom_kpi_tile" t-on-click="openToday">
+                        <i class="fa fa-comments o_chatroom_kpi_icon"/>
+                        <div class="o_chatroom_kpi_value" t-esc="state.todayCount"/>
+                        <div class="o_chatroom_kpi_label">Conversaciones de hoy</div>
+                    </div>
+                    <div class="o_chatroom_kpi_tile o_chatroom_kpi_warning" t-on-click="openPending">
+                        <i class="fa fa-clock-o o_chatroom_kpi_icon"/>
+                        <div class="o_chatroom_kpi_value" t-esc="state.pendingCount"/>
+                        <div class="o_chatroom_kpi_label">Pendientes</div>
+                    </div>
+                    <div class="o_chatroom_kpi_tile o_chatroom_kpi_danger" t-on-click="openUnread">
+                        <i class="fa fa-envelope o_chatroom_kpi_icon"/>
+                        <div class="o_chatroom_kpi_value" t-esc="state.unreadTotal"/>
+                        <div class="o_chatroom_kpi_label">Mensajes sin leer</div>
+                    </div>
+                    <div class="o_chatroom_kpi_tile">
+                        <i class="fa fa-paper-plane o_chatroom_kpi_icon"/>
+                        <div class="o_chatroom_kpi_value" t-esc="state.messagesToday"/>
+                        <div class="o_chatroom_kpi_label">Mensajes hoy</div>
+                    </div>
+                    <div class="o_chatroom_kpi_tile">
+                        <i class="fa fa-bolt o_chatroom_kpi_icon"/>
+                        <div class="o_chatroom_kpi_value" t-esc="formatMinutes(state.avgFirstResponseMinutes)"/>
+                        <div class="o_chatroom_kpi_label">Primera respuesta (prom. 30 días)</div>
+                    </div>
+                </div>
+
+                <div class="o_chatroom_dashboard_panels">
+                    <div class="o_chatroom_dashboard_panel">
+                        <h5>Conversaciones abiertas por agente</h5>
+                        <t t-if="!state.byAgent.length">
+                            <div class="text-muted">No hay conversaciones abiertas asignadas.</div>
+                        </t>
+                        <t t-foreach="state.byAgent" t-as="agent" t-key="agent_index">
+                            <div class="o_chatroom_rank_row">
+                                <span class="o_chatroom_rank_label text-truncate" t-esc="agent.name"/>
+                                <div class="o_chatroom_rank_bar_track">
+                                    <div class="o_chatroom_rank_bar o_chatroom_rank_bar_primary"
+                                         t-attf-style="width: {{ barWidth(agent.count, state.byAgent, 'count') }}%"/>
+                                </div>
+                                <span class="o_chatroom_rank_value" t-esc="agent.count"/>
+                            </div>
+                        </t>
+                    </div>
+
+                    <div class="o_chatroom_dashboard_panel">
+                        <h5>Primera respuesta por agente (prom. 30 días)</h5>
+                        <t t-if="!state.responseByAgent.length">
+                            <div class="text-muted">Todavía no hay datos suficientes.</div>
+                        </t>
+                        <t t-foreach="state.responseByAgent" t-as="agent" t-key="agent_index">
+                            <div class="o_chatroom_rank_row">
+                                <span class="o_chatroom_rank_label text-truncate" t-esc="agent.name"/>
+                                <div class="o_chatroom_rank_bar_track">
+                                    <div class="o_chatroom_rank_bar o_chatroom_rank_bar_secondary"
+                                         t-attf-style="width: {{ barWidth(agent.minutes, state.responseByAgent, 'minutes') }}%"/>
+                                </div>
+                                <span class="o_chatroom_rank_value" t-esc="formatMinutes(agent.minutes)"/>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>

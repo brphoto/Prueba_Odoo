@@ -51,9 +51,7 @@ export class ChatroomSystrayIcon extends Component {
     }
 
     openChatroom() {
-        this.action.doAction("chatroom_whatsapp.action_chatroom_channel", {
-            additionalContext: { search_default_pending: 1 },
-        });
+        this.action.doAction("chatroom_whatsapp.action_chatroom_app");
     }
 }
 

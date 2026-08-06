@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_chatroom_whatsapp_number_list" model="ir.ui.view">
+        <field name="name">chatroom.whatsapp.number.list</field>
+        <field name="model">chatroom.whatsapp.number</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="display_phone_number"/>
+                <field name="phone_number_id"/>
+                <field name="member_ids" widget="many2many_tags"/>
+                <field name="channel_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_whatsapp_number_form" model="ir.ui.view">
+        <field name="name">chatroom.whatsapp.number.form</field>
+        <field name="model">chatroom.whatsapp.number</field>
+        <field name="arch" type="xml">
+            <form string="Línea de WhatsApp">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_channels" type="object" class="oe_stat_button"
+                                icon="fa-comments">
+                            <field name="channel_count" widget="statinfo" string="Conversaciones"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Ej. Ventas, Soporte..."/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="phone_number_id"/>
+                            <field name="display_phone_number"/>
+                            <field name="business_account_id"/>
+                        </group>
+                        <group>
+                            <field name="access_token" password="True"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group string="Agentes de esta línea">
+                        <field name="member_ids" nolabel="1" widget="many2many_tags"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_chatroom_whatsapp_number" model="ir.actions.act_window">
+        <field name="name">Líneas de WhatsApp</field>
+        <field name="res_model">chatroom.whatsapp.number</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Agrega una línea de WhatsApp para atender con distintos
+                números (ej. Ventas, Soporte) desde el mismo Odoo.
+            </p>
+            <p>
+                Si solo usas un número, no hace falta crear ninguna línea
+                acá: el Phone Number ID de Ajustes alcanza.
+            </p>
+        </field>
+    </record>
+
+</odoo>

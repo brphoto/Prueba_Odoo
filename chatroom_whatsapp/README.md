@@ -67,6 +67,22 @@ widget de chat propio (`static/src/chatroom_thread/`), no una lista plana:
 - Actualización en **tiempo real** (bus de Odoo) sin recargar la página.
 - El encabezado del chat es clicable y abre la ficha del contacto.
 
+## App de una sola pantalla (estilo WhatsApp Web)
+
+**Chatroom > Chatroom** (el ícono de la app, primer ítem del menú) abre una
+pantalla única en vez de navegar entre kanban/lista/formulario: lista de
+conversaciones a la izquierda (buscador, filtros *Todas / No leídas / Mías*
+y un selector de línea) + la conversación abierta a la derecha, con el
+mismo widget de burbujas de siempre (`chatroom_thread_core`, ahora
+reutilizado en vez de duplicado). En pantallas angostas (celular/tablet)
+la lista y el chat ocupan toda la pantalla por turnos, con un botón de
+volver.
+
+La vista clásica (kanban/lista/formulario) sigue disponible en
+**Chatroom > Vista clásica** — útil para reportes, exportar, o editar
+varios campos a la vez, cosas que una app de una sola pantalla no cubre
+bien.
+
 ## Flujo comercial y panel de accesos rápidos
 
 Desde cada conversación un agente puede:
@@ -137,6 +153,47 @@ aprobada por Meta**:
   en la campanita/bandeja de Discuss, no solo si tiene la conversación
   abierta) cada vez que llega un mensaje nuevo o cuando le reasignan una
   conversación — usa `mail.thread`, no infraestructura adicional.
+
+## Múltiples líneas de WhatsApp (Ventas, Soporte, etc.)
+
+Si atiendes con **más de un número de WhatsApp Business**, dalos de alta en
+**Chatroom > Configuración > Líneas de WhatsApp** (`chatroom.whatsapp.number`):
+nombre, `Phone Number ID` propio y, opcionalmente, agentes asignados
+(`member_ids`).
+
+- El webhook lee `value.metadata.phone_number_id` en cada mensaje entrante
+  y asocia la conversación a la línea que coincida (`whatsapp_number_id`
+  en `chatroom.channel`). Si no hay ninguna línea configurada, o ninguna
+  coincide, todo sigue funcionando como con un solo número (el de
+  Ajustes) — no rompe instalaciones existentes.
+- Al enviar, la conversación usa el token/Phone Number ID **de su
+  línea** si los tiene; si la línea no define un token propio, cae al
+  token general de Ajustes (caso típico: una sola WhatsApp Business
+  Account con varios números).
+- El reparto automático de conversaciones nuevas se limita a los
+  `member_ids` de esa línea cuando tiene agentes definidos; si la línea
+  no tiene agentes propios, se reparte entre todo el grupo *Chatroom /
+  Agente* como siempre.
+- **"Pin" de línea por pantalla**: en la app de una sola pantalla, el
+  selector de línea (arriba de la lista) se guarda en `localStorage` del
+  navegador — cada usuario/equipo puede dejar su pantalla fija en "Mi
+  línea" o en una línea específica, y así queda la próxima vez que abra
+  Chatroom en ese navegador. La vista clásica tiene el mismo filtro
+  ("Mi línea") en la búsqueda.
+- El `access_token` de cada línea solo lo puede leer/editar el grupo
+  *Chatroom / Administrador* (campo con `groups=` a nivel de modelo, no
+  solo oculto en la vista).
+
+## Dashboard
+
+**Chatroom > Dashboard** muestra un resumen de un vistazo: conversaciones
+de hoy, pendientes, mensajes sin leer, mensajes enviados/recibidos hoy y
+el tiempo promedio de primera respuesta (últimos 30 días), más dos
+rankings de agentes (conversaciones abiertas, y velocidad de primera
+respuesta). Todo se calcula en el servidor con `read_group`
+(`chatroom.channel.get_dashboard_data`) para no traer registros de más al
+navegador — no es un pivot/gráfico genérico, son consultas agregadas
+puntuales.
 
 ## Botones de respuesta rápida (WhatsApp Interactive Messages)
 
@@ -297,6 +354,13 @@ Pensado para tráfico real, no solo para la demo:
 - El modo oscuro tiene el CSS listo pero no se pudo verificar
   visualmente (requiere Odoo Enterprise, no disponible en este entorno
   de pruebas).
+- **App de una sola pantalla, múltiples líneas y Dashboard son nuevos en
+  esta iteración**: se validó sintaxis (Python, XML, manifest, existencia
+  de cada archivo de assets referenciado) y se revisó `_read_group`/hooks
+  de OWL contra el código fuente real de Odoo 19, pero **no se probaron
+  todavía en un navegador contra un Odoo corriendo** — a diferencia del
+  resto del módulo (ver "Validado contra un Odoo 19 real" arriba), así
+  que conviene probarlos primero en una base de pruebas.
 - La deduplicación de contactos por teléfono compara en Python sobre
   los contactos con `phone` cargado (no hay forma limpia de comparar
   "solo dígitos" a nivel SQL sin una extensión de PostgreSQL); en bases

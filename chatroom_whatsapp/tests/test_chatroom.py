@@ -127,6 +127,27 @@ class TestChatroomWhatsapp(TransactionCase):
 
         self.assertEqual(message.state, 'read')
 
+    def test_webhook_routes_to_matching_whatsapp_number(self):
+        """Si hay una línea configurada con ese Phone Number ID, el canal
+        nuevo debe quedar asociado a ella (multi-número)."""
+        number = self.env['chatroom.whatsapp.number'].create({
+            'name': "Soporte",
+            'phone_number_id': '1112223330',
+        })
+        channel = self.env['chatroom.channel']._find_or_create_from_webhook(
+            'whatsapp', '573008889999', 'Cliente de soporte',
+            meta_phone_number_id='1112223330')
+
+        self.assertEqual(channel.whatsapp_number_id, number)
+
+    def test_webhook_without_matching_number_leaves_it_empty(self):
+        """Sin líneas configuradas (o sin coincidencia), el canal se crea
+        igual que antes, sin línea asociada (compatibilidad hacia atrás)."""
+        channel = self.env['chatroom.channel']._find_or_create_from_webhook(
+            'whatsapp', '573007778888', 'Cliente', meta_phone_number_id='no-existe')
+
+        self.assertFalse(channel.whatsapp_number_id)
+
     def test_opt_keywords_flag_partner(self):
         partner = self.env['res.partner'].create({'name': "Cliente", 'phone': "+573006665555"})
         channel = self.env['chatroom.channel'].create({

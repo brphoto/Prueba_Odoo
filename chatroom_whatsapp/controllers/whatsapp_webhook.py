@@ -93,6 +93,9 @@ class WhatsAppWebhookController(http.Controller):
     def _process_messages(self, env, value):
         contacts = {c['wa_id']: c.get('profile', {}).get('name')
                     for c in value.get('contacts', [])}
+        # Cuando hay varias líneas de WhatsApp dadas de alta, Meta indica
+        # por cuál entró el mensaje en 'metadata.phone_number_id'.
+        meta_phone_number_id = (value.get('metadata') or {}).get('phone_number_id')
 
         for msg in value.get('messages', []):
             if self._already_processed(env, msg.get('id')):
@@ -101,7 +104,7 @@ class WhatsAppWebhookController(http.Controller):
             wa_id = msg.get('from')
             profile_name = contacts.get(wa_id)
             channel = env['chatroom.channel']._find_or_create_from_webhook(
-                'whatsapp', wa_id, profile_name)
+                'whatsapp', wa_id, profile_name, meta_phone_number_id=meta_phone_number_id)
 
             msg_type = msg.get('type', 'text')
             body, media_id = self._extract_body(msg, msg_type)

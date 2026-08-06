@@ -32,6 +32,12 @@ class ChatroomChannel(models.Model):
         default='whatsapp', required=True, tracking=True)
     partner_id = fields.Many2one(
         'res.partner', string="Contacto", tracking=True)
+    whatsapp_number_id = fields.Many2one(
+        'chatroom.whatsapp.number', string="Línea de WhatsApp", index=True,
+        help="Número de WhatsApp Business por el que entró esta "
+             "conversación, cuando hay varias líneas configuradas "
+             "(ej. Ventas, Soporte). Vacío si solo se usa el número "
+             "único configurado en Ajustes.")
     external_id = fields.Char(
         string="ID externo (wa_id / PSID)", required=True, index=True,
         help="Identificador que asigna Meta al usuario final: número de "
@@ -168,9 +174,15 @@ class ChatroomChannel(models.Model):
     # Helpers de contacto / canal
     # ------------------------------------------------------------------
     @api.model
-    def _find_or_create_from_webhook(self, channel_type, external_id, profile_name=None):
+    def _find_or_create_from_webhook(self, channel_type, external_id, profile_name=None,
+                                      meta_phone_number_id=None):
         """Busca el canal para un contacto; crea el res.partner y el canal
-        si es la primera vez que escribe (creación automática de contactos)."""
+        si es la primera vez que escribe (creación automática de contactos).
+
+        :param meta_phone_number_id: 'phone_number_id' que viene en
+            `value.metadata` del webhook de WhatsApp, para asociar la
+            conversación a la línea correcta cuando hay varias.
+        """
         channel = self.search([
             ('channel_type', '=', channel_type),
             ('external_id', '=', external_id),
@@ -193,29 +205,42 @@ class ChatroomChannel(models.Model):
                 'phone': f"+{external_id}" if channel_type == 'whatsapp' else False,
             })
 
+        whatsapp_number = self.env['chatroom.whatsapp.number']._find_by_phone_number_id(
+            meta_phone_number_id)
+        assignee = whatsapp_number._get_next_assignee() if whatsapp_number else self._get_next_assignee()
+
         return self.create({
             'channel_type': channel_type,
             'external_id': external_id,
             'partner_id': partner.id,
-            'assigned_user_id': self._get_next_assignee().id,
+            'whatsapp_number_id': whatsapp_number.id if whatsapp_number else False,
+            'assigned_user_id': assignee.id,
         })
 
     @api.model
-    def _get_next_assignee(self):
-        """Reparte las conversaciones nuevas entre los agentes del grupo
-        'Chatroom / Agente', asignando al que menos conversaciones abiertas
-        tenga en este momento (balanceo de carga simple)."""
+    def _get_next_assignee(self, agents=None):
+        """Reparte las conversaciones nuevas entre agentes, asignando al
+        que menos conversaciones abiertas tenga en este momento (balanceo
+        de carga simple).
+
+        :param agents: recordset de res.users a considerar. Si es None,
+            se usa el grupo general 'Chatroom / Agente' (+ Administrador).
+            Lo pasa `chatroom.whatsapp.number._get_next_assignee()` para
+            repartir solo entre los agentes de esa línea.
+        """
         icp = self.env['ir.config_parameter'].sudo()
         if icp.get_param('chatroom_whatsapp.auto_assign', 'True') == 'False':
             return self.env.user
-        # No basta con leer el grupo 'Agente': pertenecer a 'Administrador'
-        # no vuelve a alguien miembro explícito del grupo que implica (los
-        # 'user_ids' de un grupo no incluyen la membresía heredada), así
-        # que se unen ambos para no dejar afuera a los managers.
-        agents = (
-            self.env.ref('chatroom_whatsapp.group_chatroom_user').user_ids
-            | self.env.ref('chatroom_whatsapp.group_chatroom_manager').user_ids
-        )
+        if agents is None:
+            # No basta con leer el grupo 'Agente': pertenecer a
+            # 'Administrador' no vuelve a alguien miembro explícito del
+            # grupo que implica ('user_ids' no incluye la membresía
+            # heredada), así que se unen ambos para no dejar afuera a los
+            # managers.
+            agents = (
+                self.env.ref('chatroom_whatsapp.group_chatroom_user').user_ids
+                | self.env.ref('chatroom_whatsapp.group_chatroom_manager').user_ids
+            )
         if not agents:
             return self.env.user
         open_counts = self.env['chatroom.channel']._read_group(
@@ -304,6 +329,15 @@ class ChatroomChannel(models.Model):
                 self.action_send_text(_("Listo, has vuelto a activar los mensajes de este número."))
             except UserError as exc:
                 _logger.warning("No se pudo confirmar el alta en canal %s: %s", self.id, exc)
+
+    def _get_meta_credentials(self):
+        """Si la conversación pertenece a una línea con Phone Number ID
+        propio, se usa esa; si no, se cae al número único de Ajustes
+        (comportamiento de siempre para instalaciones de un solo número)."""
+        self.ensure_one()
+        if self.whatsapp_number_id:
+            return self.whatsapp_number_id._get_credentials()
+        return super()._get_meta_credentials()
 
     # ------------------------------------------------------------------
     # Envío de mensajes (API directa de Meta, sin proveedores externos)
@@ -637,6 +671,57 @@ class ChatroomChannel(models.Model):
 
         unread.write({'state': 'read'})
         return True
+
+    # ------------------------------------------------------------------
+    # Dashboard
+    # ------------------------------------------------------------------
+    @api.model
+    def get_dashboard_data(self, agent_limit=8):
+        """Datos agregados para el dashboard de Chatroom: se calculan acá
+        (con read_group, no trayendo registros al cliente) para que la
+        pantalla cargue con pocas consultas livianas."""
+        today_start = fields.Datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        month_ago = fields.Datetime.subtract(fields.Datetime.now(), days=30)
+
+        pending_count = self.search_count([('state', '=', 'pending')])
+        today_count = self.search_count([('last_message_date', '>=', today_start)])
+        messages_today = self.env['chatroom.message'].search_count(
+            [('date', '>=', today_start)])
+
+        [(unread_total,)] = self._read_group(
+            [('state', '!=', 'closed')], [], ['unread_count:sum']) or [(0,)]
+
+        responded = self._read_group(
+            [('create_date', '>=', month_ago), ('first_response_minutes', '>', 0)],
+            [], ['first_response_minutes:avg'])
+        avg_first_response = responded[0][0] if responded else 0.0
+
+        by_agent = self._read_group(
+            [('state', 'in', ('open', 'pending')), ('assigned_user_id', '!=', False)],
+            ['assigned_user_id'], ['__count'],
+            order='__count desc', limit=agent_limit)
+
+        response_by_agent = self._read_group(
+            [('create_date', '>=', month_ago), ('first_response_minutes', '>', 0),
+             ('assigned_user_id', '!=', False)],
+            ['assigned_user_id'], ['first_response_minutes:avg'],
+            order='first_response_minutes:avg asc', limit=agent_limit)
+
+        return {
+            'pending_count': pending_count,
+            'today_count': today_count,
+            'messages_today': messages_today,
+            'unread_total': unread_total or 0,
+            'avg_first_response_minutes': round(avg_first_response or 0.0, 1),
+            'by_agent': [
+                {'name': user.name, 'count': count}
+                for user, count in by_agent
+            ],
+            'response_by_agent': [
+                {'name': user.name, 'minutes': round(minutes, 1)}
+                for user, minutes in response_by_agent
+            ],
+        }
 
     # ------------------------------------------------------------------
     # Inteligencia Artificial: sugerencia, clasificación y automatización

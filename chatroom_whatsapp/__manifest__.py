@@ -53,6 +53,7 @@ Requisitos
         'security/chatroom_security.xml',
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
+        'views/chatroom_whatsapp_number_views.xml',
         'views/chatroom_template_views.xml',
         'views/chatroom_channel_views.xml',
         'views/chatroom_metrics_views.xml',
@@ -65,15 +66,25 @@ Requisitos
 
     'assets': {
         'web.assets_backend': [
+            'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread_core.js',
+            'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread_core.xml',
             'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.js',
             'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml',
             'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.scss',
             'chatroom_whatsapp/static/src/systray/chatroom_systray.js',
             'chatroom_whatsapp/static/src/systray/chatroom_systray.xml',
             'chatroom_whatsapp/static/src/systray/chatroom_systray.scss',
+            'chatroom_whatsapp/static/src/chatroom_app/chatroom_app.js',
+            'chatroom_whatsapp/static/src/chatroom_app/chatroom_app.xml',
+            'chatroom_whatsapp/static/src/chatroom_app/chatroom_app.scss',
+            'chatroom_whatsapp/static/src/chatroom_dashboard/chatroom_dashboard.js',
+            'chatroom_whatsapp/static/src/chatroom_dashboard/chatroom_dashboard.xml',
+            'chatroom_whatsapp/static/src/chatroom_dashboard/chatroom_dashboard.scss',
         ],
         'web.assets_web_dark': [
             'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.dark.scss',
+            'chatroom_whatsapp/static/src/chatroom_app/chatroom_app.dark.scss',
+            'chatroom_whatsapp/static/src/chatroom_dashboard/chatroom_dashboard.dark.scss',
         ],
     },
 
