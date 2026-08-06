@@ -54,6 +54,8 @@ export class ChatroomThread extends Component {
             messages: [],
             composerText: "",
             pendingAttachments: [],
+            recording: false,
+            recordSeconds: 0,
         });
 
         this._shouldScroll = true;
@@ -80,6 +82,8 @@ export class ChatroomThread extends Component {
         onWillUnmount(() => {
             this.busService.removeEventListener("notification", this._onBusNotification);
             this.busService.deleteChannel(this.busChannel);
+            this._stopMediaStream();
+            clearInterval(this._recordingInterval);
         });
     }
 
@@ -143,6 +147,10 @@ export class ChatroomThread extends Component {
 
     isImage(attachment) {
         return attachment && attachment.mimetype && attachment.mimetype.startsWith("image/");
+    }
+
+    isAudio(attachment) {
+        return attachment && attachment.mimetype && attachment.mimetype.startsWith("audio/");
     }
 
     attachmentDownloadUrl(attachment) {
@@ -234,6 +242,100 @@ export class ChatroomThread extends Component {
 
     removePendingAttachment(index) {
         this.state.pendingAttachments.splice(index, 1);
+    }
+
+    // ------------------------------------------------------------------
+    // Notas de voz (grabación con el micrófono del navegador)
+    // ------------------------------------------------------------------
+    async toggleRecording() {
+        if (this.state.recording) {
+            this._stopRecording(false);
+        } else {
+            await this._startRecording();
+        }
+    }
+
+    cancelRecording() {
+        this._stopRecording(true);
+    }
+
+    async _startRecording() {
+        if (!navigator.mediaDevices || !window.MediaRecorder) {
+            this.notification.add("Este navegador no soporta grabación de audio.", {
+                type: "danger",
+            });
+            return;
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const supportedType = ["audio/ogg;codecs=opus", "audio/webm;codecs=opus", "audio/webm"]
+                .find((type) => MediaRecorder.isTypeSupported(type));
+            this._mediaStream = stream;
+            this._recordedChunks = [];
+            this._recordingCancelled = false;
+            this.mediaRecorder = supportedType
+                ? new MediaRecorder(stream, { mimeType: supportedType })
+                : new MediaRecorder(stream);
+            this.mediaRecorder.addEventListener("dataavailable", (ev) => {
+                if (ev.data && ev.data.size) {
+                    this._recordedChunks.push(ev.data);
+                }
+            });
+            this.mediaRecorder.addEventListener("stop", () => this._onRecordingStop());
+            this.mediaRecorder.start();
+            this.state.recording = true;
+            this.state.recordSeconds = 0;
+            this._recordingInterval = setInterval(() => {
+                this.state.recordSeconds++;
+            }, 1000);
+        } catch (error) {
+            this.notification.add(
+                "No se pudo acceder al micrófono. Revisa los permisos del navegador.",
+                { type: "danger" }
+            );
+        }
+    }
+
+    _stopRecording(cancelled) {
+        this._recordingCancelled = cancelled;
+        if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
+            this.mediaRecorder.stop();
+        }
+    }
+
+    _stopMediaStream() {
+        if (this._mediaStream) {
+            this._mediaStream.getTracks().forEach((track) => track.stop());
+            this._mediaStream = null;
+        }
+    }
+
+    async _onRecordingStop() {
+        clearInterval(this._recordingInterval);
+        this.state.recording = false;
+        this._stopMediaStream();
+
+        if (this._recordingCancelled || !this._recordedChunks.length) {
+            this._recordedChunks = [];
+            return;
+        }
+        const mimetype = this.mediaRecorder.mimeType || "audio/webm";
+        const blob = new Blob(this._recordedChunks, { type: mimetype });
+        const extension = mimetype.includes("ogg") ? "ogg" : "webm";
+        const data = await this._fileToBase64(blob);
+        this.state.pendingAttachments.push({
+            name: `nota_de_voz_${Date.now()}.${extension}`,
+            mimetype,
+            data,
+            previewUrl: false,
+            isVoiceNote: true,
+        });
+    }
+
+    formatDuration(seconds) {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${String(s).padStart(2, "0")}`;
     }
 
     async send() {

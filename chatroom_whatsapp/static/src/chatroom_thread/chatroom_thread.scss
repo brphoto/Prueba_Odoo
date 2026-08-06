@@ -118,6 +118,13 @@
     }
 }
 
+.o_chatroom_bubble_audio {
+    display: block;
+    max-width: 240px;
+    height: 36px;
+    margin: 2px 0;
+}
+
 .o_chatroom_dropzone {
     position: absolute;
     inset: 0;
@@ -187,6 +194,29 @@
     display: flex;
     align-items: flex-end;
     gap: 6px;
+}
+
+.o_chatroom_recording_bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    min-height: 38px;
+}
+
+.o_chatroom_recording_icon {
+    color: #dc3545;
+    animation: o_chatroom_pulse 1.2s infinite;
+}
+
+.o_chatroom_recording_time {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+@keyframes o_chatroom_pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
 }
 
 .o_chatroom_attach_btn {

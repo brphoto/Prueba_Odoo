@@ -57,6 +57,23 @@ class ResConfigSettings(models.TransientModel):
         string="Modelo IA",
         config_parameter='chatroom_whatsapp.ai_model',
         default='gpt-4o-mini')
+    chatroom_ai_auto_classify = fields.Boolean(
+        string="Clasificar intención automáticamente",
+        config_parameter='chatroom_whatsapp.ai_auto_classify',
+        help="Al recibir un mensaje, la IA etiqueta la conversación como "
+             "Consulta / Venta / Soporte / Queja.")
+    chatroom_ai_auto_lead = fields.Boolean(
+        string="Crear Oportunidad automáticamente",
+        config_parameter='chatroom_whatsapp.ai_auto_lead',
+        help="Si la IA clasifica el mensaje como 'Venta' y la "
+             "conversación no tiene una oportunidad vinculada, se crea y "
+             "se ancla automáticamente. Requiere activar la clasificación.")
+    chatroom_ai_auto_reply = fields.Boolean(
+        string="Responder automáticamente con IA",
+        config_parameter='chatroom_whatsapp.ai_auto_reply',
+        help="Envía la sugerencia de IA sin intervención humana. "
+             "Actívalo solo si confías en las respuestas del modelo/prompt "
+             "configurado: no hay revisión previa de un agente.")
 
     def _compute_whatsapp_webhook_url(self):
         base_url = self.env['ir.config_parameter'].sudo().get_param(

@@ -91,6 +91,50 @@
                             </div>
                         </div>
                     </div>
+
+                    <h2>Automatización</h2>
+                    <div class="row mt16 o_settings_container" invisible="not chatroom_ai_enabled">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="chatroom_ai_auto_classify"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="chatroom_ai_auto_classify"
+                                       string="Clasificar intención automáticamente"/>
+                                <div class="text-muted">
+                                    Etiqueta cada conversación como Consulta,
+                                    Venta, Soporte o Queja al recibir un mensaje.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="chatroom_ai_auto_lead"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="chatroom_ai_auto_lead"
+                                       string="Crear Oportunidad automáticamente"/>
+                                <div class="text-muted">
+                                    Requiere la clasificación automática activa.
+                                    Crea y ancla una Oportunidad cuando la IA
+                                    detecta intención de compra.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="chatroom_ai_auto_reply"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="chatroom_ai_auto_reply"
+                                       string="Responder automáticamente con IA"/>
+                                <div class="text-muted">
+                                    Envía la respuesta generada sin revisión de
+                                    un agente. Úsalo con precaución.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </xpath>
         </field>

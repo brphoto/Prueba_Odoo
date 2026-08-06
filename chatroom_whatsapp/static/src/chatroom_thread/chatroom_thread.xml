@@ -40,6 +40,10 @@
                                                  t-att-alt="attachment.name"/>
                                         </a>
                                     </t>
+                                    <t t-elif="isAudio(attachment)">
+                                        <audio class="o_chatroom_bubble_audio" controls="controls"
+                                               t-att-src="attachmentDownloadUrl(attachment)"/>
+                                    </t>
                                     <t t-else="">
                                         <a class="o_chatroom_bubble_file"
                                            t-att-href="attachmentDownloadUrl(attachment)"
@@ -72,14 +76,29 @@
                     <t t-foreach="state.pendingAttachments" t-as="att" t-key="att_index">
                         <div class="o_chatroom_pending_attachment">
                             <img t-if="att.previewUrl" t-att-src="att.previewUrl"/>
+                            <i t-elif="att.isVoiceNote" class="fa fa-microphone"/>
                             <i t-else="" class="fa fa-file-o"/>
-                            <span t-esc="att.name"/>
+                            <span t-esc="att.isVoiceNote ? 'Nota de voz' : att.name"/>
                             <i class="fa fa-times o_chatroom_remove_attachment"
                                t-on-click="() => this.removePendingAttachment(att_index)"/>
                         </div>
                     </t>
                 </div>
-                <div class="o_chatroom_composer_input">
+
+                <div class="o_chatroom_recording_bar" t-if="state.recording">
+                    <i class="fa fa-microphone o_chatroom_recording_icon"/>
+                    <span class="o_chatroom_recording_time" t-esc="formatDuration(state.recordSeconds)"/>
+                    <span class="text-muted">Grabando...</span>
+                    <div class="flex-grow-1"/>
+                    <button class="btn btn-link text-danger" title="Cancelar" t-on-click="cancelRecording">
+                        <i class="fa fa-trash"/>
+                    </button>
+                    <button class="btn btn-primary o_chatroom_send_btn" title="Detener y adjuntar"
+                            t-on-click="toggleRecording">
+                        <i class="fa fa-check"/>
+                    </button>
+                </div>
+                <div class="o_chatroom_composer_input" t-else="">
                     <input type="file" t-ref="fileInput" class="d-none" multiple="multiple"
                            t-on-change="onFileChange"/>
                     <button class="btn btn-link o_chatroom_attach_btn" title="Adjuntar archivo"
@@ -92,6 +111,10 @@
                         t-model="state.composerText"
                         t-on-keydown="onComposerKeydown"
                         t-att-disabled="state.sending"/>
+                    <button class="btn btn-link o_chatroom_attach_btn" title="Grabar nota de voz"
+                            t-on-click="toggleRecording">
+                        <i class="fa fa-microphone"/>
+                    </button>
                     <button class="btn btn-primary o_chatroom_send_btn"
                             t-att-disabled="state.sending"
                             t-on-click="send">

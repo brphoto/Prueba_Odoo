@@ -44,27 +44,81 @@ A partir de aquí, cada mensaje que llegue al número de WhatsApp Business
 creará automáticamente el contacto (`res.partner`) y la conversación
 (`chatroom.channel`) si no existían.
 
-## Flujo comercial
+## Interfaz de chat
 
-Desde cada conversación (`Chatroom > Conversaciones`) un agente puede:
+El formulario de cada conversación (`Chatroom > Conversaciones`) usa un
+widget de chat propio (`static/src/chatroom_thread/`), no una lista plana:
 
-- Responder directamente (mensaje de texto vía Cloud API).
+- Burbujas de mensaje diferenciadas por dirección, con hora y ticks de
+  estado (enviado / entregado / leído / fallido).
+- **Adjuntar archivos** por botón o arrastrando y soltando sobre la
+  conversación; vista previa de imágenes, reproductor inline para audios.
+- **Notas de voz**: botón de micrófono que graba con la API
+  `MediaRecorder` del navegador, muestra un cronómetro mientras grabas, y
+  permite cancelar o adjuntar. Se envían como mensaje de audio de
+  WhatsApp igual que cualquier otro adjunto.
+  > *Limitación conocida*: WhatsApp acepta audio en AAC, MP4, MP3, AMR u
+  > OGG/Opus. La mayoría de navegadores (Chrome, Edge) solo graban en
+  > `audio/webm;codecs=opus`, que Meta también reproduce pero **no** lo
+  > muestra como burbuja nativa de "nota de voz" (sí como archivo de
+  > audio reproducible). Firefox graba directo en `audio/ogg;codecs=opus`
+  > y sí se ve como nota de voz nativa. Convertir el códec en servidor
+  > (p.ej. con `ffmpeg`) queda fuera del alcance de este módulo.
+- Actualización en **tiempo real** (bus de Odoo) sin recargar la página.
+- El encabezado del chat es clicable y abre la ficha del contacto.
+
+## Flujo comercial y panel de accesos rápidos
+
+Desde cada conversación un agente puede:
+
+- Responder directamente (texto, adjuntos o notas de voz vía Cloud API).
 - Pedir una **sugerencia de respuesta con IA** (botón *Sugerir respuesta
   con IA*) — configurable en Ajustes con cualquier proveedor LLM que
   exponga un endpoint tipo *chat completions* (OpenAI, Anthropic vía proxy
   compatible, Azure OpenAI, modelo propio, etc.).
 - **Crear una Oportunidad** (CRM) o un **Presupuesto** (Ventas) con un
-  clic, precargando el contacto y el historial de la conversación.
+  clic, precargando el contacto y el historial de la conversación. La
+  oportunidad creada queda **anclada** a la conversación
+  (`pinned_lead_id`); también se puede vincular una ya existente
+  eligiéndola en ese mismo campo.
+- **Botones inteligentes** en la ficha (arriba a la derecha) con el
+  conteo de Oportunidades, Presupuestos y Facturas del contacto — un
+  clic abre esos registros filtrados, sin salir del contexto de la
+  conversación. Se ocultan automáticamente si CRM, Ventas o Contabilidad
+  no están instalados.
+
+## Automatización con IA
+
+En **Ajustes > Chatroom WhatsApp > Automatización** (requiere activar
+primero las sugerencias de IA):
+
+- **Clasificar intención automáticamente**: al recibir un mensaje, la IA
+  etiqueta la conversación como *Consulta*, *Venta*, *Soporte* o *Queja*
+  (campo `ai_intent`, visible como badge en la ficha, el kanban y la
+  lista; se puede agrupar/filtrar por él).
+- **Crear Oportunidad automáticamente**: si la clasificación detecta
+  *Venta* y la conversación aún no tiene una oportunidad anclada, se crea
+  y se ancla sola.
+- **Responder automáticamente con IA**: envía la sugerencia sin que un
+  agente la revise antes. Apagado por defecto — actívalo solo si confías
+  en el prompt/modelo configurado, ya que no hay paso de aprobación
+  humana.
+
+Cualquier error de IA (endpoint caído, credenciales inválidas, respuesta
+inesperada) se registra en el log del servidor y **no interrumpe** la
+recepción de mensajes por el webhook.
 
 ## Alcance de esta primera versión
 
-- Envío/recepción de **texto** para WhatsApp implementado end-to-end.
-- Mensajes multimedia (imagen/audio/video/documento) se registran en el
-  histórico con su `media id` de Meta; la descarga/envío de adjuntos queda
-  como siguiente iteración.
+- Envío/recepción de texto, imagen, audio (incluye notas de voz),
+  video y documento para WhatsApp implementado end-to-end (subida/bajada
+  de media contra la Graph API de Meta).
 - Messenger/Instagram comparten el mismo modelo de datos
   (`chatroom.channel.channel_type`) pero el webhook y el envío directo
   para esos canales quedan como extensión (misma Graph API de Meta, otro
   formato de payload).
-- La sugerencia de IA usa el historial de los últimos 10 mensajes de la
-  conversación como contexto.
+- La sugerencia y la clasificación de IA usan el historial de los
+  últimos 10 mensajes de la conversación como contexto.
+- El panel de accesos rápidos (Oportunidades/Presupuestos/Facturas) es
+  de solo navegación; no permite crear/editar líneas de factura o pedido
+  desde el propio chat.

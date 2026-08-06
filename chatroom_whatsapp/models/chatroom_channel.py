@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import base64
+import json
 import logging
 import mimetypes
 
@@ -50,8 +51,25 @@ class ChatroomChannel(models.Model):
     last_message_date = fields.Datetime(index=True)
     last_message_preview = fields.Char(compute='_compute_message_stats')
     ai_suggested_reply = fields.Text(string="Sugerencia de IA")
+    ai_intent = fields.Selection(
+        [('consulta', "Consulta"),
+         ('venta', "Venta"),
+         ('soporte', "Soporte"),
+         ('queja', "Queja"),
+         ('otro', "Otro")],
+        string="Intención (IA)", tracking=True)
     company_id = fields.Many2one(
         'res.company', default=lambda self: self.env.company)
+
+    pinned_lead_id = fields.Many2one(
+        'crm.lead', string="Oportunidad vinculada",
+        domain="[('partner_id', '=', partner_id)]")
+    crm_installed = fields.Boolean(compute='_compute_related_counts')
+    sale_installed = fields.Boolean(compute='_compute_related_counts')
+    account_installed = fields.Boolean(compute='_compute_related_counts')
+    lead_count = fields.Integer(compute='_compute_related_counts')
+    sale_order_count = fields.Integer(compute='_compute_related_counts')
+    invoice_count = fields.Integer(compute='_compute_related_counts')
 
     _sql_constraints = [
         ('external_id_type_uniq', 'unique(external_id, channel_type, company_id)',
@@ -73,6 +91,27 @@ class ChatroomChannel(models.Model):
                 lambda m: m.direction == 'inbound' and m.state != 'read'))
             last = messages.sorted('date', reverse=True)[:1]
             rec.last_message_preview = (last.body or '')[:120] if last else ''
+
+    def _compute_related_counts(self):
+        crm_installed = 'crm.lead' in self.env
+        sale_installed = 'sale.order' in self.env
+        account_installed = 'account.move' in self.env
+        for rec in self:
+            rec.crm_installed = crm_installed
+            rec.sale_installed = sale_installed
+            rec.account_installed = account_installed
+            partner = rec.partner_id
+            rec.lead_count = (
+                self.env['crm.lead'].search_count([('partner_id', '=', partner.id)])
+                if crm_installed and partner else 0)
+            rec.sale_order_count = (
+                self.env['sale.order'].search_count([('partner_id', '=', partner.id)])
+                if sale_installed and partner else 0)
+            rec.invoice_count = (
+                self.env['account.move'].search_count([
+                    ('partner_id', '=', partner.id),
+                    ('move_type', 'in', ('out_invoice', 'out_refund')),
+                ]) if account_installed and partner else 0)
 
     # ------------------------------------------------------------------
     # Helpers de contacto / canal
@@ -273,51 +312,58 @@ class ChatroomChannel(models.Model):
                 {'channel_id': rec.id})
 
     # ------------------------------------------------------------------
-    # Sugerencia de respuesta con IA
+    # Inteligencia Artificial: sugerencia, clasificación y automatización
     # ------------------------------------------------------------------
-    def action_ai_suggest_reply(self):
-        self.ensure_one()
+    def _ai_get_credentials(self):
         icp = self.env['ir.config_parameter'].sudo()
         if not icp.get_param('chatroom_whatsapp.ai_enabled'):
-            raise UserError(_(
-                "Activa 'Sugerencias con IA' en Ajustes > Chatroom WhatsApp."))
-
+            return None
         api_url = icp.get_param('chatroom_whatsapp.ai_provider_url')
         api_key = icp.get_param('chatroom_whatsapp.ai_api_key')
         model = icp.get_param('chatroom_whatsapp.ai_model', 'gpt-4o-mini')
         if not api_url or not api_key:
-            raise UserError(_(
-                "Configura el endpoint y la API Key del proveedor de IA."))
+            return None
+        return api_url, api_key, model
 
+    def _ai_chat_completion(self, messages):
+        """Llama al endpoint 'chat completions' configurado (cualquier
+        proveedor LLM compatible: OpenAI, Anthropic vía proxy, Azure, un
+        modelo propio, etc.) y devuelve el texto de la respuesta."""
+        creds = self._ai_get_credentials()
+        if not creds:
+            raise UserError(_(
+                "Activa y configura la IA en Ajustes > Chatroom WhatsApp."))
+        api_url, api_key, model = creds
+        response = requests.post(
+            api_url,
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={"model": model, "messages": messages},
+            timeout=30,
+        )
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
+
+    def _ai_build_conversation(self, extra_system=None):
+        self.ensure_one()
         history = self.message_ids.sorted('date')[-10:]
         conversation = [
             {"role": "user" if m.direction == 'inbound' else "assistant",
              "content": m.body or ''}
-            for m in history
+            for m in history if m.body
         ]
-        system_prompt = _(
+        system_prompt = extra_system or _(
             "Eres un asistente de atención al cliente por WhatsApp. "
             "Responde en español, de forma breve, cordial y orientada a "
             "avanzar la venta o resolver la consulta del cliente.")
+        return [{"role": "system", "content": system_prompt}] + conversation
 
+    def action_ai_suggest_reply(self):
+        self.ensure_one()
         try:
-            response = requests.post(
-                api_url,
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={
-                    "model": model,
-                    "messages": [{"role": "system", "content": system_prompt}] + conversation,
-                },
-                timeout=30,
-            )
-            response.raise_for_status()
-            data = response.json()
-            suggestion = data["choices"][0]["message"]["content"]
+            self.ai_suggested_reply = self._ai_chat_completion(self._ai_build_conversation())
         except (requests.RequestException, KeyError, IndexError) as exc:
             _logger.error("Error consultando IA: %s", exc)
             raise UserError(_("No se pudo obtener una sugerencia de IA: %s") % exc)
-
-        self.ai_suggested_reply = suggestion
         return True
 
     def action_send_ai_suggestion(self):
@@ -328,20 +374,62 @@ class ChatroomChannel(models.Model):
         self.ai_suggested_reply = False
         return True
 
+    def _ai_classify_intent(self):
+        self.ensure_one()
+        system_prompt = _(
+            "Clasifica la intención del cliente en esta conversación de "
+            "WhatsApp. Responde ÚNICAMENTE con un JSON de la forma "
+            '{"intent": "consulta|venta|soporte|queja"}, sin texto '
+            "adicional ni explicaciones.")
+        raw = self._ai_chat_completion(self._ai_build_conversation(extra_system=system_prompt))
+        try:
+            intent = json.loads(raw).get('intent')
+        except (ValueError, AttributeError):
+            intent = None
+        valid_intents = dict(self._fields['ai_intent'].selection)
+        return intent if intent in valid_intents else 'otro'
+
+    def _ai_process_inbound_message(self, message):
+        """Automatizaciones opcionales al recibir un mensaje: clasificar
+        la intención, crear una oportunidad automáticamente si aplica y/o
+        responder de forma autónoma. Se activan por separado en Ajustes;
+        cualquier fallo se registra en el log sin interrumpir el webhook."""
+        self.ensure_one()
+        icp = self.env['ir.config_parameter'].sudo()
+        if not icp.get_param('chatroom_whatsapp.ai_enabled'):
+            return
+        try:
+            if icp.get_param('chatroom_whatsapp.ai_auto_classify'):
+                self.ai_intent = self._ai_classify_intent()
+
+            if (icp.get_param('chatroom_whatsapp.ai_auto_lead')
+                    and self.ai_intent == 'venta' and not self.pinned_lead_id
+                    and self.crm_installed and self.partner_id):
+                self.action_create_lead()
+
+            if icp.get_param('chatroom_whatsapp.ai_auto_reply'):
+                self.action_ai_suggest_reply()
+                self.action_send_ai_suggestion()
+        except UserError as exc:
+            _logger.warning("Automatización de IA omitida en canal %s: %s", self.id, exc)
+        except Exception:  # noqa: BLE001 - no debe romper la ingesta del webhook
+            _logger.exception("Error inesperado en automatización de IA (canal %s)", self.id)
+
     # ------------------------------------------------------------------
     # Flujo comercial: crear oportunidad / presupuesto desde la conversación
     # ------------------------------------------------------------------
     def action_create_lead(self):
         self.ensure_one()
-        if 'crm.lead' not in self.env:
+        if not self.crm_installed:
             raise UserError(_("El módulo CRM no está instalado."))
         lead = self.env['crm.lead'].create({
             'name': _("Oportunidad WhatsApp - %s") % (self.partner_id.name or self.external_id),
             'partner_id': self.partner_id.id,
             'phone': self.partner_id.phone,
             'description': "\n".join(
-                f"[{m.direction}] {m.body}" for m in self.message_ids.sorted('date')),
+                f"[{m.direction}] {m.body}" for m in self.message_ids.sorted('date') if m.body),
         })
+        self.pinned_lead_id = lead.id
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'crm.lead',
@@ -352,7 +440,7 @@ class ChatroomChannel(models.Model):
 
     def action_create_quotation(self):
         self.ensure_one()
-        if 'sale.order' not in self.env:
+        if not self.sale_installed:
             raise UserError(_("El módulo Ventas no está instalado."))
         if not self.partner_id:
             raise UserError(_("La conversación no tiene un contacto asociado."))
@@ -366,6 +454,42 @@ class ChatroomChannel(models.Model):
             'res_id': order.id,
             'view_mode': 'form',
             'target': 'current',
+        }
+
+    def action_view_leads(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Oportunidades"),
+            'res_model': 'crm.lead',
+            'view_mode': 'list,kanban,form',
+            'domain': [('partner_id', '=', self.partner_id.id)],
+            'context': {'default_partner_id': self.partner_id.id},
+        }
+
+    def action_view_sale_orders(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Presupuestos y Pedidos"),
+            'res_model': 'sale.order',
+            'view_mode': 'list,form',
+            'domain': [('partner_id', '=', self.partner_id.id)],
+            'context': {'default_partner_id': self.partner_id.id},
+        }
+
+    def action_view_invoices(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Facturas"),
+            'res_model': 'account.move',
+            'view_mode': 'list,form',
+            'domain': [
+                ('partner_id', '=', self.partner_id.id),
+                ('move_type', 'in', ('out_invoice', 'out_refund')),
+            ],
+            'context': {'default_partner_id': self.partner_id.id, 'default_move_type': 'out_invoice'},
         }
 
     def action_close(self):

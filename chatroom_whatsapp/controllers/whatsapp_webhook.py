@@ -97,6 +97,7 @@ class WhatsAppWebhookController(http.Controller):
                 'last_message_date': fields.Datetime.now(),
                 'state': 'pending',
             })
+            channel._ai_process_inbound_message(message)
             channel._notify_thread_update()
 
     def _process_statuses(self, env, statuses):
