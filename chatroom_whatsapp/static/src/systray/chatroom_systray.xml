@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="chatroom_whatsapp.SystrayIcon">
+        <div class="o_chatroom_systray" t-if="state.visible">
+            <button class="btn o_chatroom_systray_btn" title="Chatroom WhatsApp" t-on-click="openChatroom">
+                <i class="fa fa-whatsapp fa-lg"/>
+                <span t-if="state.count" class="o_chatroom_systray_badge badge rounded-pill">
+                    <t t-esc="state.count"/>
+                </span>
+            </button>
+        </div>
+    </t>
+
+</templates>

@@ -57,6 +57,7 @@ Requisitos
         'views/chatroom_channel_views.xml',
         'views/chatroom_metrics_views.xml',
         'views/chatroom_message_views.xml',
+        'views/chatroom_canned_response_views.xml',
         'views/res_config_settings_views.xml',
         'views/res_partner_views.xml',
         'views/chatroom_menus.xml',
@@ -67,6 +68,12 @@ Requisitos
             'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.js',
             'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml',
             'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.scss',
+            'chatroom_whatsapp/static/src/systray/chatroom_systray.js',
+            'chatroom_whatsapp/static/src/systray/chatroom_systray.xml',
+            'chatroom_whatsapp/static/src/systray/chatroom_systray.scss',
+        ],
+        'web.assets_web_dark': [
+            'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.dark.scss',
         ],
     },
 

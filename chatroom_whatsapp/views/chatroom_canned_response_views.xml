@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_chatroom_canned_response_list" model="ir.ui.view">
+        <field name="name">chatroom.canned.response.list</field>
+        <field name="model">chatroom.canned.response</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="name"/>
+                <field name="message"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_chatroom_canned_response" model="ir.actions.act_window">
+        <field name="name">Respuestas rápidas</field>
+        <field name="res_model">chatroom.canned.response</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Todavía no hay respuestas rápidas guardadas.
+            </p>
+            <p>
+                Se ofrecen a los agentes en el composer del chat (ícono de
+                rayo) para preguntas frecuentes, sin depender de la IA.
+            </p>
+        </field>
+    </record>
+
+</odoo>

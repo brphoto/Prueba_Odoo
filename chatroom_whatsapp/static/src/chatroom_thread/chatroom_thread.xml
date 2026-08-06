@@ -45,11 +45,10 @@
                             <t t-if="message.attachments.length">
                                 <t t-foreach="message.attachments" t-as="attachment" t-key="attachment.id">
                                     <t t-if="isImage(attachment)">
-                                        <a t-att-href="attachmentDownloadUrl(attachment)" target="_blank">
-                                            <img class="o_chatroom_bubble_image"
-                                                 t-att-src="attachmentImageUrl(attachment)"
-                                                 t-att-alt="attachment.name"/>
-                                        </a>
+                                        <img class="o_chatroom_bubble_image"
+                                             t-att-src="attachmentImageUrl(attachment)"
+                                             t-att-alt="attachment.name"
+                                             t-on-click="() => this.openLightbox(attachmentImageUrl(attachment))"/>
                                     </t>
                                     <t t-elif="isAudio(attachment)">
                                         <audio class="o_chatroom_bubble_audio" controls="controls"
@@ -121,12 +120,28 @@
                                    t-on-input="(ev) => this.setQuickButton(qb_index, ev.target.value)"/>
                         </t>
                     </div>
+                    <div class="o_chatroom_canned_panel" t-if="state.cannedOpen">
+                        <div class="o_chatroom_canned_hint text-muted" t-if="!state.cannedResponses.length">
+                            No hay respuestas rápidas guardadas todavía.
+                        </div>
+                        <t t-foreach="state.cannedResponses" t-as="canned" t-key="canned.id">
+                            <div class="o_chatroom_canned_item"
+                                 t-on-click="() => this.insertCannedResponse(canned.message)">
+                                <strong t-esc="canned.name"/>
+                                <div class="o_chatroom_canned_preview" t-esc="canned.message"/>
+                            </div>
+                        </t>
+                    </div>
                     <div class="o_chatroom_composer_input">
                         <input type="file" t-ref="fileInput" class="d-none" multiple="multiple"
                                t-on-change="onFileChange"/>
                         <button class="btn btn-link o_chatroom_attach_btn" title="Adjuntar archivo"
                                 t-on-click="triggerFilePicker">
                             <i class="fa fa-paperclip"/>
+                        </button>
+                        <button t-attf-class="btn btn-link o_chatroom_attach_btn {{ state.cannedOpen ? 'text-primary' : '' }}"
+                                title="Respuestas rápidas" t-on-click="toggleCannedResponses">
+                            <i class="fa fa-bolt"/>
                         </button>
                         <button t-attf-class="btn btn-link o_chatroom_attach_btn {{ state.quickButtonsOpen ? 'text-primary' : '' }}"
                                 title="Botones de respuesta rápida" t-on-click="toggleQuickButtons">
@@ -149,6 +164,17 @@
                         </button>
                     </div>
                 </div>
+            </div>
+
+            <div class="o_chatroom_lightbox" t-if="state.lightboxUrl" t-on-click="closeLightbox">
+                <img t-att-src="state.lightboxUrl"/>
+                <a class="o_chatroom_lightbox_download" t-att-href="state.lightboxUrl + '?download=true'"
+                   title="Descargar" t-on-click.stop="">
+                    <i class="fa fa-download"/>
+                </a>
+                <button class="o_chatroom_lightbox_close" t-on-click.stop="closeLightbox">
+                    <i class="fa fa-times"/>
+                </button>
             </div>
         </div>
     </t>

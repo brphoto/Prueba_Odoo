@@ -583,12 +583,47 @@ class ChatroomChannel(models.Model):
         return message
 
     def _notify_thread_update(self):
-        """Notifica por el bus a quien tenga abierta la conversación para
-        refrescar el chat en tiempo real, sin recargar la página."""
+        """Notifica por el bus a quien tenga abierta la conversación (y al
+        ícono de la barra superior) para refrescar en tiempo real, sin
+        recargar la página."""
         for rec in self:
             self.env['bus.bus']._sendone(
                 f'chatroom_channel_{rec.id}', 'chatroom.message/new',
                 {'channel_id': rec.id})
+            self.env['bus.bus']._sendone(
+                'chatroom_whatsapp_global', 'chatroom.message/new',
+                {'channel_id': rec.id})
+
+    def action_mark_read(self):
+        """Marca como leídos los mensajes entrantes pendientes y le avisa
+        a Meta (check azul del lado del cliente). Se llama al abrir la
+        conversación; nunca debe romper la UI si falla el acuse remoto."""
+        self.ensure_one()
+        unread = self.message_ids.filtered(
+            lambda m: m.direction == 'inbound' and m.state != 'read')
+        if not unread:
+            return False
+
+        last = unread.sorted('date', reverse=True)[:1]
+        if self.channel_type == 'whatsapp' and last.wa_message_id:
+            try:
+                token, phone_number_id, api_version = self._get_meta_credentials()
+                url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
+                requests.post(
+                    url,
+                    json={
+                        "messaging_product": "whatsapp",
+                        "status": "read",
+                        "message_id": last.wa_message_id,
+                    },
+                    headers={"Authorization": f"Bearer {token}"},
+                    timeout=10,
+                )
+            except (UserError, requests.RequestException) as exc:
+                _logger.warning("No se pudo enviar el acuse de lectura (canal %s): %s", self.id, exc)
+
+        unread.write({'state': 'read'})
+        return True
 
     # ------------------------------------------------------------------
     # Inteligencia Artificial: sugerencia, clasificación y automatización

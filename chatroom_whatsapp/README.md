@@ -172,6 +172,40 @@ vuelva a escribir la palabra de alta o un agente lo reactive a mano
 desde la ficha del contacto. Es la protección más simple y más
 importante contra que Meta bloquee tu número por spam.
 
+## Marcar como leído (con acuse real a Meta)
+
+Al abrir una conversación, el chat marca localmente como leídos los
+mensajes entrantes pendientes y, si es WhatsApp, le avisa a Meta
+(`status: read` sobre el último mensaje) para que el cliente vea el
+check azul de su lado. Si no hay credenciales configuradas o Meta no
+responde, el acuse remoto simplemente se omite (con un log de aviso) y
+el mensaje igual queda marcado como leído en Odoo — nunca bloquea la UI.
+
+## Respuestas rápidas guardadas
+
+En **Chatroom > Respuestas rápidas** cualquier agente puede guardar
+mensajes frecuentes (título + texto). Desde el composer del chat, el
+ícono de rayo abre un panel para insertarlas con un clic — útil para
+preguntas repetitivas sin gastar una llamada a la IA.
+
+## Ícono en la barra superior
+
+Los agentes y administradores (grupo *Chatroom / Agente* o superior) ven
+un ícono de WhatsApp en la barra superior de Odoo, con un contador de
+conversaciones pendientes que se actualiza en tiempo real (bus) sin
+recargar la página. Un clic abre el Chatroom filtrado a pendientes.
+
+## Modo oscuro
+
+El widget de chat incluye overrides para el modo oscuro de Odoo
+(`chatroom_thread.dark.scss`, registrado en el bundle
+`web.assets_web_dark`, el mismo mecanismo que usa el módulo `mail`) con
+una paleta inspirada en el WhatsApp oscuro real. **Nota**: el modo
+oscuro es una función de Odoo Enterprise; no se pudo verificar
+visualmente en este entorno porque solo se probó contra Community, pero
+el archivo sigue exactamente la convención verificada en el código
+fuente de `mail`.
+
 ## Validado contra un Odoo 19 real
 
 Este módulo se instaló y probó en una instancia real de Odoo 19.0
@@ -191,11 +225,22 @@ de API que rompen módulos escritos "a la manera de Odoo 17/18":
   `expand`/`string`.
 - Las vistas de Ajustes cambiaron de `<div class="settings">` +
   Bootstrap a bloques declarativos `<app>`/`<block>`/`<setting>`.
+- Un `<i class="fa ...">` sin texto/título visible rompe la validación
+  de accesibilidad de las vistas (`ir_ui_view`) — hay que agregarle
+  `title`.
+- El servicio de usuario del frontend **no** se inyecta con
+  `useService("user")` (eso rompía la carga de *todo* el webclient, no
+  solo del ícono): se importa directo como `import { user } from
+  "@web/core/user"`.
 
-Se verificó con capturas de pantalla (Playwright + Chromium headless)
-que el kanban, el formulario con el widget de chat, el panel de botones
-rápidos, el envío con manejo de errores, Ajustes, Métricas y el asistente
-de plantillas cargan sin errores de consola.
+Se verificó con capturas de pantalla (Playwright + Chromium headless,
+sin errores de consola) que el kanban (con el ícono nuevo de canal y
+tiempo relativo), el formulario con el widget de chat, el lightbox de
+imágenes, el panel de respuestas rápidas, el ícono de la barra superior,
+el marcado de leído (confirmado también por consulta directa a la base
+de datos), el panel de botones rápidos, el envío con manejo de errores,
+Ajustes, Métricas y el asistente de plantillas cargan y funcionan
+correctamente.
 
 ## Alcance de esta versión
 
@@ -212,5 +257,8 @@ de plantillas cargan sin errores de consola.
   desde el propio chat.
 - Las listas interactivas y el catálogo de productos de WhatsApp no
   están implementados, solo botones de respuesta rápida (máx. 3).
+- El modo oscuro tiene el CSS listo pero no se pudo verificar
+  visualmente (requiere Odoo Enterprise, no disponible en este entorno
+  de pruebas).
 - No hay tests automatizados (`tests/`) todavía — la validación fue
   manual sobre una instancia real, no vía CI.

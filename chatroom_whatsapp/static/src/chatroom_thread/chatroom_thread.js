@@ -60,14 +60,20 @@ export class ChatroomThread extends Component {
             partnerOptedOut: false,
             quickButtonsOpen: false,
             quickButtons: ["", "", ""],
+            cannedOpen: false,
+            cannedResponses: [],
+            lightboxUrl: false,
         });
 
         this._shouldScroll = true;
         this._onBusNotification = this._onBusNotification.bind(this);
 
         onWillStart(async () => {
-            await this._loadChannel();
-            await this._loadMessages();
+            await Promise.all([
+                this._loadChannel(),
+                this._loadMessages(),
+                this._loadCannedResponses(),
+            ]);
         });
 
         onMounted(() => {
@@ -120,6 +126,22 @@ export class ChatroomThread extends Component {
         }
     }
 
+    async _loadCannedResponses() {
+        this.state.cannedResponses = await this.orm.searchRead(
+            "chatroom.canned.response", [], ["name", "message"], { order: "name" });
+    }
+
+    toggleCannedResponses() {
+        this.state.cannedOpen = !this.state.cannedOpen;
+    }
+
+    insertCannedResponse(message) {
+        this.state.composerText = this.state.composerText
+            ? `${this.state.composerText}\n${message}`
+            : message;
+        this.state.cannedOpen = false;
+    }
+
     openSendTemplate() {
         this.action.doAction("chatroom_whatsapp.action_chatroom_send_template_wizard", {
             additionalContext: { default_channel_id: this.channelId },
@@ -150,6 +172,19 @@ export class ChatroomThread extends Component {
         }));
         this.state.loading = false;
         this._shouldScroll = true;
+
+        const hasUnread = messages.some((m) => m.direction === "inbound" && m.state !== "read");
+        if (hasUnread) {
+            this.orm.call("chatroom.channel", "action_mark_read", [this.channelId]);
+        }
+    }
+
+    openLightbox(url) {
+        this.state.lightboxUrl = url;
+    }
+
+    closeLightbox() {
+        this.state.lightboxUrl = false;
     }
 
     _scrollToBottom() {

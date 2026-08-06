@@ -1,3 +1,24 @@
+// Íconos de canal reutilizados en el kanban de conversaciones.
+.o_chatroom_channel_icon {
+    font-size: 0.9em;
+}
+
+.o_chatroom_channel_icon_whatsapp {
+    color: #25d366;
+}
+
+.o_chatroom_channel_icon_messenger {
+    color: #0084ff;
+}
+
+.o_chatroom_channel_icon_instagram {
+    color: #c13584;
+}
+
+.o_chatroom_kanban_time {
+    font-size: 0.75em;
+}
+
 .o_chatroom_thread {
     position: relative;
     display: flex;
@@ -131,6 +152,52 @@
     border-radius: 6px;
     display: block;
     margin-bottom: 4px;
+    cursor: pointer;
+}
+
+.o_chatroom_lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.85);
+
+    img {
+        max-width: 90vw;
+        max-height: 90vh;
+        object-fit: contain;
+        cursor: default;
+    }
+}
+
+.o_chatroom_lightbox_close,
+.o_chatroom_lightbox_download {
+    position: absolute;
+    top: 16px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1em;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+}
+
+.o_chatroom_lightbox_close {
+    right: 16px;
+}
+
+.o_chatroom_lightbox_download {
+    right: 68px;
 }
 
 .o_chatroom_bubble_file {
@@ -260,6 +327,42 @@
     gap: 8px;
     padding: 4px 10px;
     min-height: 38px;
+}
+
+.o_chatroom_canned_panel {
+    max-height: 220px;
+    overflow-y: auto;
+    margin-bottom: 6px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 8px;
+}
+
+.o_chatroom_canned_hint {
+    padding: 10px;
+    font-size: 0.8em;
+    text-align: center;
+}
+
+.o_chatroom_canned_item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    font-size: 0.85em;
+
+    &:last-child {
+        border-bottom: none;
+    }
+
+    &:hover {
+        background-color: #f0f2f5;
+    }
+}
+
+.o_chatroom_canned_preview {
+    color: #667781;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .o_chatroom_recording_icon {

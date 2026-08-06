@@ -1,0 +1,27 @@
+.o_chatroom_systray {
+    display: flex;
+    align-items: center;
+}
+
+.o_chatroom_systray_btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+    height: 100%;
+    color: inherit;
+
+    i {
+        color: #25d366;
+    }
+}
+
+.o_chatroom_systray_badge {
+    position: absolute;
+    top: 6px;
+    right: 2px;
+    font-size: 0.65em;
+    background-color: #dc3545;
+    color: #fff;
+}

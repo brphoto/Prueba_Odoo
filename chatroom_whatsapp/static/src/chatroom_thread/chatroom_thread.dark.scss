@@ -1,0 +1,48 @@
+// Overrides para el bundle web.assets_web_dark. La mayoría de las reglas
+// del widget ya usan variables CSS de Odoo (--o-view-background-color,
+// --border-color, --o-brand-primary) que el tema oscuro sobreescribe
+// solas; acá solo van los colores que están escritos "a mano" en
+// chatroom_thread.scss, con una paleta inspirada en el WhatsApp oscuro.
+
+.o_chatroom_thread_messages {
+    background-color: #0b141a;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+}
+
+.o_chatroom_bubble_in {
+    background-color: #202c33;
+    color: #e9edef;
+}
+
+.o_chatroom_bubble_out {
+    background-color: #005c4b;
+    color: #e9edef;
+}
+
+.o_chatroom_bubble_meta {
+    color: #8696a0;
+}
+
+.o_chatroom_pending_attachment,
+.o_chatroom_quick_buttons_panel,
+.o_chatroom_canned_item:hover {
+    background-color: #202c33;
+}
+
+.o_chatroom_canned_preview {
+    color: #8696a0;
+}
+
+.o_chatroom_session_banner {
+    background-color: #4a3a14;
+    color: #ffe69c;
+}
+
+.o_chatroom_opt_out_banner {
+    background-color: #4a1219;
+    color: #f8d7da;
+}
+
+.o_chatroom_dropzone {
+    background-color: rgba(0, 92, 75, 0.85);
+}

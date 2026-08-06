@@ -15,6 +15,10 @@
               parent="menu_chatroom_root" action="action_chatroom_metrics"
               sequence="30" groups="chatroom_whatsapp.group_chatroom_manager"/>
 
+    <menuitem id="menu_chatroom_canned_responses" name="Respuestas rápidas"
+              parent="menu_chatroom_root" action="action_chatroom_canned_response"
+              sequence="40"/>
+
     <menuitem id="menu_chatroom_config" name="Configuración"
               parent="menu_chatroom_root" sequence="90"
               groups="chatroom_whatsapp.group_chatroom_manager"/>
