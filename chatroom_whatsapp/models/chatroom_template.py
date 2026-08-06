@@ -78,7 +78,7 @@ class ChatroomTemplate(models.Model):
         templates_data = []
         try:
             while url:
-                response = requests.get(url, headers=headers, params=params, timeout=30)
+                response = self._meta_request('GET', url, headers=headers, params=params, timeout=30)
                 response.raise_for_status()
                 data = response.json()
                 templates_data += data.get('data', [])

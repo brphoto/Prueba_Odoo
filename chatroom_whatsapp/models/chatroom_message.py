@@ -58,12 +58,13 @@ class ChatroomMessage(models.Model):
         token, _phone_number_id, api_version = self.channel_id._get_meta_credentials()
         headers = {"Authorization": f"Bearer {token}"}
         try:
-            meta_resp = requests.get(
-                f"https://graph.facebook.com/{api_version}/{media_id}",
+            meta_resp = self.channel_id._meta_request(
+                'GET', f"https://graph.facebook.com/{api_version}/{media_id}",
                 headers=headers, timeout=15)
             meta_resp.raise_for_status()
             media_info = meta_resp.json()
-            file_resp = requests.get(media_info['url'], headers=headers, timeout=30)
+            file_resp = self.channel_id._meta_request(
+                'GET', media_info['url'], headers=headers, timeout=30)
             file_resp.raise_for_status()
         except requests.RequestException as exc:
             _logger.error("No se pudo descargar el adjunto de WhatsApp %s: %s", media_id, exc)
@@ -82,7 +83,7 @@ class ChatroomMessage(models.Model):
         token en el header."""
         self.ensure_one()
         try:
-            response = requests.get(url, timeout=30)
+            response = self.channel_id._meta_request('GET', url, timeout=30)
             response.raise_for_status()
         except requests.RequestException as exc:
             _logger.error("No se pudo descargar el adjunto %s: %s", url, exc)

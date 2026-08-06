@@ -180,6 +180,12 @@ class ChatroomChannel(models.Model):
 
         partner = self.env['res.partner'].search(
             [('whatsapp_id', '=', external_id)], limit=1)
+        if not partner and channel_type == 'whatsapp':
+            # external_id es un número de verdad solo en WhatsApp (en
+            # Messenger/Instagram es un PSID, no comparable por teléfono).
+            partner = self.env['res.partner']._find_by_whatsapp_number(external_id)
+            if partner:
+                partner.whatsapp_id = external_id
         if not partner:
             partner = self.env['res.partner'].create({
                 'name': profile_name or external_id,
@@ -202,7 +208,14 @@ class ChatroomChannel(models.Model):
         icp = self.env['ir.config_parameter'].sudo()
         if icp.get_param('chatroom_whatsapp.auto_assign', 'True') == 'False':
             return self.env.user
-        agents = self.env.ref('chatroom_whatsapp.group_chatroom_user').user_ids
+        # No basta con leer el grupo 'Agente': pertenecer a 'Administrador'
+        # no vuelve a alguien miembro explícito del grupo que implica (los
+        # 'user_ids' de un grupo no incluyen la membresía heredada), así
+        # que se unen ambos para no dejar afuera a los managers.
+        agents = (
+            self.env.ref('chatroom_whatsapp.group_chatroom_user').user_ids
+            | self.env.ref('chatroom_whatsapp.group_chatroom_manager').user_ids
+        )
         if not agents:
             return self.env.user
         open_counts = self.env['chatroom.channel']._read_group(
@@ -323,7 +336,7 @@ class ChatroomChannel(models.Model):
         })
 
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=15)
+            response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)
             response.raise_for_status()
             data = response.json()
             wa_message_id = data.get('messages', [{}])[0].get('id')
@@ -363,7 +376,7 @@ class ChatroomChannel(models.Model):
             'date': fields.Datetime.now(),
         })
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=15)
+            response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)
             response.raise_for_status()
             message.write({'wa_message_id': response.json().get('message_id')})
         except requests.RequestException as exc:
@@ -397,8 +410,8 @@ class ChatroomChannel(models.Model):
         files = {
             'file': (attachment.name, base64.b64decode(attachment.datas), mimetype),
         }
-        response = requests.post(
-            url, headers={"Authorization": f"Bearer {token}"},
+        response = self._meta_request(
+            'POST', url, headers={"Authorization": f"Bearer {token}"},
             data={'messaging_product': 'whatsapp'}, files=files, timeout=60)
         response.raise_for_status()
         return response.json()['id']
@@ -456,7 +469,7 @@ class ChatroomChannel(models.Model):
                     "type": media_type,
                     media_type: media_payload,
                 }
-                response = requests.post(url, json=payload, headers=headers, timeout=60)
+                response = self._meta_request('POST', url, json=payload, headers=headers, timeout=60)
                 response.raise_for_status()
                 data = response.json()
                 wa_message_id = data.get('messages', [{}])[0].get('id')
@@ -514,7 +527,7 @@ class ChatroomChannel(models.Model):
             'date': fields.Datetime.now(),
         })
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=15)
+            response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)
             response.raise_for_status()
             wa_message_id = response.json().get('messages', [{}])[0].get('id')
             message.write({'wa_message_id': wa_message_id})
@@ -569,7 +582,7 @@ class ChatroomChannel(models.Model):
             'date': fields.Datetime.now(),
         })
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=15)
+            response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)
             response.raise_for_status()
             wa_message_id = response.json().get('messages', [{}])[0].get('id')
             message.write({'wa_message_id': wa_message_id})
@@ -609,15 +622,15 @@ class ChatroomChannel(models.Model):
             try:
                 token, phone_number_id, api_version = self._get_meta_credentials()
                 url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
-                requests.post(
-                    url,
+                self._meta_request(
+                    'POST', url,
                     json={
                         "messaging_product": "whatsapp",
                         "status": "read",
                         "message_id": last.wa_message_id,
                     },
                     headers={"Authorization": f"Bearer {token}"},
-                    timeout=10,
+                    timeout=10, max_retries=1,
                 )
             except (UserError, requests.RequestException) as exc:
                 _logger.warning("No se pudo enviar el acuse de lectura (canal %s): %s", self.id, exc)
@@ -648,8 +661,8 @@ class ChatroomChannel(models.Model):
             raise UserError(_(
                 "Activa y configura la IA en Ajustes > Chatroom WhatsApp."))
         api_url, api_key, model = creds
-        response = requests.post(
-            api_url,
+        response = self._meta_request(
+            'POST', api_url,
             headers={"Authorization": f"Bearer {api_key}"},
             json={"model": model, "messages": messages},
             timeout=30,

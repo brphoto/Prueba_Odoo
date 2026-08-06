@@ -1,0 +1,1548 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* chatroom_whatsapp
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-06 03:31+0000\n"
+"PO-Revision-Date: 2026-08-06 03:31+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_template.py:0
+msgid "%(created)s nuevas, %(updated)s actualizadas."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid ""
+"%s se dio de baja de los mensajes de este número; no se le pueden enviar "
+"mensajes hasta que vuelva a escribir la palabra clave de alta."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "(adjunto)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_form
+msgid ""
+"<i class=\"fa fa-star text-warning\"/>\n"
+"                            Oportunidad anclada:"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid "API Key"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__chatroom_ai_api_key
+msgid "API Key del proveedor de IA"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_channel__state__open
+msgid "Abierta"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_search
+msgid "Abiertas"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__account_installed
+msgid "Account Installed"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__message_needaction
+msgid "Action Needed"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "Activa y configura la IA en Ajustes > Chatroom WhatsApp."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__chatroom_ai_enabled
+msgid "Activar sugerencias con IA"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml:0
+msgid "Adjuntar archivo"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_message__attachment_ids
+msgid "Adjuntos"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:res.groups,name:chatroom_whatsapp.group_chatroom_manager
+msgid "Administrador"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:res.groups,name:chatroom_whatsapp.group_chatroom_user
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_search
+msgid "Agente"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__assigned_user_id
+msgid "Agente asignado"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "Agrega al menos un botón."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.ui.menu,name:chatroom_whatsapp.menu_chatroom_config_settings
+msgid "Ajustes"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_config_settings__chatroom_ai_auto_classify
+msgid ""
+"Al recibir un mensaje, la IA etiqueta la conversación como Consulta / Venta "
+"/ Soporte / Queja."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__whatsapp_app_secret
+msgid "App Secret (Meta App)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_config_settings__whatsapp_app_secret
+msgid ""
+"App Secret de la App de Meta. Se usa para verificar la firma X-Hub-"
+"Signature-256 de cada webhook y así confirmar que la petición viene "
+"realmente de Meta."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_template__status__approved
+msgid "Aprobada"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__chatroom_auto_assign
+msgid "Asignación automática de conversaciones"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__message_attachment_count
+msgid "Attachment Count"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_message__message_type__audio
+msgid "Audio"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_template__category__authentication
+msgid "Autenticación"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid "Automatización"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.actions.act_window,help:chatroom_whatsapp.action_chatroom_channel
+msgid "Aún no hay conversaciones de WhatsApp o redes sociales."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml:0
+msgid "Aún no hay mensajes en esta conversación."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.actions.act_window,help:chatroom_whatsapp.action_chatroom_template
+msgid "Aún no hay plantillas sincronizadas."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_message__body
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_template__body
+msgid "Body"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml:0
+msgid "Botones de respuesta rápida"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_message__message_type__interactive
+msgid "Botones/lista"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_search
+msgid "Canal"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml:0
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_send_template_wizard_form
+msgid "Cancelar"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_send_template_wizard_form
+msgid "Cantidad de variables"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_template__category
+msgid "Category"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_channel__state__closed
+msgid "Cerrada"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_search
+msgid "Cerradas"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_form
+msgid "Cerrar conversación"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_send_template_wizard__channel_id
+msgid "Channel"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__channel_type
+msgid "Channel Type"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.actions.act_window,name:chatroom_whatsapp.action_chatroom_channel
+#: model:ir.ui.menu,name:chatroom_whatsapp.menu_chatroom_root
+msgid "Chatroom"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_partner__chatroom_channel_count
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_users__chatroom_channel_count
+msgid "Chatroom Channel Count"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/systray/chatroom_systray.xml:0
+#: model:ir.module.category,name:chatroom_whatsapp.module_category_chatroom
+#: model:res.groups.privilege,name:chatroom_whatsapp.privilege_chatroom
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid "Chatroom WhatsApp"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.actions.server,name:chatroom_whatsapp.ir_cron_close_inactive_chatroom_channels_ir_actions_server
+msgid "Chatroom: cerrar conversaciones inactivas"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid ""
+"Clasifica la intención del cliente en esta conversación de WhatsApp. "
+"Responde ÚNICAMENTE con un JSON de la forma {\"intent\": "
+"\"consulta|venta|soporte|queja\"}, sin texto adicional ni explicaciones."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__chatroom_ai_auto_classify
+msgid "Clasificar intención automáticamente"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__company_id
+msgid "Company"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model,name:chatroom_whatsapp.model_res_config_settings
+msgid "Config Settings"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_meta_mixin.py:0
+msgid ""
+"Configura el Token de Página de Meta en Ajustes > Chatroom WhatsApp para "
+"enviar por Messenger/Instagram."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_meta_mixin.py:0
+msgid ""
+"Configura el Token de acceso y el Phone Number ID en Ajustes > Chatroom "
+"WhatsApp antes de enviar mensajes."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_meta_mixin.py:0
+msgid ""
+"Configura el Token de acceso y el WhatsApp Business Account ID en Ajustes > "
+"Chatroom WhatsApp."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.ui.menu,name:chatroom_whatsapp.menu_chatroom_config
+msgid "Configuración"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_channel__ai_intent__consulta
+msgid "Consulta"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model,name:chatroom_whatsapp.model_res_partner
+msgid "Contact"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__partner_id
+msgid "Contacto"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_partner__chatroom_channel_ids
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_users__chatroom_channel_ids
+#: model:ir.ui.menu,name:chatroom_whatsapp.menu_chatroom_conversations
+msgid "Conversaciones"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_message__channel_id
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_form
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_list
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_search
+msgid "Conversación"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model,name:chatroom_whatsapp.model_chatroom_channel
+msgid "Conversación de Chatroom (WhatsApp / Redes Sociales)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid ""
+"Copia esta URL y el Verify Token en el panel de la App de Meta (WhatsApp > "
+"Configuration > Webhook)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_form
+msgid "Crear Oportunidad"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__chatroom_ai_auto_lead
+msgid "Crear Oportunidad automáticamente"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_form
+msgid "Crear Presupuesto"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_canned_response__create_uid
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__create_uid
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_message__create_uid
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_send_template_wizard__create_uid
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_template__create_uid
+msgid "Created by"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_canned_response__create_date
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__create_date
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_message__create_date
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_send_template_wizard__create_date
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_template__create_date
+msgid "Created on"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model,name:chatroom_whatsapp.model_chatroom_meta_mixin
+msgid "Credenciales de Meta Graph API (mixin)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__crm_installed
+msgid "Crm Installed"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_template_form
+msgid "Cuerpo"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid "Cumplimiento (opt-out)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_chatroom_template__language
+msgid ""
+"Código de idioma tal como está registrado en Meta, ej: es, es_MX, en_US"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_partner__whatsapp_opt_out
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_users__whatsapp_opt_out
+msgid "Dado de baja de WhatsApp"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_message__date
+msgid "Date"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml:0
+msgid "Descargar"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_template__status__disabled
+msgid "Deshabilitada"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml:0
+msgid "Detener y adjuntar"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_message__direction
+msgid "Direction"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_canned_response__display_name
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__display_name
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_message__display_name
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_meta_mixin__display_name
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_send_template_wizard__display_name
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_template__display_name
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__display_name
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_partner__display_name
+msgid "Display Name"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_message__message_type__document
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_template__header_type__document
+msgid "Documento"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_partner__whatsapp_opt_out
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_users__whatsapp_opt_out
+msgid ""
+"El contacto pidió no recibir más mensajes (escribió una palabra clave de "
+"baja, o se marcó manualmente aquí). Mientras esté activo, el chatroom "
+"bloquea el envío de mensajes a este contacto."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid ""
+"El envío directo aún solo está implementado para WhatsApp en este módulo "
+"base."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "El módulo CRM no está instalado."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "El módulo Ventas no está instalado."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "Elige una opción:"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid "Endpoint API"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__chatroom_ai_provider_url
+msgid "Endpoint API IA (chat/completions)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_config_settings__chatroom_ai_provider_url
+msgid ""
+"Endpoint HTTP compatible con el formato 'chat completions' (OpenAI, "
+"Anthropic, Azure OpenAI, modelo propio, etc.)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_message__direction__inbound
+msgid "Entrante"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_message__state__delivered
+msgid "Entregado"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_message__state__sent
+msgid "Enviado"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_send_template_wizard_form
+msgid "Enviar"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml:0
+#: model:ir.actions.act_window,name:chatroom_whatsapp.action_chatroom_send_template_wizard
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_form
+msgid "Enviar plantilla"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model,name:chatroom_whatsapp.model_chatroom_send_template_wizard
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_send_template_wizard_form
+msgid "Enviar plantilla de WhatsApp"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_form
+msgid "Enviar sugerencia IA"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid ""
+"Envía la respuesta generada sin revisión de un agente. Úsalo con precaución"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_config_settings__chatroom_ai_auto_reply
+msgid ""
+"Envía la sugerencia de IA sin intervención humana. Actívalo solo si confías "
+"en las respuestas del modelo/prompt configurado: no hay revisión previa de "
+"un agente."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid ""
+"Eres un asistente de atención al cliente por WhatsApp. Responde en español, "
+"de forma breve, cordial y orientada a avanzar la venta o resolver la "
+"consulta del cliente."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "Escribe un mensaje o adjunta un archivo."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml:0
+msgid "Escribe un mensaje..."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_search
+msgid "Estado"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml:0
+msgid "Este contacto se dio de baja de los mensajes. No se le puede escribir."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid ""
+"Etiqueta cada conversación como Consulta, Venta, Soporte o Queja al recibir "
+"un mensaje"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_form
+msgid "Facturas"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_message__state__failed
+msgid "Fallido"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_partner__whatsapp_opt_out_date
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_users__whatsapp_opt_out_date
+msgid "Fecha de baja"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__message_follower_ids
+msgid "Followers"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__message_partner_ids
+msgid "Followers (Partners)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_template__footer_text
+msgid "Footer Text"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml:0
+msgid "Grabando..."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml:0
+msgid "Grabar nota de voz"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__has_message
+msgid "Has Message"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid ""
+"Has cancelado tu suscripción a los mensajes de este número. Escribe INICIAR "
+"si quieres volver a recibirlos."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml:0
+msgid "Hasta 3 botones de respuesta rápida:"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_template__header_text
+msgid "Header Text"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_template__header_type
+msgid "Header Type"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_canned_response__id
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__id
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_message__id
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_meta_mixin__id
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_send_template_wizard__id
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_template__id
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__id
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_partner__id
+msgid "ID"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_message__wa_message_id
+msgid "ID de mensaje (Meta)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__pinned_lead_id
+msgid "ID de oportunidad vinculada"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_config_settings__whatsapp_phone_number_id
+msgid ""
+"ID del número de teléfono de WhatsApp Business (Meta Business Suite > "
+"WhatsApp > Configuración de la API)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_template__waba_template_id
+msgid "ID en Meta"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__external_id
+msgid "ID externo (wa_id / PSID)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_chatroom_channel__external_id
+msgid ""
+"Identificador que asigna Meta al usuario final: número de WhatsApp (wa_id) o"
+" Page-Scoped ID (Messenger/Instagram)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_chatroom_channel__message_needaction
+msgid "If checked, new messages require your attention."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_chatroom_channel__message_has_error
+msgid "If checked, some messages have a delivery error."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_message__message_type__image
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_template__header_type__image
+msgid "Imagen"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_kanban
+msgid "Instagram"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_channel__channel_type__instagram
+msgid "Instagram Direct"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__ai_intent
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_search
+msgid "Intención (IA)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__invoice_count
+msgid "Invoice Count"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__message_is_follower
+msgid "Is Follower"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__is_session_open
+msgid "Is Session Open"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_chatroom_channel__is_session_open
+msgid ""
+"La API de WhatsApp solo permite mensajes de texto libres durante las 24h "
+"siguientes al último mensaje del cliente. Fuera de esa ventana hay que usar "
+"una plantilla aprobada."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "La conversación no tiene un contacto asociado."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml:0
+msgid "La ventana de 24h para responder libremente expiró."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_template__language
+msgid "Language"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.actions.act_window,help:chatroom_whatsapp.action_chatroom_channel
+msgid ""
+"Las conversaciones se crean automáticamente cuando un\n"
+"                contacto escribe por primera vez a tu número de WhatsApp\n"
+"                Business."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__last_message_date
+msgid "Last Message Date"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__last_message_preview
+msgid "Last Message Preview"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_canned_response__write_uid
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__write_uid
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_message__write_uid
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_send_template_wizard__write_uid
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_template__write_uid
+msgid "Last Updated by"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_canned_response__write_date
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__write_date
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_message__write_date
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_send_template_wizard__write_date
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_template__write_date
+msgid "Last Updated on"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__lead_count
+msgid "Lead Count"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_message__state__read
+msgid "Leído"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_config_settings__chatroom_opt_in_keywords
+msgid "Lista separada por comas para reactivar a un contacto dado de baja."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_config_settings__chatroom_opt_out_keywords
+msgid ""
+"Lista separada por comas. Si un cliente escribe exactamente una de estas "
+"palabras, se marca como dado de baja y no se le vuelve a escribir hasta que "
+"se dé de alta."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "Listo, has vuelto a activar los mensajes de este número."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid ""
+"Los adjuntos aún solo están implementados para WhatsApp en este módulo base."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_template__category__marketing
+msgid "Marketing"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_canned_response__message
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_message_form
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_message_list
+msgid "Mensaje"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model,name:chatroom_whatsapp.model_chatroom_message
+msgid "Mensaje de Chatroom (WhatsApp / Redes Sociales)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__message_ids
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_pivot
+msgid "Mensajes"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.actions.act_window,name:chatroom_whatsapp.action_chatroom_message
+#: model:ir.ui.menu,name:chatroom_whatsapp.menu_chatroom_messages
+msgid "Mensajes (auditoría)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__message_count
+msgid "Message Count"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__message_has_error
+msgid "Message Delivery error"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_message__message_type
+msgid "Message Type"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_channel__channel_type__messenger
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_kanban
+msgid "Messenger"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid "Messenger / Instagram"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_chatroom_channel__first_response_minutes
+msgid ""
+"Minutos entre el primer mensaje del cliente y la primera respuesta saliente "
+"de un agente."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_search
+msgid "Mis conversaciones"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid "Modelo"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__chatroom_ai_model
+msgid "Modelo IA"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.actions.act_window,name:chatroom_whatsapp.action_chatroom_metrics
+#: model:ir.ui.menu,name:chatroom_whatsapp.menu_chatroom_metrics
+msgid "Métricas"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_graph
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_pivot
+msgid "Métricas de Chatroom"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_template__name
+msgid "Name"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_template__header_type__none
+msgid "Ninguno"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "No hay ninguna sugerencia de IA generada."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml:0
+msgid "No hay respuestas rápidas guardadas todavía."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_search
+msgid "No leídos"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "No se pudo enviar el archivo: %s"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "No se pudo enviar el mensaje: %s"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "No se pudo enviar la plantilla: %s"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "No se pudo obtener una sugerencia de IA: %s"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_template.py:0
+msgid "No se pudo sincronizar con Meta: %s"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "Nuevo contacto"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "Nuevo mensaje de %(who)s: %(body)s"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__message_needaction_counter
+msgid "Number of Actions"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__message_has_error_counter
+msgid "Number of errors"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_chatroom_channel__message_needaction_counter
+msgid "Number of messages requiring action"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_chatroom_channel__message_has_error_counter
+msgid "Number of messages with delivery error"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_partner__whatsapp_id
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_users__whatsapp_id
+msgid ""
+"Número en formato internacional tal como lo entrega Meta (sin '+', sin "
+"espacios). Se completa automáticamente al recibir el primer mensaje."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid "Obtenlo en Meta Business Suite > WhatsApp > API Setup"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "Oportunidad WhatsApp - %s"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_form
+msgid "Oportunidades"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_channel__ai_intent__otro
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_message__message_type__other
+msgid "Otro"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid ""
+"Page Access Token de la Página conectada a tu App de Meta. Usa la misma App "
+"y el mismo webhook que WhatsApp, pero necesita su propio token para enviar "
+"mensajes"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_config_settings__chatroom_meta_page_access_token
+msgid ""
+"Page Access Token de la Página de Facebook/Instagram conectada a tu App de "
+"Meta. Solo se usa para enviar por Messenger/Instagram; WhatsApp usa su "
+"propio token arriba."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__chatroom_opt_in_keywords
+msgid "Palabras clave de alta"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__chatroom_opt_out_keywords
+msgid "Palabras clave de baja"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_template__status__paused
+msgid "Pausada"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_channel__state__pending
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_template__status__pending
+msgid "Pendiente"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_search
+msgid "Pendientes"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__whatsapp_phone_number_id
+msgid "Phone Number ID"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__pinned_lead_name
+msgid "Pinned Lead Name"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_send_template_wizard__template_id
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_message__message_type__template
+msgid "Plantilla"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_template_form
+msgid "Plantilla de WhatsApp"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model,name:chatroom_whatsapp.model_chatroom_template
+msgid "Plantilla de WhatsApp (HSM)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.actions.act_window,name:chatroom_whatsapp.action_chatroom_template
+#: model:ir.ui.menu,name:chatroom_whatsapp.menu_chatroom_config_templates
+msgid "Plantillas de WhatsApp"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_template.py:0
+msgid "Plantillas sincronizadas"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_form
+msgid "Presupuestos"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "Presupuestos y Pedidos"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_send_template_wizard__preview
+msgid "Preview"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_pivot
+msgid "Primera respuesta"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__first_response_minutes
+msgid "Primera respuesta (min)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_channel__ai_intent__queja
+msgid "Queja"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_template__status__rejected
+msgid "Rechazada"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_message__state__received
+msgid "Recibido"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid ""
+"Reparte las conversaciones nuevas entre los agentes del grupo 'Chatroom / "
+"Agente', priorizando al que menos conversaciones abiertas tenga"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_config_settings__chatroom_auto_assign
+msgid ""
+"Reparte las conversaciones nuevas entre los agentes del grupo 'Chatroom / "
+"Agente', priorizando al que menos conversaciones abiertas tenga."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid ""
+"Requiere la clasificación automática activa. Crea y ancla una Oportunidad "
+"cuando la IA detecta intención de compra"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__chatroom_ai_auto_reply
+msgid "Responder automáticamente con IA"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model,name:chatroom_whatsapp.model_chatroom_canned_response
+msgid "Respuesta rápida de Chatroom"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml:0
+#: model:ir.actions.act_window,name:chatroom_whatsapp.action_chatroom_canned_response
+#: model:ir.ui.menu,name:chatroom_whatsapp.menu_chatroom_canned_responses
+msgid "Respuestas rápidas"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__sale_installed
+msgid "Sale Installed"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__sale_order_count
+msgid "Sale Order Count"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_message__direction__outbound
+msgid "Saliente"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.actions.act_window,help:chatroom_whatsapp.action_chatroom_canned_response
+msgid ""
+"Se ofrecen a los agentes en el composer del chat (ícono de\n"
+"                rayo) para preguntas frecuentes, sin depender de la IA."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid ""
+"Separadas por comas. Escribir a quien pidió no recibir más es la causa más "
+"común de que Meta bloquee un número"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_config_settings__chatroom_ai_auto_lead
+msgid ""
+"Si la IA clasifica el mensaje como 'Venta' y la conversación no tiene una "
+"oportunidad vinculada, se crea y se ancla automáticamente. Requiere activar "
+"la clasificación."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_template_list
+msgid "Sincronizar con Meta"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_chatroom_canned_response__name
+msgid "Solo para identificarla en la lista."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_channel__ai_intent__soporte
+msgid "Soporte"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__state
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_message__state
+msgid "State"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_template__status
+msgid "Status"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-javascript
+#: code:addons/chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.xml:0
+msgid "Suelta el archivo para adjuntarlo"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__ai_suggested_reply
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_form
+msgid "Sugerencia de IA"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid "Sugerencias de respuesta con IA"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_form
+msgid "Sugerir respuesta con IA"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "Te asignaron la conversación de %s."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_message__message_type__text
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_template__header_type__text
+msgid "Texto"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_chatroom_template__body
+msgid ""
+"Texto de la plantilla tal como fue aprobado, con variables en formato {{1}},"
+" {{2}}, ..."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.actions.act_window,help:chatroom_whatsapp.action_chatroom_metrics
+msgid "Todavía no hay conversaciones para medir."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.actions.act_window,help:chatroom_whatsapp.action_chatroom_canned_response
+msgid "Todavía no hay respuestas rápidas guardadas."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_config_settings__whatsapp_webhook_verify_token
+msgid ""
+"Token arbitrario que debes definir aquí y repetir en la configuración del "
+"Webhook dentro de Meta App Dashboard"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__chatroom_meta_page_access_token
+msgid "Token de Página (Messenger/Instagram)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__whatsapp_access_token
+msgid "Token de acceso permanente"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid ""
+"Token de un System User de Meta Business. No pasa por ningún proveedor "
+"externo: se usa directo contra graph.facebook.com"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_config_settings__whatsapp_access_token
+msgid ""
+"Token permanente de un usuario de sistema (System User) con los permisos "
+"whatsapp_business_messaging y whatsapp_business_management. No se usa ningún"
+" proveedor externo: la llamada va directo a graph.facebook.com"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_canned_response__name
+msgid "Título"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_chatroom_send_template_wizard__variables_text
+msgid ""
+"Un valor por línea, en el mismo orden que las variables {{1}}, {{2}}, ... de"
+" la plantilla."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_send_template_wizard_form
+msgid "Un valor por línea, en orden"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__unread_count
+msgid "Unread Count"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.actions.act_window,help:chatroom_whatsapp.action_chatroom_template
+msgid ""
+"Usa \"Sincronizar con Meta\" para traer las plantillas\n"
+"                aprobadas de tu cuenta de WhatsApp Business."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_template__category__utility
+msgid "Utilidad"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_send_template_wizard__variable_count
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_template__variable_count
+msgid "Variable Count"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_send_template_wizard__variables_text
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_template_list
+msgid "Variables"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_channel__ai_intent__venta
+msgid "Venta"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__whatsapp_graph_api_version
+msgid "Versión Graph API"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,help:chatroom_whatsapp.field_res_config_settings__whatsapp_graph_api_version
+msgid "Versión de la Graph API de Meta, ej: v20.0"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_message__message_type__video
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_template__header_type__video
+msgid "Video"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_send_template_wizard_form
+msgid "Vista previa"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__whatsapp_webhook_url
+msgid "Webhook URL"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__whatsapp_webhook_verify_token
+msgid "Webhook Verify Token"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields.selection,name:chatroom_whatsapp.selection__chatroom_channel__channel_type__whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_kanban
+msgid "WhatsApp"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_config_settings__whatsapp_business_account_id
+msgid "WhatsApp Business Account ID (WABA)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.res_config_settings_view_form
+msgid "WhatsApp Business Cloud API (Meta)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_partner__whatsapp_id
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_res_users__whatsapp_id
+msgid "WhatsApp ID (wa_id)"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.fields,field_description:chatroom_whatsapp.field_chatroom_channel__window_expires_at
+msgid "Window Expires At"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.constraint,message:chatroom_whatsapp.constraint_chatroom_channel_external_id_type_uniq
+msgid "Ya existe una conversación abierta para este contacto en este canal."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.constraint,message:chatroom_whatsapp.constraint_chatroom_template_name_language_uniq
+msgid "Ya existe una plantilla con ese nombre e idioma."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model:ir.model.constraint,message:chatroom_whatsapp.constraint_chatroom_canned_response_name_uniq
+msgid "Ya existe una respuesta rápida con ese título."
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "[Plantilla: %s]"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#. odoo-python
+#: code:addons/chatroom_whatsapp/models/chatroom_channel.py:0
+msgid "partner_id"
+msgstr ""
+
+#. module: chatroom_whatsapp
+#: model_terms:ir.ui.view,arch_db:chatroom_whatsapp.view_chatroom_channel_list
+msgid "Último mensaje"
+msgstr ""

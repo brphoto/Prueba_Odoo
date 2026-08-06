@@ -1,6 +1,18 @@
 # -*- coding: utf-8 -*-
+import logging
+import time
+
+import requests
+
 from odoo import _, models
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
+
+# Códigos ante los que vale la pena reintentar: 429 (límite de tasa) y
+# errores transitorios del lado de Meta. No se reintentan 4xx de negocio
+# (token inválido, número mal formado, etc.): esos no se arreglan solos.
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
 class ChatroomMetaMixin(models.AbstractModel):
@@ -8,6 +20,31 @@ class ChatroomMetaMixin(models.AbstractModel):
     Meta (WhatsApp Business Cloud API), sin proveedores externos."""
     _name = 'chatroom.meta.mixin'
     _description = "Credenciales de Meta Graph API (mixin)"
+
+    @staticmethod
+    def _meta_request(method, url, max_retries=2, **kwargs):
+        """Llama a la Graph API con reintentos cortos (backoff exponencial)
+        ante 429 o errores 5xx transitorios. Un solo fallo de red no debe
+        tumbar el envío de un mensaje si Meta se recupera en un segundo."""
+        attempt = 0
+        while True:
+            try:
+                response = requests.request(method, url, timeout=kwargs.pop('timeout', 15), **kwargs)
+            except requests.RequestException:
+                if attempt >= max_retries:
+                    raise
+                response = None
+            if response is not None and response.status_code not in RETRYABLE_STATUS_CODES:
+                return response
+            if attempt >= max_retries:
+                return response
+            wait = 0.5 * (2 ** attempt)
+            _logger.warning(
+                "Meta Graph API respondió %s en %s, reintento %s/%s en %.1fs",
+                response.status_code if response is not None else 'sin respuesta',
+                url, attempt + 1, max_retries, wait)
+            time.sleep(wait)
+            attempt += 1
 
     def _get_meta_credentials(self):
         icp = self.env['ir.config_parameter'].sudo()

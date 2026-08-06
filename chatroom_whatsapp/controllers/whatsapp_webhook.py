@@ -75,11 +75,29 @@ class WhatsAppWebhookController(http.Controller):
             app_secret.encode(), raw_body, hashlib.sha256).hexdigest()
         return hmac.compare_digest(signature, expected)
 
+    @staticmethod
+    def _already_processed(env, wa_message_id):
+        """Meta garantiza entrega 'al menos una vez': ante un timeout o un
+        5xx nuestro, reintenta el mismo evento. Sin esta comprobación se
+        duplicarían mensajes, contactos, notificaciones y respuestas de
+        IA por cada reintento."""
+        if not wa_message_id:
+            return False
+        exists = bool(env['chatroom.message'].search_count(
+            [('wa_message_id', '=', wa_message_id)], limit=1))
+        if exists:
+            _logger.info(
+                "Evento %s ya procesado, se omite (reintento de Meta)", wa_message_id)
+        return exists
+
     def _process_messages(self, env, value):
         contacts = {c['wa_id']: c.get('profile', {}).get('name')
                     for c in value.get('contacts', [])}
 
         for msg in value.get('messages', []):
+            if self._already_processed(env, msg.get('id')):
+                continue
+
             wa_id = msg.get('from')
             profile_name = contacts.get(wa_id)
             channel = env['chatroom.channel']._find_or_create_from_webhook(
@@ -117,6 +135,8 @@ class WhatsAppWebhookController(http.Controller):
         message_data = event.get('message')
         if not sender_id or not message_data or message_data.get('is_echo'):
             # is_echo = eco del propio mensaje que el negocio envió
+            return
+        if self._already_processed(env, message_data.get('mid')):
             return
 
         channel = env['chatroom.channel']._find_or_create_from_webhook(channel_type, sender_id)

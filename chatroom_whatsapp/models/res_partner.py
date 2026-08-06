@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+import re
+
+from odoo import api, fields, models
+
+DIGITS_RE = re.compile(r'\D')
 
 
 class ResPartner(models.Model):
@@ -29,6 +33,29 @@ class ResPartner(models.Model):
         counts = {partner.id: count for partner, count in grouped}
         for rec in self:
             rec.chatroom_channel_count = counts.get(rec.id, 0)
+
+    @api.model
+    def _find_by_whatsapp_number(self, wa_id):
+        """Busca un contacto existente por teléfono comparando solo
+        dígitos, antes de crear uno nuevo. Evita duplicar contactos que
+        ya existían en Odoo (importados, creados a mano, de otra
+        integración) con el mismo número pero sin whatsapp_id todavía.
+
+        Nota: en Odoo 19 'mobile' ya no es un campo aparte de res.partner
+        (se unificó con 'phone'), así que solo se compara ese campo."""
+        digits = DIGITS_RE.sub('', wa_id or '')
+        if len(digits) < 8:
+            return self.browse()
+        tail = digits[-8:]
+        # No se puede filtrar por "like" a nivel SQL: los teléfonos suelen
+        # guardarse con espacios/guiones ("+57 300 123 4567"), así que la
+        # cola de dígitos no aparece como substring literal. Se compara en
+        # Python sobre los contactos que sí tienen algún teléfono cargado.
+        candidates = self.search([('phone', '!=', False)])
+        for partner in candidates:
+            if partner.phone and DIGITS_RE.sub('', partner.phone)[-8:] == tail:
+                return partner
+        return self.browse()
 
     def action_view_chatroom_channels(self):
         self.ensure_one()

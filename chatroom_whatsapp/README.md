@@ -232,6 +232,15 @@ de API que rompen módulos escritos "a la manera de Odoo 17/18":
   `useService("user")` (eso rompía la carga de *todo* el webclient, no
   solo del ícono): se importa directo como `import { user } from
   "@web/core/user"`.
+- **`res.partner` ya no tiene el campo `mobile`** (se unificó con
+  `phone`); un dominio de búsqueda que lo referencie revienta con
+  `KeyError: 'mobile'`. Se encontró corriendo los tests automatizados,
+  no antes.
+- Los `user_ids` de un grupo **no incluyen** a quienes lo tienen por
+  `implied_ids` de otro grupo (ej. los administradores no aparecían como
+  miembros explícitos de "Agente" aunque "Administrador" implica
+  "Agente"): hay que unir los `user_ids` de ambos grupos a mano si se
+  necesita la lista completa de gente con ese permiso.
 
 Se verificó con capturas de pantalla (Playwright + Chromium headless,
 sin errores de consola) que el kanban (con el ícono nuevo de canal y
@@ -241,6 +250,34 @@ el marcado de leído (confirmado también por consulta directa a la base
 de datos), el panel de botones rápidos, el envío con manejo de errores,
 Ajustes, Métricas y el asistente de plantillas cargan y funcionan
 correctamente.
+
+## Robustez de producción
+
+Pensado para tráfico real, no solo para la demo:
+
+- **Idempotencia del webhook**: Meta garantiza entrega "al menos una
+  vez" — ante un timeout o un 5xx nuestro, reintenta el mismo evento.
+  Cada mensaje se identifica por su `wa_message_id`/`mid`; si ya existe,
+  el evento se descarta sin duplicar mensajes, contactos, notificaciones
+  ni respuestas de IA.
+- **Deduplicación de contactos por teléfono**: si el número que escribe
+  ya existe en Odoo (importado, creado a mano, de otra integración) pero
+  todavía no tiene `whatsapp_id`, se reutiliza ese contacto en vez de
+  crear uno nuevo — comparando solo dígitos, sin importar el formato
+  (espacios, guiones, `+`).
+- **Reintentos con backoff** ante `429` (límite de tasa) y `5xx`
+  transitorios de Meta (hasta 2 reintentos, backoff exponencial corto).
+  No se reintentan errores de negocio (token inválido, número mal
+  formado): esos no se arreglan solos. El mismo mecanismo protege
+  también la llamada al proveedor de IA.
+- **Tests automatizados** (`tests/test_chatroom.py`, 9 casos) corridos
+  contra la misma instancia real de Odoo 19: idempotencia del webhook,
+  deduplicación de contactos, bloqueo por opt-out, marcar como leído,
+  asignación a un agente real (no al usuario del sistema) y manejo de
+  errores sin credenciales. `0 failed, 0 error(s)` en la última corrida.
+- **Plantilla de traducción** (`i18n/chatroom_whatsapp.pot`, 264
+  cadenas) generada con la herramienta real de Odoo (`odoo-bin i18n
+  export`), lista para traducir a cualquier idioma.
 
 ## Alcance de esta versión
 
@@ -260,5 +297,8 @@ correctamente.
 - El modo oscuro tiene el CSS listo pero no se pudo verificar
   visualmente (requiere Odoo Enterprise, no disponible en este entorno
   de pruebas).
-- No hay tests automatizados (`tests/`) todavía — la validación fue
-  manual sobre una instancia real, no vía CI.
+- La deduplicación de contactos por teléfono compara en Python sobre
+  los contactos con `phone` cargado (no hay forma limpia de comparar
+  "solo dígitos" a nivel SQL sin una extensión de PostgreSQL); en bases
+  de datos con cientos de miles de contactos esto puede ser lento — no
+  es un problema para el volumen típico de una pyme o empresa mediana.
