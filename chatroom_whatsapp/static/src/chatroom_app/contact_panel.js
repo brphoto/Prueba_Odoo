@@ -1,7 +1,9 @@
 /** @odoo-module **/
 
 import { useService } from "@web/core/utils/hooks";
-import { Component, useState, onWillStart, onWillUpdateProps } from "@odoo/owl";
+import { Component, useState, onWillStart, onWillUpdateProps, onMounted, onWillUnmount } from "@odoo/owl";
+
+const COLLAPSED_SECTIONS_STORAGE_KEY = "chatroom_whatsapp.contact_panel_collapsed_sections";
 
 /**
  * Panel lateral de la app con los datos del contacto y accesos rápidos a
@@ -33,6 +35,12 @@ export class ContactPanel extends Component {
             sendingProductId: false,
             removingCartLineId: false,
             checkingOut: false,
+            // El catálogo es lo que más se usa para mandar algo por
+            // WhatsApp; el resto arranca plegado para que no haga falta
+            // scrollear un montón cuando hay actividades/presupuestos/
+            // facturas recientes antes -eso es justo lo que se quejó el
+            // usuario ("productos me manda muy abajo").
+            collapsed: this._getStoredCollapsedState(),
         });
 
         onWillStart(() => this._load(this.props.channelId));
@@ -41,6 +49,15 @@ export class ContactPanel extends Component {
                 return this._load(nextProps.channelId);
             }
         });
+
+        // Los accesos que abren en una pestaña nueva (ver más abajo)
+        // pueden crear/editar registros que cambian los contadores del
+        // panel (una Oportunidad nueva, una Factura confirmada...); al
+        // volver a esta pestaña se refresca solo, sin tener que cerrar
+        // el chat para verlo actualizado.
+        this._onWindowFocus = () => this._reload();
+        onMounted(() => window.addEventListener("focus", this._onWindowFocus));
+        onWillUnmount(() => window.removeEventListener("focus", this._onWindowFocus));
     }
 
     async _load(channelId) {
@@ -62,6 +79,27 @@ export class ContactPanel extends Component {
 
     async _reload() {
         await this._load(this.props.channelId);
+    }
+
+    _getStoredCollapsedState() {
+        const defaults = { activities: true, orders: true, invoices: true, cart: false, catalog: false };
+        try {
+            const raw = localStorage.getItem(COLLAPSED_SECTIONS_STORAGE_KEY);
+            return raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
+        } catch {
+            return defaults;
+        }
+    }
+
+    toggleSection(key) {
+        this.state.collapsed[key] = !this.state.collapsed[key];
+        try {
+            localStorage.setItem(
+                COLLAPSED_SECTIONS_STORAGE_KEY, JSON.stringify(this.state.collapsed));
+        } catch {
+            // Sin localStorage el plegado sigue funcionando, solo no se
+            // recuerda entre sesiones.
+        }
     }
 
     formatMoney(amount, symbol) {
@@ -104,6 +142,25 @@ export class ContactPanel extends Component {
         );
     }
 
+    // Odoo no deja cambiar de vista (lista -> form) DENTRO de un diálogo
+    // (target "new"): el propio framework bloquea el switchView mientras
+    // haya un diálogo abierto, así que ni haciendo clic en una fila se
+    // podía abrir su formulario -no era un botón roto, es una limitación
+    // real del framework con acciones multi-vista en diálogo. Para las
+    // que necesitan navegar entre varios registros (lista/kanban/form)
+    // se abren en una pestaña nueva -Odoo completo, con todo (kanban con
+    // arrastrar y soltar, filtros, acciones en lote), sin perder el chat
+    // en la pestaña original.
+    _openInNewTab(action) {
+        this.action.doAction(action, { newWindow: true });
+    }
+
+    async _openChannelActionNewTab(methodName) {
+        const result = await this.orm.call(
+            "chatroom.channel", methodName, [this.props.channelId]);
+        this._openInNewTab(result);
+    }
+
     async _openChannelAction(methodName) {
         const result = await this.orm.call(
             "chatroom.channel", methodName, [this.props.channelId]);
@@ -111,23 +168,23 @@ export class ContactPanel extends Component {
     }
 
     openLeads() {
-        this._openChannelAction("action_view_leads");
+        this._openChannelActionNewTab("action_view_leads");
     }
 
     openSaleOrders() {
-        this._openChannelAction("action_view_sale_orders");
+        this._openChannelActionNewTab("action_view_sale_orders");
     }
 
     openPurchases() {
-        this._openChannelAction("action_view_purchases");
+        this._openChannelActionNewTab("action_view_purchases");
     }
 
     openInvoices() {
-        this._openChannelAction("action_view_invoices");
+        this._openChannelActionNewTab("action_view_invoices");
     }
 
     openTasks() {
-        this._openChannelAction("action_view_tasks");
+        this._openChannelActionNewTab("action_view_tasks");
     }
 
     createLead() {
@@ -195,7 +252,7 @@ export class ContactPanel extends Component {
 
     async openProductCatalog() {
         const result = await this.orm.call("chatroom.channel", "action_view_products", []);
-        this._openDialog(result);
+        this._openInNewTab(result);
     }
 
     // ------------------------------------------------------------------

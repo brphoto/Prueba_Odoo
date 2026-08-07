@@ -108,7 +108,22 @@
         font-size: 0.8em;
         text-transform: uppercase;
         color: #667781;
-        margin-bottom: 8px;
+        margin-bottom: 0;
+    }
+}
+
+.o_chatroom_contact_section_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    padding: 2px 0;
+    margin-bottom: 6px;
+
+    i.fa-chevron-right, i.fa-chevron-down {
+        font-size: 0.75em;
+        color: #8696a0;
+        flex: 0 0 auto;
     }
 }
 

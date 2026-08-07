@@ -104,9 +104,15 @@ class ResConfigSettings(models.TransientModel):
         string="Zona horaria", config_parameter='chatroom_whatsapp.business_hours_tz',
         help="Ej: America/Guayaquil. Si se deja vacío, se usa la zona "
              "horaria del usuario que instaló el módulo.")
-    chatroom_business_hours_away_message = fields.Text(
+    chatroom_business_hours_away_message = fields.Char(
         string="Mensaje fuera de horario",
         config_parameter='chatroom_whatsapp.business_hours_away_message',
+        # 'res.config.settings' solo permite boolean/integer/float/char/
+        # selection/many2one/datetime en campos con config_parameter
+        # (ir_config._get_classified_fields los valida a mano) — un
+        # Text revienta el onchange de Ajustes apenas se abre la
+        # pantalla, no solo al guardar. Char no tiene límite de
+        # caracteres real en Odoo, así que no pierde nada.
         default="Gracias por escribirnos. En este momento estamos fuera "
                 "de nuestro horario de atención; te respondemos apenas "
                 "volvamos.")

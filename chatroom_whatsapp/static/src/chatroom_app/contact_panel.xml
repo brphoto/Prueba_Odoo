@@ -82,116 +82,141 @@
                 </div>
 
                 <div class="o_chatroom_contact_docs o_chatroom_contact_activities" t-if="state.data.activities.length">
-                    <h6>Actividades pendientes</h6>
-                    <t t-foreach="state.data.activities" t-as="activity" t-key="activity.id">
-                        <div t-attf-class="o_chatroom_contact_doc_row {{ activity.is_overdue ? 'text-danger' : '' }}">
-                            <i class="fa fa-clock-o"/>
-                            <span class="o_chatroom_contact_doc_name text-truncate" t-esc="activity.summary"/>
-                            <span class="o_chatroom_contact_doc_amount" t-esc="activity.date_deadline"/>
-                        </div>
+                    <div class="o_chatroom_contact_section_header" t-on-click="() => this.toggleSection('activities')">
+                        <h6 class="mb-0">Actividades pendientes</h6>
+                        <i t-attf-class="fa {{ state.collapsed.activities ? 'fa-chevron-right' : 'fa-chevron-down' }}"/>
+                    </div>
+                    <t t-if="!state.collapsed.activities">
+                        <t t-foreach="state.data.activities" t-as="activity" t-key="activity.id">
+                            <div t-attf-class="o_chatroom_contact_doc_row {{ activity.is_overdue ? 'text-danger' : '' }}">
+                                <i class="fa fa-clock-o"/>
+                                <span class="o_chatroom_contact_doc_name text-truncate" t-esc="activity.summary"/>
+                                <span class="o_chatroom_contact_doc_amount" t-esc="activity.date_deadline"/>
+                            </div>
+                        </t>
                     </t>
                 </div>
 
                 <div class="o_chatroom_contact_docs" t-if="state.data.sale_installed and state.data.recent_orders.length">
-                    <h6>Presupuestos recientes</h6>
-                    <t t-foreach="state.data.recent_orders" t-as="order" t-key="order.id">
-                        <div class="o_chatroom_contact_doc_row">
-                            <span class="o_chatroom_contact_doc_name text-truncate o_chatroom_contact_doc_link"
-                                  title="Abrir presupuesto"
-                                  t-on-click="() => this.openRecord('sale.order', order.id)"
-                                  t-esc="order.name"/>
-                            <span class="o_chatroom_contact_doc_amount"
-                                  t-esc="formatMoney(order.amount_total, order.currency_symbol)"/>
-                            <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
-                                    t-att-disabled="state.sendingDocKey"
-                                    title="Enviar PDF por WhatsApp"
-                                    t-on-click="() => this.sendOrderPdf(order)">
-                                <i t-if="state.sendingDocKey === 'order-' + order.id" class="fa fa-spin fa-circle-o-notch"/>
-                                <i t-else="" class="fa fa-paper-plane"/>
-                            </button>
-                        </div>
+                    <div class="o_chatroom_contact_section_header" t-on-click="() => this.toggleSection('orders')">
+                        <h6 class="mb-0">Presupuestos recientes</h6>
+                        <i t-attf-class="fa {{ state.collapsed.orders ? 'fa-chevron-right' : 'fa-chevron-down' }}"/>
+                    </div>
+                    <t t-if="!state.collapsed.orders">
+                        <t t-foreach="state.data.recent_orders" t-as="order" t-key="order.id">
+                            <div class="o_chatroom_contact_doc_row">
+                                <span class="o_chatroom_contact_doc_name text-truncate o_chatroom_contact_doc_link"
+                                      title="Abrir presupuesto"
+                                      t-on-click="() => this.openRecord('sale.order', order.id)"
+                                      t-esc="order.name"/>
+                                <span class="o_chatroom_contact_doc_amount"
+                                      t-esc="formatMoney(order.amount_total, order.currency_symbol)"/>
+                                <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
+                                        t-att-disabled="state.sendingDocKey"
+                                        title="Enviar PDF por WhatsApp"
+                                        t-on-click="() => this.sendOrderPdf(order)">
+                                    <i t-if="state.sendingDocKey === 'order-' + order.id" class="fa fa-spin fa-circle-o-notch"/>
+                                    <i t-else="" class="fa fa-paper-plane"/>
+                                </button>
+                            </div>
+                        </t>
                     </t>
                 </div>
 
                 <div class="o_chatroom_contact_docs" t-if="state.data.account_installed and state.data.recent_invoices.length">
-                    <h6>Facturas recientes</h6>
-                    <t t-foreach="state.data.recent_invoices" t-as="invoice" t-key="invoice.id">
-                        <div class="o_chatroom_contact_doc_row">
-                            <span class="o_chatroom_contact_doc_name text-truncate o_chatroom_contact_doc_link"
-                                  title="Abrir factura"
-                                  t-on-click="() => this.openRecord('account.move', invoice.id)"
-                                  t-esc="invoice.name"/>
-                            <span class="o_chatroom_contact_doc_amount"
-                                  t-esc="formatMoney(invoice.amount_total, invoice.currency_symbol)"/>
-                            <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
-                                    t-att-disabled="state.sendingDocKey"
-                                    title="Enviar PDF por WhatsApp"
-                                    t-on-click="() => this.sendInvoicePdf(invoice)">
-                                <i t-if="state.sendingDocKey === 'invoice-' + invoice.id" class="fa fa-spin fa-circle-o-notch"/>
-                                <i t-else="" class="fa fa-paper-plane"/>
-                            </button>
-                        </div>
+                    <div class="o_chatroom_contact_section_header" t-on-click="() => this.toggleSection('invoices')">
+                        <h6 class="mb-0">Facturas recientes</h6>
+                        <i t-attf-class="fa {{ state.collapsed.invoices ? 'fa-chevron-right' : 'fa-chevron-down' }}"/>
+                    </div>
+                    <t t-if="!state.collapsed.invoices">
+                        <t t-foreach="state.data.recent_invoices" t-as="invoice" t-key="invoice.id">
+                            <div class="o_chatroom_contact_doc_row">
+                                <span class="o_chatroom_contact_doc_name text-truncate o_chatroom_contact_doc_link"
+                                      title="Abrir factura"
+                                      t-on-click="() => this.openRecord('account.move', invoice.id)"
+                                      t-esc="invoice.name"/>
+                                <span class="o_chatroom_contact_doc_amount"
+                                      t-esc="formatMoney(invoice.amount_total, invoice.currency_symbol)"/>
+                                <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
+                                        t-att-disabled="state.sendingDocKey"
+                                        title="Enviar PDF por WhatsApp"
+                                        t-on-click="() => this.sendInvoicePdf(invoice)">
+                                    <i t-if="state.sendingDocKey === 'invoice-' + invoice.id" class="fa fa-spin fa-circle-o-notch"/>
+                                    <i t-else="" class="fa fa-paper-plane"/>
+                                </button>
+                            </div>
+                        </t>
                     </t>
                 </div>
 
                 <div class="o_chatroom_contact_docs o_chatroom_contact_cart"
                      t-if="state.data.sale_installed and state.data.cart_lines.length">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div class="o_chatroom_contact_section_header" t-on-click="() => this.toggleSection('cart')">
                         <h6 class="mb-0">
                             <i class="fa fa-shopping-basket"/> Carrito (armado por IA)
                         </h6>
-                        <span t-esc="formatMoney(state.data.cart_total, state.data.currency_symbol)"/>
+                        <span class="d-flex align-items-center gap-2">
+                            <span t-esc="formatMoney(state.data.cart_total, state.data.currency_symbol)"/>
+                            <i t-attf-class="fa {{ state.collapsed.cart ? 'fa-chevron-right' : 'fa-chevron-down' }}"/>
+                        </span>
                     </div>
-                    <t t-foreach="state.data.cart_lines" t-as="line" t-key="line.id">
-                        <div class="o_chatroom_contact_doc_row">
-                            <span class="o_chatroom_contact_doc_name text-truncate"
-                                  t-esc="line.quantity + 'x ' + line.product_name"/>
-                            <span class="o_chatroom_contact_doc_amount"
-                                  t-esc="formatMoney(line.subtotal, state.data.currency_symbol)"/>
-                            <button class="btn btn-sm btn-link o_chatroom_contact_doc_send text-danger"
-                                    t-att-disabled="state.removingCartLineId"
-                                    title="Sacar del carrito"
-                                    t-on-click="() => this.removeCartLine(line.id)">
-                                <i t-if="state.removingCartLineId === line.id" class="fa fa-spin fa-circle-o-notch"/>
-                                <i t-else="" class="fa fa-times"/>
-                            </button>
-                        </div>
+                    <t t-if="!state.collapsed.cart">
+                        <t t-foreach="state.data.cart_lines" t-as="line" t-key="line.id">
+                            <div class="o_chatroom_contact_doc_row">
+                                <span class="o_chatroom_contact_doc_name text-truncate"
+                                      t-esc="line.quantity + 'x ' + line.product_name"/>
+                                <span class="o_chatroom_contact_doc_amount"
+                                      t-esc="formatMoney(line.subtotal, state.data.currency_symbol)"/>
+                                <button class="btn btn-sm btn-link o_chatroom_contact_doc_send text-danger"
+                                        t-att-disabled="state.removingCartLineId"
+                                        title="Sacar del carrito"
+                                        t-on-click="() => this.removeCartLine(line.id)">
+                                    <i t-if="state.removingCartLineId === line.id" class="fa fa-spin fa-circle-o-notch"/>
+                                    <i t-else="" class="fa fa-times"/>
+                                </button>
+                            </div>
+                        </t>
+                        <button class="btn btn-sm btn-primary w-100 mt-2"
+                                t-att-disabled="state.checkingOut" t-on-click="checkoutCart">
+                            <i t-if="state.checkingOut" class="fa fa-spin fa-circle-o-notch"/>
+                            <t t-else="">Convertir a cotización</t>
+                        </button>
                     </t>
-                    <button class="btn btn-sm btn-primary w-100 mt-2"
-                            t-att-disabled="state.checkingOut" t-on-click="checkoutCart">
-                        <i t-if="state.checkingOut" class="fa fa-spin fa-circle-o-notch"/>
-                        <t t-else="">Convertir a cotización</t>
-                    </button>
                 </div>
 
                 <div class="o_chatroom_contact_docs" t-if="state.data.product_installed">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div class="o_chatroom_contact_section_header" t-on-click="() => this.toggleSection('catalog')">
                         <h6 class="mb-0">Catálogo</h6>
-                        <button class="btn btn-sm btn-link p-0" t-on-click="openProductCatalog">
-                            Ver todo
-                        </button>
+                        <i t-attf-class="fa {{ state.collapsed.catalog ? 'fa-chevron-right' : 'fa-chevron-down' }}"/>
                     </div>
-                    <input type="text" class="form-control form-control-sm mb-2"
-                           placeholder="Buscar producto..."
-                           t-att-value="state.productQuery" t-on-input="onProductSearchInput"/>
-                    <div class="o_chatroom_empty text-muted" t-if="!state.productResults.length">
-                        No se encontraron productos.
-                    </div>
-                    <t t-foreach="state.productResults" t-as="product" t-key="product.id">
-                        <div class="o_chatroom_contact_product_row">
-                            <img t-if="product.has_image" class="o_chatroom_contact_product_thumb"
-                                 t-att-src="productImageUrl(product)" alt=""/>
-                            <i t-else="" class="fa fa-cube o_chatroom_contact_product_thumb_placeholder"/>
-                            <div class="o_chatroom_contact_doc_name text-truncate" t-esc="product.name"/>
-                            <span class="o_chatroom_contact_doc_amount" t-esc="formatMoney(product.list_price, false)"/>
-                            <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
-                                    t-att-disabled="state.sendingProductId"
-                                    title="Enviar por WhatsApp"
-                                    t-on-click="() => this.sendProduct(product)">
-                                <i t-if="state.sendingProductId === product.id" class="fa fa-spin fa-circle-o-notch"/>
-                                <i t-else="" class="fa fa-paper-plane"/>
+                    <t t-if="!state.collapsed.catalog">
+                        <div class="d-flex justify-content-end mb-1">
+                            <button class="btn btn-sm btn-link p-0" t-on-click.stop="openProductCatalog">
+                                Ver todo
                             </button>
                         </div>
+                        <input type="text" class="form-control form-control-sm mb-2"
+                               placeholder="Buscar producto..."
+                               t-att-value="state.productQuery" t-on-input="onProductSearchInput"/>
+                        <div class="o_chatroom_empty text-muted" t-if="!state.productResults.length">
+                            No se encontraron productos.
+                        </div>
+                        <t t-foreach="state.productResults" t-as="product" t-key="product.id">
+                            <div class="o_chatroom_contact_product_row">
+                                <img t-if="product.has_image" class="o_chatroom_contact_product_thumb"
+                                     t-att-src="productImageUrl(product)" alt=""/>
+                                <i t-else="" class="fa fa-cube o_chatroom_contact_product_thumb_placeholder"/>
+                                <div class="o_chatroom_contact_doc_name text-truncate" t-esc="product.name"/>
+                                <span class="o_chatroom_contact_doc_amount" t-esc="formatMoney(product.list_price, false)"/>
+                                <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
+                                        t-att-disabled="state.sendingProductId"
+                                        title="Enviar por WhatsApp"
+                                        t-on-click="() => this.sendProduct(product)">
+                                    <i t-if="state.sendingProductId === product.id" class="fa fa-spin fa-circle-o-notch"/>
+                                    <i t-else="" class="fa fa-paper-plane"/>
+                                </button>
+                            </div>
+                        </t>
                     </t>
                 </div>
             </t>

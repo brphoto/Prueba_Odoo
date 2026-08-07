@@ -404,36 +404,53 @@ un panel lateral con:
   completa.
 - Contadores clicables de Oportunidades, Ventas, Compras, Facturas y
   Tareas (cada uno se oculta solo si el módulo correspondiente no está
-  instalado, igual que los stat buttons de la ficha clásica).
+  instalado, igual que los stat buttons de la ficha clásica). **Abren en
+  una pestaña nueva del navegador** (Odoo completo: lista, kanban con
+  arrastrar y soltar, filtros, acciones en lote) en vez de un diálogo —
+  un diálogo (`target: "new"`) no deja cambiar de vista adentro
+  (limitación real del framework, no un botón roto: ver el detalle en
+  "Validado contra un Odoo 19 real"), así que para *browsear* varios
+  registros y entrar a cualquiera hace falta la pestaña nueva. El chat
+  queda intacto en la pestaña original, y el panel se refresca solo
+  cuando volvés a esa pestaña (por si creaste o confirmaste algo).
 - Botones para crear una **Oportunidad**, un **Presupuesto**, una
   **Factura directa** (sin pasar por un presupuesto antes, para ventas
   rápidas de contado), una **Orden de Compra** (para cuando el contacto
-  de WhatsApp es un proveedor, no un cliente) o una **Tarea**.
+  de WhatsApp es un proveedor, no un cliente) o una **Tarea**. Estos sí
+  abren como **diálogo** encima de la app, sin navegar a otra pantalla
+  ni perder el chat — porque van directo a un único formulario (sin
+  lista de por medio), que es justo el caso que un diálogo maneja bien.
+  Es el formulario real de Odoo (con sus botones nativos: Confirmar,
+  Crear factura, Registrar pago, etc.), no una versión reducida propia.
+  Cerrar el diálogo te deja exactamente donde estabas, con el panel
+  actualizado. Así, para pasar un Presupuesto a Factura: abrilo desde
+  "Crear Presupuesto" o desde la lista de recientes, agregale las
+  líneas, confirmalo y usá el botón "Crear factura" del propio
+  formulario de Odoo — sin salir nunca del chat.
 - **Actividades pendientes del contacto**: las que están agendadas
   directo en su ficha, más las de sus oportunidades de CRM (que es
   donde de verdad suele vivir un "llamar el jueves" en un flujo de
   ventas) — en rojo las vencidas.
-- **Todo lo anterior (contadores, crear, y el nombre de cada presupuesto/
-  factura reciente) abre el formulario o la lista real de Odoo como
-  diálogo encima de la app, no navegando a otra pantalla** — es la
-  vista normal de Odoo (con sus botones nativos: Confirmar, Crear
-  factura, Registrar pago, etc.), no una versión reducida propia. Cerrar
-  el diálogo te deja exactamente donde estabas, con el panel actualizado.
-  Así, para pasar un Presupuesto a Factura: abrilo desde "Crear
-  Presupuesto" o desde la lista de recientes, agregale las líneas,
-  confirmalo y usá el botón "Crear factura" del propio formulario de
-  Odoo — sin salir nunca del chat.
 - **Últimos presupuestos y facturas del contacto, con un botón para
   mandar el PDF directo por la misma conversación de WhatsApp** (botón
   de avión de papel junto a cada uno): genera el reporte con el motor de
   reportes de Odoo (`ir.actions.report._render_qweb_pdf`) y lo envía
   como adjunto, reusando el mismo mecanismo de envío de archivos de
-  siempre — respeta la ventana de 24h, el opt-out, etc.
+  siempre — respeta la ventana de 24h, el opt-out, etc. Abrir uno
+  puntual desde la lista de recientes (clic en el nombre) sí es un
+  diálogo, como las creaciones — es un único registro, no una lista.
 - **Catálogo de productos**: buscador para encontrar un producto
   vendible (`sale_ok`) y mandarlo por WhatsApp con un clic — la foto del
   producto como imagen y "Nombre - Precio" como pie de foto (si no tiene
   foto cargada, se manda como texto). "Ver todo" abre el catálogo
-  completo de Odoo para casos que no entran en una búsqueda rápida.
+  completo de Odoo en una pestaña nueva (mismo motivo que arriba).
+- **Cada sección (Actividades, Presupuestos recientes, Facturas
+  recientes, Carrito, Catálogo) es plegable** — clic en el título la
+  abre/cierra, y se recuerda entre sesiones (`localStorage`). Arrancan
+  plegadas todas menos el Catálogo (lo que más se usa para mandar algo
+  por WhatsApp), así no hace falta scrollear un montón para llegar a
+  buscar un producto cuando hay actividades/presupuestos/facturas
+  recientes cargados arriba.
 - **Carrito armado por la IA** (ver "Automatización con IA" más arriba):
   si el vendedor automático fue agregando productos charlando con el
   cliente, se ve acá línea por línea con un botón para "Convertir a
@@ -626,6 +643,26 @@ de API que rompen módulos escritos "a la manera de Odoo 17/18":
   miembros explícitos de "Agente" aunque "Administrador" implica
   "Agente"): hay que unir los `user_ids` de ambos grupos a mano si se
   necesita la lista completa de gente con ese permiso.
+- **Un campo `Text` con `config_parameter` en `res.config.settings`
+  rompe la pantalla de Ajustes completa apenas se abre** (no solo al
+  guardar): `_get_classified_fields()` solo acepta
+  `boolean/integer/float/char/selection/many2one/datetime` para esos
+  campos, y esa validación corre en el primer `onchange`. Se encontró
+  en producción (no en la prueba automatizada) con el mensaje de
+  "fuera de horario" configurable — se cambió a `Char` (sin límite real
+  de caracteres en Odoo, así que no se pierde nada).
+- **Un `ir.actions.act_window` multi-vista (`list,form` o similar)
+  abierto como diálogo (`target: "new"`) no deja cambiar de vista
+  adentro del diálogo**: `switchView()` en `action_service.js` tiene una
+  guarda (`if (dialog) return`) que se activa apenas el diálogo está
+  montado, así que ni haciendo clic en una fila de una lista abre su
+  formulario — no es un botón roto del lado del negocio, es una
+  limitación real del framework con diálogos multi-vista. La solución
+  que se terminó usando fue abrir esas acciones con
+  `doAction(action, { newWindow: true })` en vez de forzar
+  `target: "new"`, para browsear con Odoo completo (kanban con
+  arrastrar y soltar, filtros, lote) en una pestaña nueva sin perder el
+  chat en la original — ver "Panel de contacto" más abajo.
 
 Se verificó con capturas de pantalla (Playwright + Chromium headless,
 sin errores de consola) que el kanban (con el ícono nuevo de canal y
