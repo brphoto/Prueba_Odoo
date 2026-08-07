@@ -46,8 +46,10 @@ creará automáticamente el contacto (`res.partner`) y la conversación
 
 ## Interfaz de chat
 
-El formulario de cada conversación (`Chatroom > Conversaciones`) usa un
-widget de chat propio (`static/src/chatroom_thread/`), no una lista plana:
+Tanto el formulario de cada conversación (`Chatroom > Vista clásica`) como
+la app de una sola pantalla (`Chatroom > Chatroom`, ver más abajo) usan el
+mismo widget de chat propio (`static/src/chatroom_thread/`), no una lista
+plana:
 
 - Burbujas de mensaje diferenciadas por dirección, con hora y ticks de
   estado (enviado / entregado / leído / fallido).
