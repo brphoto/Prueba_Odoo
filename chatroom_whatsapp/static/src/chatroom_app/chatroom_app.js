@@ -5,6 +5,7 @@ import { useService } from "@web/core/utils/hooks";
 import { user } from "@web/core/user";
 import { Component, useState, onWillStart, onMounted, onWillUnmount } from "@odoo/owl";
 import { ChatroomThreadCore } from "../chatroom_thread/chatroom_thread_core";
+import { NewConversationDialog } from "./new_conversation_dialog";
 
 const GLOBAL_BUS_CHANNEL = "chatroom_whatsapp_global";
 const PINNED_NUMBER_STORAGE_KEY = "chatroom_whatsapp.pinned_number_id";
@@ -54,6 +55,8 @@ export class ChatroomApp extends Component {
     setup() {
         this.orm = useService("orm");
         this.busService = useService("bus_service");
+        this.dialogService = useService("dialog");
+        this.action = useService("action");
 
         this.state = useState({
             loading: true,
@@ -167,6 +170,34 @@ export class ChatroomApp extends Component {
 
     selectChannel(channelId) {
         this.state.selectedChannelId = channelId;
+    }
+
+    // ------------------------------------------------------------------
+    // Herramientas del panel lateral
+    // ------------------------------------------------------------------
+    openNewConversation() {
+        this.dialogService.add(NewConversationDialog, {
+            onCreated: (channelId) => {
+                this._loadChannels();
+                this.selectChannel(channelId);
+            },
+        });
+    }
+
+    openTemplates() {
+        this.action.doAction("chatroom_whatsapp.action_chatroom_template");
+    }
+
+    openNumbers() {
+        this.action.doAction("chatroom_whatsapp.action_chatroom_whatsapp_number");
+    }
+
+    openCannedResponses() {
+        this.action.doAction("chatroom_whatsapp.action_chatroom_canned_response");
+    }
+
+    openDashboard() {
+        this.action.doAction("chatroom_whatsapp.action_chatroom_dashboard");
     }
 
     backToList() {

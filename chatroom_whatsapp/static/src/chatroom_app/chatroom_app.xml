@@ -6,16 +6,36 @@
             <div class="o_chatroom_app_sidebar">
                 <div class="o_chatroom_app_sidebar_header">
                     <h4><i class="fa fa-whatsapp"/> Chatroom</h4>
-                    <select t-if="state.numbers.length" class="form-select form-select-sm o_chatroom_number_select"
-                            t-on-change="(ev) => this.setNumberFilter(ev.target.value)">
-                        <option value="all" t-att-selected="state.numberFilter === 'all'">Todas las líneas</option>
-                        <option value="mine" t-att-selected="state.numberFilter === 'mine'">Mi línea</option>
-                        <t t-foreach="state.numbers" t-as="number" t-key="number.id">
-                            <option t-att-value="number.id" t-att-selected="state.numberFilter == number.id">
-                                <t t-esc="number.name"/>
-                            </option>
-                        </t>
-                    </select>
+                    <div class="o_chatroom_app_header_actions">
+                        <select t-if="state.numbers.length" class="form-select form-select-sm o_chatroom_number_select"
+                                t-on-change="(ev) => this.setNumberFilter(ev.target.value)">
+                            <option value="all" t-att-selected="state.numberFilter === 'all'">Todas las líneas</option>
+                            <option value="mine" t-att-selected="state.numberFilter === 'mine'">Mi línea</option>
+                            <t t-foreach="state.numbers" t-as="number" t-key="number.id">
+                                <option t-att-value="number.id" t-att-selected="state.numberFilter == number.id">
+                                    <t t-esc="number.name"/>
+                                </option>
+                            </t>
+                        </select>
+                        <button class="btn btn-sm btn-light o_chatroom_new_conv_btn" title="Nueva conversación"
+                                t-on-click="openNewConversation">
+                            <i class="fa fa-plus"/>
+                        </button>
+                    </div>
+                </div>
+                <div class="o_chatroom_app_toolbar">
+                    <button class="btn btn-link" title="Dashboard" t-on-click="openDashboard">
+                        <i class="fa fa-bar-chart"/> Dashboard
+                    </button>
+                    <button class="btn btn-link" title="Plantillas de WhatsApp" t-on-click="openTemplates">
+                        <i class="fa fa-file-text-o"/> Plantillas
+                    </button>
+                    <button class="btn btn-link" title="Respuestas rápidas" t-on-click="openCannedResponses">
+                        <i class="fa fa-bolt"/> Respuestas
+                    </button>
+                    <button class="btn btn-link" title="Líneas de WhatsApp" t-on-click="openNumbers">
+                        <i class="fa fa-sitemap"/> Líneas
+                    </button>
                 </div>
                 <div class="o_chatroom_app_search">
                     <i class="fa fa-search"/>

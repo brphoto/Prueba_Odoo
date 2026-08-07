@@ -7,4 +7,5 @@ from . import chatroom_channel
 from . import chatroom_message
 from . import chatroom_template
 from . import chatroom_send_template_wizard
+from . import chatroom_new_conversation_wizard
 from . import chatroom_canned_response

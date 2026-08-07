@@ -1,0 +1,53 @@
+.o_chatroom_new_conv {
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 4px;
+    }
+}
+
+.o_chatroom_new_conv_search {
+    position: relative;
+}
+
+.o_chatroom_new_conv_results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    background-color: var(--o-view-background-color, #fff);
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.o_chatroom_new_conv_result {
+    padding: 8px 12px;
+    cursor: pointer;
+
+    &:hover {
+        background-color: #f5f6f6;
+    }
+}
+
+.o_chatroom_new_conv_selected {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background-color: #f0f2f5;
+    width: fit-content;
+
+    .fa-times {
+        cursor: pointer;
+        opacity: 0.6;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+}

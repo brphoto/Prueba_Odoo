@@ -49,6 +49,48 @@
     }
 }
 
+.o_chatroom_app_header_actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.o_chatroom_new_conv_btn {
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    flex: 0 0 auto;
+}
+
+.o_chatroom_app_toolbar {
+    display: flex;
+    justify-content: space-around;
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+
+    .btn {
+        font-size: 0.75em;
+        padding: 4px 6px;
+        white-space: nowrap;
+        text-decoration: none;
+        color: #667781;
+
+        &:hover {
+            color: var(--o-brand-primary, #714B67);
+        }
+
+        i {
+            display: block;
+            font-size: 1.1em;
+            margin-bottom: 2px;
+        }
+    }
+}
+
 .o_chatroom_app_search {
     position: relative;
     padding: 8px 14px;

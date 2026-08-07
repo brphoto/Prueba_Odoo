@@ -97,6 +97,38 @@ La vista clásica (kanban/lista/formulario) sigue disponible en
 varios campos a la vez, cosas que una app de una sola pantalla no cubre
 bien.
 
+Arriba de la lista de conversaciones hay una barra de herramientas con
+accesos directos a **Dashboard**, **Plantillas**, **Respuestas rápidas** y
+**Líneas** sin salir de la app (se abren como pantallas/diálogos aparte,
+la conversación que tenías abierta sigue ahí cuando volvés).
+
+## Iniciar una conversación nosotros (seguimiento, encuestas, avisos)
+
+Hasta acá, las conversaciones solo se creaban cuando el cliente escribía
+primero. El botón **+** junto al selector de línea (o **Chatroom > Nueva
+conversación** en el menú, para la vista clásica) abre un diálogo para:
+
+- Buscar un contacto existente (por nombre) y elegirlo, con su teléfono
+  precargado (editable, por si querés escribirle a otro número suyo), o
+- **Crear un contacto nuevo al vuelo** con nombre + número, sin salir del
+  diálogo.
+- Elegir la línea de WhatsApp por la que se envía, si tenés más de una.
+
+Al confirmar, se reutiliza el mismo canal si el contacto ya tenía una
+conversación (no se duplica), o se crea uno nuevo asignado a quien lo
+inició. Como es una conversación que **iniciamos nosotros**, casi siempre
+va a estar fuera de la ventana de 24h (`is_session_open` en `False`,
+ningún mensaje entrante todavía) — la propia interfaz de chat va a pedir
+una plantilla aprobada para el primer mensaje, igual que exige Meta para
+cualquier conversación iniciada por el negocio. Es el mecanismo correcto
+para seguimientos, encuestas o avisos: una plantilla de categoría
+*Utilidad* o *Marketing* aprobada por Meta, no texto libre.
+
+> Esto es para contactar **de a un contacto por vez**. Un envío masivo a
+> una lista (campaña) necesitaría manejo de listas de opt-in, límites de
+> envío de Meta y una cola de trabajos — queda fuera del alcance de esta
+> iteración.
+
 ## Flujo comercial y panel de accesos rápidos
 
 Desde cada conversación un agente puede:
@@ -381,13 +413,16 @@ Pensado para tráfico real, no solo para la demo:
 - El modo oscuro tiene el CSS listo pero no se pudo verificar
   visualmente (requiere Odoo Enterprise, no disponible en este entorno
   de pruebas).
-- **App de una sola pantalla, múltiples líneas y Dashboard son nuevos en
-  esta iteración**: se validó sintaxis (Python, XML, manifest, existencia
-  de cada archivo de assets referenciado) y se revisó `_read_group`/hooks
-  de OWL contra el código fuente real de Odoo 19, pero **no se probaron
-  todavía en un navegador contra un Odoo corriendo** — a diferencia del
-  resto del módulo (ver "Validado contra un Odoo 19 real" arriba), así
-  que conviene probarlos primero en una base de pruebas.
+- **App de una sola pantalla, múltiples líneas y Dashboard**: se validó
+  sintaxis (Python, XML, manifest, existencia de cada archivo de assets
+  referenciado), se revisó `_read_group`/hooks de OWL contra el código
+  fuente real de Odoo 19, y el usuario confirmó que la app carga y
+  navega correctamente contra un Odoo real corriendo.
+- **Iniciar conversación (diálogo "+" / Nueva conversación) es nuevo en
+  esta iteración**: mismo nivel de validación por sintaxis que lo
+  anterior en su momento, pero **todavía no se probó en navegador** —
+  conviene abrir el diálogo, buscar/crear un contacto y confirmar que
+  el canal se crea (o reutiliza) bien antes de darlo por bueno.
 - La deduplicación de contactos por teléfono compara en Python sobre
   los contactos con `phone` cargado (no hay forma limpia de comparar
   "solo dígitos" a nivel SQL sin una extensión de PostgreSQL); en bases

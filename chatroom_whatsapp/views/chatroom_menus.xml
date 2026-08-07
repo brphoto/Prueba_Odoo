@@ -23,6 +23,10 @@
               parent="menu_chatroom_root" action="action_chatroom_dashboard"
               sequence="7"/>
 
+    <menuitem id="menu_chatroom_new_conversation" name="Nueva conversación"
+              parent="menu_chatroom_root" action="action_chatroom_new_conversation_wizard"
+              sequence="9"/>
+
     <menuitem id="menu_chatroom_conversations" name="Vista clásica"
               parent="menu_chatroom_root" action="action_chatroom_channel"
               sequence="10"/>

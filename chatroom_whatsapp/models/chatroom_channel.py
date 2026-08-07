@@ -3,6 +3,7 @@ import base64
 import json
 import logging
 import mimetypes
+import re
 
 import requests
 
@@ -229,6 +230,53 @@ class ChatroomChannel(models.Model):
             'whatsapp_number_id': whatsapp_number.id if whatsapp_number else False,
             'assigned_user_id': assignee.id,
         })
+
+    @api.model
+    def action_start_conversation(self, partner_id, phone=False, whatsapp_number_id=False):
+        """Inicia una conversación **por nosotros** (seguimiento, encuesta,
+        aviso...), en vez de esperar a que el cliente escriba primero.
+
+        Encuentra o crea el canal de WhatsApp del contacto y lo asigna al
+        agente actual. No envía nada: como es una conversación nueva, casi
+        siempre va a estar fuera de la ventana de 24h (`is_session_open`
+        en False), así que la propia interfaz de chat va a pedir usar una
+        plantilla para el primer mensaje — igual que WhatsApp exige.
+
+        :param phone: si no se pasa, se usa el `phone` del contacto.
+        :return: id del canal (nuevo o ya existente para ese contacto).
+        """
+        partner = self.env['res.partner'].browse(partner_id)
+        if not partner.exists():
+            raise UserError(_("El contacto ya no existe."))
+
+        digits = re.sub(r'\D', '', phone or partner.phone or '')
+        if len(digits) < 8:
+            raise UserError(_(
+                "Necesito un número de WhatsApp válido (con código de "
+                "país) para %s.") % partner.name)
+
+        if not partner.whatsapp_id:
+            partner.whatsapp_id = digits
+
+        channel = self.search([
+            ('channel_type', '=', 'whatsapp'),
+            ('external_id', '=', digits),
+        ], limit=1)
+        if channel:
+            if not channel.partner_id:
+                channel.partner_id = partner.id
+            return channel.id
+
+        whatsapp_number = self.env['chatroom.whatsapp.number'].browse(whatsapp_number_id) \
+            if whatsapp_number_id else self.env['chatroom.whatsapp.number']
+        channel = self.create({
+            'channel_type': 'whatsapp',
+            'external_id': digits,
+            'partner_id': partner.id,
+            'whatsapp_number_id': whatsapp_number.id if whatsapp_number else False,
+            'assigned_user_id': self.env.user.id,
+        })
+        return channel.id
 
     @api.model
     def _get_next_assignee(self, agents=None):
