@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+import logging
+
+import requests
+
+from odoo import _, fields, models
+from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class ResConfigSettings(models.TransientModel):
-    _inherit = 'res.config.settings'
+    _inherit = ['res.config.settings', 'chatroom.meta.mixin']
 
     # -- Meta / WhatsApp Business Cloud API (conexión directa, sin BSP) --
     whatsapp_graph_api_version = fields.Char(
@@ -39,6 +46,11 @@ class ResConfigSettings(models.TransientModel):
              "que la petición viene realmente de Meta.")
     whatsapp_webhook_url = fields.Char(
         string="Webhook URL", compute='_compute_whatsapp_webhook_url')
+    whatsapp_last_webhook_display = fields.Char(
+        string="Último webhook recibido", compute='_compute_whatsapp_last_webhook_display',
+        help="Última vez que Meta nos mandó un evento (mensaje o cambio de "
+             "estado), de cualquier línea. Si nunca llegó ninguno, revisá "
+             "que la URL del Webhook esté bien registrada en Meta.")
     chatroom_auto_assign = fields.Boolean(
         string="Asignación automática de conversaciones",
         config_parameter='chatroom_whatsapp.auto_assign', default=True,
@@ -109,3 +121,48 @@ class ResConfigSettings(models.TransientModel):
             'web.base.url', default='')
         for rec in self:
             rec.whatsapp_webhook_url = f"{base_url}/chatroom_whatsapp/webhook"
+
+    def _compute_whatsapp_last_webhook_display(self):
+        raw = self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_whatsapp.last_webhook_at')
+        last = fields.Datetime.to_datetime(raw) if raw else False
+        for rec in self:
+            rec.whatsapp_last_webhook_display = self._format_relative_time(last)
+
+    def action_test_whatsapp_connection(self):
+        """Valida el token y el Phone Number ID contra la Graph API real,
+        sin enviar ningún mensaje (solo lee los datos públicos del
+        número). Así se descubre un token vencido o mal copiado antes de
+        intentar mandarle algo a un cliente de verdad."""
+        self.ensure_one()
+        token, phone_number_id, api_version = self._get_meta_credentials()
+        url = f"https://graph.facebook.com/{api_version}/{phone_number_id}"
+        try:
+            response = self._meta_request(
+                'GET', url,
+                params={'fields': 'display_phone_number,verified_name,quality_rating'},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=15, max_retries=0,
+            )
+            data = response.json()
+            if response.status_code >= 400:
+                error = data.get('error', {}).get('message', str(data))
+                raise UserError(_("Meta respondió con un error: %s") % error)
+        except requests.RequestException as exc:
+            _logger.error("Error probando la conexión con Meta: %s", exc)
+            raise UserError(_("No se pudo conectar con Meta: %s") % exc)
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _("Conexión OK"),
+                'message': _("Número verificado: %(name)s (%(phone)s). Calidad: %(quality)s.") % {
+                    'name': data.get('verified_name') or '?',
+                    'phone': data.get('display_phone_number') or phone_number_id,
+                    'quality': data.get('quality_rating') or '?',
+                },
+                'type': 'success',
+                'sticky': False,
+            },
+        }

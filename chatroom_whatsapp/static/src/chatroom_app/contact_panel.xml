@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="chatroom_whatsapp.ContactPanel">
+        <div class="o_chatroom_contact_panel">
+            <t t-if="state.loading">
+                <div class="o_chatroom_loading"><i class="fa fa-spin fa-circle-o-notch"/></div>
+            </t>
+            <t t-elif="!state.data or !state.data.has_partner">
+                <div class="o_chatroom_empty text-muted p-3">
+                    Esta conversación no tiene un contacto asociado.
+                </div>
+            </t>
+            <t t-else="">
+                <div class="o_chatroom_contact_header" t-on-click="openPartner">
+                    <img class="o_chatroom_contact_avatar"
+                         t-att-src="'/web/image/res.partner/' + state.data.partner_id + '/avatar_128'" alt=""/>
+                    <div class="o_chatroom_contact_name" t-esc="state.data.name"/>
+                    <div class="o_chatroom_contact_sub text-muted" t-if="state.data.company_name" t-esc="state.data.company_name"/>
+                    <div class="o_chatroom_contact_sub text-muted" t-if="state.data.city or state.data.country_name"
+                         t-esc="[state.data.city, state.data.country_name].filter((v) =&gt; v).join(', ')"/>
+                </div>
+
+                <div class="o_chatroom_contact_info">
+                    <div class="o_chatroom_contact_info_row" t-if="state.data.phone">
+                        <i class="fa fa-phone"/> <span t-esc="state.data.phone"/>
+                    </div>
+                    <div class="o_chatroom_contact_info_row" t-if="state.data.email">
+                        <i class="fa fa-envelope-o"/> <span t-esc="state.data.email"/>
+                    </div>
+                </div>
+
+                <div class="o_chatroom_contact_stats">
+                    <div class="o_chatroom_contact_stat" t-if="state.data.crm_installed" t-on-click="openLeads">
+                        <i class="fa fa-star"/>
+                        <div class="o_chatroom_contact_stat_value" t-esc="state.data.lead_count"/>
+                        <div class="o_chatroom_contact_stat_label">Oport.</div>
+                    </div>
+                    <div class="o_chatroom_contact_stat" t-if="state.data.sale_installed" t-on-click="openSaleOrders">
+                        <i class="fa fa-file-text-o"/>
+                        <div class="o_chatroom_contact_stat_value" t-esc="state.data.sale_order_count"/>
+                        <div class="o_chatroom_contact_stat_label">Ventas</div>
+                    </div>
+                    <div class="o_chatroom_contact_stat" t-if="state.data.purchase_installed" t-on-click="openPurchases">
+                        <i class="fa fa-shopping-cart"/>
+                        <div class="o_chatroom_contact_stat_value" t-esc="state.data.purchase_order_count"/>
+                        <div class="o_chatroom_contact_stat_label">Compras</div>
+                    </div>
+                    <div class="o_chatroom_contact_stat" t-if="state.data.account_installed" t-on-click="openInvoices">
+                        <i class="fa fa-usd"/>
+                        <div class="o_chatroom_contact_stat_value" t-esc="state.data.invoice_count"/>
+                        <div class="o_chatroom_contact_stat_label">Facturas</div>
+                    </div>
+                    <div class="o_chatroom_contact_stat" t-if="state.data.project_installed" t-on-click="openTasks">
+                        <i class="fa fa-tasks"/>
+                        <div class="o_chatroom_contact_stat_value" t-esc="state.data.task_count"/>
+                        <div class="o_chatroom_contact_stat_label">Tareas</div>
+                    </div>
+                </div>
+
+                <div class="o_chatroom_contact_actions">
+                    <button t-if="state.data.crm_installed" class="btn btn-sm btn-light" t-on-click="createLead">
+                        <i class="fa fa-plus"/> Oportunidad
+                    </button>
+                    <button t-if="state.data.sale_installed" class="btn btn-sm btn-light" t-on-click="createQuotation">
+                        <i class="fa fa-plus"/> Presupuesto
+                    </button>
+                    <button t-if="state.data.project_installed" class="btn btn-sm btn-light" t-on-click="createTask">
+                        <i class="fa fa-plus"/> Tarea
+                    </button>
+                </div>
+
+                <div class="o_chatroom_contact_docs" t-if="state.data.sale_installed and state.data.recent_orders.length">
+                    <h6>Presupuestos recientes</h6>
+                    <t t-foreach="state.data.recent_orders" t-as="order" t-key="order.id">
+                        <div class="o_chatroom_contact_doc_row">
+                            <span class="o_chatroom_contact_doc_name text-truncate" t-esc="order.name"/>
+                            <span class="o_chatroom_contact_doc_amount"
+                                  t-esc="formatMoney(order.amount_total, order.currency_symbol)"/>
+                            <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
+                                    t-att-disabled="state.sendingDocKey"
+                                    title="Enviar PDF por WhatsApp"
+                                    t-on-click="() => this.sendOrderPdf(order)">
+                                <i t-if="state.sendingDocKey === 'order-' + order.id" class="fa fa-spin fa-circle-o-notch"/>
+                                <i t-else="" class="fa fa-paper-plane"/>
+                            </button>
+                        </div>
+                    </t>
+                </div>
+
+                <div class="o_chatroom_contact_docs" t-if="state.data.account_installed and state.data.recent_invoices.length">
+                    <h6>Facturas recientes</h6>
+                    <t t-foreach="state.data.recent_invoices" t-as="invoice" t-key="invoice.id">
+                        <div class="o_chatroom_contact_doc_row">
+                            <span class="o_chatroom_contact_doc_name text-truncate" t-esc="invoice.name"/>
+                            <span class="o_chatroom_contact_doc_amount"
+                                  t-esc="formatMoney(invoice.amount_total, invoice.currency_symbol)"/>
+                            <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
+                                    t-att-disabled="state.sendingDocKey"
+                                    title="Enviar PDF por WhatsApp"
+                                    t-on-click="() => this.sendInvoicePdf(invoice)">
+                                <i t-if="state.sendingDocKey === 'invoice-' + invoice.id" class="fa fa-spin fa-circle-o-notch"/>
+                                <i t-else="" class="fa fa-paper-plane"/>
+                            </button>
+                        </div>
+                    </t>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>

@@ -254,6 +254,54 @@ respuesta). Todo se calcula en el servidor con `read_group`
 navegador — no es un pivot/gráfico genérico, son consultas agregadas
 puntuales.
 
+## Panel de contacto (CRM, Ventas, Compras, Facturas, Tareas)
+
+En la app de una sola pantalla, el ícono de tarjeta de contacto (arriba a
+la derecha del chat, cuando hay una conversación abierta) muestra/oculta
+un panel lateral con:
+
+- Foto, nombre, empresa, ciudad, teléfono y email del contacto —
+  clic en el encabezado abre su ficha completa.
+- Contadores clicables de Oportunidades, Ventas, Compras, Facturas y
+  Tareas (cada uno se oculta solo si el módulo correspondiente no está
+  instalado, igual que los stat buttons de la ficha clásica).
+- Botones para crear una Oportunidad, un Presupuesto o una Tarea sin
+  salir del contexto de la conversación.
+- **Últimos presupuestos y facturas del contacto, con un botón para
+  mandar el PDF directo por la misma conversación de WhatsApp** (botón
+  de avión de papel junto a cada uno): genera el reporte con el motor de
+  reportes de Odoo (`ir.actions.report._render_qweb_pdf`) y lo envía
+  como adjunto, reusando el mismo mecanismo de envío de archivos de
+  siempre — respeta la ventana de 24h, el opt-out, etc.
+
+Todo se resuelve en una sola llamada (`chatroom.channel.
+get_contact_panel_data`) para que abrir el panel no dispare media
+docena de peticiones.
+
+## Probar conexión y salud del webhook
+
+- **Ajustes > Chatroom WhatsApp > Probar conexión**: valida el token y
+  el Phone Number ID contra la Graph API real (pide el nombre verificado
+  y la calidad del número) **sin enviar ningún mensaje**. Cada línea de
+  `Chatroom > Configuración > Líneas de WhatsApp` tiene el mismo botón
+  con sus propias credenciales.
+- **Ajustes** y el **Dashboard** muestran "Último webhook recibido"
+  (hace cuánto llegó el último evento de Meta, de cualquier tipo). Si
+  dice "Nunca", la URL del webhook no está bien registrada en Meta o
+  el servidor no es alcanzable desde internet — antes de sospechar del
+  resto de la configuración, hay que resolver eso primero.
+
+## Notificaciones de escritorio y sonido
+
+Con el permiso del navegador otorgado (se pide solo, la primera vez que
+cargás Odoo con el módulo instalado), cuando llega un mensaje nuevo de
+un cliente a **tu** conversación asignada (o a una sin asignar) sonás un
+aviso corto (generado con Web Audio, sin archivo de sonido de por medio)
+y aparece una notificación del sistema operativo con el nombre del
+contacto y el texto, aunque tengas Odoo en otra pestaña. Un clic en la
+notificación te lleva directo al Chatroom. No suena para conversaciones
+asignadas a otro agente.
+
 ## Botones de respuesta rápida (WhatsApp Interactive Messages)
 
 El ícono de lista en el composer del chat abre un panel para definir
@@ -418,11 +466,14 @@ Pensado para tráfico real, no solo para la demo:
   referenciado), se revisó `_read_group`/hooks de OWL contra el código
   fuente real de Odoo 19, y el usuario confirmó que la app carga y
   navega correctamente contra un Odoo real corriendo.
-- **Iniciar conversación (diálogo "+" / Nueva conversación) es nuevo en
-  esta iteración**: mismo nivel de validación por sintaxis que lo
-  anterior en su momento, pero **todavía no se probó en navegador** —
-  conviene abrir el diálogo, buscar/crear un contacto y confirmar que
-  el canal se crea (o reutiliza) bien antes de darlo por bueno.
+- **Iniciar conversación (diálogo "+" / Nueva conversación), panel de
+  contacto, envío de PDF por WhatsApp, probar conexión, salud del
+  webhook y notificaciones de escritorio son nuevos en esta
+  iteración**: mismo nivel de validación por sintaxis + revisión contra
+  el código fuente real de Odoo 19 (reportes PDF, `Notification` API,
+  etc.), pero **todavía no se probaron en navegador** — conviene abrir
+  el panel de contacto con un contacto que tenga ventas/facturas reales
+  y mandar un PDF de prueba antes de usarlo con un cliente.
 - La deduplicación de contactos por teléfono compara en Python sobre
   los contactos con `phone` cargado (no hay forma limpia de comparar
   "solo dígitos" a nivel SQL sin una extensión de PostgreSQL); en bases

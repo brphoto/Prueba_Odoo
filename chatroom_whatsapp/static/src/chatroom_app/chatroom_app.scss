@@ -222,11 +222,11 @@
     flex-direction: column;
 }
 
-.o_chatroom_app_back_btn {
+.o_chatroom_app_back_btn,
+.o_chatroom_app_panel_toggle {
     display: none;
     position: absolute;
     top: 10px;
-    left: 10px;
     z-index: 5;
     width: 32px;
     height: 32px;
@@ -236,6 +236,21 @@
     color: #fff;
 }
 
+.o_chatroom_app_back_btn {
+    left: 10px;
+}
+
+.o_chatroom_app_panel_toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    right: 10px;
+
+    &.o_active {
+        background-color: rgba(255, 255, 255, 0.5);
+    }
+}
+
 @media (max-width: 768px) {
     .o_chatroom_app_sidebar {
         width: 100%;
@@ -243,6 +258,10 @@
     }
 
     .o_chatroom_app_main {
+        display: none;
+    }
+
+    .o_chatroom_contact_panel {
         display: none;
     }
 
@@ -260,5 +279,18 @@
             align-items: center;
             justify-content: center;
         }
+    }
+}
+
+@media (max-width: 1100px) {
+    // En pantallas medianas, el panel de contacto se prioriza abierto a
+    // pedido (botón) en vez de ocupar espacio siempre por default.
+    .o_chatroom_contact_panel {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 4;
+        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
     }
 }

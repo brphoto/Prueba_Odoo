@@ -4,6 +4,7 @@ import json
 import logging
 import mimetypes
 import re
+from datetime import timedelta
 
 import requests
 
@@ -82,10 +83,12 @@ class ChatroomChannel(models.Model):
     pinned_lead_name = fields.Char(compute='_compute_related_counts')
     crm_installed = fields.Boolean(compute='_compute_related_counts')
     sale_installed = fields.Boolean(compute='_compute_related_counts')
+    purchase_installed = fields.Boolean(compute='_compute_related_counts')
     account_installed = fields.Boolean(compute='_compute_related_counts')
     project_installed = fields.Boolean(compute='_compute_related_counts')
     lead_count = fields.Integer(compute='_compute_related_counts')
     sale_order_count = fields.Integer(compute='_compute_related_counts')
+    purchase_order_count = fields.Integer(compute='_compute_related_counts')
     invoice_count = fields.Integer(compute='_compute_related_counts')
     task_count = fields.Integer(compute='_compute_related_counts')
 
@@ -125,6 +128,7 @@ class ChatroomChannel(models.Model):
     def _compute_related_counts(self):
         crm_installed = 'crm.lead' in self.env
         sale_installed = 'sale.order' in self.env
+        purchase_installed = 'purchase.order' in self.env
         account_installed = 'account.move' in self.env
         project_installed = 'project.task' in self.env
         pinned_leads = {}
@@ -138,6 +142,7 @@ class ChatroomChannel(models.Model):
         for rec in self:
             rec.crm_installed = crm_installed
             rec.sale_installed = sale_installed
+            rec.purchase_installed = purchase_installed
             rec.account_installed = account_installed
             rec.project_installed = project_installed
             rec.pinned_lead_name = pinned_leads.get(rec.pinned_lead_id, False)
@@ -148,6 +153,9 @@ class ChatroomChannel(models.Model):
             rec.sale_order_count = (
                 self.env['sale.order'].search_count([('partner_id', '=', partner.id)])
                 if sale_installed and partner else 0)
+            rec.purchase_order_count = (
+                self.env['purchase.order'].search_count([('partner_id', '=', partner.id)])
+                if purchase_installed and partner else 0)
             rec.invoice_count = (
                 self.env['account.move'].search_count([
                     ('partner_id', '=', partner.id),
@@ -702,6 +710,20 @@ class ChatroomChannel(models.Model):
                 'chatroom_whatsapp_global', 'chatroom.message/new',
                 {'channel_id': rec.id})
 
+    def _notify_new_inbound_message(self, message):
+        """Evento aparte (más liviano de escuchar) para la notificación de
+        escritorio/sonido del ícono de la barra superior: solo se manda
+        cuando llega un mensaje nuevo del cliente, no en cada refresco
+        general (enviar, marcar leído, etc.)."""
+        self.ensure_one()
+        self.env['bus.bus']._sendone(
+            'chatroom_whatsapp_global', 'chatroom.message/inbound', {
+                'channel_id': self.id,
+                'assigned_user_id': self.assigned_user_id.id or False,
+                'partner_name': self.partner_id.name or self.external_id,
+                'preview': (message.body or '')[:120],
+            })
+
     def action_mark_read(self):
         """Marca como leídos los mensajes entrantes pendientes y le avisa
         a Meta (check azul del lado del cliente). Se llama al abrir la
@@ -768,7 +790,14 @@ class ChatroomChannel(models.Model):
             ['assigned_user_id'], ['first_response_minutes:avg'],
             order='first_response_minutes:avg asc', limit=agent_limit)
 
+        raw_last_webhook = self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_whatsapp.last_webhook_at')
+        last_webhook = fields.Datetime.to_datetime(raw_last_webhook) if raw_last_webhook else False
+
         return {
+            'last_webhook_display': self._format_relative_time(last_webhook),
+            'last_webhook_ok': bool(
+                last_webhook and fields.Datetime.now() - last_webhook < timedelta(hours=24)),
             'pending_count': pending_count,
             'today_count': today_count,
             'messages_today': messages_today,
@@ -1022,6 +1051,106 @@ class ChatroomChannel(models.Model):
             ],
             'context': {'default_partner_id': self.partner_id.id, 'default_move_type': 'out_invoice'},
         }
+
+    def action_view_purchases(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Compras"),
+            'res_model': 'purchase.order',
+            'view_mode': 'list,form',
+            'domain': [('partner_id', '=', self.partner_id.id)],
+            'context': {'default_partner_id': self.partner_id.id},
+        }
+
+    # ------------------------------------------------------------------
+    # Panel de contacto: datos + accesos rápidos a CRM/Ventas/Compras/
+    # Facturas/Tareas + enviar un presupuesto o factura por WhatsApp.
+    # ------------------------------------------------------------------
+    def get_contact_panel_data(self):
+        """Todo lo que necesita el panel lateral de la app para mostrar
+        el contacto y sus últimos documentos, en una sola llamada."""
+        self.ensure_one()
+        partner = self.partner_id
+        recent_orders = []
+        recent_invoices = []
+        if self.sale_installed and partner:
+            orders = self.env['sale.order'].search(
+                [('partner_id', '=', partner.id)], order='create_date desc', limit=5)
+            recent_orders = [{
+                'id': o.id,
+                'name': o.name,
+                'amount_total': o.amount_total,
+                'state': o.state,
+                'currency_symbol': o.currency_id.symbol,
+            } for o in orders]
+        if self.account_installed and partner:
+            invoices = self.env['account.move'].search([
+                ('partner_id', '=', partner.id),
+                ('move_type', 'in', ('out_invoice', 'out_refund')),
+            ], order='create_date desc', limit=5)
+            recent_invoices = [{
+                'id': i.id,
+                'name': i.name or _("Borrador"),
+                'amount_total': i.amount_total,
+                'payment_state': i.payment_state,
+                'state': i.state,
+                'currency_symbol': i.currency_id.symbol,
+            } for i in invoices]
+
+        return {
+            'has_partner': bool(partner),
+            'partner_id': partner.id,
+            'name': partner.name or '',
+            'phone': partner.phone or '',
+            'email': partner.email or '',
+            'company_name': partner.commercial_company_name or '',
+            'city': partner.city or '',
+            'country_name': partner.country_id.name or '',
+            'crm_installed': self.crm_installed,
+            'lead_count': self.lead_count,
+            'sale_installed': self.sale_installed,
+            'sale_order_count': self.sale_order_count,
+            'purchase_installed': self.purchase_installed,
+            'purchase_order_count': self.purchase_order_count,
+            'account_installed': self.account_installed,
+            'invoice_count': self.invoice_count,
+            'project_installed': self.project_installed,
+            'task_count': self.task_count,
+            'recent_orders': recent_orders,
+            'recent_invoices': recent_invoices,
+        }
+
+    def _send_report_as_message(self, report_xmlid, res_id, filename):
+        """Genera el PDF de un reporte estándar de Odoo (presupuesto,
+        factura...) y lo manda como adjunto por la misma conversación,
+        reusando el envío de adjuntos que ya existe (respeta ventana de
+        24h, opt-out, etc. porque pasa por action_send_message)."""
+        self.ensure_one()
+        pdf_content, _report_type = self.env['ir.actions.report']._render_qweb_pdf(
+            report_xmlid, [res_id])
+        self.action_send_message(attachments=[{
+            'name': filename,
+            'mimetype': 'application/pdf',
+            'data': base64.b64encode(pdf_content).decode(),
+        }])
+        return True
+
+    def action_send_sale_order_pdf(self, order_id):
+        self.ensure_one()
+        if not self.sale_installed:
+            raise UserError(_("El módulo Ventas no está instalado."))
+        order = self.env['sale.order'].browse(order_id)
+        return self._send_report_as_message(
+            'sale.action_report_saleorder', order.id, f"{order.name}.pdf")
+
+    def action_send_invoice_pdf(self, invoice_id):
+        self.ensure_one()
+        if not self.account_installed:
+            raise UserError(_("El módulo Contabilidad no está instalado."))
+        invoice = self.env['account.move'].browse(invoice_id)
+        return self._send_report_as_message(
+            'account.account_invoices', invoice.id, f"{invoice.name or invoice.id}.pdf")
 
     def action_close(self):
         self.write({'state': 'closed'})

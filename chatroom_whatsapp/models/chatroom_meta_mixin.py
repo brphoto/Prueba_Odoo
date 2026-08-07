@@ -4,7 +4,7 @@ import time
 
 import requests
 
-from odoo import _, models
+from odoo import _, fields, models
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
@@ -45,6 +45,21 @@ class ChatroomMetaMixin(models.AbstractModel):
                 url, attempt + 1, max_retries, wait)
             time.sleep(wait)
             attempt += 1
+
+    @staticmethod
+    def _format_relative_time(dt):
+        """'Hace 5 min' / 'Hace 3 h' / 'Nunca', para indicadores de salud
+        (último webhook recibido, etc.) sin tirar de una librería aparte."""
+        if not dt:
+            return _("Nunca")
+        minutes = int((fields.Datetime.now() - dt).total_seconds() / 60)
+        if minutes < 1:
+            return _("Recién")
+        if minutes < 60:
+            return _("Hace %d min") % minutes
+        if minutes < 60 * 24:
+            return _("Hace %d h") % (minutes // 60)
+        return _("Hace %d días") % (minutes // (60 * 24))
 
     def _get_meta_credentials(self):
         icp = self.env['ir.config_parameter'].sudo()

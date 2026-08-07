@@ -6,12 +6,35 @@
 
 .o_chatroom_dashboard_header {
     margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
 
     h3 {
         margin: 0;
         i {
             color: #25d366;
         }
+    }
+}
+
+.o_chatroom_webhook_health {
+    font-size: 0.85em;
+    padding: 4px 10px;
+    border-radius: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+
+    &.o_ok {
+        color: #0ca30c;
+        background-color: rgba(12, 163, 12, 0.1);
+    }
+
+    &.o_warn {
+        color: #b45309;
+        background-color: rgba(250, 178, 25, 0.15);
     }
 }
 

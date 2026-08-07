@@ -21,6 +21,10 @@
         <field name="model">chatroom.whatsapp.number</field>
         <field name="arch" type="xml">
             <form string="Línea de WhatsApp">
+                <header>
+                    <button name="action_test_connection" type="object"
+                            string="Probar conexión" class="btn-secondary"/>
+                </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_channels" type="object" class="oe_stat_button"

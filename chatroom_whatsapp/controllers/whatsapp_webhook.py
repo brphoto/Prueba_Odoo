@@ -46,6 +46,10 @@ class WhatsAppWebhookController(http.Controller):
         payload = request.get_json_data() or {}
         object_type = payload.get('object')
         env = request.env(su=True)
+        # Timestamp de salud: "llegó algo del webhook", más allá de si el
+        # evento en sí se termina procesando o descartando por duplicado.
+        env['ir.config_parameter'].set_param(
+            'chatroom_whatsapp.last_webhook_at', fields.Datetime.now())
 
         for entry in payload.get('entry', []):
             if object_type == 'whatsapp_business_account':
@@ -135,6 +139,7 @@ class WhatsAppWebhookController(http.Controller):
             channel._ai_process_inbound_message(message)
             channel._notify_assigned_agent(message)
             channel._notify_thread_update()
+            channel._notify_new_inbound_message(message)
 
     def _process_messenger_event(self, env, channel_type, event):
         """Mensaje entrante de Messenger o Instagram Direct (mismo Send
@@ -177,6 +182,7 @@ class WhatsAppWebhookController(http.Controller):
         channel._ai_process_inbound_message(message)
         channel._notify_assigned_agent(message)
         channel._notify_thread_update()
+        channel._notify_new_inbound_message(message)
 
     def _process_statuses(self, env, statuses):
         state_map = {

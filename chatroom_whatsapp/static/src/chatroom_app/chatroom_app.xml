@@ -87,11 +87,18 @@
                 <button class="o_chatroom_app_back_btn" t-if="state.selectedChannelId" t-on-click="backToList">
                     <i class="fa fa-arrow-left"/>
                 </button>
+                <button t-if="state.selectedChannelId" title="Datos del contacto"
+                        t-attf-class="o_chatroom_app_panel_toggle {{ state.contactPanelOpen ? 'o_active' : '' }}"
+                        t-on-click="toggleContactPanel">
+                    <i class="fa fa-id-card-o"/>
+                </button>
                 <ChatroomThreadCore
                     channelId="state.selectedChannelId"
                     emptyMessage="'Seleccioná una conversación de la izquierda para empezar.'"
                     onMessagesLoaded="() => this.onThreadMessagesLoaded()"/>
             </div>
+            <ContactPanel t-if="state.selectedChannelId and state.contactPanelOpen"
+                          channelId="state.selectedChannelId"/>
         </div>
     </t>
 

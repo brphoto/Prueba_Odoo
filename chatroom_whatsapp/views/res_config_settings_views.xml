@@ -34,6 +34,15 @@
                                  help="Copia esta URL y el Verify Token en el panel de la App de Meta (WhatsApp &gt; Configuration &gt; Webhook)">
                             <field name="whatsapp_webhook_url" readonly="1"/>
                         </setting>
+                        <setting id="whatsapp_last_webhook_setting"
+                                 help="Última vez que Meta nos mandó un evento. Si dice 'Nunca', revisá que la URL de arriba esté bien registrada en Meta">
+                            <field name="whatsapp_last_webhook_display" readonly="1"/>
+                        </setting>
+                        <setting id="whatsapp_test_connection_setting"
+                                 help="Valida el token y el Phone Number ID contra Meta sin enviar ningún mensaje">
+                            <button name="action_test_whatsapp_connection" type="object"
+                                    string="Probar conexión" class="btn-secondary"/>
+                        </setting>
                         <setting id="chatroom_auto_assign_setting"
                                  help="Reparte las conversaciones nuevas entre los agentes del grupo 'Chatroom / Agente', priorizando al que menos conversaciones abiertas tenga">
                             <field name="chatroom_auto_assign"/>

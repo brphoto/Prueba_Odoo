@@ -6,6 +6,9 @@ import { user } from "@web/core/user";
 import { Component, useState, onWillStart, onMounted, onWillUnmount } from "@odoo/owl";
 import { ChatroomThreadCore } from "../chatroom_thread/chatroom_thread_core";
 import { NewConversationDialog } from "./new_conversation_dialog";
+import { ContactPanel } from "./contact_panel";
+
+const CONTACT_PANEL_STORAGE_KEY = "chatroom_whatsapp.contact_panel_open";
 
 const GLOBAL_BUS_CHANNEL = "chatroom_whatsapp_global";
 const PINNED_NUMBER_STORAGE_KEY = "chatroom_whatsapp.pinned_number_id";
@@ -49,7 +52,7 @@ function isSameDay(a, b) {
  */
 export class ChatroomApp extends Component {
     static template = "chatroom_whatsapp.ChatroomApp";
-    static components = { ChatroomThreadCore };
+    static components = { ChatroomThreadCore, ContactPanel };
     static props = ["*"];
 
     setup() {
@@ -66,6 +69,7 @@ export class ChatroomApp extends Component {
             searchText: "",
             filter: "all",
             numberFilter: this._getStoredNumberFilter(),
+            contactPanelOpen: this._getStoredContactPanelOpen(),
         });
 
         this._onBusNotification = this._onBusNotification.bind(this);
@@ -170,6 +174,24 @@ export class ChatroomApp extends Component {
 
     selectChannel(channelId) {
         this.state.selectedChannelId = channelId;
+    }
+
+    _getStoredContactPanelOpen() {
+        try {
+            return localStorage.getItem(CONTACT_PANEL_STORAGE_KEY) !== "0";
+        } catch {
+            return true;
+        }
+    }
+
+    toggleContactPanel() {
+        this.state.contactPanelOpen = !this.state.contactPanelOpen;
+        try {
+            localStorage.setItem(CONTACT_PANEL_STORAGE_KEY, this.state.contactPanelOpen ? "1" : "0");
+        } catch {
+            // Sin localStorage el toggle sigue funcionando, solo no se
+            // recuerda entre sesiones.
+        }
     }
 
     // ------------------------------------------------------------------
