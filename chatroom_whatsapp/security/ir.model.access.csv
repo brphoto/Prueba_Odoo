@@ -8,3 +8,5 @@ access_chatroom_template_manager,chatroom.template.manager,model_chatroom_templa
 access_chatroom_send_template_wizard_user,chatroom.send.template.wizard.user,model_chatroom_send_template_wizard,group_chatroom_user,1,1,1,1
 access_chatroom_canned_response_user,chatroom.canned.response.user,model_chatroom_canned_response,group_chatroom_user,1,1,1,1
 access_chatroom_canned_response_manager,chatroom.canned.response.manager,model_chatroom_canned_response,group_chatroom_manager,1,1,1,1
+access_chatroom_whatsapp_number_user,chatroom.whatsapp.number.user,model_chatroom_whatsapp_number,group_chatroom_user,1,0,0,0
+access_chatroom_whatsapp_number_manager,chatroom.whatsapp.number.manager,model_chatroom_whatsapp_number,group_chatroom_manager,1,1,1,1

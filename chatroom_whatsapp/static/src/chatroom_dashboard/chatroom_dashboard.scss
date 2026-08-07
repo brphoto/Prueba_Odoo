@@ -1,0 +1,118 @@
+.o_chatroom_dashboard {
+    padding: 20px 24px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.o_chatroom_dashboard_header {
+    margin-bottom: 16px;
+
+    h3 {
+        margin: 0;
+        i {
+            color: #25d366;
+        }
+    }
+}
+
+.o_chatroom_kpi_row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.o_chatroom_kpi_tile {
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 10px;
+    padding: 14px 16px;
+    background-color: var(--o-view-background-color, #fff);
+    cursor: pointer;
+    transition: box-shadow 0.15s ease;
+
+    &:hover {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .o_chatroom_kpi_icon {
+        font-size: 1.1em;
+        color: var(--o-brand-primary, #714B67);
+        margin-bottom: 6px;
+        display: block;
+    }
+
+    .o_chatroom_kpi_value {
+        font-size: 1.8em;
+        font-weight: 600;
+        line-height: 1.1;
+    }
+
+    .o_chatroom_kpi_label {
+        color: #667781;
+        font-size: 0.85em;
+        margin-top: 2px;
+    }
+
+    &.o_chatroom_kpi_warning .o_chatroom_kpi_icon { color: #fab219; }
+    &.o_chatroom_kpi_danger .o_chatroom_kpi_icon { color: #d03b3b; }
+}
+
+.o_chatroom_dashboard_panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.o_chatroom_dashboard_panel {
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 10px;
+    padding: 16px;
+    background-color: var(--o-view-background-color, #fff);
+
+    h5 {
+        margin: 0 0 12px;
+    }
+}
+
+.o_chatroom_rank_row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.o_chatroom_rank_label {
+    flex: 0 0 auto;
+    width: 120px;
+    font-size: 0.85em;
+}
+
+.o_chatroom_rank_bar_track {
+    flex: 1 1 auto;
+    height: 10px;
+    border-radius: 5px;
+    background-color: #f0f2f5;
+    overflow: hidden;
+}
+
+.o_chatroom_rank_bar {
+    height: 100%;
+    border-radius: 5px;
+}
+
+.o_chatroom_rank_bar_primary {
+    background-color: var(--o-brand-primary, #714B67);
+}
+
+.o_chatroom_rank_bar_secondary {
+    background-color: #1baf7a;
+}
+
+.o_chatroom_rank_value {
+    flex: 0 0 auto;
+    width: 64px;
+    text-align: right;
+    font-size: 0.85em;
+    font-variant-numeric: tabular-nums;
+    color: #667781;
+}

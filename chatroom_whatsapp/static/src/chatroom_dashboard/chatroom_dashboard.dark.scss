@@ -1,0 +1,12 @@
+// Overrides para el bundle web.assets_web_dark: la mayoría de las reglas de
+// chatroom_dashboard.scss ya usan variables CSS de Odoo; acá solo van los
+// colores escritos "a mano" (inspirados en la paleta oscura de WhatsApp).
+
+.o_chatroom_kpi_label,
+.o_chatroom_rank_value {
+    color: #8696a0;
+}
+
+.o_chatroom_rank_bar_track {
+    background-color: #202c33;
+}

@@ -1,9 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <menuitem id="menu_chatroom_root" name="Chatroom" sequence="30"/>
+    <record id="action_chatroom_app" model="ir.actions.client">
+        <field name="name">Chatroom</field>
+        <field name="tag">chatroom_whatsapp.chatroom_app</field>
+    </record>
 
-    <menuitem id="menu_chatroom_conversations" name="Conversaciones"
+    <record id="action_chatroom_dashboard" model="ir.actions.client">
+        <field name="name">Dashboard</field>
+        <field name="tag">chatroom_whatsapp.chatroom_dashboard</field>
+    </record>
+
+    <menuitem id="menu_chatroom_root" name="Chatroom" sequence="30"
+              action="action_chatroom_app"
+              web_icon="chatroom_whatsapp,static/description/icon.png"/>
+
+    <menuitem id="menu_chatroom_app" name="Chatroom"
+              parent="menu_chatroom_root" action="action_chatroom_app"
+              sequence="5"/>
+
+    <menuitem id="menu_chatroom_dashboard" name="Dashboard"
+              parent="menu_chatroom_root" action="action_chatroom_dashboard"
+              sequence="7"/>
+
+    <menuitem id="menu_chatroom_conversations" name="Vista clásica"
               parent="menu_chatroom_root" action="action_chatroom_channel"
               sequence="10"/>
 
@@ -30,5 +50,9 @@
     <menuitem id="menu_chatroom_config_templates" name="Plantillas de WhatsApp"
               parent="menu_chatroom_config" sequence="20"
               action="action_chatroom_template"/>
+
+    <menuitem id="menu_chatroom_config_numbers" name="Líneas de WhatsApp"
+              parent="menu_chatroom_config" sequence="15"
+              action="action_chatroom_whatsapp_number"/>
 
 </odoo>

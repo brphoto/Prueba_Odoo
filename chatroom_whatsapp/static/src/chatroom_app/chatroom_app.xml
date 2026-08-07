@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="chatroom_whatsapp.ChatroomApp">
+        <div t-attf-class="o_chatroom_app {{ state.selectedChannelId ? 'o_chatroom_app_chat_open' : '' }}">
+            <div class="o_chatroom_app_sidebar">
+                <div class="o_chatroom_app_sidebar_header">
+                    <h4><i class="fa fa-whatsapp"/> Chatroom</h4>
+                    <select t-if="state.numbers.length" class="form-select form-select-sm o_chatroom_number_select"
+                            t-on-change="(ev) => this.setNumberFilter(ev.target.value)">
+                        <option value="all" t-att-selected="state.numberFilter === 'all'">Todas las líneas</option>
+                        <option value="mine" t-att-selected="state.numberFilter === 'mine'">Mi línea</option>
+                        <t t-foreach="state.numbers" t-as="number" t-key="number.id">
+                            <option t-att-value="number.id" t-att-selected="state.numberFilter == number.id">
+                                <t t-esc="number.name"/>
+                            </option>
+                        </t>
+                    </select>
+                </div>
+                <div class="o_chatroom_app_search">
+                    <i class="fa fa-search"/>
+                    <input type="text" placeholder="Buscar conversación..." t-on-input="onSearchInput"/>
+                </div>
+                <div class="o_chatroom_app_filters">
+                    <button t-attf-class="btn btn-sm {{ state.filter === 'all' ? 'btn-primary' : 'btn-light' }}"
+                            t-on-click="() => this.setFilter('all')">Todas</button>
+                    <button t-attf-class="btn btn-sm {{ state.filter === 'unread' ? 'btn-primary' : 'btn-light' }}"
+                            t-on-click="() => this.setFilter('unread')">No leídas</button>
+                    <button t-attf-class="btn btn-sm {{ state.filter === 'mine' ? 'btn-primary' : 'btn-light' }}"
+                            t-on-click="() => this.setFilter('mine')">Mías</button>
+                </div>
+                <div class="o_chatroom_app_list">
+                    <t t-if="state.loading">
+                        <div class="o_chatroom_loading"><i class="fa fa-spin fa-circle-o-notch"/></div>
+                    </t>
+                    <t t-elif="!state.channels.length">
+                        <div class="o_chatroom_empty text-muted">No hay conversaciones.</div>
+                    </t>
+                    <t t-else="">
+                        <t t-foreach="state.channels" t-as="channel" t-key="channel.id">
+                            <div t-attf-class="o_chatroom_app_list_item
+                                    {{ channel.id === state.selectedChannelId ? 'o_active' : '' }}
+                                    {{ channel.unread_count ? 'o_unread' : '' }}"
+                                 t-on-click="() => this.selectChannel(channel.id)">
+                                <div class="o_chatroom_avatar">
+                                    <t t-esc="channel.display_name ? channel.display_name.charAt(0).toUpperCase() : '?'"/>
+                                    <i t-attf-class="fa {{ channelIcon(channel.channel_type) }} o_chatroom_app_list_channel_icon"/>
+                                </div>
+                                <div class="o_chatroom_app_list_body">
+                                    <div class="o_chatroom_app_list_row">
+                                        <span class="o_chatroom_app_list_name text-truncate" t-esc="channel.display_name"/>
+                                        <span class="o_chatroom_app_list_time" t-esc="formatListTime(channel.dateObj)"/>
+                                    </div>
+                                    <div class="o_chatroom_app_list_row">
+                                        <span class="o_chatroom_app_list_preview text-truncate" t-esc="channel.last_message_preview"/>
+                                        <span class="badge rounded-pill text-bg-success" t-if="channel.unread_count">
+                                            <t t-esc="channel.unread_count"/>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </t>
+                </div>
+            </div>
+            <div class="o_chatroom_app_main">
+                <button class="o_chatroom_app_back_btn" t-if="state.selectedChannelId" t-on-click="backToList">
+                    <i class="fa fa-arrow-left"/>
+                </button>
+                <ChatroomThreadCore
+                    channelId="state.selectedChannelId"
+                    emptyMessage="'Seleccioná una conversación de la izquierda para empezar.'"
+                    onMessagesLoaded="() => this.onThreadMessagesLoaded()"/>
+            </div>
+        </div>
+    </t>
+
+</templates>
