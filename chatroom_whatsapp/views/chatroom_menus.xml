@@ -11,6 +11,13 @@
         <field name="tag">chatroom_whatsapp.chatroom_dashboard</field>
     </record>
 
+    <record id="action_chatroom_generate_demo" model="ir.actions.server">
+        <field name="name">Generar conversaciones de prueba</field>
+        <field name="model_id" ref="model_chatroom_channel"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_generate_demo_conversations()</field>
+    </record>
+
     <menuitem id="menu_chatroom_root" name="Chatroom" sequence="30"
               action="action_chatroom_app"
               web_icon="chatroom_whatsapp,static/description/icon.png"/>
@@ -58,5 +65,9 @@
     <menuitem id="menu_chatroom_config_numbers" name="Líneas de WhatsApp"
               parent="menu_chatroom_config" sequence="15"
               action="action_chatroom_whatsapp_number"/>
+
+    <menuitem id="menu_chatroom_config_demo" name="Generar conversaciones de prueba"
+              parent="menu_chatroom_config" sequence="99"
+              action="action_chatroom_generate_demo"/>
 
 </odoo>

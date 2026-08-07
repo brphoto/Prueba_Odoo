@@ -1035,3 +1035,126 @@ class ChatroomChannel(models.Model):
             ('last_message_date', '<', limit_date),
         ])
         stale.write({'state': 'closed'})
+
+    # ------------------------------------------------------------------
+    # Datos de demostración (uso manual desde Configuración, no se cargan
+    # solos al instalar: usan números de teléfono reales que pasó el
+    # usuario para poder probar la interfaz con contactos de verdad).
+    # ------------------------------------------------------------------
+    @api.model
+    def action_generate_demo_conversations(self):
+        """Crea 2 conversaciones de ejemplo con historial realista para
+        poder probar la interfaz (kanban, app, dashboard, no leídos...)
+        sin esperar tráfico real de WhatsApp. Es idempotente: si el
+        contacto ya tiene una conversación, no la toca ni la duplica."""
+        now = fields.Datetime.now()
+
+        def ago(**delta):
+            return fields.Datetime.subtract(now, **delta)
+
+        demo_conversations = [
+            {
+                'name': "Bryan Cando",
+                'phone': "593996726902",
+                'state': 'pending',
+                'ai_intent': 'consulta',
+                'messages': [
+                    ('inbound', ago(hours=2),
+                     "Hola buenas! Vi la página en Instagram, ¿siguen "
+                     "teniendo el producto que estaba en la promo?", 'read'),
+                    ('outbound', ago(hours=1, minutes=55),
+                     "¡Hola Bryan! Sí, todavía tenemos stock. ¿Cuál te interesa?", 'read'),
+                    ('inbound', ago(hours=1, minutes=50),
+                     "El combo de inicio, el de $49", 'read'),
+                    ('outbound', ago(hours=1, minutes=40),
+                     "Perfecto, ese está disponible. ¿Querés que te pase el "
+                     "link de pago o coordinamos el envío primero?", 'read'),
+                    ('inbound', ago(hours=1, minutes=35),
+                     "Mejor coordinamos el envío, vivo en Quito norte", 'read'),
+                    ('inbound', ago(minutes=5),
+                     "¿Cuánto tardaría en llegar?", 'received'),
+                ],
+            },
+            {
+                'name': "Cynthia Molina",
+                'phone': "593998249518",
+                'state': 'open',
+                'ai_intent': 'venta',
+                'messages': [
+                    ('inbound', ago(days=1, hours=3),
+                     "Buenas tardes, quería confirmar si mi pedido ya fue despachado", 'read'),
+                    ('outbound', ago(days=1, hours=2, minutes=55),
+                     "¡Hola Cynthia! Dejame revisar el número de seguimiento, un momento", 'read'),
+                    ('outbound', ago(days=1, hours=2, minutes=40),
+                     "Ya salió ayer por la tarde, deberías tenerlo mañana. "
+                     "Te paso el número de guía: 1234567890", 'read'),
+                    ('inbound', ago(days=1, hours=2, minutes=30),
+                     "Genial, muchas gracias!", 'read'),
+                ],
+            },
+        ]
+
+        created_names = []
+        skipped_names = []
+        for conv in demo_conversations:
+            digits = re.sub(r'\D', '', conv['phone'])
+            existing = self.search([
+                ('channel_type', '=', 'whatsapp'),
+                ('external_id', '=', digits),
+            ], limit=1)
+            if existing:
+                skipped_names.append(conv['name'])
+                continue
+
+            partner = self.env['res.partner']._find_by_whatsapp_number(digits)
+            if not partner:
+                partner = self.env['res.partner'].create({
+                    'name': conv['name'],
+                    'phone': f"+{digits}",
+                    'whatsapp_id': digits,
+                })
+            elif not partner.whatsapp_id:
+                partner.whatsapp_id = digits
+
+            channel = self.create({
+                'channel_type': 'whatsapp',
+                'external_id': digits,
+                'partner_id': partner.id,
+                'state': conv['state'],
+                'ai_intent': conv['ai_intent'],
+                'assigned_user_id': self.env.user.id,
+            })
+            last_date = now
+            for direction, date, body, state in conv['messages']:
+                self.env['chatroom.message'].create({
+                    'channel_id': channel.id,
+                    'direction': direction,
+                    'message_type': 'text',
+                    'body': body,
+                    'state': state,
+                    'date': date,
+                })
+                last_date = date
+            channel.last_message_date = last_date
+            created_names.append(conv['name'])
+
+        if created_names:
+            message = _("Conversaciones de prueba creadas: %s.") % ", ".join(created_names)
+        else:
+            message = _("Nada para crear")
+        if skipped_names:
+            message += " " + _("Ya existían (sin tocar): %s.") % ", ".join(skipped_names)
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _("Datos de demostración"),
+                'message': message,
+                'type': 'success' if created_names else 'warning',
+                'next': {
+                    'type': 'ir.actions.client',
+                    'tag': 'chatroom_whatsapp.chatroom_app',
+                },
+            },
+        }
