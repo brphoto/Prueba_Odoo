@@ -45,9 +45,19 @@ Requisitos
     'license': 'LGPL-3',
 
     'category': 'Discuss',
-    'version': '19.0.1.3.0',
+    'version': '19.0.2.0.0',
 
-    'depends': ['base', 'mail', 'bus', 'contacts'],
+    # sale/purchase/crm/account eran opcionales hasta esta versión (el
+    # módulo revisaba 'modelo' in self.env por todos lados para no
+    # romperse si no estaban). A partir de acá son dependencias reales:
+    # el panel de contacto asume que un vendedor por WhatsApp puede
+    # armar presupuestos, facturas, oportunidades y compras sin salir
+    # del chat, así que tiene más sentido que este módulo traiga esas
+    # apps consigo que dejarlas "si te acordás de instalarlas". Las
+    # comprobaciones 'modelo in self.env' se dejaron igual en el código
+    # (no estorban estando siempre instalado) por las dudas de que este
+    # módulo se reuse en una instalación más liviana en el futuro.
+    'depends': ['base', 'mail', 'bus', 'contacts', 'sale', 'purchase', 'crm', 'account'],
 
     'data': [
         'security/chatroom_security.xml',

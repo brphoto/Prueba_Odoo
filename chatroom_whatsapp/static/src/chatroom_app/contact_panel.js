@@ -138,6 +138,14 @@ export class ContactPanel extends Component {
         this._openChannelAction("action_create_quotation");
     }
 
+    createInvoice() {
+        this._openChannelAction("action_create_invoice");
+    }
+
+    createPurchase() {
+        this._openChannelAction("action_create_purchase_order");
+    }
+
     createTask() {
         this._openChannelAction("action_create_task");
     }

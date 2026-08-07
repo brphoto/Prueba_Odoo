@@ -1611,6 +1611,38 @@ class ChatroomChannel(models.Model):
         return self._window_action(
             res_model='sale.order', res_id=order.id, view_mode='form', target='current')
 
+    def action_create_invoice(self):
+        """Factura directa, sin pasar por un presupuesto antes — para
+        ventas rápidas de contado que se cierran por WhatsApp."""
+        self.ensure_one()
+        if not self.account_installed:
+            raise UserError(_("El módulo de Facturación no está instalado."))
+        if not self.partner_id:
+            raise UserError(_("La conversación no tiene un contacto asociado."))
+        invoice = self.env['account.move'].create({
+            'move_type': 'out_invoice',
+            'partner_id': self.partner_id.id,
+            'invoice_origin': self.display_name,
+        })
+        return self._window_action(
+            res_model='account.move', res_id=invoice.id, view_mode='form', target='current')
+
+    def action_create_purchase_order(self):
+        """Para cuando el contacto de WhatsApp es un proveedor, no un
+        cliente (ej. una línea de Compras que también atiende pedidos
+        por WhatsApp)."""
+        self.ensure_one()
+        if not self.purchase_installed:
+            raise UserError(_("El módulo de Compras no está instalado."))
+        if not self.partner_id:
+            raise UserError(_("La conversación no tiene un contacto asociado."))
+        order = self.env['purchase.order'].create({
+            'partner_id': self.partner_id.id,
+            'origin': self.display_name,
+        })
+        return self._window_action(
+            res_model='purchase.order', res_id=order.id, view_mode='form', target='current')
+
     def action_create_task(self):
         self.ensure_one()
         if not self.project_installed:
@@ -1699,6 +1731,16 @@ class ChatroomChannel(models.Model):
                 'currency_symbol': i.currency_id.symbol,
             } for i in invoices]
 
+        # 'credit' ("Total a cobrar") tiene groups= propio en el módulo
+        # de Facturación: un agente que solo está en el grupo Chatroom
+        # (sin acceso a Contabilidad) no lo puede leer directo. Se usa
+        # sudo() solo para este campo puntual -es justamente el dato que
+        # se quiere mostrarle al vendedor sin exigirle permisos de
+        # Contabilidad, no una puerta trasera general del panel.
+        partner_credit = partner.sudo().credit if self.account_installed and partner else 0.0
+
+        activities = self._get_partner_activities()
+
         return {
             'has_partner': bool(partner),
             'partner_id': partner.id,
@@ -1731,7 +1773,36 @@ class ChatroomChannel(models.Model):
             } for line in self.cart_line_ids],
             'cart_total': self.cart_total,
             'currency_symbol': self.env.company.currency_id.symbol,
+            'partner_credit': partner_credit,
+            'activities': [{
+                'id': a.id,
+                'summary': a.summary or a.activity_type_id.name,
+                'date_deadline': a.date_deadline,
+                'is_overdue': a.date_deadline < fields.Date.context_today(self),
+            } for a in activities],
         }
+
+    def _get_partner_activities(self, limit=10):
+        """Actividades pendientes del contacto: las que están puestas
+        directo sobre la ficha del partner, más las de sus oportunidades
+        de CRM (que es donde de verdad suele vivir el "llamar a fulano
+        el jueves" en un flujo de ventas)."""
+        self.ensure_one()
+        partner = self.partner_id
+        if not partner:
+            return self.env['mail.activity']
+        activities = self.env['mail.activity'].search([
+            ('res_model', '=', 'res.partner'),
+            ('res_id', '=', partner.id),
+        ], order='date_deadline asc', limit=limit)
+        if self.crm_installed:
+            lead_ids = self.env['crm.lead'].search([('partner_id', '=', partner.id)]).ids
+            if lead_ids:
+                activities |= self.env['mail.activity'].search([
+                    ('res_model', '=', 'crm.lead'),
+                    ('res_id', 'in', lead_ids),
+                ], order='date_deadline asc', limit=limit)
+        return activities[:limit]
 
     # ------------------------------------------------------------------
     # Catálogo de productos: buscar y mandar uno por WhatsApp (foto +

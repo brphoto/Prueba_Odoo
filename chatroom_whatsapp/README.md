@@ -372,16 +372,47 @@ puntuales.
 
 ## Panel de contacto (CRM, Ventas, Compras, Facturas, Tareas)
 
+**Desde esta versión, Ventas, Compras, CRM y Facturación son
+dependencias reales del módulo** (`depends` en `__manifest__.py`), no
+opcionales: al instalar o actualizar `chatroom_whatsapp` en Odoo, esas
+cuatro apps se instalan solas si no lo estaban. La idea es que este
+módulo sea el centro de operación para un vendedor que atiende por
+WhatsApp — no tendría sentido que el panel de accesos rápidos dependa de
+que alguien se acuerde de instalar cada app por separado. El código
+igual sigue revisando `'modelo' in self.env` en cada método (por si el
+módulo se reusa algún día en una instalación más liviana), pero en la
+práctica esas cuatro ya van a estar instaladas siempre.
+
+> **Importante**: agregar una dependencia nueva no las instala solas en
+> una base ya existente hasta que actualices el módulo (**Apps > Chatroom
+> WhatsApp > Actualizar**, o `-u chatroom_whatsapp` si lo hacés por
+> línea de comandos). Además, que la app esté instalada no alcanza: cada
+> botón de "crear" (Oportunidad/Presupuesto/Factura/Compra) sigue
+> respetando los permisos de esa app — un agente que solo está en el
+> grupo *Chatroom / Agente* también necesita el grupo de Usuario de
+> Ventas/CRM/Compras/Facturación correspondiente para poder usarlos, la
+> misma regla de siempre de Odoo, este módulo no le da un permiso
+> especial por izquierda.
+
 En la app de una sola pantalla, el ícono de tarjeta de contacto (arriba a
 la derecha del chat, cuando hay una conversación abierta) muestra/oculta
 un panel lateral con:
 
-- Foto, nombre, empresa, ciudad, teléfono y email del contacto —
-  clic en el encabezado abre su ficha completa.
+- Foto, nombre, empresa, ciudad, teléfono, email y **saldo pendiente**
+  del contacto (`res.partner.credit`, "lo que te debe" — solo se
+  muestra si es distinto de cero) — clic en el encabezado abre su ficha
+  completa.
 - Contadores clicables de Oportunidades, Ventas, Compras, Facturas y
   Tareas (cada uno se oculta solo si el módulo correspondiente no está
   instalado, igual que los stat buttons de la ficha clásica).
-- Botones para crear una Oportunidad, un Presupuesto o una Tarea.
+- Botones para crear una **Oportunidad**, un **Presupuesto**, una
+  **Factura directa** (sin pasar por un presupuesto antes, para ventas
+  rápidas de contado), una **Orden de Compra** (para cuando el contacto
+  de WhatsApp es un proveedor, no un cliente) o una **Tarea**.
+- **Actividades pendientes del contacto**: las que están agendadas
+  directo en su ficha, más las de sus oportunidades de CRM (que es
+  donde de verdad suele vivir un "llamar el jueves" en un flujo de
+  ventas) — en rojo las vencidas.
 - **Todo lo anterior (contadores, crear, y el nombre de cada presupuesto/
   factura reciente) abre el formulario o la lista real de Odoo como
   diálogo encima de la app, no navegando a otra pantalla** — es la
@@ -403,10 +434,19 @@ un panel lateral con:
   producto como imagen y "Nombre - Precio" como pie de foto (si no tiene
   foto cargada, se manda como texto). "Ver todo" abre el catálogo
   completo de Odoo para casos que no entran en una búsqueda rápida.
+- **Carrito armado por la IA** (ver "Automatización con IA" más arriba):
+  si el vendedor automático fue agregando productos charlando con el
+  cliente, se ve acá línea por línea con un botón para "Convertir a
+  cotización" a mano, aunque la IA todavía no haya cerrado el pedido
+  sola.
 
 Todo se resuelve en una sola llamada (`chatroom.channel.
 get_contact_panel_data`) para que abrir el panel no dispare media
-docena de peticiones.
+docena de peticiones. El saldo pendiente (`res.partner.credit`) es un
+campo con permisos propios de Facturación (`groups=`); se lee con
+`sudo()` solo para ese campo puntual, para que un vendedor sin acceso a
+Contabilidad igual pueda verlo en el panel sin que le rompa con un error
+de permisos.
 
 ## Probar conexión y salud del webhook
 
@@ -714,3 +754,18 @@ Pensado para tráfico real, no solo para la demo:
   abandonados de todas las conversaciones a la vez, solo por
   conversación (panel de contacto) — para eso, por ahora, hay que mirar
   conversación por conversación.
+- **Sale/Purchase/CRM/Account como dependencias obligatorias, Factura y
+  Orden de Compra directas desde el panel, actividades pendientes del
+  contacto y saldo pendiente son nuevos en esta iteración**: validado
+  con `py_compile`/parseo de XML de todo el módulo, sin instalar de
+  verdad las apps nuevas en una base real todavía (este entorno no tiene
+  Odoo corriendo para probarlo). Antes de subir esto a una instalación
+  en producción: (1) hacé un backup antes de actualizar el módulo,
+  porque instalar Ventas/Compras/CRM/Facturación de una en una base que
+  no las tenía es un cambio de verdad, no cosmético — crea tablas,
+  menús, secuencias y datos por defecto de esas apps; (2) confirmá que
+  los agentes que van a usar los botones nuevos tengan además los
+  permisos de cada app (ver la nota en "Panel de contacto"); (3) la
+  actividad de un contacto solo mira `res.partner` y `crm.lead`, no
+  otros documentos (ej. actividades puestas directo en una factura o un
+  presupuesto no van a aparecer en esa lista).

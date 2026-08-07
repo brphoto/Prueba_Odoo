@@ -28,6 +28,11 @@
                     <div class="o_chatroom_contact_info_row" t-if="state.data.email">
                         <i class="fa fa-envelope-o"/> <span t-esc="state.data.email"/>
                     </div>
+                    <div t-attf-class="o_chatroom_contact_info_row o_chatroom_contact_credit {{ state.data.partner_credit &gt; 0 ? 'text-danger' : '' }}"
+                         t-if="state.data.account_installed and state.data.partner_credit">
+                        <i class="fa fa-usd"/>
+                        <span>Saldo pendiente: <t t-esc="formatMoney(state.data.partner_credit, state.data.currency_symbol)"/></span>
+                    </div>
                 </div>
 
                 <div class="o_chatroom_contact_stats">
@@ -65,9 +70,26 @@
                     <button t-if="state.data.sale_installed" class="btn btn-sm btn-light" t-on-click="createQuotation">
                         <i class="fa fa-plus"/> Presupuesto
                     </button>
+                    <button t-if="state.data.account_installed" class="btn btn-sm btn-light" t-on-click="createInvoice">
+                        <i class="fa fa-plus"/> Factura
+                    </button>
+                    <button t-if="state.data.purchase_installed" class="btn btn-sm btn-light" t-on-click="createPurchase">
+                        <i class="fa fa-plus"/> Compra
+                    </button>
                     <button t-if="state.data.project_installed" class="btn btn-sm btn-light" t-on-click="createTask">
                         <i class="fa fa-plus"/> Tarea
                     </button>
+                </div>
+
+                <div class="o_chatroom_contact_docs o_chatroom_contact_activities" t-if="state.data.activities.length">
+                    <h6>Actividades pendientes</h6>
+                    <t t-foreach="state.data.activities" t-as="activity" t-key="activity.id">
+                        <div t-attf-class="o_chatroom_contact_doc_row {{ activity.is_overdue ? 'text-danger' : '' }}">
+                            <i class="fa fa-clock-o"/>
+                            <span class="o_chatroom_contact_doc_name text-truncate" t-esc="activity.summary"/>
+                            <span class="o_chatroom_contact_doc_amount" t-esc="activity.date_deadline"/>
+                        </div>
+                    </t>
                 </div>
 
                 <div class="o_chatroom_contact_docs" t-if="state.data.sale_installed and state.data.recent_orders.length">
