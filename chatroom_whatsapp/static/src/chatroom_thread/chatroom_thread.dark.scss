@@ -1,12 +1,32 @@
-// Overrides para el bundle web.assets_web_dark. La mayoría de las reglas
-// del widget ya usan variables CSS de Odoo (--o-view-background-color,
-// --border-color, --o-brand-primary) que el tema oscuro sobreescribe
-// solas; acá solo van los colores que están escritos "a mano" en
-// chatroom_thread.scss, con una paleta inspirada en el WhatsApp oscuro.
+// Overrides para el bundle web.assets_web_dark.
+//
+// Nota: `--o-view-background-color`, `--border-color` y
+// `--o-brand-primary` que usa chatroom_thread.scss (con fallback #fff /
+// #dee2e6 / #714B67) NO son variables CSS reales de Odoo — no existen en
+// ningún lado, así que ese var() siempre resuelve al fallback, en los dos
+// temas. Todo lo que dependía de "el tema oscuro las pisa solo" en
+// realidad se quedaba blanco/claro en modo oscuro; de ahí este archivo
+// más largo de lo que el comentario original sugería. Paleta inspirada
+// en el WhatsApp oscuro real.
+
+.o_chatroom_thread {
+    background-color: #111b21;
+    border-color: #2a3942;
+}
 
 .o_chatroom_thread_messages {
     background-color: #0b141a;
     background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+}
+
+.o_chatroom_empty,
+.o_chatroom_loading {
+    color: #8696a0;
+}
+
+.o_chatroom_date_separator {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #8696a0;
 }
 
 .o_chatroom_bubble_in {
@@ -17,6 +37,16 @@
 .o_chatroom_bubble_out {
     background-color: #005c4b;
     color: #e9edef;
+}
+
+.o_chatroom_bubble_quote {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #8696a0;
+}
+
+.o_chatroom_bubble_translation {
+    border-top-color: rgba(255, 255, 255, 0.15);
+    color: #8696a0;
 }
 
 .o_chatroom_bubble_meta {
@@ -45,4 +75,21 @@
 
 .o_chatroom_dropzone {
     background-color: rgba(0, 92, 75, 0.85);
+}
+
+.o_chatroom_composer {
+    background-color: #111b21;
+    border-top-color: #2a3942;
+}
+
+.o_chatroom_quick_button_input,
+.o_chatroom_composer_textarea,
+.o_chatroom_canned_panel {
+    border-color: #2a3942;
+    background-color: #202c33;
+    color: #e9edef;
+}
+
+.o_chatroom_canned_item {
+    border-bottom-color: #2a3942;
 }
