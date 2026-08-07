@@ -16,3 +16,5 @@ access_chatroom_tag_user,chatroom.tag.user,model_chatroom_tag,group_chatroom_use
 access_chatroom_tag_manager,chatroom.tag.manager,model_chatroom_tag,group_chatroom_manager,1,1,1,1
 access_chatroom_scheduled_message_user,chatroom.scheduled.message.user,model_chatroom_scheduled_message,group_chatroom_user,1,1,1,1
 access_chatroom_scheduled_message_manager,chatroom.scheduled.message.manager,model_chatroom_scheduled_message,group_chatroom_manager,1,1,1,1
+access_chatroom_cart_line_user,chatroom.cart.line.user,model_chatroom_cart_line,group_chatroom_user,1,1,1,1
+access_chatroom_cart_line_manager,chatroom.cart.line.manager,model_chatroom_cart_line,group_chatroom_manager,1,1,1,1

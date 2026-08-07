@@ -157,6 +157,35 @@
     flex: 0 0 auto;
 }
 
+.o_chatroom_subheader_right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.o_chatroom_ai_toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.o_chatroom_ai_toggle_active {
+    background-color: rgba(37, 211, 102, 0.15);
+    color: #128c4a;
+}
+
+.o_chatroom_ai_toggle_paused {
+    background-color: rgba(208, 59, 59, 0.12);
+    color: #d03b3b;
+}
+
 .o_chatroom_line_select {
     flex: 0 0 auto;
     max-width: 160px;

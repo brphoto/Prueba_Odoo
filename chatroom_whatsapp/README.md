@@ -205,11 +205,38 @@ primero las sugerencias de IA):
   la lista exacta de productos encontrados con su precio y le prohíbe
   usar cualquier otro dato. Si no encuentra ningún producto que
   coincida, no hace nada y sigue el flujo normal (clasificación /
-  auto-reply genérico, si están activos) en vez de quedarse callado.
+  auto-reply genérico, si están activos) en vez de quedarse callado. Se
+  ignora si "Vendedor automático" (abajo) está activo.
+- **Vendedor automático (armar pedidos)**: la versión completa de lo
+  anterior — la IA charla con el cliente, arma un **carrito** con
+  productos y cantidades reales, y cuando el cliente confirma que quiere
+  cerrar el pedido, **crea una Cotización real de Ventas** (`sale.order`
+  en borrador) a partir de ese carrito. La IA **nunca la confirma sola**:
+  siempre queda pendiente de que un agente la revise, ajuste lo que haga
+  falta y la confirme desde el formulario normal de Odoo. Técnicamente,
+  en vez de "function calling" propietario de un proveedor (que no todos
+  los endpoints *chat completions* soportan igual), se le pide a la IA
+  que responda con un JSON estricto de 3 formas fijas
+  (`add_items` / `checkout` / `reply`) y Python ejecuta esa decisión de
+  forma determinística — la IA nunca toca la base de datos directamente,
+  solo elige entre esas 3 acciones. El carrito y el botón **Convertir a
+  cotización** también se ven en el **panel de contacto**, así un agente
+  puede terminar de armarlo o cerrarlo a mano si hace falta.
+- **Switch IA / agente humano**: cada conversación tiene un interruptor
+  (arriba del chat, junto al selector de línea) para pausar/reactivar
+  las automatizaciones de IA. Se pausa **sola** en cuanto un agente
+  humano manda un mensaje real en esa conversación (texto, adjunto,
+  reacción, reintento, plantilla o botones — cualquier acción que hable
+  con el cliente), para que la IA no le pise la respuesta a la persona
+  que ya está atendiendo; también se puede pausar/reactivar a mano en
+  cualquier momento. Mientras está pausada, "Sugerir respuesta con IA"
+  (el botón manual del encabezado) sigue funcionando igual — pausar solo
+  apaga el piloto automático, no la IA como asistente del agente.
 
 Cualquier error de IA (endpoint caído, credenciales inválidas, respuesta
-inesperada) se registra en el log del servidor y **no interrumpe** la
-recepción de mensajes por el webhook.
+inesperada, JSON mal formado del vendedor automático) se registra en el
+log del servidor y **no interrumpe** la recepción de mensajes por el
+webhook.
 
 Además, con un clic (botón **Resumir con IA** en el encabezado) se puede
 generar un resumen corto de toda la conversación (`ai_summary`) para que
@@ -667,3 +694,23 @@ Pensado para tráfico real, no solo para la demo:
   hay una acción/wizard separada) — ver la advertencia sobre la ventana
   de 24h en la sección "Múltiples líneas" de arriba antes de usarlo con
   números de WhatsApp genuinamente distintos.
+- **Vendedor automático (carrito + cotización) y switch IA/humano son
+  nuevos en esta iteración**: validado con `py_compile` y parseo de XML
+  de todo el módulo, sin prueba en navegador todavía. Puntos a tener en
+  cuenta antes de confiar en producción: (1) el "vendedor automático"
+  depende de que el modelo configurado de verdad devuelva el JSON que
+  se le pide — si un proveedor/modelo no sigue bien esa instrucción, la
+  respuesta se descarta y se registra en el log (no rompe el webhook),
+  pero el cliente se queda sin respuesta automática para ese mensaje
+  puntual; conviene probarlo primero con el modelo real que vayas a usar
+  antes de dejarlo prendido sin supervisión. (2) La detección de "un
+  agente humano tomó la conversación" para pausar la IA sola distingue
+  webclient (pausa) de webhook/cron (no pausa) revisando si hay un
+  `http.request` activo además de si el usuario es el público — no se
+  probó todavía con RPC externo o `xmlrpc` de terceros, que tampoco pasan
+  por un `http.request` de Odoo y por lo tanto **no pausarían la IA**
+  aunque en la práctica sea una persona escribiendo por otro canal
+  técnico. (3) No hay una vista clásica dedicada para auditar carritos
+  abandonados de todas las conversaciones a la vez, solo por
+  conversación (panel de contacto) — para eso, por ahora, hay que mirar
+  conversación por conversación.

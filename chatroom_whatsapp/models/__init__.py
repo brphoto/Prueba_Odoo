@@ -4,6 +4,7 @@ from . import res_config_settings
 from . import res_partner
 from . import chatroom_whatsapp_number
 from . import chatroom_tag
+from . import chatroom_cart_line
 from . import chatroom_channel
 from . import chatroom_message
 from . import chatroom_scheduled_message

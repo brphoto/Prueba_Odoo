@@ -11,6 +11,7 @@ import requests
 
 from odoo import _, api, fields, models, tools
 from odoo.exceptions import UserError
+from odoo.http import request
 
 _logger = logging.getLogger(__name__)
 
@@ -95,6 +96,22 @@ class ChatroomChannel(models.Model):
         help="Última vez que se mandó el aviso automático de 'fuera de "
              "horario' en esta conversación. Se usa para no repetirlo en "
              "cada mensaje que manda el cliente de madrugada.")
+    ai_paused = fields.Boolean(
+        string="IA pausada", copy=False,
+        help="Si está activo, las automatizaciones de IA no responden "
+             "solas en esta conversación aunque estén prendidas en "
+             "Ajustes: la está atendiendo un agente humano. Se activa "
+             "solo en cuanto un agente manda un mensaje real, y también "
+             "se puede prender/apagar a mano desde el encabezado del "
+             "chat.")
+    cart_line_ids = fields.One2many(
+        'chatroom.cart.line', 'channel_id', string="Carrito (IA)")
+    cart_total = fields.Float(compute='_compute_cart_total')
+
+    @api.depends('cart_line_ids.quantity', 'cart_line_ids.price_unit')
+    def _compute_cart_total(self):
+        for rec in self:
+            rec.cart_total = sum(line.quantity * line.price_unit for line in rec.cart_line_ids)
 
     # No es un Many2one a 'crm.lead': CRM es un módulo opcional (no está
     # en 'depends'), y un campo relacional a un modelo no instalado rompe
@@ -449,6 +466,38 @@ class ChatroomChannel(models.Model):
                 "%s se dio de baja de los mensajes de este número; no se "
                 "le pueden enviar mensajes hasta que vuelva a escribir la "
                 "palabra clave de alta.") % self.partner_id.name)
+        # Todo lo que manda esta conversación pasa por acá (texto,
+        # adjuntos, reacciones, reintentos, plantillas, botones): es el
+        # único lugar donde se puede distinguir "un agente de verdad
+        # tocó Enviar" de "lo mandó la automatización" sin agregar un
+        # flag manual en cada llamada. Dos automatizaciones disparan
+        # sends sin que haya una persona atendiendo:
+        #   - el webhook (auth='public'): corre como el usuario público,
+        #     así que _is_public() alcanza para descartarlo.
+        #   - los cron (reintentos, mensajes programados): NO corren
+        #     dentro de un http.request, a diferencia de un clic real en
+        #     el webclient (que sí pasa por /web/dataset/call_kw) aunque
+        #     el usuario del cron sea un administrador con permisos de
+        #     persona real. Por eso hace falta el chequeo de `request`
+        #     además de `_is_public()`; solo con `_is_public()` un mensaje
+        #     programado o un reintento automático pausaban la IA solos.
+        if not self.ai_paused and request and not self.env.user._is_public():
+            self.ai_paused = True
+            self.message_post(
+                body=_("IA pausada automáticamente: %s tomó la conversación.")
+                % self.env.user.name,
+                subtype_xmlid='mail.mt_note',
+            )
+
+    def action_toggle_ai_paused(self):
+        self.ensure_one()
+        self.ai_paused = not self.ai_paused
+        self.message_post(
+            body=_("IA %s por %s.") % (
+                _("pausada") if self.ai_paused else _("reactivada"), self.env.user.name),
+            subtype_xmlid='mail.mt_note',
+        )
+        return self.ai_paused
 
     def _handle_opt_keywords(self, message):
         """Detecta palabras clave de baja/alta en un mensaje entrante
@@ -1277,25 +1326,29 @@ class ChatroomChannel(models.Model):
 
     def _ai_search_products_mentioned(self, text, limit=5):
         """Busca productos vendibles cuyo nombre el cliente mencionó en su
-        mensaje, para poder responder consultas de precio con datos
-        reales en vez de dejar que el modelo los invente.
+        mensaje, para poder responder consultas de precio (y armar el
+        carrito) con datos reales en vez de dejar que el modelo los
+        invente.
 
         Búsqueda simple y a propósito literal (palabras de 4+ letras del
         mensaje, comparadas contra el nombre del producto): nada de
         embeddings ni fuzzy match, para que sea 100% predecible qué datos
-        se le terminan pasando a la IA como "verdad".
+        se le terminan pasando a la IA como "verdad". Busca sobre
+        product.product (variantes), no product.template, porque es lo
+        mismo que espera sale.order.line y lo que ya usan
+        search_products/action_send_product.
         """
         self.ensure_one()
-        if 'product.template' not in self.env:
-            return self.env['product.template']
+        if 'product.product' not in self.env:
+            return self.env['product.product']
         words = {w.lower() for w in re.findall(r'\w{4,}', text or '', re.UNICODE)}
         if not words:
-            return self.env['product.template']
+            return self.env['product.product']
         name_domain = [('name', 'ilike', w) for w in words]
         if len(name_domain) > 1:
             name_domain = ['|'] * (len(name_domain) - 1) + name_domain
         domain = [('sale_ok', '=', True), ('active', '=', True)] + name_domain
-        return self.env['product.template'].search(domain, limit=limit)
+        return self.env['product.product'].search(domain, limit=limit)
 
     def _ai_price_context_system_message(self, products):
         currency = self.env.company.currency_id
@@ -1321,12 +1374,157 @@ class ChatroomChannel(models.Model):
         reply = self._ai_chat_completion(self._ai_build_conversation(extra_system=system_prompt))
         self.action_send_text(reply)
 
+    # ------------------------------------------------------------------
+    # Vendedor automático: la IA arma un carrito charlando con el cliente
+    # y arma una Cotización real cuando confirma, pero SIEMPRE queda en
+    # borrador para que un agente humano la revise antes de confirmarla
+    # -la IA nunca la confirma sola, no toca stock ni factura nada.
+    # ------------------------------------------------------------------
+    def _add_to_cart(self, product, qty):
+        self.ensure_one()
+        existing = self.cart_line_ids.filtered(lambda line: line.product_id == product.id)
+        if existing:
+            existing.quantity += qty
+        else:
+            self.env['chatroom.cart.line'].create({
+                'channel_id': self.id,
+                'product_id': product.id,
+                'product_name': product.display_name,
+                'quantity': qty,
+                'price_unit': product.list_price,
+            })
+
+    def action_remove_cart_line(self, line_id):
+        self.ensure_one()
+        line = self.env['chatroom.cart.line'].browse(line_id)
+        if line.exists() and line.channel_id.id == self.id:
+            line.unlink()
+        return True
+
+    def action_checkout_cart(self):
+        """Convierte el carrito en una Cotización real de Ventas
+        (sale.order en borrador). No la confirma: queda para que un
+        agente la revise, ajuste precios/descuentos si hace falta y
+        recién ahí la confirme desde el formulario normal de Odoo."""
+        self.ensure_one()
+        if not self.sale_installed:
+            raise UserError(_("El módulo de Ventas no está instalado."))
+        if not self.cart_line_ids:
+            raise UserError(_("El carrito está vacío."))
+        if not self.partner_id:
+            raise UserError(_(
+                "Esta conversación no tiene un contacto vinculado; no se "
+                "puede armar una cotización."))
+        order_lines = []
+        for line in self.cart_line_ids:
+            product = self.env['product.product'].browse(line.product_id)
+            if product.exists():
+                order_lines.append((0, 0, {
+                    'product_id': product.id,
+                    'product_uom_qty': line.quantity,
+                }))
+        if not order_lines:
+            raise UserError(_(
+                "Ninguno de los productos del carrito existe todavía; no "
+                "se pudo armar la cotización."))
+        order = self.env['sale.order'].create({
+            'partner_id': self.partner_id.id,
+            'order_line': order_lines,
+        })
+        self.cart_line_ids.unlink()
+        self.message_post(
+            body=_(
+                "Se armó la cotización %s a partir del carrito de esta "
+                "conversación. Queda pendiente de revisión antes de "
+                "confirmarla."
+            ) % order.name,
+            subtype_xmlid='mail.mt_note',
+        )
+        if self.assigned_user_id and self.assigned_user_id.partner_id:
+            self.message_post(
+                body=_("La IA armó una cotización nueva (%s) para que la "
+                       "revises antes de confirmarla.") % order.name,
+                partner_ids=[self.assigned_user_id.partner_id.id],
+                subtype_xmlid='mail.mt_comment',
+            )
+        return order.id
+
+    def _ai_run_order_assistant(self, matched_products):
+        """Vendedor automático: le pide a la IA que decida, en JSON
+        estricto (compatible con cualquier proveedor, sin depender de
+        'function calling' propietario de un proveedor en particular),
+        si hay que agregar algo al carrito, cerrar el pedido, o solo
+        contestar. Python ejecuta esa decisión de forma determinística
+        -la IA nunca toca la base de datos directamente, solo elige
+        entre 3 acciones fijas."""
+        self.ensure_one()
+        currency = self.env.company.currency_id
+        catalog_lines = "\n".join(
+            f"- id {p.id}: {p.display_name} - {p.list_price:.2f} {currency.symbol}"
+            for p in matched_products
+        ) or "(el cliente no mencionó ahora ningún producto que exista)"
+        cart_lines = "\n".join(
+            f"- {line.product_name} x{line.quantity:g}" for line in self.cart_line_ids
+        ) or "(vacío)"
+        system_prompt = _(
+            "Sos un vendedor automático por WhatsApp. Respondé "
+            "ÚNICAMENTE con un JSON, sin texto extra ni markdown, de una "
+            "de estas 3 formas exactas:\n"
+            '{"action": "add_items", "items": [{"product_id": <id>, '
+            '"qty": <numero>}], "reply": "<texto>"}\n'
+            '{"action": "checkout", "reply": "<texto>"}\n'
+            '{"action": "reply", "reply": "<texto>"}\n\n'
+            "Usá 'add_items' SOLO con ids de la lista de productos de "
+            "abajo (nunca inventes un id ni un precio nuevo). Usá "
+            "'checkout' solo cuando el cliente confirme que quiere "
+            "cerrar el pedido Y el carrito no esté vacío. Usá 'reply' "
+            "para saludos, preguntas, o productos que no están en la "
+            "lista (avisale que no lo tenés a mano y que un agente lo va "
+            "a confirmar). 'reply' siempre lleva el mensaje en español "
+            "que se le manda al cliente por WhatsApp, breve y cordial; "
+            "si de verdad no hace falta contestar nada dejalo vacío.\n\n"
+            "Carrito actual del cliente:\n%(cart)s\n\n"
+            "Productos reales que mencionó recién (únicos válidos para "
+            "add_items):\n%(catalog)s"
+        ) % {'cart': cart_lines, 'catalog': catalog_lines}
+
+        raw = self._ai_chat_completion(self._ai_build_conversation(extra_system=system_prompt))
+        try:
+            data = json.loads(raw)
+        except ValueError:
+            _logger.warning(
+                "Respuesta de IA no es JSON válido en canal %s: %r", self.id, raw)
+            return
+        action = data.get('action')
+        reply = (data.get('reply') or '').strip()
+
+        if action == 'add_items':
+            matched_by_id = {p.id: p for p in matched_products}
+            for item in (data.get('items') or []):
+                product = matched_by_id.get(item.get('product_id'))
+                qty = item.get('qty')
+                if not product or not isinstance(qty, (int, float)) or qty <= 0:
+                    continue
+                self._add_to_cart(product, qty)
+        elif action == 'checkout':
+            if self.cart_line_ids:
+                self.action_checkout_cart()
+            elif not reply:
+                reply = _("Todavía no agregaste nada al carrito.")
+
+        if reply:
+            self.action_send_text(reply)
+
     def _ai_process_inbound_message(self, message):
         """Automatizaciones opcionales al recibir un mensaje: clasificar
         la intención, crear una oportunidad automáticamente si aplica y/o
         responder de forma autónoma. Se activan por separado en Ajustes;
-        cualquier fallo se registra en el log sin interrumpir el webhook."""
+        cualquier fallo se registra en el log sin interrumpir el webhook.
+        No hace nada si un agente humano ya tomó la conversación
+        (`ai_paused`)."""
         self.ensure_one()
+        if self.ai_paused:
+            return
         icp = self.env['ir.config_parameter'].sudo()
         if not icp.get_param('chatroom_whatsapp.ai_enabled'):
             return
@@ -1339,14 +1537,18 @@ class ChatroomChannel(models.Model):
                     and self.crm_installed and self.partner_id):
                 self.action_create_lead()
 
-            price_replied = False
+            if icp.get_param('chatroom_whatsapp.ai_auto_order_reply') and message.body:
+                matched_products = self._ai_search_products_mentioned(message.body)
+                self._ai_run_order_assistant(matched_products)
+                return
+
             if icp.get_param('chatroom_whatsapp.ai_auto_price_reply') and message.body:
                 matched_products = self._ai_search_products_mentioned(message.body)
                 if matched_products:
                     self._ai_reply_with_product_prices(matched_products)
-                    price_replied = True
+                    return
 
-            if not price_replied and icp.get_param('chatroom_whatsapp.ai_auto_reply'):
+            if icp.get_param('chatroom_whatsapp.ai_auto_reply'):
                 self.action_ai_suggest_reply()
                 self.action_send_ai_suggestion()
         except UserError as exc:
@@ -1519,6 +1721,16 @@ class ChatroomChannel(models.Model):
             'product_installed': 'product.product' in self.env,
             'recent_orders': recent_orders,
             'recent_invoices': recent_invoices,
+            'ai_paused': self.ai_paused,
+            'cart_lines': [{
+                'id': line.id,
+                'product_name': line.product_name,
+                'quantity': line.quantity,
+                'price_unit': line.price_unit,
+                'subtotal': line.quantity * line.price_unit,
+            } for line in self.cart_line_ids],
+            'cart_total': self.cart_total,
+            'currency_symbol': self.env.company.currency_id.symbol,
         }
 
     # ------------------------------------------------------------------

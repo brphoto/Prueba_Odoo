@@ -132,6 +132,10 @@
                                  help="Contesta con el precio real de Odoo cuando el cliente menciona un producto por su nombre; no inventa precios">
                             <field name="chatroom_ai_auto_price_reply"/>
                         </setting>
+                        <setting id="chatroom_ai_auto_order_reply_setting"
+                                 help="Arma un carrito charlando con el cliente y crea una Cotización real en borrador cuando confirma; nunca la confirma sola">
+                            <field name="chatroom_ai_auto_order_reply"/>
+                        </setting>
                     </block>
 
                 </app>

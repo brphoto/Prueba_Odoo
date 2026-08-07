@@ -100,6 +100,7 @@ export class ChatroomThreadCore extends Component {
             scheduledMessages: [],
             scheduleOpen: false,
             scheduleDate: "",
+            aiPaused: false,
         });
 
         this._shouldScroll = true;
@@ -210,7 +211,7 @@ export class ChatroomThreadCore extends Component {
             "chatroom.channel",
             [channelId],
             ["display_name", "partner_id", "channel_type", "is_session_open",
-             "assigned_user_id", "whatsapp_number_id", "tag_ids"]
+             "assigned_user_id", "whatsapp_number_id", "tag_ids", "ai_paused"]
         );
         this.state.channelName = channel.display_name;
         this.state.partnerId = channel.partner_id ? channel.partner_id[0] : false;
@@ -219,6 +220,7 @@ export class ChatroomThreadCore extends Component {
         this.state.assignedUserId = channel.assigned_user_id ? channel.assigned_user_id[0] : false;
         this.state.whatsappNumberId = channel.whatsapp_number_id ? channel.whatsapp_number_id[0] : false;
         this.state.channelTagIds = channel.tag_ids || [];
+        this.state.aiPaused = channel.ai_paused;
 
         if (this.state.partnerId) {
             const [partner] = await this.orm.read(
@@ -248,6 +250,16 @@ export class ChatroomThreadCore extends Component {
         await this.orm.write("chatroom.channel", [this.channelId], { whatsapp_number_id: newNumberId });
         this.state.whatsappNumberId = newNumberId;
         await Promise.all([this._loadChannel(), this._loadMessages()]);
+    }
+
+    async toggleAiPaused() {
+        if (!this.channelId) {
+            return;
+        }
+        const paused = await this.orm.call(
+            "chatroom.channel", "action_toggle_ai_paused", [this.channelId]);
+        this.state.aiPaused = paused;
+        await this._loadMessages();
     }
 
     toggleTagPicker() {

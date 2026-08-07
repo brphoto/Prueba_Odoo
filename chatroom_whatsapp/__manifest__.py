@@ -45,7 +45,7 @@ Requisitos
     'license': 'LGPL-3',
 
     'category': 'Discuss',
-    'version': '19.0.1.2.0',
+    'version': '19.0.1.3.0',
 
     'depends': ['base', 'mail', 'bus', 'contacts'],
 

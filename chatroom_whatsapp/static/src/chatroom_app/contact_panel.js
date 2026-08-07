@@ -31,6 +31,8 @@ export class ContactPanel extends Component {
             productQuery: "",
             productResults: [],
             sendingProductId: false,
+            removingCartLineId: false,
+            checkingOut: false,
         });
 
         onWillStart(() => this._load(this.props.channelId));
@@ -186,6 +188,49 @@ export class ContactPanel extends Component {
     async openProductCatalog() {
         const result = await this.orm.call("chatroom.channel", "action_view_products", []);
         this._openDialog(result);
+    }
+
+    // ------------------------------------------------------------------
+    // Carrito armado por la IA (o a mano): ver, sacar líneas, y pasarlo a
+    // una Cotización real cuando está listo. La IA nunca la confirma
+    // sola -- esto abre el formulario real de Odoo para que un agente lo
+    // revise antes de mandarlo a producción.
+    // ------------------------------------------------------------------
+    async removeCartLine(lineId) {
+        if (this.state.removingCartLineId) {
+            return;
+        }
+        this.state.removingCartLineId = lineId;
+        try {
+            await this.orm.call(
+                "chatroom.channel", "action_remove_cart_line", [this.props.channelId, lineId]);
+            await this._reload();
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        } finally {
+            this.state.removingCartLineId = false;
+        }
+    }
+
+    async checkoutCart() {
+        if (this.state.checkingOut) {
+            return;
+        }
+        this.state.checkingOut = true;
+        try {
+            const orderId = await this.orm.call(
+                "chatroom.channel", "action_checkout_cart", [this.props.channelId]);
+            await this._reload();
+            this.openRecord("sale.order", orderId);
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        } finally {
+            this.state.checkingOut = false;
+        }
     }
 
     async sendProduct(product) {

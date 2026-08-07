@@ -56,15 +56,23 @@
                         </div>
                     </div>
                 </div>
-                <select t-if="state.numbers.length" class="o_chatroom_line_select"
-                        t-on-change="transferLine" title="Transferir a otra línea">
-                    <option value="">Sin línea</option>
-                    <t t-foreach="state.numbers" t-as="number" t-key="number.id">
-                        <option t-att-value="number.id" t-att-selected="number.id === state.whatsappNumberId">
-                            <t t-esc="number.name"/>
-                        </option>
-                    </t>
-                </select>
+                <div class="o_chatroom_subheader_right">
+                    <span t-attf-class="o_chatroom_ai_toggle {{ state.aiPaused ? 'o_chatroom_ai_toggle_paused' : 'o_chatroom_ai_toggle_active' }}"
+                          t-on-click="toggleAiPaused"
+                          t-att-title="state.aiPaused ? 'IA pausada: la está atendiendo un agente. Tocá para reactivarla.' : 'IA activa: puede responder sola. Tocá para pausarla y atender vos.'">
+                        <i class="fa fa-android"/>
+                        <t t-esc="state.aiPaused ? 'IA pausada' : 'IA activa'"/>
+                    </span>
+                    <select t-if="state.numbers.length" class="o_chatroom_line_select"
+                            t-on-change="transferLine" title="Transferir a otra línea">
+                        <option value="">Sin línea</option>
+                        <t t-foreach="state.numbers" t-as="number" t-key="number.id">
+                            <option t-att-value="number.id" t-att-selected="number.id === state.whatsappNumberId">
+                                <t t-esc="number.name"/>
+                            </option>
+                        </t>
+                    </select>
+                </div>
             </div>
 
             <div class="o_chatroom_opt_out_banner" t-if="!state.loading and state.partnerOptedOut">

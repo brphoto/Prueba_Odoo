@@ -112,6 +112,36 @@
                     </t>
                 </div>
 
+                <div class="o_chatroom_contact_docs o_chatroom_contact_cart"
+                     t-if="state.data.sale_installed and state.data.cart_lines.length">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h6 class="mb-0">
+                            <i class="fa fa-shopping-basket"/> Carrito (armado por IA)
+                        </h6>
+                        <span t-esc="formatMoney(state.data.cart_total, state.data.currency_symbol)"/>
+                    </div>
+                    <t t-foreach="state.data.cart_lines" t-as="line" t-key="line.id">
+                        <div class="o_chatroom_contact_doc_row">
+                            <span class="o_chatroom_contact_doc_name text-truncate"
+                                  t-esc="line.quantity + 'x ' + line.product_name"/>
+                            <span class="o_chatroom_contact_doc_amount"
+                                  t-esc="formatMoney(line.subtotal, state.data.currency_symbol)"/>
+                            <button class="btn btn-sm btn-link o_chatroom_contact_doc_send text-danger"
+                                    t-att-disabled="state.removingCartLineId"
+                                    title="Sacar del carrito"
+                                    t-on-click="() => this.removeCartLine(line.id)">
+                                <i t-if="state.removingCartLineId === line.id" class="fa fa-spin fa-circle-o-notch"/>
+                                <i t-else="" class="fa fa-times"/>
+                            </button>
+                        </div>
+                    </t>
+                    <button class="btn btn-sm btn-primary w-100 mt-2"
+                            t-att-disabled="state.checkingOut" t-on-click="checkoutCart">
+                        <i t-if="state.checkingOut" class="fa fa-spin fa-circle-o-notch"/>
+                        <t t-else="">Convertir a cotización</t>
+                    </button>
+                </div>
+
                 <div class="o_chatroom_contact_docs" t-if="state.data.product_installed">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <h6 class="mb-0">Catálogo</h6>

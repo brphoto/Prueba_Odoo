@@ -151,9 +151,20 @@ class ResConfigSettings(models.TransientModel):
         help="Si el mensaje del cliente menciona el nombre de un producto "
              "vendible, se le contesta automáticamente con el precio real "
              "de ese producto (tomado de Odoo, no inventado por el "
-             "modelo). Si no encuentra ningún producto que coincida, no "
-             "hace nada y sigue el flujo normal (sugerencia/auto-reply "
-             "genérico, si están activos).")
+             "modelo). Se ignora si 'Vendedor automático' (abajo) está "
+             "activo, porque ese modo ya incluye precios reales.")
+    chatroom_ai_auto_order_reply = fields.Boolean(
+        string="Vendedor automático (armar pedidos)",
+        config_parameter='chatroom_whatsapp.ai_auto_order_reply',
+        help="La IA arma un carrito charlando con el cliente (usando "
+             "solo productos y precios reales de Odoo) y, cuando el "
+             "cliente confirma, crea una Cotización real en borrador — "
+             "nunca la confirma sola, siempre queda pendiente de que un "
+             "agente la revise. Reemplaza a 'Responder consultas de "
+             "precio' y a 'Responder automáticamente' mientras esté "
+             "activo. La IA se pausa sola en cualquier conversación en "
+             "cuanto un agente humano manda un mensaje real (o se puede "
+             "pausar/reactivar a mano desde el encabezado del chat).")
 
     def _compute_whatsapp_webhook_url(self):
         base_url = self.env['ir.config_parameter'].sudo().get_param(
