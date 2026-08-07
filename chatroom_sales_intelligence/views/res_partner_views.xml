@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_partner_form_sales_intelligence" model="ir.ui.view">
+        <field name="name">res.partner.form.chatroom.sales.intelligence</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_view_top_products" type="object"
+                        class="oe_stat_button" icon="fa-trophy"
+                        invisible="not commercial_invoice_count">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Top Productos</span>
+                    </div>
+                </button>
+            </div>
+            <notebook position="inside">
+                <page name="commercial_intelligence" string="Inteligencia Comercial">
+                    <group>
+                        <group string="Clasificación RFM / ABC">
+                            <field name="rfm_category" widget="badge"
+                                   decoration-success="rfm_category == 'a'"
+                                   decoration-warning="rfm_category == 'b'"
+                                   decoration-muted="rfm_category in ('c', 'none')"/>
+                            <field name="rfm_score"/>
+                        </group>
+                        <group string="Histórico de ventas">
+                            <field name="commercial_total_sales"/>
+                            <field name="commercial_avg_ticket"/>
+                            <field name="commercial_invoice_count"/>
+                            <field name="commercial_last_sale_date"/>
+                        </group>
+                    </group>
+                    <group string="Análisis Pareto (80/20)" invisible="not commercial_top_product_summary">
+                        <field name="commercial_top_product_summary" nolabel="1" readonly="1"/>
+                    </group>
+                </page>
+            </notebook>
+        </field>
+    </record>
+
+</odoo>

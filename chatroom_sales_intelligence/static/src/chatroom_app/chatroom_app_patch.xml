@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-inherit="chatroom_whatsapp.ChatroomApp" t-inherit-mode="extension">
+        <xpath expr="//span[hasclass('o_chatroom_app_list_name')]" position="after">
+            <span t-if="channel.rfm_category and channel.rfm_category !== 'none'"
+                  t-attf-class="badge o_chatroom_rfm_badge o_chatroom_rfm_badge_{{ channel.rfm_category }}"
+                  t-esc="channel.rfm_category.toUpperCase()"
+                  title="Categoría RFM"/>
+            <i t-if="channel.management_alert_state === 'red'"
+               class="fa fa-circle o_chatroom_alert_dot o_chatroom_alert_dot_red"
+               title="Oportunidad estancada"/>
+            <i t-elif="channel.management_alert_state === 'yellow'"
+               class="fa fa-clock-o o_chatroom_alert_dot o_chatroom_alert_dot_yellow"
+               title="Sin gestión reciente"/>
+        </xpath>
+    </t>
+
+</templates>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_chatroom_channel_kanban_sales_intelligence" model="ir.ui.view">
+        <field name="name">chatroom.channel.kanban.sales.intelligence</field>
+        <field name="model">chatroom.channel</field>
+        <field name="inherit_id" ref="chatroom_whatsapp.view_chatroom_channel_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//kanban/field[@name='ai_intent']" position="after">
+                <field name="rfm_category"/>
+                <field name="management_alert_state"/>
+            </xpath>
+            <strong class="text-truncate" position="after">
+                <span t-if="record.rfm_category.raw_value and record.rfm_category.raw_value != 'none'"
+                      t-attf-class="badge o_chatroom_rfm_badge o_chatroom_rfm_badge_{{ record.rfm_category.raw_value }}"
+                      t-esc="record.rfm_category.raw_value.toUpperCase()"
+                      title="Categoría RFM"/>
+                <i t-if="record.management_alert_state.raw_value == 'red'"
+                   class="fa fa-circle o_chatroom_alert_dot o_chatroom_alert_dot_red"
+                   title="Oportunidad estancada"/>
+                <i t-elif="record.management_alert_state.raw_value == 'yellow'"
+                   class="fa fa-clock-o o_chatroom_alert_dot o_chatroom_alert_dot_yellow"
+                   title="Sin gestión reciente"/>
+            </strong>
+        </field>
+    </record>
+
+</odoo>

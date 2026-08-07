@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-inherit="chatroom_whatsapp.ChatroomThreadCore" t-inherit-mode="extension">
+
+        <!-- Badge de categoría RFM + punto de alerta junto al nombre del contacto -->
+        <xpath expr="//div[hasclass('o_chatroom_header_name')]" position="after">
+            <span t-if="intel.rfmCategory and intel.rfmCategory !== 'none'"
+                  t-attf-class="badge o_chatroom_rfm_badge o_chatroom_rfm_badge_{{ intel.rfmCategory }}"
+                  t-esc="rfmBadgeLabel(intel.rfmCategory)"
+                  title="Categoría RFM"/>
+            <i t-if="intel.managementAlertState === 'red'"
+               class="fa fa-circle o_chatroom_alert_dot o_chatroom_alert_dot_red"
+               title="Oportunidad estancada"/>
+            <i t-elif="intel.managementAlertState === 'yellow'"
+               class="fa fa-clock-o o_chatroom_alert_dot o_chatroom_alert_dot_yellow"
+               title="Sin gestión reciente"/>
+        </xpath>
+
+        <!-- Handle visible para abrir/cerrar el panel con mouse/teclado (el gesto de deslizar es un atajo, no la única forma) -->
+        <xpath expr="//div[hasclass('o_chatroom_thread_header')]" position="after">
+            <button class="o_chatroom_intel_handle" t-on-click="toggleIntelligencePanel"
+                    title="Inteligencia comercial">
+                <i class="fa fa-angle-double-left"/>
+            </button>
+        </xpath>
+
+        <!-- Gesto de deslizar sobre el área de mensajes -->
+        <xpath expr="//div[hasclass('o_chatroom_thread_messages')]" position="attributes">
+            <attribute name="t-on-touchstart">onThreadTouchStart</attribute>
+            <attribute name="t-on-touchend">onThreadTouchEnd</attribute>
+        </xpath>
+
+        <!-- Aviso contextual de seguimiento -->
+        <xpath expr="//div[hasclass('o_chatroom_opt_out_banner')]" position="before">
+            <div class="o_chatroom_followup_banner"
+                 t-if="!state.loading and intel.managementAlertState !== 'green' and !state.partnerOptedOut">
+                <i class="fa fa-exclamation-triangle"/>
+                <span t-if="intel.managementAlertState === 'red'">
+                    Sin gestión desde hace <t t-esc="intel.managementDaysStagnant"/> días. ¡Envía un mensaje de seguimiento!
+                </span>
+                <span t-else="">
+                    Sin gestión reciente (<t t-esc="intel.managementDaysStagnant"/> días).
+                </span>
+                <button class="btn btn-sm btn-light" t-on-click="focusComposerForFollowup">Escribir mensaje</button>
+            </div>
+        </xpath>
+
+        <!-- Panel lateral deslizable -->
+        <xpath expr="//div[hasclass('o_chatroom_composer')]" position="after">
+            <ChatroomIntelligencePanel
+                open="intel.panelOpen"
+                loading="intel.loading"
+                generating="intel.generating"
+                data="intel.data"
+                onClose="() => this.closeIntelligencePanel()"
+                onGenerateFollowup="() => this.generateFollowup()"/>
+        </xpath>
+
+    </t>
+
+</templates>

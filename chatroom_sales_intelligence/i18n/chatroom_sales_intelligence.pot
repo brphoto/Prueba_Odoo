@@ -1,0 +1,380 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* chatroom_sales_intelligence
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-07 18:48+0000\n"
+"PO-Revision-Date: 2026-08-07 18:48+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+msgid "% de sus compras)"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields,help:chatroom_sales_intelligence.field_res_partner__rfm_score
+#: model:ir.model.fields,help:chatroom_sales_intelligence.field_res_users__rfm_score
+msgid ""
+"1 a 100. Se recalcula todos los días con el resto de la cartera de clientes "
+"(cron), no es un valor absoluto: es un percentil relativo de Recencia + "
+"Frecuencia + Monto."
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model_terms:ir.ui.view,arch_db:chatroom_sales_intelligence.view_partner_form_sales_intelligence
+msgid "<span class=\"o_stat_text\">Top Productos</span>"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields.selection,name:chatroom_sales_intelligence.selection__res_partner__rfm_category__a
+msgid "A - Alto valor"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_crm_lead__management_alert_state
+msgid "Alerta de seguimiento"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields.selection,name:chatroom_sales_intelligence.selection__chatroom_channel__management_alert_state__yellow
+#: model:ir.model.fields.selection,name:chatroom_sales_intelligence.selection__crm_lead__management_alert_state__yellow
+msgid "Amarillo"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model_terms:ir.ui.view,arch_db:chatroom_sales_intelligence.view_partner_form_sales_intelligence
+msgid "Análisis Pareto (80/20)"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields.selection,name:chatroom_sales_intelligence.selection__res_partner__rfm_category__b
+msgid "B - Valor medio"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields.selection,name:chatroom_sales_intelligence.selection__res_partner__rfm_category__c
+msgid "C - Bajo valor"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_res_partner__commercial_invoice_count
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_res_users__commercial_invoice_count
+msgid "Cantidad de facturas"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_app/chatroom_app_patch.xml:0
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_thread_core_patch.xml:0
+#: model_terms:ir.ui.view,arch_db:chatroom_sales_intelligence.view_chatroom_channel_kanban_sales_intelligence
+msgid "Categoría RFM"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_chatroom_channel__rfm_category
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_res_partner__rfm_category
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_res_users__rfm_category
+msgid "Categoría RFM (ABC)"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.actions.server,name:chatroom_sales_intelligence.ir_cron_compute_rfm_scores_ir_actions_server
+msgid "Chatroom: recalcular clasificación RFM de clientes"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model_terms:ir.ui.view,arch_db:chatroom_sales_intelligence.view_partner_form_sales_intelligence
+msgid "Clasificación RFM / ABC"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields,help:chatroom_sales_intelligence.field_chatroom_channel__rfm_category
+#: model:ir.model.fields,help:chatroom_sales_intelligence.field_res_partner__rfm_category
+#: model:ir.model.fields,help:chatroom_sales_intelligence.field_res_users__rfm_category
+msgid ""
+"Clasificación simplificada A/B/C de valor del cliente, calculada por el "
+"mismo cron que el score RFM."
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model,name:chatroom_sales_intelligence.model_res_partner
+msgid "Contact"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model,name:chatroom_sales_intelligence.model_chatroom_channel
+msgid "Conversación de Chatroom (WhatsApp / Redes Sociales)"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_chatroom_channel__display_name
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_crm_lead__display_name
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_res_partner__display_name
+msgid "Display Name"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_crm_lead__days_since_last_management
+msgid "Días sin gestión"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-python
+#: code:addons/chatroom_sales_intelligence/models/chatroom_channel.py:0
+msgid ""
+"Eres un asistente de ventas. Redacta en español un mensaje corto y cordial "
+"de WhatsApp para retomar el contacto con un cliente cuya oportunidad de "
+"venta lleva %(days)s días sin gestión. Menciona el producto o motivo de "
+"interés si aparece en la conversación. No uses saludos genéricos largos ni "
+"firmes el mensaje."
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_thread_core_patch.xml:0
+msgid "Escribir mensaje"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+msgid "Esta conversación no tiene un contacto asociado todavía."
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+msgid "Generar excusa de seguimiento"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model_terms:ir.ui.view,arch_db:chatroom_sales_intelligence.view_partner_form_sales_intelligence
+msgid "Histórico de ventas"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_chatroom_channel__id
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_crm_lead__id
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_res_partner__id
+msgid "ID"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+#: model_terms:ir.ui.view,arch_db:chatroom_sales_intelligence.view_partner_form_sales_intelligence
+msgid "Inteligencia Comercial"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_thread_core_patch.xml:0
+msgid "Inteligencia comercial"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model,name:chatroom_sales_intelligence.model_crm_lead
+msgid "Lead"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_chatroom_channel__management_alert_state
+msgid "Management Alert State"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_chatroom_channel__management_days_stagnant
+msgid "Management Days Stagnant"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-python
+#: code:addons/chatroom_sales_intelligence/models/chatroom_channel.py:0
+msgid "No se pudo generar el mensaje de seguimiento: %s"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_app/chatroom_app_patch.xml:0
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_thread_core_patch.xml:0
+#: model_terms:ir.ui.view,arch_db:chatroom_sales_intelligence.view_chatroom_channel_kanban_sales_intelligence
+msgid "Oportunidad estancada"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_res_partner__commercial_top_product_summary
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_res_users__commercial_top_product_summary
+msgid "Producto más comprado"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields.selection,name:chatroom_sales_intelligence.selection__chatroom_channel__management_alert_state__red
+#: model:ir.model.fields.selection,name:chatroom_sales_intelligence.selection__crm_lead__management_alert_state__red
+msgid "Rojo"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_res_partner__rfm_score
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_res_users__rfm_score
+msgid "Score RFM"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_thread_core_patch.xml:0
+msgid "Sin gestión desde hace"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_app/chatroom_app_patch.xml:0
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_thread_core_patch.xml:0
+#: model_terms:ir.ui.view,arch_db:chatroom_sales_intelligence.view_chatroom_channel_kanban_sales_intelligence
+msgid "Sin gestión reciente"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_thread_core_patch.xml:0
+msgid "Sin gestión reciente ("
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields.selection,name:chatroom_sales_intelligence.selection__res_partner__rfm_category__none
+msgid "Sin historial"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+msgid "Sin oportunidad abierta."
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+msgid "Sin ventas facturadas todavía."
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields,help:chatroom_sales_intelligence.field_res_partner__commercial_total_sales
+#: model:ir.model.fields,help:chatroom_sales_intelligence.field_res_users__commercial_total_sales
+msgid ""
+"Suma de facturas de venta en estado 'Publicada' (out_invoice menos "
+"out_refund). A diferencia de 'Facturado' (total_invoiced, que excluye solo "
+"borrador/cancelada), este campo se calcula expresamente sobre estado "
+"'posted' para reflejar ventas confirmadas, tal como lo pidió el equipo "
+"comercial."
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_res_partner__commercial_avg_ticket
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_res_users__commercial_avg_ticket
+msgid "Ticket promedio"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+msgid "Todavía no tiene compras registradas."
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_res_partner__commercial_total_sales
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_res_users__commercial_total_sales
+msgid "Total facturado (pagado)"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields.selection,name:chatroom_sales_intelligence.selection__chatroom_channel__management_alert_state__green
+#: model:ir.model.fields.selection,name:chatroom_sales_intelligence.selection__crm_lead__management_alert_state__green
+msgid "Verde"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_thread_core_patch.xml:0
+msgid "días)."
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_thread_core_patch.xml:0
+msgid "días. ¡Envía un mensaje de seguimiento!"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+msgid "facturas"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+msgid "total ·"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+msgid "· Score"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_res_partner__commercial_last_sale_date
+#: model:ir.model.fields,field_description:chatroom_sales_intelligence.field_res_users__commercial_last_sale_date
+msgid "Última venta"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+msgid "Última:"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+msgid "💰 Ticket Promedio:"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+msgid "💼 Perfil de Compra (Pareto)"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+msgid "📅 Creada:"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+msgid "🕒 Última gestión:"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+msgid "🧾 Última Venta"
+msgstr ""
+
+#. module: chatroom_sales_intelligence
+#. odoo-javascript
+#: code:addons/chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml:0
+msgid "🩺 Salud de la Oportunidad"
+msgstr ""

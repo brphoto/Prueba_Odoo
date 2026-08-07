@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="chatroom_sales_intelligence.ChatroomIntelligencePanel">
+        <div t-attf-class="o_chatroom_intel_panel {{ props.open ? 'o_chatroom_intel_panel_open' : '' }}">
+            <div class="o_chatroom_intel_panel_header">
+                <strong>Inteligencia Comercial</strong>
+                <button class="btn btn-link o_chatroom_intel_close" t-on-click="() => props.onClose()">
+                    <i class="fa fa-times"/>
+                </button>
+            </div>
+
+            <t t-if="props.loading">
+                <div class="o_chatroom_loading"><i class="fa fa-spin fa-circle-o-notch"/></div>
+            </t>
+            <t t-elif="!props.data or !props.data.has_partner">
+                <div class="o_chatroom_intel_empty text-muted">
+                    Esta conversación no tiene un contacto asociado todavía.
+                </div>
+            </t>
+            <t t-else="">
+                <div class="o_chatroom_intel_section">
+                    <div class="o_chatroom_intel_section_title">🩺 Salud de la Oportunidad</div>
+                    <t t-if="props.data.lead_id">
+                        <div class="o_chatroom_intel_row">
+                            📅 Creada: <span t-esc="formatDate(props.data.lead_create_date)"/>
+                        </div>
+                        <div class="o_chatroom_intel_row">
+                            🕒 Última gestión: <span t-esc="formatRelativeDays(props.data.days_since_last_management)"/>
+                        </div>
+                        <div class="o_chatroom_intel_row">
+                            <span t-attf-class="badge o_chatroom_alert_badge o_chatroom_alert_badge_{{ props.data.management_alert_state }}">
+                                <t t-esc="props.data.lead_name"/>
+                            </span>
+                        </div>
+                        <button class="btn btn-sm btn-primary o_chatroom_intel_followup_btn"
+                                t-att-disabled="props.generating"
+                                t-on-click="() => props.onGenerateFollowup()">
+                            <i t-if="props.generating" class="fa fa-spin fa-circle-o-notch"/>
+                            <t t-else="">Generar excusa de seguimiento</t>
+                        </button>
+                    </t>
+                    <t t-else="">
+                        <div class="o_chatroom_intel_row text-muted">Sin oportunidad abierta.</div>
+                    </t>
+                </div>
+
+                <div class="o_chatroom_intel_section">
+                    <div class="o_chatroom_intel_section_title">💼 Perfil de Compra (Pareto)</div>
+                    <div class="o_chatroom_intel_row">
+                        <span t-attf-class="badge o_chatroom_rfm_badge o_chatroom_rfm_badge_{{ props.data.rfm_category }}">
+                            <t t-esc="rfmCategoryLabel()"/>
+                        </span>
+                        <span class="text-muted"> · Score <t t-esc="props.data.rfm_score"/>/100</span>
+                    </div>
+                    <t t-if="props.data.top_products and props.data.top_products.length">
+                        <t t-foreach="props.data.top_products" t-as="product" t-key="product.product_id">
+                            <div class="o_chatroom_intel_chip">
+                                🏆 <t t-esc="product.product_name"/>
+                                <span class="text-muted"> (<t t-esc="product.percentage"/>% de sus compras)</span>
+                            </div>
+                        </t>
+                    </t>
+                    <t t-else="">
+                        <div class="o_chatroom_intel_row text-muted">Todavía no tiene compras registradas.</div>
+                    </t>
+                    <div class="o_chatroom_intel_row" t-if="props.data.commercial_invoice_count">
+                        💰 Ticket Promedio: <strong t-esc="formatMoney(props.data.commercial_avg_ticket)"/>
+                    </div>
+                </div>
+
+                <div class="o_chatroom_intel_section">
+                    <div class="o_chatroom_intel_section_title">🧾 Última Venta</div>
+                    <t t-if="props.data.commercial_last_sale_date">
+                        <div class="o_chatroom_intel_row">
+                            <strong t-esc="formatMoney(props.data.commercial_total_sales)"/>
+                            <span class="text-muted"> total · <t t-esc="props.data.commercial_invoice_count"/> facturas</span>
+                        </div>
+                        <div class="o_chatroom_intel_row text-muted">
+                            Última: <t t-esc="formatDate(props.data.commercial_last_sale_date)"/>
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <div class="o_chatroom_intel_row text-muted">Sin ventas facturadas todavía.</div>
+                    </t>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>

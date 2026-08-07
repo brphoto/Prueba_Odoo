@@ -1,0 +1,174 @@
+// Micro-indicadores (badge RFM + punto de alerta) reutilizados en el
+// encabezado del chat, la lista de la app de una sola pantalla y el
+// kanban de conversaciones.
+.o_chatroom_rfm_badge {
+    font-size: 0.65em;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 8px;
+    vertical-align: middle;
+}
+
+.o_chatroom_rfm_badge_a {
+    background-color: #d1f7dd;
+    color: #0a5c2e;
+}
+
+.o_chatroom_rfm_badge_b {
+    background-color: #fff3cd;
+    color: #7a5b00;
+}
+
+.o_chatroom_rfm_badge_c {
+    background-color: #e9ecef;
+    color: #495057;
+}
+
+.o_chatroom_alert_dot {
+    font-size: 0.7em;
+    vertical-align: middle;
+    margin-left: 2px;
+}
+
+.o_chatroom_alert_dot_red {
+    color: #dc3545;
+}
+
+.o_chatroom_alert_dot_yellow {
+    color: #e6a700;
+}
+
+// ------------------------------------------------------------------
+// Aviso contextual de seguimiento (arriba del área de mensajes)
+// ------------------------------------------------------------------
+.o_chatroom_followup_banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    font-size: 0.85em;
+    flex: 0 0 auto;
+    background-color: #fff3cd;
+    color: #664d03;
+
+    button {
+        margin-left: auto;
+    }
+}
+
+// ------------------------------------------------------------------
+// Handle para abrir/cerrar el panel lateral (además del gesto de swipe)
+// ------------------------------------------------------------------
+.o_chatroom_intel_handle {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    z-index: 6;
+    width: 22px;
+    height: 56px;
+    border: none;
+    border-radius: 6px 0 0 6px;
+    background-color: rgba(0, 0, 0, 0.15);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+        background-color: rgba(0, 0, 0, 0.3);
+    }
+}
+
+// ------------------------------------------------------------------
+// Panel lateral deslizable
+// ------------------------------------------------------------------
+.o_chatroom_intel_panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 280px;
+    max-width: 85%;
+    background-color: var(--o-view-background-color, #fff);
+    border-left: 1px solid var(--border-color, #dee2e6);
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.12);
+    transform: translateX(100%);
+    transition: transform 0.2s ease-in-out;
+    z-index: 7;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.o_chatroom_intel_panel_open {
+    transform: translateX(0);
+}
+
+.o_chatroom_intel_panel_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    flex: 0 0 auto;
+}
+
+.o_chatroom_intel_close {
+    padding: 0;
+    color: inherit;
+}
+
+.o_chatroom_intel_empty {
+    padding: 16px;
+    font-size: 0.85em;
+}
+
+.o_chatroom_intel_section {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    font-size: 0.85em;
+}
+
+.o_chatroom_intel_section_title {
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.o_chatroom_intel_row {
+    margin-bottom: 4px;
+}
+
+.o_chatroom_intel_chip {
+    background-color: #f0f2f5;
+    border-radius: 6px;
+    padding: 4px 8px;
+    margin-bottom: 4px;
+    font-size: 0.95em;
+}
+
+.o_chatroom_intel_followup_btn {
+    margin-top: 6px;
+    width: 100%;
+}
+
+.o_chatroom_alert_badge {
+    font-size: 0.85em;
+    padding: 3px 8px;
+    border-radius: 8px;
+}
+
+.o_chatroom_alert_badge_red {
+    background-color: #f8d7da;
+    color: #58151c;
+}
+
+.o_chatroom_alert_badge_yellow {
+    background-color: #fff3cd;
+    color: #664d03;
+}
+
+.o_chatroom_alert_badge_green {
+    background-color: #d1f7dd;
+    color: #0a5c2e;
+}

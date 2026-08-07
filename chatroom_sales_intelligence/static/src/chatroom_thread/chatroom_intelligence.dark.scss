@@ -1,0 +1,37 @@
+// Overrides para el bundle web.assets_web_dark, mismo criterio que
+// chatroom_thread.dark.scss: solo los colores escritos "a mano".
+.o_chatroom_followup_banner {
+    background-color: #4a3a14;
+    color: #ffe69c;
+}
+
+.o_chatroom_intel_chip,
+.o_chatroom_rfm_badge_c {
+    background-color: #202c33;
+    color: #e9edef;
+}
+
+.o_chatroom_rfm_badge_a {
+    background-color: #123b24;
+    color: #7ee2a8;
+}
+
+.o_chatroom_rfm_badge_b {
+    background-color: #4a3a14;
+    color: #ffe69c;
+}
+
+.o_chatroom_alert_badge_green {
+    background-color: #123b24;
+    color: #7ee2a8;
+}
+
+.o_chatroom_alert_badge_yellow {
+    background-color: #4a3a14;
+    color: #ffe69c;
+}
+
+.o_chatroom_alert_badge_red {
+    background-color: #4a1f22;
+    color: #ffb3bb;
+}
