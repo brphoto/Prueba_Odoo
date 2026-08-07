@@ -52,6 +52,7 @@ export class ChatroomThreadCore extends Component {
     static props = {
         channelId: { type: [Number, { value: false }], optional: true },
         emptyMessage: { type: String, optional: true },
+        onOpenMobileSidebar: { type: Function, optional: true },
         onMessagesLoaded: { type: Function, optional: true },
     };
     static defaultProps = {
@@ -91,6 +92,15 @@ export class ChatroomThreadCore extends Component {
             lightboxUrl: false,
             noteMode: false,
             assignedUserId: false,
+            assignedUserName: "",
+            assignedUserInitials: "",
+            assignedUserColor: "#94a3b8",
+            reassignOpen: false,
+            activity: false,
+            calendarInstalled: false,
+            activityMenuOpen: false,
+            mentionOpen: false,
+            mentionQuery: "",
             agents: [],
             replyingTo: false,
             reactingToId: false,
@@ -213,13 +223,28 @@ export class ChatroomThreadCore extends Component {
             "chatroom.channel",
             [channelId],
             ["display_name", "partner_id", "channel_type", "is_session_open",
-             "assigned_user_id", "whatsapp_number_id", "tag_ids", "ai_paused"]
+             "assigned_user_id", "assigned_user_initials", "assigned_user_color",
+             "next_activity_id", "next_activity_summary", "next_activity_date_deadline",
+             "next_activity_overdue", "next_activity_user_id", "calendar_installed",
+             "whatsapp_number_id", "tag_ids", "ai_paused"]
         );
         this.state.channelName = channel.display_name;
         this.state.partnerId = channel.partner_id ? channel.partner_id[0] : false;
         this.state.channelType = channel.channel_type;
         this.state.isSessionOpen = channel.is_session_open;
         this.state.assignedUserId = channel.assigned_user_id ? channel.assigned_user_id[0] : false;
+        this.state.assignedUserName = channel.assigned_user_id ? channel.assigned_user_id[1] : "Sin asignar";
+        this.state.assignedUserInitials = channel.assigned_user_initials || "";
+        this.state.assignedUserColor = channel.assigned_user_color || "#94a3b8";
+        this.state.activity = channel.next_activity_id ? {
+            id: channel.next_activity_id,
+            summary: channel.next_activity_summary,
+            date_deadline: channel.next_activity_date_deadline,
+            overdue: channel.next_activity_overdue,
+        } : false;
+        this.state.calendarInstalled = channel.calendar_installed;
+        this.state.activityMenuOpen = false;
+        this.state.reassignOpen = false;
         this.state.whatsappNumberId = channel.whatsapp_number_id ? channel.whatsapp_number_id[0] : false;
         this.state.channelTagIds = channel.tag_ids || [];
         this.state.aiPaused = channel.ai_paused;
@@ -309,6 +334,121 @@ export class ChatroomThreadCore extends Component {
         }
         await this.orm.write("chatroom.channel", [this.channelId], { assigned_user_id: newUserId });
         this.state.assignedUserId = newUserId;
+    }
+
+    toggleReassignMenu() {
+        this.state.reassignOpen = !this.state.reassignOpen;
+        this.state.activityMenuOpen = false;
+    }
+
+    async quickReassign(agent) {
+        if (!this.channelId || !agent || agent.id === this.state.assignedUserId) {
+            return;
+        }
+        try {
+            const result = await this.orm.call(
+                "chatroom.channel", "action_quick_reassign", [this.channelId], {
+                    user_id: agent.id,
+                });
+            this.state.assignedUserId = result.assigned_user_id;
+            this.state.assignedUserName = result.assigned_user_name;
+            this.state.assignedUserInitials = result.assigned_user_initials;
+            this.state.assignedUserColor = result.assigned_user_color;
+            this.state.reassignOpen = false;
+            this.notification.add(`Conversación asignada a ${result.assigned_user_name}.`, {
+                type: "success",
+            });
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
+    }
+
+    toggleActivityMenu() {
+        this.state.activityMenuOpen = !this.state.activityMenuOpen;
+        this.state.reassignOpen = false;
+    }
+
+    async _refreshActivity() {
+        this.state.activity = await this.orm.call(
+            "chatroom.channel", "get_next_activity_data", [this.channelId]);
+        this.state.activityMenuOpen = false;
+    }
+
+    async markActivityDone() {
+        if (!this.state.activity) {
+            return;
+        }
+        try {
+            await this.orm.call(
+                "chatroom.channel", "action_mark_next_activity_done",
+                [this.channelId, this.state.activity.id]);
+            await this._refreshActivity();
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
+    }
+
+    async rescheduleActivityTomorrow() {
+        if (!this.state.activity) {
+            return;
+        }
+        try {
+            await this.orm.call(
+                "chatroom.channel", "action_reschedule_next_activity",
+                [this.channelId, this.state.activity.id]);
+            await this._refreshActivity();
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
+    }
+
+    async createFollowupActivity() {
+        try {
+            const action = await this.orm.call(
+                "chatroom.channel", "action_open_activity_schedule", [this.channelId]);
+            await this.action.doAction(action, {
+                additionalContext: { dialog_size: "large" },
+                onClose: () => this._refreshActivity(),
+            });
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
+    }
+
+    async openCalendarMeeting() {
+        try {
+            const action = await this.orm.call(
+                "chatroom.channel", "action_open_calendar_meeting", [this.channelId]);
+            await this.action.doAction(action, {
+                additionalContext: { dialog_size: "large" },
+                onClose: () => this._refreshActivity(),
+            });
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
+    }
+
+    activityLabel() {
+        if (!this.state.activity) {
+            return "Programar actividad";
+        }
+        if (this.state.activity.overdue) {
+            const deadline = new Date(`${this.state.activity.date_deadline}T00:00:00`);
+            const days = Math.max(1, Math.ceil((Date.now() - deadline.getTime()) / 86400000));
+            return `¡URGENTE! ${this.state.activity.summary} vencido hace ${days} día${days === 1 ? '' : 's'}`;
+        }
+        const deadline = new Date(`${this.state.activity.date_deadline}T00:00:00`);
+        return `Seguimiento: ${this.state.activity.summary} · ${deadline.toLocaleDateString()}`;
     }
 
     async _loadCannedResponses() {
@@ -611,6 +751,17 @@ export class ChatroomThreadCore extends Component {
         return message.sender_user_id ? message.sender_user_id[1] : "";
     }
 
+    senderInitials(message) {
+        const name = this.senderName(message);
+        return name ? name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase() : "";
+    }
+
+    senderColor(message) {
+        const palette = ["#3b82f6", "#16a34a", "#f59e0b", "#8b5cf6", "#ef4444", "#0891b2"];
+        const id = message.sender_user_id ? message.sender_user_id[0] : 0;
+        return palette[id % palette.length];
+    }
+
     async retryMessage(message) {
         if (message.retrying || !this.channelId) {
             return;
@@ -828,6 +979,31 @@ export class ChatroomThreadCore extends Component {
     // ------------------------------------------------------------------
     toggleNoteMode() {
         this.state.noteMode = !this.state.noteMode;
+        this.state.mentionOpen = false;
+    }
+
+    onComposerInput(ev) {
+        this.state.composerText = ev.target.value;
+        const match = this.state.composerText.match(/(?:^|\s)@([^\s@]*)$/);
+        this.state.mentionQuery = match ? match[1].toLowerCase() : "";
+        this.state.mentionOpen = Boolean(match && this.state.noteMode);
+    }
+
+    mentionAgents() {
+        const query = this.state.mentionQuery;
+        return this.state.agents.filter((agent) =>
+            !query || agent.name.toLowerCase().includes(query)
+            || agent.initials.toLowerCase().includes(query)
+        );
+    }
+
+    insertMention(agent) {
+        const name = (agent.name || '').replace(/\s+/g, '_');
+        this.state.composerText = this.state.composerText.replace(
+            /(?:^|\s)@[^\s@]*$/, (match) => `${match.startsWith(' ') ? ' ' : ''}@${name} `
+        );
+        this.state.mentionOpen = false;
+        this.state.mentionQuery = "";
     }
 
     async send() {

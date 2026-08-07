@@ -57,6 +57,20 @@ class ResConfigSettings(models.TransientModel):
         help="Reparte las conversaciones nuevas entre los agentes del "
              "grupo 'Chatroom / Agente', priorizando al que menos "
              "conversaciones abiertas tenga.")
+    chatroom_sla_enabled = fields.Boolean(
+        string="Activar SLA de primera respuesta",
+        config_parameter='chatroom_whatsapp.sla_enabled', default=True)
+    chatroom_sla_yellow_minutes = fields.Integer(
+        string="Aviso amarillo después de (minutos)",
+        config_parameter='chatroom_whatsapp.sla_yellow_minutes', default=10)
+    chatroom_sla_red_minutes = fields.Integer(
+        string="Vencimiento rojo después de (minutos)",
+        config_parameter='chatroom_whatsapp.sla_red_minutes', default=15)
+    chatroom_sla_auto_reassign = fields.Boolean(
+        string="Liberar y reasignar automáticamente al vencer",
+        config_parameter='chatroom_whatsapp.sla_auto_reassign', default=True,
+        help="Quita la conversación al agente que no respondió y la entrega "
+             "al siguiente agente disponible con menos carga.")
 
     # -- Messenger / Instagram (misma App de Meta, token de Página) --
     chatroom_meta_page_access_token = fields.Char(

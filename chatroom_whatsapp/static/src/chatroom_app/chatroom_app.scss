@@ -1,6 +1,7 @@
 .o_chatroom_app {
     display: flex;
     height: 100%;
+    min-height: 0;
     width: 100%;
     overflow: hidden;
     background-color: var(--o-view-background-color, #fff);
@@ -68,11 +69,15 @@
 
 .o_chatroom_app_toolbar {
     display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex: 0 0 auto;
     justify-content: space-around;
     padding: 4px 6px;
     border-bottom: 1px solid var(--border-color, #dee2e6);
 
     .btn {
+        flex: 0 0 auto;
         font-size: 0.75em;
         padding: 4px 6px;
         white-space: nowrap;
@@ -206,6 +211,55 @@
     color: #667781;
 }
 
+.o_chatroom_app_assignment_line,
+.o_chatroom_app_activity_line {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 15px;
+    overflow: hidden;
+    color: #8696a0;
+    font-size: 0.68em;
+    white-space: nowrap;
+}
+
+.o_chatroom_app_assignment_line > span:first-child {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.o_chatroom_app_assignment_initials {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--assignee-color, #64748b);
+    color: #fff;
+    font-size: 0.72em;
+    font-weight: 700;
+}
+
+.o_chatroom_app_unassigned {
+    color: #f59e0b;
+}
+
+.o_chatroom_app_activity_line {
+    text-overflow: ellipsis;
+}
+
+.o_chatroom_app_activity_line.o_overdue,
+.o_chatroom_app_activity_line.o_sla_red {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.o_chatroom_app_activity_line.o_sla_yellow {
+    color: #b7791f;
+}
+
 .o_chatroom_app_list_item.o_unread {
     .o_chatroom_app_list_name,
     .o_chatroom_app_list_preview {
@@ -218,6 +272,7 @@
     position: relative;
     flex: 1 1 auto;
     min-width: 0;
+    min-height: 0;
     display: flex;
     flex-direction: column;
 }
@@ -261,10 +316,6 @@
         display: none;
     }
 
-    .o_chatroom_contact_panel {
-        display: none;
-    }
-
     .o_chatroom_app.o_chatroom_app_chat_open {
         .o_chatroom_app_sidebar {
             display: none;
@@ -279,6 +330,20 @@
             align-items: center;
             justify-content: center;
         }
+
+    }
+
+    .o_chatroom_app.o_chatroom_app_chat_open.o_chatroom_mobile_sidebar_open {
+        .o_chatroom_app_sidebar {
+            display: flex;
+            position: absolute;
+            inset: 0 auto 0 0;
+            z-index: 20;
+            width: 92vw;
+            max-width: 380px;
+            min-width: 0;
+            box-shadow: 3px 0 14px rgba(0, 0, 0, 0.25);
+        }
     }
 }
 
@@ -292,5 +357,20 @@
         bottom: 0;
         z-index: 4;
         box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+    }
+}
+
+@media (max-width: 768px) {
+    // El panel de contacto se abre como un cajón independiente desde el
+    // botón de la cabecera. Así conserva Ventas/Compras/Facturas y la
+    // Inteligencia Comercial sin tapar el hilo ni depender de escritorio.
+    .o_chatroom_contact_panel {
+        position: absolute;
+        inset: 0 0 0 auto;
+        z-index: 25;
+        width: 92vw;
+        max-width: 380px;
+        min-width: 0;
+        box-shadow: -3px 0 14px rgba(0, 0, 0, 0.25);
     }
 }

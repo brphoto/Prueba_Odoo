@@ -11,6 +11,17 @@
     color: #e9edef;
 }
 
+.o_chatroom_intel_panel_embedded,
+.o_chatroom_intel_section_title,
+.o_chatroom_intel_row {
+    color: #e9edef;
+}
+
+.o_chatroom_intel_panel_embedded .text-muted,
+.o_chatroom_intel_history_item .text-muted {
+    color: #aebac1 !important;
+}
+
 .o_chatroom_rfm_badge_a {
     background-color: #123b24;
     color: #7ee2a8;

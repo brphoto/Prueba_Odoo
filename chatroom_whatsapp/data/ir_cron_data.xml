@@ -41,4 +41,14 @@
         <field name="active">True</field>
     </record>
 
+    <record id="ir_cron_process_assignment_sla" model="ir.cron">
+        <field name="name">Chatroom: liberar y reasignar SLA vencidos</field>
+        <field name="model_id" ref="model_chatroom_channel"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_process_assignment_sla()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+
 </odoo>

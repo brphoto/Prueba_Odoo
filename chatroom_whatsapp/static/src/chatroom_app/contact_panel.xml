@@ -3,6 +3,15 @@
 
     <t t-name="chatroom_whatsapp.ContactPanel">
         <div class="o_chatroom_contact_panel">
+            <div class="o_chatroom_contact_panel_toolbar">
+                <strong>Ficha comercial</strong>
+                <button t-if="props.onClose" class="btn btn-link o_chatroom_contact_panel_close"
+                        title="Cerrar ficha comercial"
+                        aria-label="Cerrar ficha comercial"
+                        t-on-click.stop="props.onClose">
+                    <i class="fa fa-times"/>
+                </button>
+            </div>
             <t t-if="state.loading">
                 <div class="o_chatroom_loading"><i class="fa fa-spin fa-circle-o-notch"/></div>
             </t>
@@ -16,6 +25,13 @@
                     <img class="o_chatroom_contact_avatar"
                          t-att-src="partnerAvatarUrl()" alt=""/>
                     <div class="o_chatroom_contact_name" t-esc="state.data.name"/>
+                    <div class="o_chatroom_contact_assignee"
+                         t-attf-style="--assignee-color: {{ state.data.assigned_user_color }}">
+                        <span class="o_chatroom_assignee_initials">
+                            <t t-esc="state.data.assigned_user_initials || 'NA'"/>
+                        </span>
+                        <span>Atendido por <t t-esc="state.data.assigned_user_name"/></span>
+                    </div>
                     <div class="o_chatroom_contact_sub text-muted" t-if="state.data.company_name" t-esc="state.data.company_name"/>
                     <div class="o_chatroom_contact_sub text-muted" t-if="state.data.city or state.data.country_name"
                          t-esc="[state.data.city, state.data.country_name].filter((v) =&gt; v).join(', ')"/>

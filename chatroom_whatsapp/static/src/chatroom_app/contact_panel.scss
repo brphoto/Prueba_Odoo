@@ -1,11 +1,39 @@
 .o_chatroom_contact_panel {
-    width: 300px;
-    min-width: 260px;
-    max-width: 40%;
+    width: 340px;
+    min-width: 300px;
+    max-width: 38%;
     border-left: 1px solid var(--border-color, #dee2e6);
     background-color: var(--o-view-background-color, #fff);
     overflow-y: auto;
     flex: 0 0 auto;
+}
+
+.o_chatroom_contact_panel_toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+    padding: 6px 10px 6px 14px;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    background-color: var(--o-view-background-color, #fff);
+}
+
+.o_chatroom_contact_panel_close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 50%;
+    color: var(--o-main-text-color, #212529);
+
+    &:hover {
+        background-color: rgba(113, 75, 103, 0.12);
+    }
 }
 
 .o_chatroom_contact_header {
@@ -30,6 +58,15 @@
 .o_chatroom_contact_name {
     font-weight: 600;
     font-size: 1.05em;
+}
+
+.o_chatroom_contact_assignee {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 6px;
+    color: #667781;
+    font-size: 0.75em;
 }
 
 .o_chatroom_contact_sub {

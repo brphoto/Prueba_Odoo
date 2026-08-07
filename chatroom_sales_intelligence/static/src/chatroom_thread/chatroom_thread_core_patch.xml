@@ -17,20 +17,8 @@
                title="Sin gestión reciente"/>
         </xpath>
 
-        <!-- Handle visible para abrir/cerrar el panel con mouse/teclado (el gesto de deslizar es un atajo, no la única forma) -->
-        <xpath expr="//div[hasclass('o_chatroom_thread_header')]" position="after">
-            <button class="o_chatroom_intel_handle" t-on-click="toggleIntelligencePanel"
-                    title="Inteligencia comercial">
-                <i class="fa fa-angle-double-left"/>
-            </button>
-        </xpath>
-
-        <!-- Gesto de deslizar sobre el área de mensajes -->
-        <xpath expr="//div[hasclass('o_chatroom_thread_messages')]" position="attributes">
-            <attribute name="t-on-touchstart">onThreadTouchStart</attribute>
-            <attribute name="t-on-touchend">onThreadTouchEnd</attribute>
-        </xpath>
-
+        <!-- La ficha completa de inteligencia vive en ContactPanel; aquí solo
+             quedan los indicadores y el aviso contextual del hilo. -->
         <!-- Aviso contextual de seguimiento -->
         <xpath expr="//div[hasclass('o_chatroom_opt_out_banner')]" position="before">
             <div class="o_chatroom_followup_banner"
@@ -44,17 +32,6 @@
                 </span>
                 <button class="btn btn-sm btn-light" t-on-click="focusComposerForFollowup">Escribir mensaje</button>
             </div>
-        </xpath>
-
-        <!-- Panel lateral deslizable -->
-        <xpath expr="//div[hasclass('o_chatroom_composer')]" position="after">
-            <ChatroomIntelligencePanel
-                open="intel.panelOpen"
-                loading="intel.loading"
-                generating="intel.generating"
-                data="intel.data"
-                onClose="() => this.closeIntelligencePanel()"
-                onGenerateFollowup="() => this.generateFollowup()"/>
         </xpath>
 
     </t>

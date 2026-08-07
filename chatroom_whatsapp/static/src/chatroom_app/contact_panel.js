@@ -15,11 +15,14 @@ const COLLAPSED_SECTIONS_STORAGE_KEY = "chatroom_whatsapp.contact_panel_collapse
  */
 export class ContactPanel extends Component {
     static template = "chatroom_whatsapp.ContactPanel";
+    static components = {};
     static props = {
         channelId: { type: [Number, { value: false }], optional: true },
+        onClose: { type: Function, optional: true },
     };
     static defaultProps = {
         channelId: false,
+        onClose: false,
     };
 
     setup() {
@@ -164,16 +167,6 @@ export class ContactPanel extends Component {
     // se abren en una pestaña nueva -Odoo completo, con todo (kanban con
     // arrastrar y soltar, filtros, acciones en lote), sin perder el chat
     // en la pestaña original.
-    _openInNewTab(action) {
-        this.action.doAction(action, { newWindow: true });
-    }
-
-    async _openChannelActionNewTab(methodName) {
-        const result = await this.orm.call(
-            "chatroom.channel", methodName, [this.props.channelId]);
-        this._openInNewTab(result);
-    }
-
     async _openChannelAction(methodName) {
         const result = await this.orm.call(
             "chatroom.channel", methodName, [this.props.channelId]);
@@ -181,23 +174,23 @@ export class ContactPanel extends Component {
     }
 
     openLeads() {
-        this._openChannelActionNewTab("action_view_leads");
+        this._openChannelAction("action_view_leads");
     }
 
     openSaleOrders() {
-        this._openChannelActionNewTab("action_view_sale_orders");
+        this._openChannelAction("action_view_sale_orders");
     }
 
     openPurchases() {
-        this._openChannelActionNewTab("action_view_purchases");
+        this._openChannelAction("action_view_purchases");
     }
 
     openInvoices() {
-        this._openChannelActionNewTab("action_view_invoices");
+        this._openChannelAction("action_view_invoices");
     }
 
     openTasks() {
-        this._openChannelActionNewTab("action_view_tasks");
+        this._openChannelAction("action_view_tasks");
     }
 
     createLead() {
@@ -265,7 +258,7 @@ export class ContactPanel extends Component {
 
     async openProductCatalog() {
         const result = await this.orm.call("chatroom.channel", "action_view_products", []);
-        this._openInNewTab(result);
+        this._openDialog(result);
     }
 
     // ------------------------------------------------------------------

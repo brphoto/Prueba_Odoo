@@ -49,6 +49,33 @@
                         </setting>
                     </block>
 
+                    <block title="SLA y reasignación automática">
+                        <setting id="chatroom_sla_enabled_setting"
+                                 help="Muestra el contador de primera respuesta y permite liberar conversaciones vencidas">
+                            <field name="chatroom_sla_enabled"/>
+                        </setting>
+                        <setting id="chatroom_sla_thresholds_setting"
+                                 invisible="not chatroom_sla_enabled">
+                            <div class="content-group">
+                                <div class="mt8">
+                                    <label for="chatroom_sla_yellow_minutes" string="Alerta amarilla"/>
+                                    <field name="chatroom_sla_yellow_minutes"/>
+                                    <span class="text-muted"> minutos</span>
+                                </div>
+                                <div class="mt8">
+                                    <label for="chatroom_sla_red_minutes" string="Vencimiento rojo"/>
+                                    <field name="chatroom_sla_red_minutes"/>
+                                    <span class="text-muted"> minutos</span>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting id="chatroom_sla_auto_reassign_setting"
+                                 invisible="not chatroom_sla_enabled"
+                                 help="Quita el responsable vencido y asigna la conversación al siguiente agente disponible">
+                            <field name="chatroom_sla_auto_reassign"/>
+                        </setting>
+                    </block>
+
                     <block title="Messenger / Instagram">
                         <setting id="chatroom_meta_page_access_token_setting"
                                  help="Page Access Token de la Página conectada a tu App de Meta. Usa la misma App y el mismo webhook que WhatsApp, pero necesita su propio token para enviar mensajes">

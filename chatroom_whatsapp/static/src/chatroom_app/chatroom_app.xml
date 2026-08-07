@@ -2,7 +2,7 @@
 <templates xml:space="preserve">
 
     <t t-name="chatroom_whatsapp.ChatroomApp">
-        <div t-attf-class="o_chatroom_app {{ state.selectedChannelId ? 'o_chatroom_app_chat_open' : '' }}">
+        <div t-attf-class="o_chatroom_app {{ state.selectedChannelId ? 'o_chatroom_app_chat_open' : '' }} {{ state.mobileSidebarOpen ? 'o_chatroom_mobile_sidebar_open' : '' }}">
             <div class="o_chatroom_app_sidebar">
                 <div class="o_chatroom_app_sidebar_header">
                     <h4><i class="fa fa-whatsapp"/> Chatroom</h4>
@@ -81,6 +81,27 @@
                                             <t t-esc="channel.unread_count"/>
                                         </span>
                                     </div>
+                                    <div class="o_chatroom_app_assignment_line">
+                                        <span t-if="channel.assigned_user_id"
+                                              t-attf-style="--assignee-color: {{ channel.assigned_user_color }}">
+                                            <span class="o_chatroom_app_assignment_initials">
+                                                <t t-esc="channel.assigned_user_initials"/>
+                                            </span>
+                                            Atendido por: [<t t-esc="channel.assigned_user_initials"/>]
+                                        </span>
+                                        <span t-else="" class="o_chatroom_app_unassigned">Sin asignar</span>
+                                    </div>
+                                    <div t-if="channel.next_activity_id"
+                                         t-attf-class="o_chatroom_app_activity_line {{ channel.next_activity_overdue ? 'o_overdue' : '' }}">
+                                        <i t-attf-class="fa {{ channel.next_activity_overdue ? 'fa-exclamation-triangle' : 'fa-clock-o' }}"/>
+                                        <span t-esc="activityLabel(channel)"/>
+                                    </div>
+                                    <div t-elif="channel.first_response_sla_state === 'yellow' or channel.first_response_sla_state === 'red'"
+                                         t-attf-class="o_chatroom_app_activity_line o_sla_{{ channel.first_response_sla_state }}">
+                                        <i class="fa fa-hourglass-half"/>
+                                        <span t-if="channel.first_response_sla_state === 'red'">SLA vencido</span>
+                                        <span t-else="">Vence pronto</span>
+                                    </div>
                                 </div>
                             </div>
                         </t>
@@ -99,10 +120,12 @@
                 <ChatroomThreadCore
                     channelId="state.selectedChannelId"
                     emptyMessage="'Seleccioná una conversación de la izquierda para empezar.'"
+                    onOpenMobileSidebar="() => this.toggleMobileSidebar()"
                     onMessagesLoaded="() => this.onThreadMessagesLoaded()"/>
             </div>
             <ContactPanel t-if="state.selectedChannelId and state.contactPanelOpen"
-                          channelId="state.selectedChannelId"/>
+                          channelId="state.selectedChannelId"
+                          onClose="() => this.toggleContactPanel()"/>
         </div>
     </t>
 

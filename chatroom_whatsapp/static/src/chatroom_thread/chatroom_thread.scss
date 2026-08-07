@@ -32,6 +32,7 @@
 }
 
 .o_chatroom_thread_header {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -70,6 +71,12 @@
         text-transform: capitalize;
     }
 
+    .o_chatroom_header_info {
+        position: relative;
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
     .o_chatroom_assignee_select {
         margin-left: auto;
         flex: 0 0 auto;
@@ -86,6 +93,150 @@
             color: #111b21;
         }
     }
+}
+
+.o_chatroom_thread_mobile_menu_btn {
+    display: none;
+}
+
+.o_chatroom_assignee_widget {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+.o_chatroom_assignee_badge,
+.o_chatroom_assignee_option .o_chatroom_assignee_initials {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.o_chatroom_assignee_initials {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background-color: var(--assignee-color, #64748b);
+    color: #fff;
+    font-size: 0.68em;
+    font-weight: 700;
+}
+
+.o_chatroom_assignee_name {
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.76em;
+}
+
+.o_chatroom_assignee_switch {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #fff;
+    opacity: 0.85;
+}
+
+.o_chatroom_thread_header > .o_chatroom_activity_pill,
+.o_chatroom_thread_header > .o_chatroom_activity_popover {
+    display: none;
+}
+
+.o_chatroom_assignee_switch:hover {
+    background: rgba(255, 255, 255, 0.18);
+    opacity: 1;
+}
+
+.o_chatroom_assignee_popover,
+.o_chatroom_activity_popover {
+    position: absolute;
+    z-index: 15;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 210px;
+    padding: 6px;
+    border-radius: 8px;
+    background: var(--o-view-background-color, #fff);
+    color: var(--o-main-text-color, #212529);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+}
+
+.o_chatroom_header_info .o_chatroom_activity_popover {
+    left: 0;
+    right: auto;
+    top: calc(100% + 4px);
+}
+
+.o_chatroom_assignee_popover_title {
+    padding: 5px 8px;
+    color: #667781;
+    font-size: 0.75em;
+    text-transform: uppercase;
+}
+
+.o_chatroom_assignee_option,
+.o_chatroom_activity_popover button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 8px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    font-size: 0.82em;
+}
+
+.o_chatroom_assignee_option:hover,
+.o_chatroom_activity_popover button:hover {
+    background: rgba(113, 75, 103, 0.12);
+}
+
+.o_chatroom_activity_pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: fit-content;
+    max-width: 100%;
+    margin-top: 5px;
+    padding: 4px 9px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    font-size: 0.76em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_chatroom_activity_pill.o_overdue {
+    background: #dc3545;
+    font-weight: 700;
+    animation: o_chatroom_activity_pulse 1.6s ease-in-out infinite;
+}
+
+.o_chatroom_activity_popover {
+    left: 58px;
+    right: auto;
+    top: calc(100% + 4px);
+}
+
+@keyframes o_chatroom_activity_pulse {
+    50% { box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.24); }
 }
 
 .o_chatroom_thread_subheader {
@@ -795,4 +946,89 @@
     align-items: center;
     justify-content: center;
     padding: 0;
+}
+
+.o_chatroom_mentions_menu {
+    position: absolute;
+    bottom: 58px;
+    left: 12px;
+    z-index: 8;
+    min-width: 220px;
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 5px;
+    border-radius: 8px;
+    background: var(--o-view-background-color, #fff);
+    box-shadow: 0 3px 14px rgba(0, 0, 0, 0.22);
+}
+
+.o_chatroom_mentions_title {
+    padding: 5px 8px;
+    color: #667781;
+    font-size: 0.72em;
+    text-transform: uppercase;
+}
+
+.o_chatroom_mentions_menu button {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+}
+
+.o_chatroom_mentions_menu button:hover {
+    background: rgba(113, 75, 103, 0.12);
+}
+
+.o_chatroom_advisor_tag {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 4px 3px;
+    color: var(--advisor-color, #3b82f6);
+    font-size: 0.72em;
+    font-weight: 700;
+}
+
+.o_chatroom_advisor_dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--advisor-color, #3b82f6);
+}
+
+@media (max-width: 768px) {
+    .o_chatroom_thread_header {
+        padding-right: 52px;
+    }
+
+    .o_chatroom_assignee_name {
+        display: none;
+    }
+
+    .o_chatroom_activity_pill {
+        max-width: 100%;
+    }
+
+    .o_chatroom_thread_mobile_menu_btn {
+        position: absolute;
+        top: 12px;
+        right: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background-color: rgba(255, 255, 255, 0.25);
+        color: #fff;
+    }
 }

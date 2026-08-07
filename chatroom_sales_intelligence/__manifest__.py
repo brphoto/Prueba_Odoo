@@ -63,7 +63,7 @@ agrega la capa visual que los muestra dentro del chat.
     'license': 'LGPL-3',
 
     'category': 'Sales/CRM',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.3',
 
     'depends': ['chatroom_whatsapp', 'crm_customer_intelligence'],
 

@@ -2,8 +2,8 @@
 <templates xml:space="preserve">
 
     <t t-name="chatroom_sales_intelligence.ChatroomIntelligencePanel">
-        <div t-attf-class="o_chatroom_intel_panel {{ props.open ? 'o_chatroom_intel_panel_open' : '' }}">
-            <div class="o_chatroom_intel_panel_header">
+        <div t-attf-class="o_chatroom_intel_panel {{ props.embedded ? 'o_chatroom_intel_panel_embedded' : (props.open ? 'o_chatroom_intel_panel_open' : '') }}">
+            <div class="o_chatroom_intel_panel_header" t-if="!props.embedded">
                 <strong>Inteligencia Comercial</strong>
                 <button class="btn btn-link o_chatroom_intel_close" t-on-click="() => props.onClose()">
                     <i class="fa fa-times"/>
@@ -37,11 +37,26 @@
                                 t-att-disabled="props.generating"
                                 t-on-click="() => props.onGenerateFollowup()">
                             <i t-if="props.generating" class="fa fa-spin fa-circle-o-notch"/>
-                            <t t-else="">Generar excusa de seguimiento</t>
+                            <t t-else="">Sugerir seguimiento con IA</t>
                         </button>
                     </t>
                     <t t-else="">
                         <div class="o_chatroom_intel_row text-muted">Sin oportunidad abierta.</div>
+                    </t>
+                </div>
+
+                <div class="o_chatroom_intel_section" t-if="props.assignmentHistory and props.assignmentHistory.length">
+                    <div class="o_chatroom_intel_section_title">
+                        <i class="fa fa-history"/> Log de asesores
+                    </div>
+                    <t t-foreach="props.assignmentHistory" t-as="entry" t-key="entry.id">
+                        <div class="o_chatroom_intel_history_item">
+                            <div>
+                                <strong t-esc="entry.new_user_name"/>
+                                <span class="text-muted"> · <t t-esc="entry.reason"/></span>
+                            </div>
+                            <small class="text-muted" t-esc="entry.changed_at"/>
+                        </div>
                     </t>
                 </div>
 

@@ -22,6 +22,14 @@ const CHANNEL_FIELDS = [
     "state",
     "partner_id",
     "assigned_user_id",
+    "assigned_user_initials",
+    "assigned_user_color",
+    "next_activity_id",
+    "next_activity_summary",
+    "next_activity_date_deadline",
+    "next_activity_overdue",
+    "first_response_sla_state",
+    "pending_response_minutes",
     "whatsapp_number_id",
 ];
 
@@ -70,7 +78,11 @@ export class ChatroomApp extends Component {
             searchText: "",
             filter: "all",
             numberFilter: this._getStoredNumberFilter(),
-            contactPanelOpen: this._getStoredContactPanelOpen(),
+            // En móvil el chat ocupa toda la pantalla y la ficha se abre
+            // bajo demanda con el botón de contacto; en escritorio sí se
+            // conserva la preferencia del usuario.
+            contactPanelOpen: !this._isMobileViewport() && this._getStoredContactPanelOpen(),
+            mobileSidebarOpen: false,
         });
 
         this._onBusNotification = this._onBusNotification.bind(this);
@@ -183,6 +195,7 @@ export class ChatroomApp extends Component {
 
     selectChannel(channelId) {
         this.state.selectedChannelId = channelId;
+        this.state.mobileSidebarOpen = false;
     }
 
     _getStoredContactPanelOpen() {
@@ -193,8 +206,15 @@ export class ChatroomApp extends Component {
         }
     }
 
+    _isMobileViewport() {
+        return Boolean(window.matchMedia && window.matchMedia("(max-width: 768px)").matches);
+    }
+
     toggleContactPanel() {
         this.state.contactPanelOpen = !this.state.contactPanelOpen;
+        if (this.state.contactPanelOpen) {
+            this.state.mobileSidebarOpen = false;
+        }
         try {
             localStorage.setItem(CONTACT_PANEL_STORAGE_KEY, this.state.contactPanelOpen ? "1" : "0");
         } catch {
@@ -216,19 +236,31 @@ export class ChatroomApp extends Component {
     }
 
     openTemplates() {
-        this.action.doAction("chatroom_whatsapp.action_chatroom_template");
+        this._openEmbeddedMenuAction("chatroom_whatsapp.action_chatroom_template");
     }
 
     openNumbers() {
-        this.action.doAction("chatroom_whatsapp.action_chatroom_whatsapp_number");
+        this._openEmbeddedMenuAction("chatroom_whatsapp.action_chatroom_whatsapp_number");
     }
 
     openCannedResponses() {
-        this.action.doAction("chatroom_whatsapp.action_chatroom_canned_response");
+        this._openEmbeddedMenuAction("chatroom_whatsapp.action_chatroom_canned_response");
     }
 
     openDashboard() {
-        this.action.doAction("chatroom_whatsapp.action_chatroom_dashboard");
+        this._openEmbeddedMenuAction("chatroom_whatsapp.action_chatroom_dashboard");
+    }
+
+    async _openEmbeddedMenuAction(xmlid) {
+        try {
+            const action = await this.orm.call(
+                "chatroom.channel", "action_get_embedded_menu_action", [xmlid]);
+            this.action.doAction(action, { onClose: () => this._loadChannels() });
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
     }
 
     async goToNextPending() {
@@ -247,6 +279,14 @@ export class ChatroomApp extends Component {
 
     backToList() {
         this.state.selectedChannelId = false;
+        this.state.mobileSidebarOpen = false;
+    }
+
+    toggleMobileSidebar() {
+        this.state.mobileSidebarOpen = !this.state.mobileSidebarOpen;
+        if (this.state.mobileSidebarOpen) {
+            this.state.contactPanelOpen = false;
+        }
     }
 
     onThreadMessagesLoaded() {
@@ -266,6 +306,22 @@ export class ChatroomApp extends Component {
             return dateObj.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
         }
         return dateObj.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" });
+    }
+
+    activityLabel(channel) {
+        if (!channel.next_activity_id) {
+            return "";
+        }
+        const deadline = new Date(`${channel.next_activity_date_deadline}T00:00:00`);
+        if (channel.next_activity_overdue) {
+            const days = Math.max(1, Math.ceil((Date.now() - deadline.getTime()) / 86400000));
+            return `Seguimiento vencido hace ${days} día${days === 1 ? '' : 's'}`;
+        }
+        const today = new Date();
+        const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+        const label = deadline.toDateString() === tomorrow.toDateString()
+            ? "Mañana" : deadline.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" });
+        return `Siguiente actividad: ${label}`;
     }
 }
 

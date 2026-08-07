@@ -16,6 +16,8 @@ export class ChatroomIntelligencePanel extends Component {
         loading: Boolean,
         generating: { type: Boolean, optional: true },
         data: { type: [Object, { value: false }], optional: true },
+        assignmentHistory: { type: Array, optional: true },
+        embedded: { type: Boolean, optional: true },
         onClose: Function,
         onGenerateFollowup: Function,
     };

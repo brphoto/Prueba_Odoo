@@ -24,16 +24,80 @@
                 <div class="o_chatroom_header_info">
                     <div class="o_chatroom_header_name" t-esc="state.channelName"/>
                     <div class="o_chatroom_header_channel" t-esc="state.channelType"/>
+                    <button t-attf-class="o_chatroom_activity_pill {{ state.activity and state.activity.overdue ? 'o_overdue' : '' }}"
+                            title="Abrir planificador de actividades"
+                            t-on-click.stop="toggleActivityMenu">
+                        <i t-attf-class="fa {{ state.activity and state.activity.overdue ? 'fa-exclamation-triangle' : 'fa-calendar' }}"/>
+                        <span t-esc="activityLabel()"/>
+                    </button>
+                    <div class="o_chatroom_activity_popover" t-if="state.activityMenuOpen"
+                         t-on-click.stop="">
+                        <button t-if="state.activity" t-on-click="markActivityDone">
+                            <i class="fa fa-check"/> Marcar como hecha
+                        </button>
+                        <button t-if="state.activity" t-on-click="rescheduleActivityTomorrow">
+                            <i class="fa fa-calendar"/> Reprogramar para ma&#241;ana
+                        </button>
+                        <button t-on-click="createFollowupActivity">
+                            <i class="fa fa-plus"/> Programar actividad
+                        </button>
+                        <button t-if="state.calendarInstalled" t-on-click="openCalendarMeeting">
+                            <i class="fa fa-video-camera"/> Reunión / videollamada
+                        </button>
+                    </div>
                 </div>
-                <select t-if="state.agents.length" class="o_chatroom_assignee_select"
-                        t-on-click.stop="" t-on-change="reassign" title="Reasignar agente">
-                    <option value="">Sin asignar</option>
-                    <t t-foreach="state.agents" t-as="agent" t-key="agent.id">
-                        <option t-att-value="agent.id" t-att-selected="agent.id === state.assignedUserId">
-                            <t t-esc="agent.name"/>
-                        </option>
-                    </t>
-                </select>
+                <div class="o_chatroom_assignee_widget" t-if="state.agents.length">
+                    <span class="o_chatroom_assignee_badge"
+                          t-attf-style="--assignee-color: {{ state.assignedUserColor }}">
+                        <span class="o_chatroom_assignee_initials">
+                            <t t-esc="state.assignedUserInitials || 'NA'"/>
+                        </span>
+                        <span class="o_chatroom_assignee_name" t-esc="state.assignedUserName"/>
+                    </span>
+                    <button class="o_chatroom_assignee_switch" title="Reasignar conversación"
+                            t-on-click.stop="toggleReassignMenu">
+                        <i class="fa fa-exchange"/>
+                    </button>
+                    <div class="o_chatroom_assignee_popover" t-if="state.reassignOpen"
+                         t-on-click.stop="">
+                        <div class="o_chatroom_assignee_popover_title">Reasignar a</div>
+                        <t t-foreach="state.agents" t-as="agent" t-key="agent.id">
+                            <button class="o_chatroom_assignee_option"
+                                    t-if="agent.id !== state.assignedUserId"
+                                    t-on-click="() => this.quickReassign(agent)">
+                                <span class="o_chatroom_assignee_initials"
+                                      t-attf-style="--assignee-color: {{ agent.color }}">
+                                    <t t-esc="agent.initials"/>
+                                </span>
+                                <span t-esc="agent.name"/>
+                            </button>
+                        </t>
+                    </div>
+                </div>
+                <button t-attf-class="o_chatroom_activity_pill {{ state.activity and state.activity.overdue ? 'o_overdue' : '' }}"
+                        title="Abrir acciones de actividad"
+                        t-on-click.stop="toggleActivityMenu">
+                    <i t-attf-class="fa {{ state.activity and state.activity.overdue ? 'fa-exclamation-triangle' : 'fa-clock-o' }}"/>
+                    <span t-esc="activityLabel()"/>
+                </button>
+                <div class="o_chatroom_activity_popover" t-if="state.activityMenuOpen"
+                     t-on-click.stop="">
+                    <button t-if="state.activity" t-on-click="markActivityDone">
+                        <i class="fa fa-check"/> Marcar como hecha
+                    </button>
+                    <button t-if="state.activity" t-on-click="rescheduleActivityTomorrow">
+                        <i class="fa fa-calendar"/> Reprogramar para mañana
+                    </button>
+                    <button t-on-click="createFollowupActivity">
+                        <i class="fa fa-plus"/> Crear nueva actividad
+                    </button>
+                </div>
+                <button t-if="props.onOpenMobileSidebar"
+                        class="o_chatroom_thread_mobile_menu_btn"
+                        title="Mostrar conversaciones y opciones"
+                        t-on-click.stop="() => props.onOpenMobileSidebar()">
+                    <i class="fa fa-bars"/>
+                </button>
             </div>
 
             <div class="o_chatroom_thread_subheader" t-if="!state.loading" t-on-click.stop="">
@@ -113,6 +177,13 @@
                              t-attf-class="o_chatroom_bubble o_chatroom_bubble_{{ message.direction === 'outbound' ? 'out' : 'in' }}">
                             <div class="o_chatroom_bubble_quote" t-if="replyPreview(message)">
                                 <span t-esc="(replyPreview(message).body || '').slice(0, 120)"/>
+                            </div>
+                            <div class="o_chatroom_advisor_tag"
+                                 t-if="message.direction === 'outbound' and message.sender_user_id"
+                                 t-attf-style="--advisor-color: {{ senderColor(message) }}">
+                                <span class="o_chatroom_advisor_dot"/>
+                                <span t-esc="senderInitials(message)"/>
+                                <span t-esc="senderName(message)"/>
                             </div>
                             <t t-if="message.attachments.length">
                                 <t t-foreach="message.attachments" t-as="attachment" t-key="attachment.id">
@@ -271,6 +342,18 @@
                             </div>
                         </t>
                     </div>
+                    <div class="o_chatroom_mentions_menu"
+                         t-if="state.noteMode and state.mentionOpen and mentionAgents().length">
+                        <div class="o_chatroom_mentions_title">Mencionar asesor</div>
+                        <button t-foreach="mentionAgents()" t-as="agent" t-key="agent.id"
+                                t-on-click="() => this.insertMention(agent)">
+                            <span class="o_chatroom_assignee_initials"
+                                  t-attf-style="--assignee-color: {{ agent.color }}">
+                                <t t-esc="agent.initials"/>
+                            </span>
+                            <t t-esc="agent.name"/>
+                        </button>
+                    </div>
                     <div t-attf-class="o_chatroom_composer_input {{ state.noteMode ? 'o_chatroom_composer_note_mode' : '' }}">
                         <input type="file" t-ref="fileInput" class="d-none" multiple="multiple"
                                t-on-change="onFileChange"/>
@@ -301,6 +384,7 @@
                             class="o_chatroom_composer_textarea"
                             t-att-placeholder="state.noteMode ? 'Nota interna (no se envía al cliente)...' : 'Escribe un mensaje...'"
                             t-model="state.composerText"
+                            t-on-input="onComposerInput"
                             t-on-keydown="onComposerKeydown"
                             t-att-disabled="state.sending"/>
                         <button t-if="!state.noteMode" class="btn btn-link o_chatroom_attach_btn" title="Grabar nota de voz"

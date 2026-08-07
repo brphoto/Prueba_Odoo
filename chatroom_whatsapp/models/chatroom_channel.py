@@ -29,8 +29,8 @@ MESSAGE_TYPE_PREVIEW = {
 
 # Umbral de SLA de primera respuesta: minutos desde el primer mensaje del
 # cliente hasta la primera respuesta de un agente en esa conversación.
-SLA_FIRST_RESPONSE_YELLOW_MINUTES = 15
-SLA_FIRST_RESPONSE_RED_MINUTES = 60
+SLA_FIRST_RESPONSE_YELLOW_MINUTES = 10
+SLA_FIRST_RESPONSE_RED_MINUTES = 15
 
 
 class ChatroomChannel(models.Model):
@@ -76,6 +76,8 @@ class ChatroomChannel(models.Model):
     assigned_user_id = fields.Many2one(
         'res.users', string="Agente asignado", tracking=True,
         default=lambda self: self.env.user)
+    assigned_user_initials = fields.Char(compute='_compute_assignment_visual')
+    assigned_user_color = fields.Char(compute='_compute_assignment_visual')
     message_ids = fields.One2many(
         'chatroom.message', 'channel_id', string="Mensajes")
     message_count = fields.Integer(compute='_compute_message_stats', store=True)
@@ -120,6 +122,12 @@ class ChatroomChannel(models.Model):
          ('yellow', "Por vencer"),
          ('red', "Vencido")],
         compute='_compute_first_response_sla', string="SLA 1ra respuesta")
+    next_activity_id = fields.Integer(compute='_compute_next_activity')
+    next_activity_summary = fields.Char(compute='_compute_next_activity')
+    next_activity_date_deadline = fields.Date(compute='_compute_next_activity')
+    next_activity_overdue = fields.Boolean(compute='_compute_next_activity')
+    next_activity_user_id = fields.Many2one(
+        'res.users', compute='_compute_next_activity')
     sla_breach_notified = fields.Boolean(
         default=False, copy=False,
         help="Ya se le avisó al agente asignado que esta conversación "
@@ -138,6 +146,34 @@ class ChatroomChannel(models.Model):
         for rec in self:
             rec.cart_total = sum(line.quantity * line.price_unit for line in rec.cart_line_ids)
 
+    @api.depends('assigned_user_id')
+    def _compute_assignment_visual(self):
+        palette = ('#3b82f6', '#16a34a', '#f59e0b', '#8b5cf6', '#ef4444', '#0891b2')
+        for rec in self:
+            user = rec.assigned_user_id
+            if not user:
+                rec.assigned_user_initials = ''
+                rec.assigned_user_color = '#94a3b8'
+                continue
+            words = (user.name or '').split()
+            rec.assigned_user_initials = ''.join(word[0] for word in words[:2]).upper()
+            rec.assigned_user_color = palette[(user.color or user.id) % len(palette)]
+
+    def _sla_settings(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        enabled = icp.get_param('chatroom_whatsapp.sla_enabled', 'True') != 'False'
+        try:
+            yellow = int(icp.get_param(
+                'chatroom_whatsapp.sla_yellow_minutes', SLA_FIRST_RESPONSE_YELLOW_MINUTES))
+        except (TypeError, ValueError):
+            yellow = SLA_FIRST_RESPONSE_YELLOW_MINUTES
+        try:
+            red = int(icp.get_param(
+                'chatroom_whatsapp.sla_red_minutes', SLA_FIRST_RESPONSE_RED_MINUTES))
+        except (TypeError, ValueError):
+            red = SLA_FIRST_RESPONSE_RED_MINUTES
+        return enabled, max(1, yellow), max(yellow + 1, red)
+
     @api.depends('message_ids.direction', 'message_ids.date')
     def _compute_first_response_sla(self):
         """Semáforo en vivo (no está 'store', a diferencia del campo
@@ -147,6 +183,7 @@ class ChatroomChannel(models.Model):
         avisar de un SLA vencido incluso sin que nadie haya respondido
         todavía (algo que un campo calculado solo al responder no puede
         mostrar)."""
+        enabled, yellow_limit, red_limit = self._sla_settings()
         now = fields.Datetime.now()
         for rec in self:
             first_inbound = rec.message_ids.filtered(lambda m: m.direction == 'inbound').sorted('date')[:1]
@@ -164,9 +201,11 @@ class ChatroomChannel(models.Model):
                 continue
             minutes = int((now - first_inbound_date).total_seconds() / 60)
             rec.pending_response_minutes = minutes
-            if minutes < SLA_FIRST_RESPONSE_YELLOW_MINUTES:
+            if not enabled:
+                rec.first_response_sla_state = 'none'
+            elif minutes < yellow_limit:
                 rec.first_response_sla_state = 'green'
-            elif minutes < SLA_FIRST_RESPONSE_RED_MINUTES:
+            elif minutes < red_limit:
                 rec.first_response_sla_state = 'yellow'
             else:
                 rec.first_response_sla_state = 'red'
@@ -198,6 +237,38 @@ class ChatroomChannel(models.Model):
             elif channel.sla_breach_notified:
                 channel.sla_breach_notified = False
 
+    @api.model
+    def _cron_process_assignment_sla(self):
+        """Libera y vuelve a repartir conversaciones sin primera respuesta.
+
+        La regla es configurable desde Ajustes. Solo se ejecuta una vez que
+        el SLA está rojo y nunca cambia el historial de mensajes: registra la
+        reasignación en chatroom.assignment.log y notifica al nuevo agente.
+        """
+        icp = self.env['ir.config_parameter'].sudo()
+        enabled = icp.get_param('chatroom_whatsapp.sla_enabled', 'True') != 'False'
+        auto_reassign = icp.get_param(
+            'chatroom_whatsapp.sla_auto_reassign', 'True') != 'False'
+        auto_assign = icp.get_param(
+            'chatroom_whatsapp.auto_assign', 'True') != 'False'
+        if not enabled or not auto_reassign or not auto_assign:
+            return
+        agents = self._get_default_agents()
+        if not agents:
+            return
+        for channel in self.search([('state', 'in', ('open', 'pending'))]):
+            if channel.first_response_sla_state != 'red' or not channel.assigned_user_id:
+                continue
+            candidates = agents - channel.assigned_user_id
+            if not candidates:
+                candidates = agents
+            next_agent = self._get_next_assignee(candidates)
+            if next_agent == channel.assigned_user_id:
+                continue
+            channel.with_context(chatroom_assignment_reason='sla').write({
+                'assigned_user_id': next_agent.id if next_agent else False,
+            })
+
     # No es un Many2one a 'crm.lead': CRM es un módulo opcional (no está
     # en 'depends'), y un campo relacional a un modelo no instalado rompe
     # la carga del registro. Se guarda el id "a mano" y se resuelve solo
@@ -205,6 +276,7 @@ class ChatroomChannel(models.Model):
     pinned_lead_id = fields.Integer(string="ID de oportunidad vinculada", copy=False)
     pinned_lead_name = fields.Char(compute='_compute_related_counts')
     crm_installed = fields.Boolean(compute='_compute_related_counts')
+    calendar_installed = fields.Boolean(compute='_compute_related_counts')
     sale_installed = fields.Boolean(compute='_compute_related_counts')
     purchase_installed = fields.Boolean(compute='_compute_related_counts')
     account_installed = fields.Boolean(compute='_compute_related_counts')
@@ -254,6 +326,7 @@ class ChatroomChannel(models.Model):
 
     def _compute_related_counts(self):
         crm_installed = 'crm.lead' in self.env
+        calendar_installed = 'calendar.event' in self.env
         sale_installed = 'sale.order' in self.env
         purchase_installed = 'purchase.order' in self.env
         account_installed = 'account.move' in self.env
@@ -268,6 +341,7 @@ class ChatroomChannel(models.Model):
                 }
         for rec in self:
             rec.crm_installed = crm_installed
+            rec.calendar_installed = calendar_installed
             rec.sale_installed = sale_installed
             rec.purchase_installed = purchase_installed
             rec.account_installed = account_installed
@@ -425,10 +499,67 @@ class ChatroomChannel(models.Model):
             | self.env.ref('chatroom_whatsapp.group_chatroom_manager').user_ids
         )
 
+    def _notify_assignment_change(self, reason='manual'):
+        self.ensure_one()
+        if not self.assigned_user_id or not self.assigned_user_id.partner_id:
+            return
+        if reason == 'sla':
+            body = _(
+                "La conversación de %(contact)s fue liberada por vencimiento "
+                "del SLA y reasignada a %(agent)s.") % {
+                    'contact': self.display_name,
+                    'agent': self.assigned_user_id.name,
+                }
+        else:
+            body = _(
+                "La conversación de %(contact)s fue asignada a %(agent)s.") % {
+                    'contact': self.display_name,
+                    'agent': self.assigned_user_id.name,
+                }
+        self.message_post(
+            body=body,
+            partner_ids=[self.assigned_user_id.partner_id.id],
+            subtype_xmlid='mail.mt_comment',
+        )
+
+    def action_quick_reassign(self, user_id=False):
+        self.ensure_one()
+        user = self.env['res.users'].browse(user_id).exists()
+        if not user or user not in self._get_default_agents():
+            raise UserError(_("El usuario elegido no es un agente válido de Chatroom."))
+        self.write({'assigned_user_id': user.id})
+        return {
+            'assigned_user_id': user.id,
+            'assigned_user_name': user.name,
+            'assigned_user_initials': self.assigned_user_initials,
+            'assigned_user_color': self.assigned_user_color,
+        }
+
+    def get_assignment_history(self, limit=20):
+        self.ensure_one()
+        logs = self.env['chatroom.assignment.log'].sudo().search(
+            [('channel_id', '=', self.id)], order='changed_at desc, id desc', limit=limit)
+        return [{
+            'id': log.id,
+            'previous_user_name': log.previous_user_id.name or _("Sin asignar"),
+            'new_user_name': log.new_user_id.name or _("Sin asignar"),
+            'reason': log.reason,
+            'note': log.note or '',
+            'changed_by_name': log.changed_by.name or _("Sistema"),
+            'changed_at': fields.Datetime.to_string(log.changed_at),
+        } for log in logs]
+
     @api.model
     def get_assignable_agents(self):
         """Para el selector de reasignación rápida del chat."""
-        return [{'id': u.id, 'name': u.name} for u in self._get_default_agents()]
+        palette = ('#3b82f6', '#16a34a', '#f59e0b', '#8b5cf6', '#ef4444', '#0891b2')
+        agents = self._get_default_agents().sorted(key=lambda user: user.name or '')
+        return [{
+            'id': u.id,
+            'name': u.name,
+            'initials': ''.join(word[0] for word in (u.name or '').split()[:2]).upper(),
+            'color': palette[(u.color or u.id) % len(palette)],
+        } for u in agents]
 
     @api.model
     def _get_next_assignee(self, agents=None):
@@ -481,7 +612,23 @@ class ChatroomChannel(models.Model):
         self.ensure_one()
         if not (body or '').strip():
             raise UserError(_("Escribe algo para la nota."))
-        self.message_post(body=body, subtype_xmlid='mail.mt_note')
+        mentioned_partners = []
+        mentioned_names = {
+            name.lower().replace('_', ' ')
+            for name in re.findall(r'@([^\s@]+)', body or '')
+        }
+        for agent in self._get_default_agents():
+            normalized = (agent.name or '').lower()
+            compact = normalized.replace(' ', '_')
+            if normalized in mentioned_names or compact in {
+                    name.replace(' ', '_') for name in mentioned_names}:
+                if agent.partner_id:
+                    mentioned_partners.append(agent.partner_id.id)
+        self.message_post(
+            body=body,
+            partner_ids=mentioned_partners,
+            subtype_xmlid='mail.mt_note',
+        )
         self._notify_thread_update()
         return True
 
@@ -508,6 +655,20 @@ class ChatroomChannel(models.Model):
         previous_numbers = {rec.id: rec.whatsapp_number_id for rec in self} if 'whatsapp_number_id' in vals else {}
         res = super().write(vals)
         if 'assigned_user_id' in vals:
+            reason = self.env.context.get('chatroom_assignment_reason', 'manual')
+            for rec in self:
+                previous_user = previous_assignees.get(rec.id)
+                previous_id = previous_user.id if previous_user else False
+                current_id = rec.assigned_user_id.id
+                if current_id == previous_id:
+                    continue
+                self.env['chatroom.assignment.log'].sudo().create({
+                    'channel_id': rec.id,
+                    'previous_user_id': previous_id or False,
+                    'new_user_id': current_id or False,
+                    'reason': reason,
+                    'note': "SLA vencido" if reason == 'sla' else False,
+                })
             for rec in self:
                 if rec.assigned_user_id and rec.assigned_user_id != previous_assignees.get(rec.id) \
                         and rec.assigned_user_id.partner_id:
@@ -1839,7 +2000,31 @@ class ChatroomChannel(models.Model):
         acciones funcionan llamadas desde cualquiera de los dos lados.
         """
         vals.setdefault('views', [(False, mode) for mode in view_mode.split(',')])
+        # Las acciones que salen del chat deben conservar el contexto de la
+        # conversación. Se renderizan en un diálogo nativo de Odoo, no en
+        # otra pestaña ni reemplazando la aplicación de chat.
+        vals.setdefault('target', 'new')
         return {'type': 'ir.actions.act_window', 'view_mode': view_mode, **vals}
+
+    @api.model
+    def action_get_embedded_menu_action(self, xmlid):
+        """Devuelve una acción de menú preparada para abrirse sobre el chat.
+
+        El cliente no debe resolver XML IDs de forma arbitraria. Esta lista
+        blanca mantiene el acceso limitado a las herramientas que el propio
+        Chatroom muestra en su barra.
+        """
+        allowed = {
+            'chatroom_whatsapp.action_chatroom_template',
+            'chatroom_whatsapp.action_chatroom_whatsapp_number',
+            'chatroom_whatsapp.action_chatroom_canned_response',
+            'chatroom_whatsapp.action_chatroom_dashboard',
+        }
+        if xmlid not in allowed:
+            raise UserError(_("Acción no disponible desde Chatroom."))
+        action = self.env['ir.actions.actions']._for_xml_id(xmlid)
+        action['target'] = 'new'
+        return action
 
     def action_create_lead(self):
         self.ensure_one()
@@ -1854,14 +2039,14 @@ class ChatroomChannel(models.Model):
         })
         self.pinned_lead_id = lead.id
         return self._window_action(
-            res_model='crm.lead', res_id=lead.id, view_mode='form', target='current')
+            res_model='crm.lead', res_id=lead.id, view_mode='form')
 
     def action_open_pinned_lead(self):
         self.ensure_one()
         if not self.crm_installed or not self.pinned_lead_id:
             return False
         return self._window_action(
-            res_model='crm.lead', res_id=self.pinned_lead_id, view_mode='form', target='current')
+            res_model='crm.lead', res_id=self.pinned_lead_id, view_mode='form')
 
     def action_create_quotation(self):
         self.ensure_one()
@@ -1874,7 +2059,7 @@ class ChatroomChannel(models.Model):
             'origin': self.display_name,
         })
         return self._window_action(
-            res_model='sale.order', res_id=order.id, view_mode='form', target='current')
+            res_model='sale.order', res_id=order.id, view_mode='form')
 
     def action_create_invoice(self):
         """Factura directa, sin pasar por un presupuesto antes — para
@@ -1890,7 +2075,7 @@ class ChatroomChannel(models.Model):
             'invoice_origin': self.display_name,
         })
         return self._window_action(
-            res_model='account.move', res_id=invoice.id, view_mode='form', target='current')
+            res_model='account.move', res_id=invoice.id, view_mode='form')
 
     def action_create_purchase_order(self):
         """Para cuando el contacto de WhatsApp es un proveedor, no un
@@ -1906,7 +2091,7 @@ class ChatroomChannel(models.Model):
             'origin': self.display_name,
         })
         return self._window_action(
-            res_model='purchase.order', res_id=order.id, view_mode='form', target='current')
+            res_model='purchase.order', res_id=order.id, view_mode='form')
 
     def action_create_task(self):
         self.ensure_one()
@@ -1921,7 +2106,7 @@ class ChatroomChannel(models.Model):
                 f"[{m.direction}] {m.body}" for m in self.message_ids.sorted('date') if m.body),
         })
         return self._window_action(
-            res_model='project.task', res_id=task.id, view_mode='form', target='current')
+            res_model='project.task', res_id=task.id, view_mode='form')
 
     def action_view_tasks(self):
         self.ensure_one()
@@ -2021,6 +2206,10 @@ class ChatroomChannel(models.Model):
             'company_name': partner.commercial_company_name or '',
             'city': partner.city or '',
             'country_name': partner.country_id.name or '',
+            'assigned_user_id': self.assigned_user_id.id,
+            'assigned_user_name': self.assigned_user_id.name or _("Sin asignar"),
+            'assigned_user_initials': self.assigned_user_initials or '',
+            'assigned_user_color': self.assigned_user_color,
             'crm_installed': self.crm_installed,
             'lead_count': self.lead_count,
             'sale_installed': self.sale_installed,
@@ -2053,6 +2242,24 @@ class ChatroomChannel(models.Model):
             } for a in activities],
         }
 
+    @api.depends('partner_id', 'pinned_lead_id')
+    def _compute_next_activity(self):
+        today = fields.Date.context_today(self)
+        for rec in self:
+            activity = rec._get_partner_activities(limit=1)
+            if not activity:
+                rec.next_activity_id = False
+                rec.next_activity_summary = False
+                rec.next_activity_date_deadline = False
+                rec.next_activity_overdue = False
+                rec.next_activity_user_id = False
+                continue
+            rec.next_activity_id = activity.id
+            rec.next_activity_summary = activity.summary or activity.activity_type_id.name
+            rec.next_activity_date_deadline = activity.date_deadline
+            rec.next_activity_overdue = activity.date_deadline < today
+            rec.next_activity_user_id = activity.user_id
+
     def _get_partner_activities(self, limit=10):
         """Actividades pendientes del contacto: las que están puestas
         directo sobre la ficha del partner, más las de sus oportunidades
@@ -2073,7 +2280,123 @@ class ChatroomChannel(models.Model):
                     ('res_model', '=', 'crm.lead'),
                     ('res_id', 'in', lead_ids),
                 ], order='date_deadline asc', limit=limit)
-        return activities[:limit]
+        return activities.sorted(
+            key=lambda activity: (
+                activity.date_deadline or fields.Date.to_date('9999-12-31'), activity.id)
+        )[:limit]
+
+    def _activity_target(self):
+        self.ensure_one()
+        if self.crm_installed and self.pinned_lead_id:
+            lead = self.env['crm.lead'].browse(self.pinned_lead_id).exists()
+            if lead:
+                return 'crm.lead', lead.id
+        if self.partner_id:
+            return 'res.partner', self.partner_id.id
+        return False, False
+
+    def get_next_activity_data(self):
+        self.ensure_one()
+        activity = self._get_partner_activities(limit=1)
+        if not activity:
+            return False
+        today = fields.Date.context_today(self)
+        return {
+            'id': activity.id,
+            'summary': activity.summary or activity.activity_type_id.name,
+            'date_deadline': fields.Date.to_string(activity.date_deadline),
+            'overdue': activity.date_deadline < today,
+            'user_id': activity.user_id.id,
+            'user_name': activity.user_id.name,
+        }
+
+    def action_mark_next_activity_done(self, activity_id=False):
+        self.ensure_one()
+        activity = self.env['mail.activity'].browse(activity_id or self.next_activity_id).exists()
+        if not activity or activity not in self._get_partner_activities(limit=50):
+            raise UserError(_("La actividad ya no está disponible."))
+        activity.action_done()
+        return self.get_next_activity_data()
+
+    def action_reschedule_next_activity(self, activity_id=False, date_deadline=False):
+        self.ensure_one()
+        activity = self.env['mail.activity'].browse(activity_id or self.next_activity_id).exists()
+        if not activity or activity not in self._get_partner_activities(limit=50):
+            raise UserError(_("No hay una actividad para reprogramar."))
+        new_date = fields.Date.to_date(date_deadline) if date_deadline else fields.Date.add(
+            fields.Date.context_today(self), days=1)
+        activity.write({'date_deadline': new_date})
+        return self.get_next_activity_data()
+
+    def action_create_followup_activity(self, summary=False, date_deadline=False):
+        self.ensure_one()
+        model_name, res_id = self._activity_target()
+        if not model_name:
+            raise UserError(_("Esta conversación no tiene contacto para crear una actividad."))
+        activity_type = self.env['mail.activity.type'].search(
+            [('category', '=', 'default')], order='sequence, id', limit=1)
+        if not activity_type:
+            raise UserError(_("No hay tipos de actividad configurados en Odoo."))
+        activity = self.env['mail.activity'].create({
+            'activity_type_id': activity_type.id,
+            'summary': summary or _("Seguimiento de WhatsApp"),
+            'date_deadline': fields.Date.to_date(date_deadline) if date_deadline else fields.Date.add(
+                fields.Date.context_today(self), days=1),
+            'user_id': self.assigned_user_id.id or self.env.user.id,
+            'res_model_id': self.env['ir.model']._get_id(model_name),
+            'res_id': res_id,
+        })
+        return self.get_next_activity_data() or {'id': activity.id}
+
+    def action_open_activity_schedule(self):
+        """Open Odoo's native activity scheduling wizard over the chat."""
+        self.ensure_one()
+        model_name, res_id = self._activity_target()
+        if not model_name:
+            raise UserError(_("Esta conversacion no tiene contacto para crear una actividad."))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Programar actividad'),
+            'res_model': 'mail.activity.schedule',
+            'view_mode': 'form',
+            'views': [(False, 'form')],
+            'target': 'new',
+            'context': {
+                'active_model': model_name,
+                'active_ids': [res_id],
+                'active_id': res_id,
+            },
+        }
+
+    def action_open_calendar_meeting(self):
+        """Open Odoo Calendar's native meeting form from the conversation."""
+        self.ensure_one()
+        if not self.calendar_installed:
+            raise UserError(_("El módulo Calendario no está instalado."))
+        model_name, res_id = self._activity_target()
+        if not model_name:
+            raise UserError(_("Esta conversación no tiene contacto para crear una reunión."))
+        meeting_type = self.env.ref('mail.mail_activity_data_meeting', raise_if_not_found=False)
+        attendees = self.partner_id | self.assigned_user_id.partner_id
+        action = self.env['ir.actions.actions']._for_xml_id('calendar.action_calendar_event')
+        action.update({
+            'name': _('Reunión desde Chatroom'),
+            'view_mode': 'form',
+            'views': [(False, 'form')],
+            'target': 'new',
+            'context': {
+                'default_name': _('Reunión con %s') % self.display_name,
+                'default_partner_ids': [(6, 0, attendees.ids)],
+                'default_user_id': self.assigned_user_id.id or self.env.user.id,
+                'default_res_model': model_name,
+                'default_res_id': res_id,
+                'default_activity_type_id': meeting_type.id if meeting_type else False,
+                'default_description': self.ai_summary or '',
+                'active_model': model_name,
+                'active_id': res_id,
+            },
+        })
+        return action
 
     # ------------------------------------------------------------------
     # Catálogo de productos: buscar y mandar uno por WhatsApp (foto +
@@ -2129,8 +2452,32 @@ class ChatroomChannel(models.Model):
         reusando el envío de adjuntos que ya existe (respeta ventana de
         24h, opt-out, etc. porque pasa por action_send_message)."""
         self.ensure_one()
-        pdf_content, _report_type = self.env['ir.actions.report']._render_qweb_pdf(
-            report_xmlid, [res_id])
+        if not res_id:
+            raise UserError(_("No se encontró el documento para generar el PDF."))
+        report = self.env.ref(report_xmlid, raise_if_not_found=False)
+        if not report:
+            raise UserError(_("El reporte PDF '%s' no está instalado.") % report_xmlid)
+        wkhtml_state = self.env['ir.actions.report'].get_wkhtmltopdf_state()
+        if wkhtml_state != 'ok':
+            messages = {
+                'install': _("Odoo no encuentra wkhtmltopdf. Instala la versión compatible en el servidor y reinicia Odoo."),
+                'upgrade': _("La versión de wkhtmltopdf es demasiado antigua para generar PDFs de Odoo."),
+                'workers': _("Odoo necesita al menos dos workers para generar PDFs con wkhtmltopdf."),
+                'broken': _("wkhtmltopdf está instalado pero no responde correctamente."),
+            }
+            raise UserError(messages.get(
+                wkhtml_state,
+                _("El renderizador PDF de Odoo no está disponible (estado: %s).") % wkhtml_state,
+            ))
+        try:
+            pdf_content, _report_type = self.env['ir.actions.report'].with_context(
+                force_report_rendering=True)._render_qweb_pdf(
+                    report_xmlid, res_ids=[res_id])
+        except Exception as exc:
+            _logger.exception("No se pudo generar el PDF %s para %s", report_xmlid, res_id)
+            raise UserError(_("No se pudo generar el PDF: %s") % exc) from exc
+        if not pdf_content:
+            raise UserError(_("El reporte no generó contenido PDF."))
         self.action_send_message(attachments=[{
             'name': filename,
             'mimetype': 'application/pdf',
@@ -2143,6 +2490,8 @@ class ChatroomChannel(models.Model):
         if not self.sale_installed:
             raise UserError(_("El módulo Ventas no está instalado."))
         order = self.env['sale.order'].browse(order_id)
+        if not order.exists():
+            raise UserError(_("El presupuesto ya no existe."))
         return self._send_report_as_message(
             'sale.action_report_saleorder', order.id, f"{order.name}.pdf")
 
@@ -2151,6 +2500,8 @@ class ChatroomChannel(models.Model):
         if not self.account_installed:
             raise UserError(_("El módulo Contabilidad no está instalado."))
         invoice = self.env['account.move'].browse(invoice_id)
+        if not invoice.exists():
+            raise UserError(_("La factura ya no existe."))
         return self._send_report_as_message(
             'account.account_invoices', invoice.id, f"{invoice.name or invoice.id}.pdf")
 

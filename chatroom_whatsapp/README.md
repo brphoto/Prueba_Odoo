@@ -658,11 +658,11 @@ de API que rompen módulos escritos "a la manera de Odoo 17/18":
   montado, así que ni haciendo clic en una fila de una lista abre su
   formulario — no es un botón roto del lado del negocio, es una
   limitación real del framework con diálogos multi-vista. La solución
-  que se terminó usando fue abrir esas acciones con
-  `doAction(action, { newWindow: true })` en vez de forzar
-  `target: "new"`, para browsear con Odoo completo (kanban con
-  arrastrar y soltar, filtros, lote) en una pestaña nueva sin perder el
-  chat en la original — ver "Panel de contacto" más abajo.
+  que se usa ahora es mantenerlas como acciones nativas con
+  `target: "new"`, dentro de un diálogo sobre el chat. Las listas
+  conservan los filtros y vistas nativas de Odoo; los formularios de
+  documentos recientes se abren también como diálogos, sin cambiar de
+  pestaña ni perder la conversación.
 - **El avatar del contacto (`/web/image/res.partner/<id>/avatar_128`)
   se queda con la respuesta vieja cacheada por el navegador** si subís
   una foto nueva después de haber abierto esa conversación una vez: la

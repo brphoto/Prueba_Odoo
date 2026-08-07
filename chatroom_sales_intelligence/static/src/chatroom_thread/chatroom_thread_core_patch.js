@@ -2,12 +2,8 @@
 
 import { patch } from "@web/core/utils/patch";
 import { useState } from "@odoo/owl";
+import { useBus } from "@web/core/utils/hooks";
 import { ChatroomThreadCore } from "@chatroom_whatsapp/chatroom_thread/chatroom_thread_core";
-import { ChatroomIntelligencePanel } from "./chatroom_intelligence_panel";
-
-patch(ChatroomThreadCore, {
-    components: { ...ChatroomThreadCore.components, ChatroomIntelligencePanel },
-});
 
 const RFM_LABELS = { a: "A", b: "B", c: "C" };
 
@@ -24,6 +20,14 @@ patch(ChatroomThreadCore.prototype, {
             data: false,
         });
         this._touchStartX = null;
+        useBus(this.env.bus, "chatroom_intelligence_followup", ({ detail }) => {
+            const { channelId, suggestion } = detail;
+            if (channelId !== this.channelId) {
+                return;
+            }
+            this.state.composerText = suggestion;
+            this._focusComposer();
+        });
     },
 
     async _loadChannel(channelId = this.channelId) {
