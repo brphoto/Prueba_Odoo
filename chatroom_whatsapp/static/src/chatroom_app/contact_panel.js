@@ -28,6 +28,9 @@ export class ContactPanel extends Component {
             loading: true,
             data: false,
             sendingDocKey: false,
+            productQuery: "",
+            productResults: [],
+            sendingProductId: false,
         });
 
         onWillStart(() => this._load(this.props.channelId));
@@ -39,6 +42,8 @@ export class ContactPanel extends Component {
     }
 
     async _load(channelId) {
+        this.state.productQuery = "";
+        this.state.productResults = [];
         if (!channelId) {
             this.state.data = false;
             this.state.loading = false;
@@ -48,6 +53,9 @@ export class ContactPanel extends Component {
         this.state.data = await this.orm.call(
             "chatroom.channel", "get_contact_panel_data", [channelId]);
         this.state.loading = false;
+        if (this.state.data.product_installed) {
+            this._searchProducts();
+        }
     }
 
     async _reload() {
@@ -137,6 +145,47 @@ export class ContactPanel extends Component {
             });
         } finally {
             this.state.sendingDocKey = false;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Catálogo de productos
+    // ------------------------------------------------------------------
+    onProductSearchInput(ev) {
+        this.state.productQuery = ev.target.value;
+        clearTimeout(this._productSearchTimeout);
+        this._productSearchTimeout = setTimeout(() => this._searchProducts(), 300);
+    }
+
+    async _searchProducts() {
+        this.state.productResults = await this.orm.call(
+            "chatroom.channel", "search_products", [this.state.productQuery]);
+    }
+
+    productImageUrl(product) {
+        return `/web/image/product.product/${product.id}/image_128`;
+    }
+
+    openProductCatalog() {
+        this.orm.call("chatroom.channel", "action_view_products", []).then(
+            (result) => this.action.doAction(result));
+    }
+
+    async sendProduct(product) {
+        if (this.state.sendingProductId) {
+            return;
+        }
+        this.state.sendingProductId = product.id;
+        try {
+            await this.orm.call(
+                "chatroom.channel", "action_send_product", [this.props.channelId, product.id]);
+            this.notification.add("Producto enviado por WhatsApp.", { type: "success" });
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        } finally {
+            this.state.sendingProductId = false;
         }
     }
 }

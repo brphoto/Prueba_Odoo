@@ -273,6 +273,11 @@ un panel lateral con:
   reportes de Odoo (`ir.actions.report._render_qweb_pdf`) y lo envía
   como adjunto, reusando el mismo mecanismo de envío de archivos de
   siempre — respeta la ventana de 24h, el opt-out, etc.
+- **Catálogo de productos**: buscador para encontrar un producto
+  vendible (`sale_ok`) y mandarlo por WhatsApp con un clic — la foto del
+  producto como imagen y "Nombre - Precio" como pie de foto (si no tiene
+  foto cargada, se manda como texto). "Ver todo" abre el catálogo
+  completo de Odoo para casos que no entran en una búsqueda rápida.
 
 Todo se resuelve en una sola llamada (`chatroom.channel.
 get_contact_panel_data`) para que abrir el panel no dispare media
@@ -374,6 +379,34 @@ En **Chatroom > Respuestas rápidas** cualquier agente puede guardar
 mensajes frecuentes (título + texto). Desde el composer del chat, el
 ícono de rayo abre un panel para insertarlas con un clic — útil para
 preguntas repetitivas sin gastar una llamada a la IA.
+
+## Datos de demostración
+
+**Chatroom > Configuración > Generar conversaciones de prueba** crea 2
+conversaciones con historial realista (Bryan Cando y Cynthia Molina, con
+números reales) para poder probar la interfaz sin esperar tráfico real:
+
+- **Bryan Cando**: consulta de producto sin resolver (queda con un
+  mensaje sin leer, para probar el badge/Dashboard), + una Oportunidad
+  y un Presupuesto en borrador (para probar el panel de contacto y
+  "enviar PDF por WhatsApp").
+- **Cynthia Molina**: pedido ya resuelto (conversación tranquila, sin
+  pendientes), + una Oportunidad, un Presupuesto **confirmado** y su
+  **factura** (para probar esa parte del panel con un documento real).
+
+Es manual (no se carga solo al instalar, porque usa números de teléfono
+reales) e idempotente (si el contacto ya tiene conversación, no la toca
+ni la duplica). Los datos de CRM/Ventas/Facturas se crean "mejor
+esfuerzo": si algo no aplica en tu base (falta un diario contable
+configurado, etc.) se omite con un log, sin romper la creación de las
+conversaciones.
+
+**Importante para probar con seguridad**: generar la demo solo inserta
+filas en la base — no llama a la API de Meta, así que no manda nada
+real. Pero la interfaz de chat que ves ahí es la real: si le das
+"Enviar" a un mensaje de texto o le mandás el PDF/producto a Bryan o
+Cynthia con el token de WhatsApp configurado en Ajustes, **eso sí sale
+de verdad** hacia esos números.
 
 ## Ícono en la barra superior
 
@@ -490,16 +523,21 @@ Pensado para tráfico real, no solo para la demo:
   fuente real de Odoo 19, y el usuario confirmó que la app carga y
   navega correctamente contra un Odoo real corriendo.
 - **Iniciar conversación (diálogo "+" / Nueva conversación), panel de
-  contacto, envío de PDF por WhatsApp, probar conexión, salud del
-  webhook, notificaciones de escritorio, notas internas, reasignar
-  rápido, "Siguiente pendiente" y preview de adjuntos son nuevos en
-  esta iteración**: mismo nivel de validación por sintaxis + revisión
-  contra el código fuente real de Odoo 19 (reportes PDF, `Notification`
-  API, `binding_view_types`, `html2plaintext`, etc.), pero **todavía no
-  se probaron en navegador** — conviene abrir el panel de contacto con
-  un contacto que tenga ventas/facturas reales y mandar un PDF de
-  prueba, y probar el modo nota interna, antes de usarlos con un
-  cliente de verdad.
+  contacto (con catálogo de productos), envío de PDF/producto por
+  WhatsApp, probar conexión, salud del webhook, notificaciones de
+  escritorio, notas internas, reasignar rápido, "Siguiente pendiente" y
+  preview de adjuntos son nuevos en esta iteración**: validación por
+  sintaxis + revisión contra el código fuente real de Odoo 19, pero la
+  prueba real en navegador ya encontró un bug de verdad — los botones
+  del panel de contacto (Facturas, Oportunidades, etc.) rompían con
+  "Cannot read properties of undefined (reading 'map')" porque las
+  acciones que arma `chatroom.channel` no traían la clave `views`,
+  necesaria cuando se llaman por `orm.call()` en vez de por un botón
+  clásico (`clean_action()` del servidor la completa solo para botones,
+  no para RPC directo) — ya está corregido (`_window_action()`), pero
+  es una buena señal de que **conviene seguir probando en navegador
+  antes de asumir que algo nuevo funciona**, esta sección no es solo
+  formalidad.
 - La deduplicación de contactos por teléfono compara en Python sobre
   los contactos con `phone` cargado (no hay forma limpia de comparar
   "solo dígitos" a nivel SQL sin una extensión de PostgreSQL); en bases

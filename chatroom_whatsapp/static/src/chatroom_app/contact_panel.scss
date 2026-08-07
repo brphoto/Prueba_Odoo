@@ -135,3 +135,31 @@
     flex: 0 0 auto;
     padding: 2px 6px;
 }
+
+.o_chatroom_contact_product_row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 0.85em;
+}
+
+.o_chatroom_contact_product_thumb {
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex: 0 0 auto;
+}
+
+.o_chatroom_contact_product_thumb_placeholder {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background-color: #f0f2f5;
+    color: #8696a0;
+    flex: 0 0 auto;
+}

@@ -1152,9 +1152,58 @@ class ChatroomChannel(models.Model):
             'invoice_count': self.invoice_count,
             'project_installed': self.project_installed,
             'task_count': self.task_count,
+            'product_installed': 'product.product' in self.env,
             'recent_orders': recent_orders,
             'recent_invoices': recent_invoices,
         }
+
+    # ------------------------------------------------------------------
+    # Catálogo de productos: buscar y mandar uno por WhatsApp (foto +
+    # nombre + precio), para no tener que salir del chat a armar un
+    # catálogo aparte.
+    # ------------------------------------------------------------------
+    @api.model
+    def search_products(self, query):
+        if 'product.product' not in self.env:
+            return []
+        domain = [('sale_ok', '=', True)]
+        if query:
+            domain.append(('name', 'ilike', query))
+        products = self.env['product.product'].search(domain, limit=8)
+        return [{
+            'id': p.id,
+            'name': p.display_name,
+            'list_price': p.list_price,
+            'has_image': bool(p.image_128),
+        } for p in products]
+
+    @api.model
+    def action_view_products(self):
+        return self._window_action(
+            name=_("Catálogo de productos"), res_model='product.product',
+            view_mode='kanban,list,form')
+
+    def action_send_product(self, product_id):
+        self.ensure_one()
+        product = self.env['product.product'].browse(product_id)
+        if not product.exists():
+            raise UserError(_("El producto ya no existe."))
+        currency = self.env.company.currency_id
+        caption = _("%(name)s - %(price)s %(currency)s") % {
+            'name': product.display_name,
+            'price': f"{product.list_price:.2f}",
+            'currency': currency.symbol,
+        }
+        attachments = []
+        if product.image_1920:
+            data = product.image_1920
+            attachments.append({
+                'name': f"{product.name}.jpg",
+                'mimetype': 'image/jpeg',
+                'data': data.decode() if isinstance(data, bytes) else data,
+            })
+        self.action_send_message(body=caption, attachments=attachments)
+        return True
 
     def _send_report_as_message(self, report_xmlid, res_id, filename):
         """Genera el PDF de un reporte estándar de Odoo (presupuesto,
@@ -1205,6 +1254,57 @@ class ChatroomChannel(models.Model):
     # solos al instalar: usan números de teléfono reales que pasó el
     # usuario para poder probar la interfaz con contactos de verdad).
     # ------------------------------------------------------------------
+    def _get_or_create_demo_product(self):
+        """Reusa cualquier producto vendible que ya exista (típico en una
+        base con datos de demo de Odoo) para no llenar el catálogo de
+        productos de prueba; si no hay ninguno, crea uno mínimo."""
+        if 'product.product' not in self.env:
+            return self.env['product.product']
+        product = self.env['product.product'].search([('sale_ok', '=', True)], limit=1)
+        if product:
+            return product
+        try:
+            return self.env['product.product'].create({
+                'name': "Combo de inicio (demo)",
+                'list_price': 49.0,
+            })
+        except Exception:  # noqa: BLE001 - la demo no debe romperse por esto
+            _logger.exception("No se pudo crear un producto de demo")
+            return self.env['product.product']
+
+    def _create_demo_sales_data(self, partner, scenario):
+        """Oportunidad/presupuesto/factura de ejemplo para poder probar el
+        panel de contacto (contadores, "enviar PDF por WhatsApp") con
+        datos reales. Nunca debe hacer fallar la generación de las
+        conversaciones: si algo no aplica en esta base (diario contable
+        sin configurar, etc.) se registra en el log y se sigue de largo."""
+        if 'crm.lead' in self.env:
+            try:
+                self.env['crm.lead'].create({
+                    'name': _("Oportunidad demo - %s") % partner.name,
+                    'partner_id': partner.id,
+                    'phone': partner.phone,
+                })
+            except Exception:  # noqa: BLE001
+                _logger.exception("No se pudo crear la oportunidad de demo para %s", partner.name)
+
+        if 'sale.order' not in self.env:
+            return
+        try:
+            product = self._get_or_create_demo_product()
+            order_vals = {'partner_id': partner.id}
+            if product:
+                order_vals['order_line'] = [(0, 0, {
+                    'product_id': product.id,
+                    'product_uom_qty': 2,
+                })]
+            order = self.env['sale.order'].create(order_vals)
+            if scenario == 'invoice' and 'account.move' in self.env:
+                order.action_confirm()
+                order._create_invoices()
+        except Exception:  # noqa: BLE001
+            _logger.exception("No se pudieron crear los datos de venta de demo para %s", partner.name)
+
     @api.model
     def action_generate_demo_conversations(self):
         """Crea 2 conversaciones de ejemplo con historial realista para
@@ -1222,6 +1322,7 @@ class ChatroomChannel(models.Model):
                 'phone': "593996726902",
                 'state': 'pending',
                 'ai_intent': 'consulta',
+                'demo_sales': 'quotation',
                 'messages': [
                     ('inbound', ago(hours=2),
                      "Hola buenas! Vi la página en Instagram, ¿siguen "
@@ -1244,6 +1345,7 @@ class ChatroomChannel(models.Model):
                 'phone': "593998249518",
                 'state': 'open',
                 'ai_intent': 'venta',
+                'demo_sales': 'invoice',
                 'messages': [
                     ('inbound', ago(days=1, hours=3),
                      "Buenas tardes, quería confirmar si mi pedido ya fue despachado", 'read'),
@@ -1300,6 +1402,8 @@ class ChatroomChannel(models.Model):
                 })
                 last_date = date
             channel.last_message_date = last_date
+            if conv.get('demo_sales'):
+                self._create_demo_sales_data(partner, conv['demo_sales'])
             created_names.append(conv['name'])
 
         if created_names:
