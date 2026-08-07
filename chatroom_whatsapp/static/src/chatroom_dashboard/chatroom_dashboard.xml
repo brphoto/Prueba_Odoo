@@ -5,6 +5,12 @@
         <div class="o_chatroom_dashboard">
             <div class="o_chatroom_dashboard_header">
                 <h3><i class="fa fa-whatsapp"/> Dashboard de Chatroom</h3>
+                <div t-if="!state.loading"
+                     t-attf-class="o_chatroom_webhook_health {{ state.lastWebhookOk ? 'o_ok' : 'o_warn' }}"
+                     t-on-click="openSettings" title="Ir a Ajustes">
+                    <i t-attf-class="fa {{ state.lastWebhookOk ? 'fa-check-circle' : 'fa-exclamation-triangle' }}"/>
+                    Último webhook: <span t-esc="state.lastWebhookDisplay"/>
+                </div>
             </div>
 
             <t t-if="state.loading">

@@ -5,6 +5,10 @@ import { useService } from "@web/core/utils/hooks";
 import { user } from "@web/core/user";
 import { Component, useState, onWillStart, onMounted, onWillUnmount } from "@odoo/owl";
 import { ChatroomThreadCore } from "../chatroom_thread/chatroom_thread_core";
+import { NewConversationDialog } from "./new_conversation_dialog";
+import { ContactPanel } from "./contact_panel";
+
+const CONTACT_PANEL_STORAGE_KEY = "chatroom_whatsapp.contact_panel_open";
 
 const GLOBAL_BUS_CHANNEL = "chatroom_whatsapp_global";
 const PINNED_NUMBER_STORAGE_KEY = "chatroom_whatsapp.pinned_number_id";
@@ -48,12 +52,15 @@ function isSameDay(a, b) {
  */
 export class ChatroomApp extends Component {
     static template = "chatroom_whatsapp.ChatroomApp";
-    static components = { ChatroomThreadCore };
+    static components = { ChatroomThreadCore, ContactPanel };
     static props = ["*"];
 
     setup() {
         this.orm = useService("orm");
         this.busService = useService("bus_service");
+        this.dialogService = useService("dialog");
+        this.action = useService("action");
+        this.notification = useService("notification");
 
         this.state = useState({
             loading: true,
@@ -63,6 +70,7 @@ export class ChatroomApp extends Component {
             searchText: "",
             filter: "all",
             numberFilter: this._getStoredNumberFilter(),
+            contactPanelOpen: this._getStoredContactPanelOpen(),
         });
 
         this._onBusNotification = this._onBusNotification.bind(this);
@@ -142,7 +150,15 @@ export class ChatroomApp extends Component {
         }
         if (this.state.searchText.trim()) {
             const term = this.state.searchText.trim();
-            domain.push("|", ["display_name", "ilike", term], ["partner_id", "ilike", term]);
+            // Busca por nombre del contacto/canal o por el contenido de
+            // cualquier mensaje de la conversación (para encontrar "quién
+            // preguntó por X" sin abrir chat por chat).
+            domain.push(
+                "|", "|",
+                ["display_name", "ilike", term],
+                ["partner_id", "ilike", term],
+                ["message_ids.body", "ilike", term],
+            );
         }
         return domain;
     }
@@ -167,6 +183,66 @@ export class ChatroomApp extends Component {
 
     selectChannel(channelId) {
         this.state.selectedChannelId = channelId;
+    }
+
+    _getStoredContactPanelOpen() {
+        try {
+            return localStorage.getItem(CONTACT_PANEL_STORAGE_KEY) !== "0";
+        } catch {
+            return true;
+        }
+    }
+
+    toggleContactPanel() {
+        this.state.contactPanelOpen = !this.state.contactPanelOpen;
+        try {
+            localStorage.setItem(CONTACT_PANEL_STORAGE_KEY, this.state.contactPanelOpen ? "1" : "0");
+        } catch {
+            // Sin localStorage el toggle sigue funcionando, solo no se
+            // recuerda entre sesiones.
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Herramientas del panel lateral
+    // ------------------------------------------------------------------
+    openNewConversation() {
+        this.dialogService.add(NewConversationDialog, {
+            onCreated: (channelId) => {
+                this._loadChannels();
+                this.selectChannel(channelId);
+            },
+        });
+    }
+
+    openTemplates() {
+        this.action.doAction("chatroom_whatsapp.action_chatroom_template");
+    }
+
+    openNumbers() {
+        this.action.doAction("chatroom_whatsapp.action_chatroom_whatsapp_number");
+    }
+
+    openCannedResponses() {
+        this.action.doAction("chatroom_whatsapp.action_chatroom_canned_response");
+    }
+
+    openDashboard() {
+        this.action.doAction("chatroom_whatsapp.action_chatroom_dashboard");
+    }
+
+    async goToNextPending() {
+        const domain = [["state", "=", "pending"]];
+        if (this.state.selectedChannelId) {
+            domain.push(["id", "!=", this.state.selectedChannelId]);
+        }
+        const [next] = await this.orm.searchRead(
+            "chatroom.channel", domain, ["id"], { order: "last_message_date asc", limit: 1 });
+        if (next) {
+            this.selectChannel(next.id);
+        } else {
+            this.notification.add("No hay más conversaciones pendientes.", { type: "info" });
+        }
     }
 
     backToList() {

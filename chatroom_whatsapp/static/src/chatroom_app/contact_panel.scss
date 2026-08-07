@@ -1,0 +1,199 @@
+.o_chatroom_contact_panel {
+    width: 300px;
+    min-width: 260px;
+    max-width: 40%;
+    border-left: 1px solid var(--border-color, #dee2e6);
+    background-color: var(--o-view-background-color, #fff);
+    overflow-y: auto;
+    flex: 0 0 auto;
+}
+
+.o_chatroom_contact_header {
+    text-align: center;
+    padding: 20px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+
+    &:hover {
+        background-color: #f5f6f6;
+    }
+}
+
+.o_chatroom_contact_avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 8px;
+}
+
+.o_chatroom_contact_name {
+    font-weight: 600;
+    font-size: 1.05em;
+}
+
+.o_chatroom_contact_sub {
+    font-size: 0.85em;
+}
+
+.o_chatroom_contact_info {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+}
+
+.o_chatroom_contact_info_row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85em;
+    margin-bottom: 4px;
+    color: #667781;
+
+    i {
+        width: 16px;
+        text-align: center;
+    }
+}
+
+.o_chatroom_contact_stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+    gap: 4px;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+}
+
+.o_chatroom_contact_stat {
+    text-align: center;
+    padding: 6px 2px;
+    border-radius: 6px;
+    cursor: pointer;
+
+    &:hover {
+        background-color: #f5f6f6;
+    }
+
+    i {
+        color: var(--o-brand-primary, #714B67);
+    }
+}
+
+.o_chatroom_contact_stat_value {
+    font-weight: 600;
+}
+
+.o_chatroom_contact_stat_label {
+    font-size: 0.7em;
+    color: #667781;
+}
+
+.o_chatroom_contact_actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+
+    .btn {
+        border-radius: 14px;
+        font-size: 0.8em;
+    }
+}
+
+.o_chatroom_contact_docs {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+
+    h6 {
+        font-size: 0.8em;
+        text-transform: uppercase;
+        color: #667781;
+        margin-bottom: 0;
+    }
+}
+
+.o_chatroom_contact_section_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    padding: 2px 0;
+    margin-bottom: 6px;
+
+    i.fa-chevron-right, i.fa-chevron-down {
+        font-size: 0.75em;
+        color: #8696a0;
+        flex: 0 0 auto;
+    }
+}
+
+.o_chatroom_contact_cart {
+    background-color: rgba(37, 211, 102, 0.06);
+
+    h6 {
+        text-transform: none;
+        font-size: 0.85em;
+        color: #128c4a;
+    }
+}
+
+.o_chatroom_contact_doc_row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    font-size: 0.85em;
+}
+
+.o_chatroom_contact_doc_name {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.o_chatroom_contact_doc_link {
+    cursor: pointer;
+
+    &:hover {
+        color: var(--o-brand-primary, #714B67);
+        text-decoration: underline;
+    }
+}
+
+.o_chatroom_contact_doc_amount {
+    flex: 0 0 auto;
+    color: #667781;
+    font-variant-numeric: tabular-nums;
+}
+
+.o_chatroom_contact_doc_send {
+    flex: 0 0 auto;
+    padding: 2px 6px;
+}
+
+.o_chatroom_contact_product_row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 0.85em;
+}
+
+.o_chatroom_contact_product_thumb {
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex: 0 0 auto;
+}
+
+.o_chatroom_contact_product_thumb_placeholder {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background-color: #f0f2f5;
+    color: #8696a0;
+    flex: 0 0 auto;
+}

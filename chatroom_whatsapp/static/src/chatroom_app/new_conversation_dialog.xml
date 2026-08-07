@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="chatroom_whatsapp.NewConversationDialog">
+        <Dialog size="'md'" title="'Nueva conversación'">
+            <div class="o_chatroom_new_conv">
+                <t t-if="!state.creatingNew">
+                    <label class="form-label">Contacto</label>
+                    <div class="o_chatroom_new_conv_search">
+                        <input type="text" class="form-control" placeholder="Buscar contacto..."
+                               t-att-value="state.searchText" t-on-input="onSearchInput"/>
+                        <div class="o_chatroom_new_conv_results" t-if="state.searchResults.length">
+                            <t t-foreach="state.searchResults" t-as="partner" t-key="partner.id">
+                                <div class="o_chatroom_new_conv_result" t-on-click="() => this.selectPartner(partner)">
+                                    <strong t-esc="partner.name"/>
+                                    <span class="text-muted" t-if="partner.phone" t-esc="' — ' + partner.phone"/>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                    <div class="o_chatroom_new_conv_selected" t-if="state.selectedPartner">
+                        <i class="fa fa-user"/>
+                        <span t-esc="state.selectedPartner.name"/>
+                        <i class="fa fa-times" t-on-click="clearSelection"/>
+                    </div>
+                    <button class="btn btn-link p-0 mt-1" t-on-click="toggleCreateNew">
+                        <i class="fa fa-plus"/> Crear contacto nuevo
+                    </button>
+                </t>
+                <t t-else="">
+                    <label class="form-label">Nombre del contacto</label>
+                    <input type="text" class="form-control mb-2" t-model="state.newName"
+                           placeholder="Ej. María Pérez"/>
+                    <label class="form-label">Número de WhatsApp</label>
+                    <input type="text" class="form-control" t-model="state.newPhone"
+                           placeholder="Con código de país, ej. +593991234567"/>
+                    <button class="btn btn-link p-0 mt-1" t-on-click="toggleCreateNew">
+                        <i class="fa fa-search"/> Buscar un contacto existente
+                    </button>
+                </t>
+
+                <div t-if="state.selectedPartner and !state.creatingNew" class="mt-2">
+                    <label class="form-label">Número de WhatsApp</label>
+                    <input type="text" class="form-control" t-model="state.phone"
+                           placeholder="Con código de país"/>
+                </div>
+
+                <div t-if="state.numbers.length" class="mt-2">
+                    <label class="form-label">Línea de WhatsApp</label>
+                    <select class="form-select" t-on-change="(ev) => this.state.whatsappNumberId = ev.target.value">
+                        <option value="">(la de siempre)</option>
+                        <t t-foreach="state.numbers" t-as="number" t-key="number.id">
+                            <option t-att-value="number.id"><t t-esc="number.name"/></option>
+                        </t>
+                    </select>
+                </div>
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary" t-att-disabled="state.saving" t-on-click="confirm">
+                    Iniciar conversación
+                </button>
+                <button class="btn btn-secondary" t-on-click="() => this.props.close()">Cancelar</button>
+            </t>
+        </Dialog>
+    </t>
+
+</templates>

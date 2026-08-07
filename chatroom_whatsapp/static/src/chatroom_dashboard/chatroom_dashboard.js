@@ -26,6 +26,8 @@ export class ChatroomDashboard extends Component {
             avgFirstResponseMinutes: 0,
             byAgent: [],
             responseByAgent: [],
+            lastWebhookDisplay: "",
+            lastWebhookOk: true,
         });
 
         onWillStart(() => this._loadData());
@@ -41,7 +43,13 @@ export class ChatroomDashboard extends Component {
         this.state.avgFirstResponseMinutes = data.avg_first_response_minutes;
         this.state.byAgent = data.by_agent;
         this.state.responseByAgent = data.response_by_agent;
+        this.state.lastWebhookDisplay = data.last_webhook_display;
+        this.state.lastWebhookOk = data.last_webhook_ok;
         this.state.loading = false;
+    }
+
+    openSettings() {
+        this.action.doAction("base_setup.action_general_configuration");
     }
 
     formatMinutes(minutes) {

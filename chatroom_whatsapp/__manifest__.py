@@ -45,19 +45,33 @@ Requisitos
     'license': 'LGPL-3',
 
     'category': 'Discuss',
-    'version': '19.0.1.0.0',
+    'version': '19.0.2.0.2',
 
-    'depends': ['base', 'mail', 'bus', 'contacts'],
+    # sale/purchase/crm/account eran opcionales hasta esta versión (el
+    # módulo revisaba 'modelo' in self.env por todos lados para no
+    # romperse si no estaban). A partir de acá son dependencias reales:
+    # el panel de contacto asume que un vendedor por WhatsApp puede
+    # armar presupuestos, facturas, oportunidades y compras sin salir
+    # del chat, así que tiene más sentido que este módulo traiga esas
+    # apps consigo que dejarlas "si te acordás de instalarlas". Las
+    # comprobaciones 'modelo in self.env' se dejaron igual en el código
+    # (no estorban estando siempre instalado) por las dudas de que este
+    # módulo se reuse en una instalación más liviana en el futuro.
+    'depends': ['base', 'mail', 'bus', 'contacts', 'sale', 'purchase', 'crm', 'account'],
 
     'data': [
         'security/chatroom_security.xml',
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
         'views/chatroom_whatsapp_number_views.xml',
+        'views/chatroom_tag_views.xml',
+        'views/chatroom_new_conversation_wizard_views.xml',
+        'views/chatroom_reassign_wizard_views.xml',
         'views/chatroom_template_views.xml',
         'views/chatroom_channel_views.xml',
         'views/chatroom_metrics_views.xml',
         'views/chatroom_message_views.xml',
+        'views/chatroom_scheduled_message_views.xml',
         'views/chatroom_canned_response_views.xml',
         'views/res_config_settings_views.xml',
         'views/res_partner_views.xml',
@@ -74,6 +88,12 @@ Requisitos
             'chatroom_whatsapp/static/src/systray/chatroom_systray.js',
             'chatroom_whatsapp/static/src/systray/chatroom_systray.xml',
             'chatroom_whatsapp/static/src/systray/chatroom_systray.scss',
+            'chatroom_whatsapp/static/src/chatroom_app/new_conversation_dialog.js',
+            'chatroom_whatsapp/static/src/chatroom_app/new_conversation_dialog.xml',
+            'chatroom_whatsapp/static/src/chatroom_app/new_conversation_dialog.scss',
+            'chatroom_whatsapp/static/src/chatroom_app/contact_panel.js',
+            'chatroom_whatsapp/static/src/chatroom_app/contact_panel.xml',
+            'chatroom_whatsapp/static/src/chatroom_app/contact_panel.scss',
             'chatroom_whatsapp/static/src/chatroom_app/chatroom_app.js',
             'chatroom_whatsapp/static/src/chatroom_app/chatroom_app.xml',
             'chatroom_whatsapp/static/src/chatroom_app/chatroom_app.scss',
@@ -84,6 +104,8 @@ Requisitos
         'web.assets_web_dark': [
             'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.dark.scss',
             'chatroom_whatsapp/static/src/chatroom_app/chatroom_app.dark.scss',
+            'chatroom_whatsapp/static/src/chatroom_app/new_conversation_dialog.dark.scss',
+            'chatroom_whatsapp/static/src/chatroom_app/contact_panel.dark.scss',
             'chatroom_whatsapp/static/src/chatroom_dashboard/chatroom_dashboard.dark.scss',
         ],
     },

@@ -46,6 +46,10 @@ class WhatsAppWebhookController(http.Controller):
         payload = request.get_json_data() or {}
         object_type = payload.get('object')
         env = request.env(su=True)
+        # Timestamp de salud: "llegó algo del webhook", más allá de si el
+        # evento en sí se termina procesando o descartando por duplicado.
+        env['ir.config_parameter'].set_param(
+            'chatroom_whatsapp.last_webhook_at', fields.Datetime.now())
 
         for entry in payload.get('entry', []):
             if object_type == 'whatsapp_business_account':
@@ -107,6 +111,14 @@ class WhatsAppWebhookController(http.Controller):
                 'whatsapp', wa_id, profile_name, meta_phone_number_id=meta_phone_number_id)
 
             msg_type = msg.get('type', 'text')
+
+            if msg_type == 'reaction':
+                # Una reacción no es un mensaje nuevo: se pega al mensaje
+                # citado (o se borra, si viene sin emoji), igual que en la
+                # app de WhatsApp.
+                self._process_reaction(env, channel, msg)
+                continue
+
             body, media_id = self._extract_body(msg, msg_type)
 
             context_id = (msg.get('context') or {}).get('id')
@@ -132,9 +144,22 @@ class WhatsAppWebhookController(http.Controller):
                 'state': 'pending',
             })
             channel._handle_opt_keywords(message)
-            channel._ai_process_inbound_message(message)
+            if not channel._maybe_send_away_message():
+                channel._ai_process_inbound_message(message)
             channel._notify_assigned_agent(message)
             channel._notify_thread_update()
+            channel._notify_new_inbound_message(message)
+
+    def _process_reaction(self, env, channel, msg):
+        reaction = msg.get('reaction') or {}
+        target_wa_id = reaction.get('message_id')
+        emoji = reaction.get('emoji') or False
+        target = env['chatroom.message'].search(
+            [('wa_message_id', '=', target_wa_id)], limit=1)
+        if not target:
+            return
+        target.write({'partner_reaction': emoji})
+        channel._notify_thread_update()
 
     def _process_messenger_event(self, env, channel_type, event):
         """Mensaje entrante de Messenger o Instagram Direct (mismo Send
@@ -174,9 +199,11 @@ class WhatsAppWebhookController(http.Controller):
             'state': 'pending',
         })
         channel._handle_opt_keywords(message)
-        channel._ai_process_inbound_message(message)
+        if not channel._maybe_send_away_message():
+            channel._ai_process_inbound_message(message)
         channel._notify_assigned_agent(message)
         channel._notify_thread_update()
+        channel._notify_new_inbound_message(message)
 
     def _process_statuses(self, env, statuses):
         state_map = {

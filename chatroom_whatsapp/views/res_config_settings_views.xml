@@ -34,6 +34,15 @@
                                  help="Copia esta URL y el Verify Token en el panel de la App de Meta (WhatsApp &gt; Configuration &gt; Webhook)">
                             <field name="whatsapp_webhook_url" readonly="1"/>
                         </setting>
+                        <setting id="whatsapp_last_webhook_setting"
+                                 help="Última vez que Meta nos mandó un evento. Si dice 'Nunca', revisá que la URL de arriba esté bien registrada en Meta">
+                            <field name="whatsapp_last_webhook_display" readonly="1"/>
+                        </setting>
+                        <setting id="whatsapp_test_connection_setting"
+                                 help="Valida el token y el Phone Number ID contra Meta sin enviar ningún mensaje">
+                            <button name="action_test_whatsapp_connection" type="object"
+                                    string="Probar conexión" class="btn-secondary"/>
+                        </setting>
                         <setting id="chatroom_auto_assign_setting"
                                  help="Reparte las conversaciones nuevas entre los agentes del grupo 'Chatroom / Agente', priorizando al que menos conversaciones abiertas tenga">
                             <field name="chatroom_auto_assign"/>
@@ -44,6 +53,35 @@
                         <setting id="chatroom_meta_page_access_token_setting"
                                  help="Page Access Token de la Página conectada a tu App de Meta. Usa la misma App y el mismo webhook que WhatsApp, pero necesita su propio token para enviar mensajes">
                             <field name="chatroom_meta_page_access_token" password="True"/>
+                        </setting>
+                    </block>
+
+                    <block title="Horario de atención">
+                        <setting id="chatroom_business_hours_enabled_setting"
+                                 help="Fuera de este horario se manda un aviso automático (una vez por día por conversación) en vez de dejar a alguien esperando toda la noche">
+                            <field name="chatroom_business_hours_enabled"/>
+                            <div class="content-group" invisible="not chatroom_business_hours_enabled">
+                                <div class="mt8">
+                                    <label for="chatroom_business_hours_start" string="Desde"/>
+                                    <field name="chatroom_business_hours_start" widget="float_time"/>
+                                </div>
+                                <div class="mt8">
+                                    <label for="chatroom_business_hours_end" string="Hasta"/>
+                                    <field name="chatroom_business_hours_end" widget="float_time"/>
+                                </div>
+                                <div class="mt8">
+                                    <label for="chatroom_business_hours_weekdays" string="Días"/>
+                                    <field name="chatroom_business_hours_weekdays"/>
+                                </div>
+                                <div class="mt8">
+                                    <label for="chatroom_business_hours_tz" string="Zona horaria"/>
+                                    <field name="chatroom_business_hours_tz" placeholder="America/Guayaquil"/>
+                                </div>
+                                <div class="mt8">
+                                    <label for="chatroom_business_hours_away_message" string="Mensaje"/>
+                                    <field name="chatroom_business_hours_away_message"/>
+                                </div>
+                            </div>
                         </setting>
                     </block>
 
@@ -89,6 +127,14 @@
                         <setting id="chatroom_ai_auto_reply_setting"
                                  help="Envía la respuesta generada sin revisión de un agente. Úsalo con precaución">
                             <field name="chatroom_ai_auto_reply"/>
+                        </setting>
+                        <setting id="chatroom_ai_auto_price_reply_setting"
+                                 help="Contesta con el precio real de Odoo cuando el cliente menciona un producto por su nombre; no inventa precios">
+                            <field name="chatroom_ai_auto_price_reply"/>
+                        </setting>
+                        <setting id="chatroom_ai_auto_order_reply_setting"
+                                 help="Arma un carrito charlando con el cliente y crea una Cotización real en borrador cuando confirma; nunca la confirma sola">
+                            <field name="chatroom_ai_auto_order_reply"/>
                         </setting>
                     </block>
 

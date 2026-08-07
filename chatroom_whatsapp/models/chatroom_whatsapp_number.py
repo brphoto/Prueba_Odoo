@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
+import logging
+
+import requests
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class ChatroomWhatsappNumber(models.Model):
@@ -68,6 +74,7 @@ class ChatroomWhatsappNumber(models.Model):
             'name': self.name,
             'res_model': 'chatroom.channel',
             'view_mode': 'list,kanban,form',
+            'views': [(False, 'list'), (False, 'kanban'), (False, 'form')],
             'domain': [('whatsapp_number_id', '=', self.id)],
         }
 
@@ -84,6 +91,41 @@ class ChatroomWhatsappNumber(models.Model):
                 "Falta el token de acceso o el Phone Number ID de la "
                 "línea '%s'.") % self.name)
         return token, self.phone_number_id, api_version
+
+    def action_test_connection(self):
+        """Igual que el botón general de Ajustes pero con las
+        credenciales propias de esta línea (si las tiene)."""
+        self.ensure_one()
+        token, phone_number_id, api_version = self._get_credentials()
+        url = f"https://graph.facebook.com/{api_version}/{phone_number_id}"
+        try:
+            response = self._meta_request(
+                'GET', url,
+                params={'fields': 'display_phone_number,verified_name,quality_rating'},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=15, max_retries=0,
+            )
+            data = response.json()
+            if response.status_code >= 400:
+                error = data.get('error', {}).get('message', str(data))
+                raise UserError(_("Meta respondió con un error: %s") % error)
+        except requests.RequestException as exc:
+            _logger.error("Error probando la conexión de la línea %s: %s", self.name, exc)
+            raise UserError(_("No se pudo conectar con Meta: %s") % exc)
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _("Conexión OK"),
+                'message': _("Número verificado: %(name)s (%(phone)s). Calidad: %(quality)s.") % {
+                    'name': data.get('verified_name') or '?',
+                    'phone': data.get('display_phone_number') or phone_number_id,
+                    'quality': data.get('quality_rating') or '?',
+                },
+                'type': 'success',
+            },
+        }
 
     def _get_next_assignee(self):
         """Reparte entre los agentes de esta línea si tiene (member_ids);

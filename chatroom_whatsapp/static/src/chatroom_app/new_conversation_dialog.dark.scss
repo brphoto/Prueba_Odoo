@@ -1,0 +1,15 @@
+// Overrides para el bundle web.assets_web_dark, mismo criterio que
+// chatroom_app.dark.scss: solo los colores escritos "a mano".
+
+.o_chatroom_new_conv_results {
+    background-color: #111b21;
+    border-color: #2a3942;
+}
+
+.o_chatroom_new_conv_result:hover {
+    background-color: #202c33;
+}
+
+.o_chatroom_new_conv_selected {
+    background-color: #202c33;
+}

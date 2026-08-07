@@ -64,6 +64,7 @@ class ResPartner(models.Model):
             'name': "Conversaciones",
             'res_model': 'chatroom.channel',
             'view_mode': 'list,form',
+            'views': [(False, 'list'), (False, 'form')],
             'domain': [('partner_id', '=', self.id)],
             'context': {'default_partner_id': self.id},
         }

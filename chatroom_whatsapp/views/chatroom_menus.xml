@@ -11,6 +11,13 @@
         <field name="tag">chatroom_whatsapp.chatroom_dashboard</field>
     </record>
 
+    <record id="action_chatroom_generate_demo" model="ir.actions.server">
+        <field name="name">Generar conversaciones de prueba</field>
+        <field name="model_id" ref="model_chatroom_channel"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_generate_demo_conversations()</field>
+    </record>
+
     <menuitem id="menu_chatroom_root" name="Chatroom" sequence="30"
               action="action_chatroom_app"
               web_icon="chatroom_whatsapp,static/description/icon.png"/>
@@ -23,6 +30,10 @@
               parent="menu_chatroom_root" action="action_chatroom_dashboard"
               sequence="7"/>
 
+    <menuitem id="menu_chatroom_new_conversation" name="Nueva conversación"
+              parent="menu_chatroom_root" action="action_chatroom_new_conversation_wizard"
+              sequence="9"/>
+
     <menuitem id="menu_chatroom_conversations" name="Vista clásica"
               parent="menu_chatroom_root" action="action_chatroom_channel"
               sequence="10"/>
@@ -30,6 +41,10 @@
     <menuitem id="menu_chatroom_messages" name="Mensajes (auditoría)"
               parent="menu_chatroom_root" action="action_chatroom_message"
               sequence="20" groups="chatroom_whatsapp.group_chatroom_manager"/>
+
+    <menuitem id="menu_chatroom_scheduled_messages" name="Mensajes programados"
+              parent="menu_chatroom_root" action="action_chatroom_scheduled_message"
+              sequence="25"/>
 
     <menuitem id="menu_chatroom_metrics" name="Métricas"
               parent="menu_chatroom_root" action="action_chatroom_metrics"
@@ -54,5 +69,13 @@
     <menuitem id="menu_chatroom_config_numbers" name="Líneas de WhatsApp"
               parent="menu_chatroom_config" sequence="15"
               action="action_chatroom_whatsapp_number"/>
+
+    <menuitem id="menu_chatroom_config_tags" name="Etiquetas"
+              parent="menu_chatroom_config" sequence="17"
+              action="action_chatroom_tag"/>
+
+    <menuitem id="menu_chatroom_config_demo" name="Generar conversaciones de prueba"
+              parent="menu_chatroom_config" sequence="99"
+              action="action_chatroom_generate_demo"/>
 
 </odoo>

@@ -46,8 +46,10 @@ creará automáticamente el contacto (`res.partner`) y la conversación
 
 ## Interfaz de chat
 
-El formulario de cada conversación (`Chatroom > Conversaciones`) usa un
-widget de chat propio (`static/src/chatroom_thread/`), no una lista plana:
+Tanto el formulario de cada conversación (`Chatroom > Vista clásica`) como
+la app de una sola pantalla (`Chatroom > Chatroom`, ver más abajo) usan el
+mismo widget de chat propio (`static/src/chatroom_thread/`), no una lista
+plana:
 
 - Burbujas de mensaje diferenciadas por dirección, con hora y ticks de
   estado (enviado / entregado / leído / fallido).
@@ -70,10 +72,33 @@ widget de chat propio (`static/src/chatroom_thread/`), no una lista plana:
   de solo un ícono con la inicial cuando hay una cargada.
 - **Separadores de fecha** ("Hoy", "Ayer" o la fecha) entre bloques de
   mensajes de días distintos, igual que WhatsApp.
-- **Mensajes citados**: cuando el cliente responde a un mensaje concreto
-  desde WhatsApp, la burbuja muestra una vista previa del mensaje
-  original citado (se extrae del campo `context.id` que envía Meta en el
-  webhook y se resuelve contra `wa_message_id`).
+- **Mensajes citados (en los dos sentidos)**: cuando el cliente responde a
+  un mensaje concreto desde WhatsApp, la burbuja muestra una vista previa
+  del mensaje original citado (se extrae del campo `context.id` que envía
+  Meta en el webhook y se resuelve contra `wa_message_id`). Y desde
+  nuestro lado, el ícono de responder (📩) en cualquier burbuja con
+  `wa_message_id` confirmado arma la cita: el composer muestra qué se está
+  citando (con botón para cancelar) y el mensaje sale con
+  `context: {message_id}` hacia el Graph API, así aparece como respuesta
+  citada también del lado del cliente. Solo implementado para WhatsApp
+  (Messenger/Instagram no soportan este flujo todavía en este módulo).
+- **Reacciones con emoji**: ícono de carita en cada burbuja abre un
+  selector de 6 emojis comunes (👍❤️😂😮😢🙏); reaccionar (o volver a
+  tocar el mismo emoji para quitarla) manda un mensaje `type: reaction`
+  al Graph API y la reacción se pega como una etiqueta sobre la esquina
+  de la burbuja, sin generar un mensaje nuevo en el hilo — igual que en
+  la app real de WhatsApp. Las reacciones que manda el cliente también se
+  reciben por webhook y se muestran igual.
+- **Reintentar envíos fallidos**: los mensajes marcados como `Fallido`
+  muestran un enlace "Reintentar" en la burbuja; también hay un cron
+  (`Chatroom: reintentar mensajes fallidos`, cada 10 minutos) que
+  reintenta automáticamente hasta 3 veces los mensajes de texto/adjunto
+  fallidos de la última hora (las plantillas y los botones interactivos
+  quedan afuera del reintento automático porque su contenido puede
+  necesitar ajustes manuales).
+- **Quién mandó cada mensaje**: los mensajes salientes muestran el nombre
+  del agente que los escribió (vacío en los que mandó la automatización
+  de IA, que corre con el usuario del webhook).
 - **Traducir un mensaje entrante**: ícono de traducción en cada burbuja
   entrante con texto; llama al mismo proveedor de IA configurado y
   muestra la traducción al idioma del usuario debajo del mensaje
@@ -83,8 +108,11 @@ widget de chat propio (`static/src/chatroom_thread/`), no una lista plana:
 
 **Chatroom > Chatroom** (el ícono de la app, primer ítem del menú) abre una
 pantalla única en vez de navegar entre kanban/lista/formulario: lista de
-conversaciones a la izquierda (buscador, filtros *Todas / No leídas / Mías*
-y un selector de línea) + la conversación abierta a la derecha, con el
+conversaciones a la izquierda (buscador —que busca tanto por nombre de
+contacto como dentro del **contenido de los mensajes**, para encontrar
+"quién preguntó por X" sin abrir chat por chat—, filtros
+*Todas / No leídas / Mías* y un selector de línea) + la conversación
+abierta a la derecha, con el
 mismo widget de burbujas de siempre (`chatroom_thread_core`, ahora
 reutilizado en vez de duplicado). En pantallas angostas (celular/tablet)
 la lista y el chat ocupan toda la pantalla por turnos, con un botón de
@@ -94,6 +122,38 @@ La vista clásica (kanban/lista/formulario) sigue disponible en
 **Chatroom > Vista clásica** — útil para reportes, exportar, o editar
 varios campos a la vez, cosas que una app de una sola pantalla no cubre
 bien.
+
+Arriba de la lista de conversaciones hay una barra de herramientas con
+accesos directos a **Dashboard**, **Plantillas**, **Respuestas rápidas** y
+**Líneas** sin salir de la app (se abren como pantallas/diálogos aparte,
+la conversación que tenías abierta sigue ahí cuando volvés).
+
+## Iniciar una conversación nosotros (seguimiento, encuestas, avisos)
+
+Hasta acá, las conversaciones solo se creaban cuando el cliente escribía
+primero. El botón **+** junto al selector de línea (o **Chatroom > Nueva
+conversación** en el menú, para la vista clásica) abre un diálogo para:
+
+- Buscar un contacto existente (por nombre) y elegirlo, con su teléfono
+  precargado (editable, por si querés escribirle a otro número suyo), o
+- **Crear un contacto nuevo al vuelo** con nombre + número, sin salir del
+  diálogo.
+- Elegir la línea de WhatsApp por la que se envía, si tenés más de una.
+
+Al confirmar, se reutiliza el mismo canal si el contacto ya tenía una
+conversación (no se duplica), o se crea uno nuevo asignado a quien lo
+inició. Como es una conversación que **iniciamos nosotros**, casi siempre
+va a estar fuera de la ventana de 24h (`is_session_open` en `False`,
+ningún mensaje entrante todavía) — la propia interfaz de chat va a pedir
+una plantilla aprobada para el primer mensaje, igual que exige Meta para
+cualquier conversación iniciada por el negocio. Es el mecanismo correcto
+para seguimientos, encuestas o avisos: una plantilla de categoría
+*Utilidad* o *Marketing* aprobada por Meta, no texto libre.
+
+> Esto es para contactar **de a un contacto por vez**. Un envío masivo a
+> una lista (campaña) necesitaría manejo de listas de opt-in, límites de
+> envío de Meta y una cola de trabajos — queda fuera del alcance de esta
+> iteración.
 
 ## Flujo comercial y panel de accesos rápidos
 
@@ -138,10 +198,45 @@ primero las sugerencias de IA):
   agente la revise antes. Apagado por defecto — actívalo solo si confías
   en el prompt/modelo configurado, ya que no hay paso de aprobación
   humana.
+- **Responder consultas de precio con datos reales**: si el mensaje del
+  cliente menciona el nombre de un producto vendible (búsqueda literal
+  por palabra, no semántica), se le contesta con el precio **real**
+  tomado de Odoo, no inventado por el modelo — el prompt le pasa a la IA
+  la lista exacta de productos encontrados con su precio y le prohíbe
+  usar cualquier otro dato. Si no encuentra ningún producto que
+  coincida, no hace nada y sigue el flujo normal (clasificación /
+  auto-reply genérico, si están activos) en vez de quedarse callado. Se
+  ignora si "Vendedor automático" (abajo) está activo.
+- **Vendedor automático (armar pedidos)**: la versión completa de lo
+  anterior — la IA charla con el cliente, arma un **carrito** con
+  productos y cantidades reales, y cuando el cliente confirma que quiere
+  cerrar el pedido, **crea una Cotización real de Ventas** (`sale.order`
+  en borrador) a partir de ese carrito. La IA **nunca la confirma sola**:
+  siempre queda pendiente de que un agente la revise, ajuste lo que haga
+  falta y la confirme desde el formulario normal de Odoo. Técnicamente,
+  en vez de "function calling" propietario de un proveedor (que no todos
+  los endpoints *chat completions* soportan igual), se le pide a la IA
+  que responda con un JSON estricto de 3 formas fijas
+  (`add_items` / `checkout` / `reply`) y Python ejecuta esa decisión de
+  forma determinística — la IA nunca toca la base de datos directamente,
+  solo elige entre esas 3 acciones. El carrito y el botón **Convertir a
+  cotización** también se ven en el **panel de contacto**, así un agente
+  puede terminar de armarlo o cerrarlo a mano si hace falta.
+- **Switch IA / agente humano**: cada conversación tiene un interruptor
+  (arriba del chat, junto al selector de línea) para pausar/reactivar
+  las automatizaciones de IA. Se pausa **sola** en cuanto un agente
+  humano manda un mensaje real en esa conversación (texto, adjunto,
+  reacción, reintento, plantilla o botones — cualquier acción que hable
+  con el cliente), para que la IA no le pise la respuesta a la persona
+  que ya está atendiendo; también se puede pausar/reactivar a mano en
+  cualquier momento. Mientras está pausada, "Sugerir respuesta con IA"
+  (el botón manual del encabezado) sigue funcionando igual — pausar solo
+  apaga el piloto automático, no la IA como asistente del agente.
 
 Cualquier error de IA (endpoint caído, credenciales inválidas, respuesta
-inesperada) se registra en el log del servidor y **no interrumpe** la
-recepción de mensajes por el webhook.
+inesperada, JSON mal formado del vendedor automático) se registra en el
+log del servidor y **no interrumpe** la recepción de mensajes por el
+webhook.
 
 Además, con un clic (botón **Resumir con IA** en el encabezado) se puede
 generar un resumen corto de toda la conversación (`ai_summary`) para que
@@ -179,6 +274,43 @@ aprobada por Meta**:
   abierta) cada vez que llega un mensaje nuevo o cuando le reasignan una
   conversación — usa `mail.thread`, no infraestructura adicional.
 
+## Horario de atención
+
+En **Ajustes > Chatroom WhatsApp > Horario de atención** se puede definir
+un horario (hora de inicio/fin, días de la semana, zona horaria) fuera
+del cual se manda un aviso automático de "estamos fuera de horario" al
+primer mensaje del día de cada conversación — no en cada mensaje que
+mande el cliente de madrugada, solo el primero (`last_away_message_date`
+lo controla). El texto del aviso también es configurable. Desactivado
+por defecto: sin activarlo, el chat sigue respondiendo/asignando
+conversaciones a toda hora, igual que siempre. Cuando se manda el aviso,
+no se dispara además la automatización de IA para ese mismo mensaje (no
+tiene sentido que conteste dos veces).
+
+## Etiquetas de conversación
+
+**Chatroom > Configuración > Etiquetas** para crear etiquetas libres
+(nombre + color) y así categorizar conversaciones más allá del estado o
+la intención detectada por IA — por ejemplo "Reclamo" o "Venta caliente".
+Se agregan/quitan desde el encabezado del chat (ícono "+", junto a las
+etiquetas ya puestas) tanto en la app como en el formulario clásico, y
+se pueden filtrar y agrupar en la vista clásica (kanban/lista) para
+reportes — la app de una sola pantalla todavía no tiene un filtro por
+etiqueta en su propia lista de conversaciones, solo verlas/editarlas por
+chat.
+
+## Mensajes programados
+
+El ícono de reloj en el composer permite dejar un mensaje de texto
+armado para que salga más tarde (seguimiento a las 48h, recordatorio de
+pago, etc.) en vez de mandarlo ya: se elige fecha/hora y un cron
+(`Chatroom: enviar mensajes programados`, cada 5 minutos) lo manda solo
+cuando se cumple. Los pendientes de esa conversación se ven arriba del
+composer, con opción de cancelarlos antes de que salgan. Por ahora es
+solo texto simple (sin adjuntos ni plantillas); **Chatroom > Mensajes
+programados** lista todos los de todas las conversaciones, útil para un
+manager que quiere ver/cancelar en un solo lugar.
+
 ## Múltiples líneas de WhatsApp (Ventas, Soporte, etc.)
 
 Si atiendes con **más de un número de WhatsApp Business**, dalos de alta en
@@ -208,6 +340,24 @@ nombre, `Phone Number ID` propio y, opcionalmente, agentes asignados
 - El `access_token` de cada línea solo lo puede leer/editar el grupo
   *Chatroom / Administrador* (campo con `groups=` a nivel de modelo, no
   solo oculto en la vista).
+- **Transferir una conversación a otra línea/equipo**: en el encabezado
+  del chat (app y widget clásico) hay un selector para cambiar la línea
+  de la conversación en cualquier momento, sin salir del chat. Al
+  cambiarla queda una nota interna con el rastro ("Conversación
+  transferida de X a Y") y, si no se reasignó también a un agente
+  puntual en la misma acción, se reparte sola entre el equipo de la
+  línea nueva — para no dejarla en un agente que puede no pertenecer a
+  ese equipo.
+  > **Ojo con esto si de verdad usás números de WhatsApp distintos** (no
+  > solo "líneas" internas del mismo número): la ventana de 24h para
+  > responder libremente la abre el número **al que el cliente le
+  > escribió**. Si transferís a una línea con un Phone Number ID
+  > realmente distinto, los próximos mensajes van a intentar salir desde
+  > ese número nuevo hacia un cliente que nunca le escribió a ese
+  > número — Meta puede rechazarlo o exigir una plantilla en vez de
+  > texto libre. Es 100% seguro para reorganizar equipos que comparten
+  > la misma línea real; con líneas de verdad distintas, usalo sabiendo
+  > esto.
 
 ## Dashboard
 
@@ -219,6 +369,148 @@ respuesta). Todo se calcula en el servidor con `read_group`
 (`chatroom.channel.get_dashboard_data`) para no traer registros de más al
 navegador — no es un pivot/gráfico genérico, son consultas agregadas
 puntuales.
+
+## Panel de contacto (CRM, Ventas, Compras, Facturas, Tareas)
+
+**Desde esta versión, Ventas, Compras, CRM y Facturación son
+dependencias reales del módulo** (`depends` en `__manifest__.py`), no
+opcionales: al instalar o actualizar `chatroom_whatsapp` en Odoo, esas
+cuatro apps se instalan solas si no lo estaban. La idea es que este
+módulo sea el centro de operación para un vendedor que atiende por
+WhatsApp — no tendría sentido que el panel de accesos rápidos dependa de
+que alguien se acuerde de instalar cada app por separado. El código
+igual sigue revisando `'modelo' in self.env` en cada método (por si el
+módulo se reusa algún día en una instalación más liviana), pero en la
+práctica esas cuatro ya van a estar instaladas siempre.
+
+> **Importante**: agregar una dependencia nueva no las instala solas en
+> una base ya existente hasta que actualices el módulo (**Apps > Chatroom
+> WhatsApp > Actualizar**, o `-u chatroom_whatsapp` si lo hacés por
+> línea de comandos). Además, que la app esté instalada no alcanza: cada
+> botón de "crear" (Oportunidad/Presupuesto/Factura/Compra) sigue
+> respetando los permisos de esa app — un agente que solo está en el
+> grupo *Chatroom / Agente* también necesita el grupo de Usuario de
+> Ventas/CRM/Compras/Facturación correspondiente para poder usarlos, la
+> misma regla de siempre de Odoo, este módulo no le da un permiso
+> especial por izquierda.
+
+En la app de una sola pantalla, el ícono de tarjeta de contacto (arriba a
+la derecha del chat, cuando hay una conversación abierta) muestra/oculta
+un panel lateral con:
+
+- Foto, nombre, empresa, ciudad, teléfono, email y **saldo pendiente**
+  del contacto (`res.partner.credit`, "lo que te debe" — solo se
+  muestra si es distinto de cero) — clic en el encabezado abre su ficha
+  completa.
+- Contadores clicables de Oportunidades, Ventas, Compras, Facturas y
+  Tareas (cada uno se oculta solo si el módulo correspondiente no está
+  instalado, igual que los stat buttons de la ficha clásica). **Abren en
+  una pestaña nueva del navegador** (Odoo completo: lista, kanban con
+  arrastrar y soltar, filtros, acciones en lote) en vez de un diálogo —
+  un diálogo (`target: "new"`) no deja cambiar de vista adentro
+  (limitación real del framework, no un botón roto: ver el detalle en
+  "Validado contra un Odoo 19 real"), así que para *browsear* varios
+  registros y entrar a cualquiera hace falta la pestaña nueva. El chat
+  queda intacto en la pestaña original, y el panel se refresca solo
+  cuando volvés a esa pestaña (por si creaste o confirmaste algo).
+- Botones para crear una **Oportunidad**, un **Presupuesto**, una
+  **Factura directa** (sin pasar por un presupuesto antes, para ventas
+  rápidas de contado), una **Orden de Compra** (para cuando el contacto
+  de WhatsApp es un proveedor, no un cliente) o una **Tarea**. Estos sí
+  abren como **diálogo** encima de la app, sin navegar a otra pantalla
+  ni perder el chat — porque van directo a un único formulario (sin
+  lista de por medio), que es justo el caso que un diálogo maneja bien.
+  Es el formulario real de Odoo (con sus botones nativos: Confirmar,
+  Crear factura, Registrar pago, etc.), no una versión reducida propia.
+  Cerrar el diálogo te deja exactamente donde estabas, con el panel
+  actualizado. Así, para pasar un Presupuesto a Factura: abrilo desde
+  "Crear Presupuesto" o desde la lista de recientes, agregale las
+  líneas, confirmalo y usá el botón "Crear factura" del propio
+  formulario de Odoo — sin salir nunca del chat.
+- **Actividades pendientes del contacto**: las que están agendadas
+  directo en su ficha, más las de sus oportunidades de CRM (que es
+  donde de verdad suele vivir un "llamar el jueves" en un flujo de
+  ventas) — en rojo las vencidas.
+- **Últimos presupuestos y facturas del contacto, con un botón para
+  mandar el PDF directo por la misma conversación de WhatsApp** (botón
+  de avión de papel junto a cada uno): genera el reporte con el motor de
+  reportes de Odoo (`ir.actions.report._render_qweb_pdf`) y lo envía
+  como adjunto, reusando el mismo mecanismo de envío de archivos de
+  siempre — respeta la ventana de 24h, el opt-out, etc. Abrir uno
+  puntual desde la lista de recientes (clic en el nombre) sí es un
+  diálogo, como las creaciones — es un único registro, no una lista.
+- **Catálogo de productos**: buscador para encontrar un producto
+  vendible (`sale_ok`) y mandarlo por WhatsApp con un clic — la foto del
+  producto como imagen y "Nombre - Precio" como pie de foto (si no tiene
+  foto cargada, se manda como texto). "Ver todo" abre el catálogo
+  completo de Odoo en una pestaña nueva (mismo motivo que arriba).
+- **Cada sección (Actividades, Presupuestos recientes, Facturas
+  recientes, Carrito, Catálogo) es plegable** — clic en el título la
+  abre/cierra, y se recuerda entre sesiones (`localStorage`). Arrancan
+  plegadas todas menos el Catálogo (lo que más se usa para mandar algo
+  por WhatsApp), así no hace falta scrollear un montón para llegar a
+  buscar un producto cuando hay actividades/presupuestos/facturas
+  recientes cargados arriba.
+- **Carrito armado por la IA** (ver "Automatización con IA" más arriba):
+  si el vendedor automático fue agregando productos charlando con el
+  cliente, se ve acá línea por línea con un botón para "Convertir a
+  cotización" a mano, aunque la IA todavía no haya cerrado el pedido
+  sola.
+
+Todo se resuelve en una sola llamada (`chatroom.channel.
+get_contact_panel_data`) para que abrir el panel no dispare media
+docena de peticiones. El saldo pendiente (`res.partner.credit`) es un
+campo con permisos propios de Facturación (`groups=`); se lee con
+`sudo()` solo para ese campo puntual, para que un vendedor sin acceso a
+Contabilidad igual pueda verlo en el panel sin que le rompa con un error
+de permisos.
+
+## Probar conexión y salud del webhook
+
+- **Ajustes > Chatroom WhatsApp > Probar conexión**: valida el token y
+  el Phone Number ID contra la Graph API real (pide el nombre verificado
+  y la calidad del número) **sin enviar ningún mensaje**. Cada línea de
+  `Chatroom > Configuración > Líneas de WhatsApp` tiene el mismo botón
+  con sus propias credenciales.
+- **Ajustes** y el **Dashboard** muestran "Último webhook recibido"
+  (hace cuánto llegó el último evento de Meta, de cualquier tipo). Si
+  dice "Nunca", la URL del webhook no está bien registrada en Meta o
+  el servidor no es alcanzable desde internet — antes de sospechar del
+  resto de la configuración, hay que resolver eso primero.
+
+## Notificaciones de escritorio y sonido
+
+Con el permiso del navegador otorgado (se pide solo, la primera vez que
+cargás Odoo con el módulo instalado), cuando llega un mensaje nuevo de
+un cliente a **tu** conversación asignada (o a una sin asignar) sonás un
+aviso corto (generado con Web Audio, sin archivo de sonido de por medio)
+y aparece una notificación del sistema operativo con el nombre del
+contacto y el texto, aunque tengas Odoo en otra pestaña. Un clic en la
+notificación te lleva directo al Chatroom. No suena para conversaciones
+asignadas a otro agente.
+
+## Notas internas, reasignar y cola de pendientes
+
+- **Notas internas**: el ícono de nota amarilla en el composer alterna
+  entre "mensaje al cliente" y "nota interna" (el composer y el botón de
+  enviar cambian de color mientras está activo, para no mandarle a un
+  cliente algo que era solo para el equipo). Las notas se guardan en el
+  chatter de siempre (`mail.message`, subtipo "Nota") pero se ven
+  mezcladas con las burbujas del chat, con otro estilo (centrada,
+  amarilla, con el nombre de quien la escribió) para no confundirlas con
+  un mensaje real. El modo se desactiva solo después de mandar una nota.
+- **Reasignar rápido**: el selector que aparece en el encabezado del chat
+  (a la derecha del nombre del canal) cambia el agente asignado con un
+  clic, sin abrir el formulario. Para reasignar varias conversaciones a
+  la vez, seleccionalas en **Chatroom > Vista clásica** (lista) y usá
+  "Reasignar conversaciones" en el menú de Acción.
+- **Siguiente pendiente**: el botón "Siguiente" de la barra de
+  herramientas salta a la conversación pendiente más antigua (distinta
+  de la que tenés abierta) — útil para no andar buscando manualmente
+  cuál atender primero.
+- **Vista previa de adjuntos**: si el último mensaje de una conversación
+  no tiene texto (una foto, un audio...), la lista/kanban/sidebar
+  muestran "📷 Foto", "🎤 Audio", etc. en vez de quedar en blanco.
 
 ## Botones de respuesta rápida (WhatsApp Interactive Messages)
 
@@ -269,6 +561,34 @@ En **Chatroom > Respuestas rápidas** cualquier agente puede guardar
 mensajes frecuentes (título + texto). Desde el composer del chat, el
 ícono de rayo abre un panel para insertarlas con un clic — útil para
 preguntas repetitivas sin gastar una llamada a la IA.
+
+## Datos de demostración
+
+**Chatroom > Configuración > Generar conversaciones de prueba** crea 2
+conversaciones con historial realista (Bryan Cando y Cynthia Molina, con
+números reales) para poder probar la interfaz sin esperar tráfico real:
+
+- **Bryan Cando**: consulta de producto sin resolver (queda con un
+  mensaje sin leer, para probar el badge/Dashboard), + una Oportunidad
+  y un Presupuesto en borrador (para probar el panel de contacto y
+  "enviar PDF por WhatsApp").
+- **Cynthia Molina**: pedido ya resuelto (conversación tranquila, sin
+  pendientes), + una Oportunidad, un Presupuesto **confirmado** y su
+  **factura** (para probar esa parte del panel con un documento real).
+
+Es manual (no se carga solo al instalar, porque usa números de teléfono
+reales) e idempotente (si el contacto ya tiene conversación, no la toca
+ni la duplica). Los datos de CRM/Ventas/Facturas se crean "mejor
+esfuerzo": si algo no aplica en tu base (falta un diario contable
+configurado, etc.) se omite con un log, sin romper la creación de las
+conversaciones.
+
+**Importante para probar con seguridad**: generar la demo solo inserta
+filas en la base — no llama a la API de Meta, así que no manda nada
+real. Pero la interfaz de chat que ves ahí es la real: si le das
+"Enviar" a un mensaje de texto o le mandás el PDF/producto a Bryan o
+Cynthia con el token de WhatsApp configurado en Ajustes, **eso sí sale
+de verdad** hacia esos números.
 
 ## Ícono en la barra superior
 
@@ -323,6 +643,35 @@ de API que rompen módulos escritos "a la manera de Odoo 17/18":
   miembros explícitos de "Agente" aunque "Administrador" implica
   "Agente"): hay que unir los `user_ids` de ambos grupos a mano si se
   necesita la lista completa de gente con ese permiso.
+- **Un campo `Text` con `config_parameter` en `res.config.settings`
+  rompe la pantalla de Ajustes completa apenas se abre** (no solo al
+  guardar): `_get_classified_fields()` solo acepta
+  `boolean/integer/float/char/selection/many2one/datetime` para esos
+  campos, y esa validación corre en el primer `onchange`. Se encontró
+  en producción (no en la prueba automatizada) con el mensaje de
+  "fuera de horario" configurable — se cambió a `Char` (sin límite real
+  de caracteres en Odoo, así que no se pierde nada).
+- **Un `ir.actions.act_window` multi-vista (`list,form` o similar)
+  abierto como diálogo (`target: "new"`) no deja cambiar de vista
+  adentro del diálogo**: `switchView()` en `action_service.js` tiene una
+  guarda (`if (dialog) return`) que se activa apenas el diálogo está
+  montado, así que ni haciendo clic en una fila de una lista abre su
+  formulario — no es un botón roto del lado del negocio, es una
+  limitación real del framework con diálogos multi-vista. La solución
+  que se terminó usando fue abrir esas acciones con
+  `doAction(action, { newWindow: true })` en vez de forzar
+  `target: "new"`, para browsear con Odoo completo (kanban con
+  arrastrar y soltar, filtros, lote) en una pestaña nueva sin perder el
+  chat en la original — ver "Panel de contacto" más abajo.
+- **El avatar del contacto (`/web/image/res.partner/<id>/avatar_128`)
+  se queda con la respuesta vieja cacheada por el navegador** si subís
+  una foto nueva después de haber abierto esa conversación una vez: la
+  URL es siempre la misma string, así que el navegador nunca vuelve a
+  pedirla. Se corrigió agregando `?unique=<write_date>` a la URL (con
+  el helper `imageUrl()` de `@web/core/utils/urls`) — el mismo patrón
+  que usa el propio menú de usuario de Odoo (`user_menu.js`) para el
+  mismo campo, encontrado ahí buscando cómo lo resuelve el core en vez
+  de inventar una solución propia.
 
 Se verificó con capturas de pantalla (Playwright + Chromium headless,
 sin errores de consola) que el kanban (con el ícono nuevo de canal y
@@ -379,15 +728,90 @@ Pensado para tráfico real, no solo para la demo:
 - El modo oscuro tiene el CSS listo pero no se pudo verificar
   visualmente (requiere Odoo Enterprise, no disponible en este entorno
   de pruebas).
-- **App de una sola pantalla, múltiples líneas y Dashboard son nuevos en
-  esta iteración**: se validó sintaxis (Python, XML, manifest, existencia
-  de cada archivo de assets referenciado) y se revisó `_read_group`/hooks
-  de OWL contra el código fuente real de Odoo 19, pero **no se probaron
-  todavía en un navegador contra un Odoo corriendo** — a diferencia del
-  resto del módulo (ver "Validado contra un Odoo 19 real" arriba), así
-  que conviene probarlos primero en una base de pruebas.
+- **App de una sola pantalla, múltiples líneas y Dashboard**: se validó
+  sintaxis (Python, XML, manifest, existencia de cada archivo de assets
+  referenciado), se revisó `_read_group`/hooks de OWL contra el código
+  fuente real de Odoo 19, y el usuario confirmó que la app carga y
+  navega correctamente contra un Odoo real corriendo.
+- **Iniciar conversación (diálogo "+" / Nueva conversación), panel de
+  contacto (con catálogo de productos), envío de PDF/producto por
+  WhatsApp, probar conexión, salud del webhook, notificaciones de
+  escritorio, notas internas, reasignar rápido, "Siguiente pendiente" y
+  preview de adjuntos son nuevos en esta iteración**: validación por
+  sintaxis + revisión contra el código fuente real de Odoo 19, pero la
+  prueba real en navegador ya encontró un bug de verdad — los botones
+  del panel de contacto (Facturas, Oportunidades, etc.) rompían con
+  "Cannot read properties of undefined (reading 'map')" porque las
+  acciones que arma `chatroom.channel` no traían la clave `views`,
+  necesaria cuando se llaman por `orm.call()` en vez de por un botón
+  clásico (`clean_action()` del servidor la completa solo para botones,
+  no para RPC directo) — ya está corregido (`_window_action()`), pero
+  es una buena señal de que **conviene seguir probando en navegador
+  antes de asumir que algo nuevo funciona**, esta sección no es solo
+  formalidad.
 - La deduplicación de contactos por teléfono compara en Python sobre
   los contactos con `phone` cargado (no hay forma limpia de comparar
   "solo dígitos" a nivel SQL sin una extensión de PostgreSQL); en bases
   de datos con cientos de miles de contactos esto puede ser lento — no
   es un problema para el volumen típico de una pyme o empresa mediana.
+- **Reintentos de envío, búsqueda por contenido de mensaje, trazabilidad
+  de agente, citar respondiendo y reaccionar con emoji son nuevos en
+  esta iteración**: se validó sintaxis (`py_compile` de los tres archivos
+  Python tocados, parseo del XML del template) y se revisó el payload
+  del Graph API (`context`/`reaction`) contra la documentación de la
+  Cloud API de Meta, pero **no se probaron todavía en un navegador contra
+  un Odoo corriendo** — a diferencia de otras secciones de este README,
+  esta no tiene una prueba end-to-end real detrás todavía. Antes de
+  confiar en producción conviene probar a mano: reintentar un mensaje
+  fallido, citar un mensaje real, reaccionar y confirmar que la reacción
+  llega también desde el lado del cliente.
+- **Horario de atención, etiquetas, transferir a otra línea, mensajes
+  programados y respuesta de IA con precios reales son nuevos en esta
+  iteración**: validado con `py_compile` de todo el módulo y parseo de
+  XML, con los mismos huecos honestos que la tanda anterior — **sin
+  prueba en navegador todavía**. Adicionalmente, acá conviene remarcar
+  dos puntos de diseño, no solo bugs posibles: (1) la búsqueda de
+  productos para la respuesta de precios es literal por palabra del
+  nombre, no semántica — si el cliente escribe con errores de tipeo o
+  usa un sinónimo que no está en el nombre del producto, no va a
+  encontrar nada (y ahí cae al flujo normal, no se queda sin contestar
+  nada raro, pero tampoco "entiende" lo que quiso decir); (2) transferir
+  a otra línea reutiliza el campo `whatsapp_number_id` de siempre (no
+  hay una acción/wizard separada) — ver la advertencia sobre la ventana
+  de 24h en la sección "Múltiples líneas" de arriba antes de usarlo con
+  números de WhatsApp genuinamente distintos.
+- **Vendedor automático (carrito + cotización) y switch IA/humano son
+  nuevos en esta iteración**: validado con `py_compile` y parseo de XML
+  de todo el módulo, sin prueba en navegador todavía. Puntos a tener en
+  cuenta antes de confiar en producción: (1) el "vendedor automático"
+  depende de que el modelo configurado de verdad devuelva el JSON que
+  se le pide — si un proveedor/modelo no sigue bien esa instrucción, la
+  respuesta se descarta y se registra en el log (no rompe el webhook),
+  pero el cliente se queda sin respuesta automática para ese mensaje
+  puntual; conviene probarlo primero con el modelo real que vayas a usar
+  antes de dejarlo prendido sin supervisión. (2) La detección de "un
+  agente humano tomó la conversación" para pausar la IA sola distingue
+  webclient (pausa) de webhook/cron (no pausa) revisando si hay un
+  `http.request` activo además de si el usuario es el público — no se
+  probó todavía con RPC externo o `xmlrpc` de terceros, que tampoco pasan
+  por un `http.request` de Odoo y por lo tanto **no pausarían la IA**
+  aunque en la práctica sea una persona escribiendo por otro canal
+  técnico. (3) No hay una vista clásica dedicada para auditar carritos
+  abandonados de todas las conversaciones a la vez, solo por
+  conversación (panel de contacto) — para eso, por ahora, hay que mirar
+  conversación por conversación.
+- **Sale/Purchase/CRM/Account como dependencias obligatorias, Factura y
+  Orden de Compra directas desde el panel, actividades pendientes del
+  contacto y saldo pendiente son nuevos en esta iteración**: validado
+  con `py_compile`/parseo de XML de todo el módulo, sin instalar de
+  verdad las apps nuevas en una base real todavía (este entorno no tiene
+  Odoo corriendo para probarlo). Antes de subir esto a una instalación
+  en producción: (1) hacé un backup antes de actualizar el módulo,
+  porque instalar Ventas/Compras/CRM/Facturación de una en una base que
+  no las tenía es un cambio de verdad, no cosmético — crea tablas,
+  menús, secuencias y datos por defecto de esas apps; (2) confirmá que
+  los agentes que van a usar los botones nuevos tengan además los
+  permisos de cada app (ver la nota en "Panel de contacto"); (3) la
+  actividad de un contacto solo mira `res.partner` y `crm.lead`, no
+  otros documentos (ej. actividades puestas directo en una factura o un
+  presupuesto no van a aparecer en esa lista).

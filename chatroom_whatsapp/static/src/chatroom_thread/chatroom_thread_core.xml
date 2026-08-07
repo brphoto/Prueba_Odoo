@@ -15,7 +15,7 @@
             <div class="o_chatroom_thread_header" t-on-click="openPartner">
                 <div class="o_chatroom_avatar">
                     <img t-if="state.partnerId"
-                         t-att-src="'/web/image/res.partner/' + state.partnerId + '/avatar_128'"
+                         t-att-src="partnerAvatarUrl()"
                          alt=""/>
                     <t t-else="">
                         <t t-esc="state.channelName ? state.channelName.charAt(0).toUpperCase() : '?'"/>
@@ -24,6 +24,54 @@
                 <div class="o_chatroom_header_info">
                     <div class="o_chatroom_header_name" t-esc="state.channelName"/>
                     <div class="o_chatroom_header_channel" t-esc="state.channelType"/>
+                </div>
+                <select t-if="state.agents.length" class="o_chatroom_assignee_select"
+                        t-on-click.stop="" t-on-change="reassign" title="Reasignar agente">
+                    <option value="">Sin asignar</option>
+                    <t t-foreach="state.agents" t-as="agent" t-key="agent.id">
+                        <option t-att-value="agent.id" t-att-selected="agent.id === state.assignedUserId">
+                            <t t-esc="agent.name"/>
+                        </option>
+                    </t>
+                </select>
+            </div>
+
+            <div class="o_chatroom_thread_subheader" t-if="!state.loading" t-on-click.stop="">
+                <div class="o_chatroom_tags_row">
+                    <TagsList tags="channelTagsForList()"/>
+                    <span class="o_chatroom_tag_add" title="Agregar etiqueta" t-on-click="toggleTagPicker">
+                        <i class="fa fa-plus"/>
+                    </span>
+                    <div class="o_chatroom_tag_picker" t-if="state.tagPickerOpen">
+                        <t t-if="availableTags().length">
+                            <t t-foreach="availableTags()" t-as="tag" t-key="tag.id">
+                                <div class="o_chatroom_tag_picker_item" t-on-click="() => this.addTag(tag.id)">
+                                    <span t-attf-class="o_tag_color_{{tag.color}} o_chatroom_tag_swatch"/>
+                                    <span t-esc="tag.name"/>
+                                </div>
+                            </t>
+                        </t>
+                        <div class="o_chatroom_tag_picker_empty text-muted" t-else="">
+                            No hay más etiquetas para agregar.
+                        </div>
+                    </div>
+                </div>
+                <div class="o_chatroom_subheader_right">
+                    <span t-attf-class="o_chatroom_ai_toggle {{ state.aiPaused ? 'o_chatroom_ai_toggle_paused' : 'o_chatroom_ai_toggle_active' }}"
+                          t-on-click="toggleAiPaused"
+                          t-att-title="state.aiPaused ? 'IA pausada: la está atendiendo un agente. Tocá para reactivarla.' : 'IA activa: puede responder sola. Tocá para pausarla y atender vos.'">
+                        <i class="fa fa-android"/>
+                        <t t-esc="state.aiPaused ? 'IA pausada' : 'IA activa'"/>
+                    </span>
+                    <select t-if="state.numbers.length" class="o_chatroom_line_select"
+                            t-on-change="transferLine" title="Transferir a otra línea">
+                        <option value="">Sin línea</option>
+                        <t t-foreach="state.numbers" t-as="number" t-key="number.id">
+                            <option t-att-value="number.id" t-att-selected="number.id === state.whatsappNumberId">
+                                <t t-esc="number.name"/>
+                            </option>
+                        </t>
+                    </select>
                 </div>
             </div>
 
@@ -54,7 +102,15 @@
                         <div class="o_chatroom_date_separator" t-if="isNewDay(message_index)">
                             <span t-esc="dateSeparatorLabel(message.dateObj)"/>
                         </div>
-                        <div t-attf-class="o_chatroom_bubble o_chatroom_bubble_{{ message.direction === 'outbound' ? 'out' : 'in' }}">
+                        <div class="o_chatroom_note_bubble" t-if="message.isNote">
+                            <i class="fa fa-sticky-note-o"/>
+                            <div class="o_chatroom_note_body" t-esc="message.body"/>
+                            <div class="o_chatroom_note_meta">
+                                <span t-esc="message.author_name"/> · <span t-esc="formatTime(message.dateObj)"/>
+                            </div>
+                        </div>
+                        <div t-else=""
+                             t-attf-class="o_chatroom_bubble o_chatroom_bubble_{{ message.direction === 'outbound' ? 'out' : 'in' }}">
                             <div class="o_chatroom_bubble_quote" t-if="replyPreview(message)">
                                 <span t-esc="(replyPreview(message).body || '').slice(0, 120)"/>
                             </div>
@@ -86,14 +142,43 @@
                                 <span t-esc="message.translatedBody"/>
                             </div>
                             <div class="o_chatroom_bubble_meta">
+                                <i t-if="canReply(message)"
+                                   class="fa fa-smile-o o_chatroom_bubble_reply"
+                                   title="Reaccionar"
+                                   t-on-click="() => this.toggleReactionPicker(message)"/>
+                                <i t-if="canReply(message)"
+                                   class="fa fa-reply o_chatroom_bubble_reply"
+                                   title="Responder citando"
+                                   t-on-click="() => this.startReply(message)"/>
                                 <i t-if="message.body and message.direction === 'inbound'"
                                    class="fa fa-language o_chatroom_bubble_translate"
                                    title="Traducir mensaje"
                                    t-on-click="() => this.translateMessage(message)"/>
                                 <i t-if="message.translating" class="fa fa-spin fa-circle-o-notch"/>
+                                <span class="o_chatroom_bubble_sender" t-if="senderName(message)"
+                                      t-esc="senderName(message)"/>
                                 <span class="o_chatroom_bubble_time" t-esc="formatTime(message.dateObj)"/>
+                                <a t-if="message.state === 'failed'" class="o_chatroom_bubble_retry"
+                                   title="Reintentar envío" t-on-click="() => this.retryMessage(message)">
+                                    <i t-if="message.retrying" class="fa fa-spin fa-circle-o-notch"/>
+                                    <t t-else="">
+                                        <i class="fa fa-refresh"/> Reintentar
+                                    </t>
+                                </a>
                                 <i t-if="message.direction === 'outbound'"
                                    t-attf-class="fa {{ statusIcon(message) }} o_chatroom_bubble_status"/>
+                            </div>
+                            <div class="o_chatroom_reaction_picker" t-if="state.reactingToId === message.id">
+                                <t t-foreach="REACTION_EMOJIS" t-as="emoji" t-key="emoji">
+                                    <span class="o_chatroom_reaction_option"
+                                          t-on-click="() => this.sendReaction(message, emoji)"
+                                          t-esc="emoji"/>
+                                </t>
+                            </div>
+                            <div class="o_chatroom_bubble_reactions"
+                                 t-if="message.own_reaction or message.partner_reaction">
+                                <span t-if="message.partner_reaction" t-esc="message.partner_reaction"/>
+                                <span t-if="message.own_reaction" t-esc="message.own_reaction"/>
                             </div>
                         </div>
                     </t>
@@ -134,6 +219,35 @@
                     </button>
                 </div>
                 <div t-else="">
+                    <div class="o_chatroom_scheduled_list" t-if="state.scheduledMessages.length">
+                        <t t-foreach="state.scheduledMessages" t-as="sched" t-key="sched.id">
+                            <div class="o_chatroom_scheduled_item">
+                                <i class="fa fa-clock-o"/>
+                                <span class="o_chatroom_scheduled_item_date"
+                                      t-esc="formatScheduledDate(sched.dateObj)"/>
+                                <span class="o_chatroom_scheduled_item_body" t-esc="(sched.body || '').slice(0, 60)"/>
+                                <i class="fa fa-times o_chatroom_scheduled_item_cancel" title="Cancelar"
+                                   t-on-click="() => this.cancelScheduled(sched.id)"/>
+                            </div>
+                        </t>
+                    </div>
+                    <div class="o_chatroom_schedule_panel" t-if="state.scheduleOpen">
+                        <input type="datetime-local" class="o_chatroom_schedule_input" t-model="state.scheduleDate"/>
+                        <button class="btn btn-sm btn-primary" t-on-click="confirmSchedule">Programar</button>
+                        <button class="btn btn-sm btn-link" t-on-click="toggleSchedule">Cancelar</button>
+                    </div>
+                    <div class="o_chatroom_reply_preview" t-if="state.replyingTo">
+                        <div class="o_chatroom_reply_preview_bar"/>
+                        <div class="o_chatroom_reply_preview_body">
+                            <div class="o_chatroom_reply_preview_label">
+                                Respondiendo a <t t-esc="replyingToLabel()"/>
+                            </div>
+                            <div class="o_chatroom_reply_preview_text"
+                                 t-esc="(state.replyingTo.body || '').slice(0, 120)"/>
+                        </div>
+                        <i class="fa fa-times o_chatroom_reply_preview_close" title="Cancelar"
+                           t-on-click="cancelReply"/>
+                    </div>
                     <div class="o_chatroom_quick_buttons_panel" t-if="state.quickButtonsOpen">
                         <div class="o_chatroom_quick_buttons_hint text-muted">
                             Hasta 3 botones de respuesta rápida:
@@ -157,32 +271,43 @@
                             </div>
                         </t>
                     </div>
-                    <div class="o_chatroom_composer_input">
+                    <div t-attf-class="o_chatroom_composer_input {{ state.noteMode ? 'o_chatroom_composer_note_mode' : '' }}">
                         <input type="file" t-ref="fileInput" class="d-none" multiple="multiple"
                                t-on-change="onFileChange"/>
-                        <button class="btn btn-link o_chatroom_attach_btn" title="Adjuntar archivo"
+                        <button t-if="!state.noteMode" class="btn btn-link o_chatroom_attach_btn" title="Adjuntar archivo"
                                 t-on-click="triggerFilePicker">
                             <i class="fa fa-paperclip"/>
                         </button>
-                        <button t-attf-class="btn btn-link o_chatroom_attach_btn {{ state.cannedOpen ? 'text-primary' : '' }}"
+                        <button t-if="!state.noteMode"
+                                t-attf-class="btn btn-link o_chatroom_attach_btn {{ state.cannedOpen ? 'text-primary' : '' }}"
                                 title="Respuestas rápidas" t-on-click="toggleCannedResponses">
                             <i class="fa fa-bolt"/>
                         </button>
-                        <button t-attf-class="btn btn-link o_chatroom_attach_btn {{ state.quickButtonsOpen ? 'text-primary' : '' }}"
+                        <button t-if="!state.noteMode"
+                                t-attf-class="btn btn-link o_chatroom_attach_btn {{ state.quickButtonsOpen ? 'text-primary' : '' }}"
                                 title="Botones de respuesta rápida" t-on-click="toggleQuickButtons">
                             <i class="fa fa-list-ul"/>
                         </button>
+                        <button t-attf-class="btn btn-link o_chatroom_attach_btn o_chatroom_note_toggle {{ state.noteMode ? 'text-warning' : '' }}"
+                                title="Nota interna (no se envía al cliente)" t-on-click="toggleNoteMode">
+                            <i class="fa fa-sticky-note-o"/>
+                        </button>
+                        <button t-if="!state.noteMode"
+                                t-attf-class="btn btn-link o_chatroom_attach_btn {{ state.scheduleOpen ? 'text-primary' : '' }}"
+                                title="Programar envío" t-on-click="toggleSchedule">
+                            <i class="fa fa-clock-o"/>
+                        </button>
                         <textarea
                             class="o_chatroom_composer_textarea"
-                            placeholder="Escribe un mensaje..."
+                            t-att-placeholder="state.noteMode ? 'Nota interna (no se envía al cliente)...' : 'Escribe un mensaje...'"
                             t-model="state.composerText"
                             t-on-keydown="onComposerKeydown"
                             t-att-disabled="state.sending"/>
-                        <button class="btn btn-link o_chatroom_attach_btn" title="Grabar nota de voz"
+                        <button t-if="!state.noteMode" class="btn btn-link o_chatroom_attach_btn" title="Grabar nota de voz"
                                 t-on-click="toggleRecording">
                             <i class="fa fa-microphone"/>
                         </button>
-                        <button class="btn btn-primary o_chatroom_send_btn"
+                        <button t-attf-class="btn o_chatroom_send_btn {{ state.noteMode ? 'btn-warning' : 'btn-primary' }}"
                                 t-att-disabled="state.sending"
                                 t-on-click="send">
                             <i class="fa fa-paper-plane"/>

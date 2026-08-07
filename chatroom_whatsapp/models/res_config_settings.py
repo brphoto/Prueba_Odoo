@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+import logging
+
+import requests
+
+from odoo import _, fields, models
+from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class ResConfigSettings(models.TransientModel):
-    _inherit = 'res.config.settings'
+    _inherit = ['res.config.settings', 'chatroom.meta.mixin']
 
     # -- Meta / WhatsApp Business Cloud API (conexión directa, sin BSP) --
     whatsapp_graph_api_version = fields.Char(
@@ -39,6 +46,11 @@ class ResConfigSettings(models.TransientModel):
              "que la petición viene realmente de Meta.")
     whatsapp_webhook_url = fields.Char(
         string="Webhook URL", compute='_compute_whatsapp_webhook_url')
+    whatsapp_last_webhook_display = fields.Char(
+        string="Último webhook recibido", compute='_compute_whatsapp_last_webhook_display',
+        help="Última vez que Meta nos mandó un evento (mensaje o cambio de "
+             "estado), de cualquier línea. Si nunca llegó ninguno, revisá "
+             "que la URL del Webhook esté bien registrada en Meta.")
     chatroom_auto_assign = fields.Boolean(
         string="Asignación automática de conversaciones",
         config_parameter='chatroom_whatsapp.auto_assign', default=True,
@@ -68,6 +80,42 @@ class ResConfigSettings(models.TransientModel):
         default='iniciar,start,alta',
         help="Lista separada por comas para reactivar a un contacto dado "
              "de baja.")
+
+    # -- Horario de atención: aviso automático fuera de hora --
+    chatroom_business_hours_enabled = fields.Boolean(
+        string="Activar horario de atención",
+        config_parameter='chatroom_whatsapp.business_hours_enabled',
+        help="Fuera de este horario, la primera vez que escriba cada "
+             "contacto en el día se le manda un aviso automático en vez "
+             "de dejarlo esperando toda la noche sin saber que nadie va "
+             "a contestar hasta la mañana siguiente.")
+    chatroom_business_hours_start = fields.Float(
+        string="Hora de inicio", config_parameter='chatroom_whatsapp.business_hours_start',
+        default=9.0)
+    chatroom_business_hours_end = fields.Float(
+        string="Hora de fin", config_parameter='chatroom_whatsapp.business_hours_end',
+        default=18.0)
+    chatroom_business_hours_weekdays = fields.Char(
+        string="Días (0=lunes ... 6=domingo)",
+        config_parameter='chatroom_whatsapp.business_hours_weekdays',
+        default='0,1,2,3,4',
+        help="Lista separada por comas. Por defecto lunes a viernes.")
+    chatroom_business_hours_tz = fields.Char(
+        string="Zona horaria", config_parameter='chatroom_whatsapp.business_hours_tz',
+        help="Ej: America/Guayaquil. Si se deja vacío, se usa la zona "
+             "horaria del usuario que instaló el módulo.")
+    chatroom_business_hours_away_message = fields.Char(
+        string="Mensaje fuera de horario",
+        config_parameter='chatroom_whatsapp.business_hours_away_message',
+        # 'res.config.settings' solo permite boolean/integer/float/char/
+        # selection/many2one/datetime en campos con config_parameter
+        # (ir_config._get_classified_fields los valida a mano) — un
+        # Text revienta el onchange de Ajustes apenas se abre la
+        # pantalla, no solo al guardar. Char no tiene límite de
+        # caracteres real en Odoo, así que no pierde nada.
+        default="Gracias por escribirnos. En este momento estamos fuera "
+                "de nuestro horario de atención; te respondemos apenas "
+                "volvamos.")
 
     # -- Sugerencias de respuesta con IA (cualquier proveedor LLM) --
     chatroom_ai_enabled = fields.Boolean(
@@ -103,9 +151,74 @@ class ResConfigSettings(models.TransientModel):
         help="Envía la sugerencia de IA sin intervención humana. "
              "Actívalo solo si confías en las respuestas del modelo/prompt "
              "configurado: no hay revisión previa de un agente.")
+    chatroom_ai_auto_price_reply = fields.Boolean(
+        string="Responder consultas de precio con datos reales",
+        config_parameter='chatroom_whatsapp.ai_auto_price_reply',
+        help="Si el mensaje del cliente menciona el nombre de un producto "
+             "vendible, se le contesta automáticamente con el precio real "
+             "de ese producto (tomado de Odoo, no inventado por el "
+             "modelo). Se ignora si 'Vendedor automático' (abajo) está "
+             "activo, porque ese modo ya incluye precios reales.")
+    chatroom_ai_auto_order_reply = fields.Boolean(
+        string="Vendedor automático (armar pedidos)",
+        config_parameter='chatroom_whatsapp.ai_auto_order_reply',
+        help="La IA arma un carrito charlando con el cliente (usando "
+             "solo productos y precios reales de Odoo) y, cuando el "
+             "cliente confirma, crea una Cotización real en borrador — "
+             "nunca la confirma sola, siempre queda pendiente de que un "
+             "agente la revise. Reemplaza a 'Responder consultas de "
+             "precio' y a 'Responder automáticamente' mientras esté "
+             "activo. La IA se pausa sola en cualquier conversación en "
+             "cuanto un agente humano manda un mensaje real (o se puede "
+             "pausar/reactivar a mano desde el encabezado del chat).")
 
     def _compute_whatsapp_webhook_url(self):
         base_url = self.env['ir.config_parameter'].sudo().get_param(
             'web.base.url', default='')
         for rec in self:
             rec.whatsapp_webhook_url = f"{base_url}/chatroom_whatsapp/webhook"
+
+    def _compute_whatsapp_last_webhook_display(self):
+        raw = self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_whatsapp.last_webhook_at')
+        last = fields.Datetime.to_datetime(raw) if raw else False
+        for rec in self:
+            rec.whatsapp_last_webhook_display = self._format_relative_time(last)
+
+    def action_test_whatsapp_connection(self):
+        """Valida el token y el Phone Number ID contra la Graph API real,
+        sin enviar ningún mensaje (solo lee los datos públicos del
+        número). Así se descubre un token vencido o mal copiado antes de
+        intentar mandarle algo a un cliente de verdad."""
+        self.ensure_one()
+        token, phone_number_id, api_version = self._get_meta_credentials()
+        url = f"https://graph.facebook.com/{api_version}/{phone_number_id}"
+        try:
+            response = self._meta_request(
+                'GET', url,
+                params={'fields': 'display_phone_number,verified_name,quality_rating'},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=15, max_retries=0,
+            )
+            data = response.json()
+            if response.status_code >= 400:
+                error = data.get('error', {}).get('message', str(data))
+                raise UserError(_("Meta respondió con un error: %s") % error)
+        except requests.RequestException as exc:
+            _logger.error("Error probando la conexión con Meta: %s", exc)
+            raise UserError(_("No se pudo conectar con Meta: %s") % exc)
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _("Conexión OK"),
+                'message': _("Número verificado: %(name)s (%(phone)s). Calidad: %(quality)s.") % {
+                    'name': data.get('verified_name') or '?',
+                    'phone': data.get('display_phone_number') or phone_number_id,
+                    'quality': data.get('quality_rating') or '?',
+                },
+                'type': 'success',
+                'sticky': False,
+            },
+        }

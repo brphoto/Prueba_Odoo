@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_chatroom_scheduled_message_list" model="ir.ui.view">
+        <field name="name">chatroom.scheduled.message.list</field>
+        <field name="model">chatroom.scheduled.message</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state in ('sent', 'cancelled')"
+                  decoration-danger="state == 'failed'">
+                <field name="channel_id"/>
+                <field name="body"/>
+                <field name="scheduled_date"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'sent'"
+                       decoration-warning="state == 'pending'"
+                       decoration-danger="state == 'failed'"
+                       decoration-muted="state == 'cancelled'"/>
+                <field name="error_message" optional="hide"/>
+                <button name="action_cancel" type="object" string="Cancelar"
+                        icon="fa-ban" invisible="state != 'pending'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_scheduled_message_search" model="ir.ui.view">
+        <field name="name">chatroom.scheduled.message.search</field>
+        <field name="model">chatroom.scheduled.message</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="channel_id"/>
+                <field name="body"/>
+                <filter name="pending" string="Pendientes" domain="[('state', '=', 'pending')]"/>
+                <group>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_chatroom_scheduled_message" model="ir.actions.act_window">
+        <field name="name">Mensajes programados</field>
+        <field name="res_model">chatroom.scheduled.message</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="view_chatroom_scheduled_message_search"/>
+        <field name="context">{'search_default_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay mensajes programados todavía.
+            </p>
+            <p>
+                Se programan desde el composer del chat (ícono de reloj) y
+                un cron los va enviando cada 5 minutos cuando se cumple la
+                fecha.
+            </p>
+        </field>
+    </record>
+
+</odoo>
