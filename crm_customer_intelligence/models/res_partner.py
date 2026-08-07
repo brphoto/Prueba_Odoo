@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 RFM_CATEGORIES = [
     ('a', "A - Alto valor"),
@@ -113,6 +114,51 @@ class ResPartner(models.Model):
                 'search_default_group_by_product': 1,
                 'group_by': ['product_id'],
             },
+        }
+
+    def action_create_rfm_marketing_list(self):
+        """Crea (o completa) una lista de Email Marketing con los
+        contactos seleccionados que tengan email cargado — pensado para
+        usarse desde Contactos filtrando por Categoría RFM y
+        seleccionando todo el resultado. No depende de mass_mailing:
+        si el módulo no está instalado, avisa en vez de romper."""
+        if 'mailing.list' not in self.env:
+            raise UserError(_(
+                "Esta acción necesita el módulo Email Marketing instalado "
+                "(Ajustes > Apps > 'Email Marketing')."))
+
+        partners_with_email = self.filtered('email')
+        if not partners_with_email:
+            raise UserError(_(
+                "Ninguno de los contactos seleccionados tiene un email "
+                "cargado; no se puede armar una lista de envío."))
+
+        categories = set(partners_with_email.mapped('rfm_category'))
+        today = fields.Date.context_today(self)
+        if len(categories) == 1:
+            label = dict(self._fields['rfm_category'].selection).get(categories.pop())
+            list_name = _("RFM - Categoría %(label)s - %(date)s") % {'label': label, 'date': today}
+        else:
+            list_name = _("RFM - Selección de contactos - %s") % today
+
+        MailingContact = self.env['mailing.contact']
+        mailing_list = self.env['mailing.list'].create({'name': list_name})
+        for partner in partners_with_email:
+            contact = MailingContact.search([('email', '=', partner.email)], limit=1)
+            if not contact:
+                contact = MailingContact.create({
+                    'name': partner.name,
+                    'email': partner.email,
+                })
+            if mailing_list.id not in contact.list_ids.ids:
+                contact.list_ids = [(4, mailing_list.id)]
+
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'mailing.list',
+            'res_id': mailing_list.id,
+            'view_mode': 'form',
+            'target': 'current',
         }
 
     @api.model

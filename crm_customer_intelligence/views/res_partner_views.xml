@@ -40,4 +40,34 @@
         </field>
     </record>
 
+    <record id="view_res_partner_filter_rfm" model="ir.ui.view">
+        <field name="name">res.partner.select.rfm</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <filter name="salesperson" position="after">
+                <filter name="group_rfm_category" string="Categoría RFM"
+                        context="{'group_by': 'rfm_category'}"/>
+            </filter>
+            <filter name="type_company" position="after">
+                <separator/>
+                <filter name="rfm_category_a" string="RFM: Categoría A"
+                        domain="[('rfm_category', '=', 'a')]"/>
+                <filter name="rfm_category_b" string="RFM: Categoría B"
+                        domain="[('rfm_category', '=', 'b')]"/>
+                <filter name="rfm_category_c" string="RFM: Categoría C"
+                        domain="[('rfm_category', '=', 'c')]"/>
+            </filter>
+        </field>
+    </record>
+
+    <record id="action_create_rfm_marketing_list" model="ir.actions.server">
+        <field name="name">Crear lista de marketing (RFM)</field>
+        <field name="model_id" ref="base.model_res_partner"/>
+        <field name="binding_model_id" ref="base.model_res_partner"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_create_rfm_marketing_list()</field>
+    </record>
+
 </odoo>

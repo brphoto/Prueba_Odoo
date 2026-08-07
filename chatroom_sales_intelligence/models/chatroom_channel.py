@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 
@@ -69,6 +69,49 @@ class ChatroomChannel(models.Model):
             'currency_position': currency.position,
             'top_products': partner._get_top_products(limit=5),
         }
+
+    @api.model
+    def get_my_pending_followups(self):
+        """Junta, para el usuario logueado, sus conversaciones sin
+        gestión reciente y sus oportunidades estancadas en un solo
+        paquete — pensado para un panel de "pendientes de hoy" que no
+        obligue a recorrer el kanban conversación por conversación."""
+        uid = self.env.uid
+
+        channel_rows = []
+        channels = self.search([
+            ('assigned_user_id', '=', uid),
+            ('state', 'in', ('open', 'pending')),
+        ])
+        for channel in channels:
+            if channel.management_alert_state != 'green':
+                channel_rows.append({
+                    'id': channel.id,
+                    'display_name': channel.display_name,
+                    'alert_state': channel.management_alert_state,
+                    'days_stagnant': channel.management_days_stagnant,
+                    'last_message_preview': channel.last_message_preview,
+                })
+        channel_rows.sort(key=lambda r: (r['alert_state'] != 'red', -r['days_stagnant']))
+
+        lead_rows = []
+        leads = self.env['crm.lead'].search([
+            ('user_id', '=', uid),
+            ('active', '=', True),
+            ('stage_id.is_won', '=', False),
+        ])
+        for lead in leads:
+            if lead.management_alert_state != 'green':
+                lead_rows.append({
+                    'id': lead.id,
+                    'name': lead.name,
+                    'partner_name': lead.partner_id.name or '',
+                    'alert_state': lead.management_alert_state,
+                    'days_stagnant': lead.days_since_last_management,
+                })
+        lead_rows.sort(key=lambda r: (r['alert_state'] != 'red', -r['days_stagnant']))
+
+        return {'channels': channel_rows, 'leads': lead_rows}
 
     def action_ai_generate_followup(self):
         """Genera con IA un mensaje corto de seguimiento para una

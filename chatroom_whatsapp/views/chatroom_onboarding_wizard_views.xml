@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_chatroom_onboarding_wizard_form" model="ir.ui.view">
+        <field name="name">chatroom.whatsapp.onboarding.wizard.form</field>
+        <field name="model">chatroom.whatsapp.onboarding.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Configurar WhatsApp Business">
+                <field name="state" invisible="1"/>
+
+                <div invisible="state != 'intro'">
+                    <h2>Bienvenido a la configuración de WhatsApp Business</h2>
+                    <p>
+                        Este asistente te va a pedir, paso a paso, los datos que
+                        Meta te da al crear tu App de WhatsApp Business, y al
+                        final va a probar la conexión real antes de dejarte
+                        salir. Necesitás tener a mano:
+                    </p>
+                    <ul>
+                        <li>El <strong>Phone Number ID</strong> y el <strong>WhatsApp Business Account ID</strong>
+                            (Meta Business Suite &gt; WhatsApp &gt; Configuración de la API).</li>
+                        <li>Un <strong>token de acceso permanente</strong> (System User con permisos
+                            <code>whatsapp_business_messaging</code> + <code>whatsapp_business_management</code>).</li>
+                        <li>Acceso para pegar la URL del webhook en el panel de tu App de Meta.</li>
+                    </ul>
+                </div>
+
+                <group invisible="state != 'credentials'" string="Credenciales de la Cloud API">
+                    <field name="access_token" password="True"/>
+                    <field name="phone_number_id"/>
+                    <field name="business_account_id"/>
+                    <field name="graph_api_version"/>
+                </group>
+
+                <div invisible="state != 'webhook'">
+                    <group string="Webhook">
+                        <field name="webhook_verify_token"
+                               help="Cualquier cadena que elijas: la vas a pegar también del lado de Meta."/>
+                        <field name="app_secret" password="True"
+                               help="Recomendado: se usa para verificar que cada webhook viene realmente de Meta."/>
+                        <field name="webhook_url" readonly="1"/>
+                    </group>
+                    <p class="text-muted">
+                        Copiá la <strong>URL del Webhook</strong> de arriba y el mismo
+                        <strong>Verify Token</strong> en el panel de tu App de Meta
+                        (WhatsApp &gt; Configuration &gt; Webhook), y suscribite al
+                        campo <code>messages</code>.
+                    </p>
+                </div>
+
+                <div invisible="state != 'test'">
+                    <h3>Probar conexión</h3>
+                    <p class="text-muted">
+                        Hace una llamada real a la Graph API (sin enviar ningún
+                        mensaje) para confirmar que el token y el Phone Number ID
+                        son correctos.
+                    </p>
+                    <button name="action_test_connection" type="object"
+                            string="Probar conexión ahora" class="btn-secondary"/>
+                    <div class="alert alert-success mt-2" role="alert"
+                         invisible="not connection_result or not connection_ok">
+                        <field name="connection_result" nolabel="1" readonly="1"/>
+                    </div>
+                    <div class="alert alert-danger mt-2" role="alert"
+                         invisible="not connection_result or connection_ok">
+                        <field name="connection_result" nolabel="1" readonly="1"/>
+                    </div>
+                </div>
+
+                <footer>
+                    <button name="action_back" type="object" string="Atrás"
+                            invisible="state == 'intro'"/>
+                    <button name="action_next" type="object" string="Siguiente"
+                            class="btn-primary" invisible="state == 'test'"/>
+                    <button name="action_finish" type="object" string="Finalizar"
+                            class="btn-primary" invisible="state != 'test'"/>
+                    <button string="Cancelar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_chatroom_onboarding_wizard" model="ir.actions.act_window">
+        <field name="name">Configurar WhatsApp Business</field>
+        <field name="res_model">chatroom.whatsapp.onboarding.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

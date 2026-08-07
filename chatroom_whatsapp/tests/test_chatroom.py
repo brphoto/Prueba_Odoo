@@ -165,3 +165,47 @@ class TestChatroomWhatsapp(TransactionCase):
         channel._handle_opt_keywords(message)
 
         self.assertTrue(partner.whatsapp_opt_out)
+
+    def test_onboarding_wizard_saves_credentials_and_progresses(self):
+        wizard = self.env['chatroom.whatsapp.onboarding.wizard'].create({
+            'access_token': 'test-token-123',
+            'phone_number_id': '999888777',
+            'business_account_id': '111222333',
+            'webhook_verify_token': 'my-verify-token',
+        })
+        self.assertEqual(wizard.state, 'intro')
+
+        wizard.action_next()
+        self.assertEqual(wizard.state, 'credentials')
+
+        icp = self.env['ir.config_parameter'].sudo()
+        wizard.action_next()
+        self.assertEqual(wizard.state, 'webhook')
+        self.assertEqual(icp.get_param('chatroom_whatsapp.access_token'), 'test-token-123')
+        self.assertEqual(icp.get_param('chatroom_whatsapp.phone_number_id'), '999888777')
+
+        wizard.action_next()
+        self.assertEqual(wizard.state, 'test')
+        self.assertEqual(icp.get_param('chatroom_whatsapp.webhook_verify_token'), 'my-verify-token')
+
+        wizard.action_back()
+        self.assertEqual(wizard.state, 'webhook')
+
+    def test_onboarding_wizard_default_get_prefills_existing_config(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.phone_number_id', 'existing-phone-id')
+
+        wizard = self.env['chatroom.whatsapp.onboarding.wizard'].create({})
+
+        self.assertEqual(wizard.phone_number_id, 'existing-phone-id')
+
+    def test_onboarding_wizard_test_connection_reports_failure_gracefully(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.access_token', False)
+        icp.set_param('chatroom_whatsapp.phone_number_id', False)
+        wizard = self.env['chatroom.whatsapp.onboarding.wizard'].create({'state': 'test'})
+
+        wizard.action_test_connection()
+
+        self.assertFalse(wizard.connection_ok)
+        self.assertTrue(wizard.connection_result)

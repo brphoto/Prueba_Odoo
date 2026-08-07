@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_my_followups_dashboard" model="ir.actions.client">
+        <field name="name">Mis pendientes</field>
+        <field name="tag">chatroom_sales_intelligence.my_followups_dashboard</field>
+    </record>
+
+    <menuitem id="menu_my_followups_dashboard" name="Mis pendientes"
+              parent="chatroom_whatsapp.menu_chatroom_root"
+              action="action_my_followups_dashboard"
+              sequence="6"/>
+
+</odoo>

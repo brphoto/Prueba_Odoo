@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from datetime import timedelta
 
+from odoo.exceptions import UserError
 from odoo.fields import Datetime
 from odoo.tests import TransactionCase, tagged
 
@@ -64,6 +65,50 @@ class TestCrmCustomerIntelligence(TransactionCase):
         self.assertEqual(partner.commercial_invoice_count, 1)
         self.assertEqual(partner.commercial_total_sales, 200.0)
         self.assertNotEqual(draft_invoice.state, 'posted')
+
+    def test_stagnant_lead_notifies_owner_once(self):
+        salesperson = self.env['res.users'].create({
+            'name': "Vendedor Test", 'login': 'vendedor_test_stagnant',
+            'email': 'vendedor_test_stagnant@example.com',
+        })
+        partner = self.env['res.partner'].create({'name': "Cliente Estancado 2"})
+        lead = self.env['crm.lead'].create({
+            'name': "Oportunidad para notificar", 'partner_id': partner.id, 'user_id': salesperson.id,
+        })
+        lead.write({'date_last_stage_update': Datetime.now() - timedelta(days=20)})
+        messages_before = len(lead.message_ids)
+
+        self.env['crm.lead']._cron_notify_stagnant_leads()
+        self.assertTrue(lead.stagnation_alert_notified)
+        self.assertGreater(len(lead.message_ids), messages_before)
+
+        messages_after_first_run = len(lead.message_ids)
+        self.env['crm.lead']._cron_notify_stagnant_leads()
+        self.assertEqual(len(lead.message_ids), messages_after_first_run,
+                          "no debe mandar un segundo aviso mientras siga en rojo sin gestión nueva")
+
+        lead.write({'date_last_stage_update': Datetime.now()})
+        self.env['crm.lead']._cron_notify_stagnant_leads()
+        self.assertFalse(lead.stagnation_alert_notified)
+
+    def test_create_rfm_marketing_list(self):
+        partner = self.env['res.partner'].create({
+            'name': "Cliente Marketing", 'email': 'cliente.marketing@example.com'})
+        partner.rfm_category = 'a'
+
+        if 'mailing.list' not in self.env:
+            with self.assertRaises(UserError):
+                partner.action_create_rfm_marketing_list()
+            return
+
+        action = partner.action_create_rfm_marketing_list()
+        mailing_list = self.env['mailing.list'].browse(action['res_id'])
+        self.assertIn(partner.email, mailing_list.contact_ids.mapped('email'))
+
+    def test_create_rfm_marketing_list_requires_email(self):
+        partner = self.env['res.partner'].create({'name': "Cliente Sin Email"})
+        with self.assertRaises(UserError):
+            partner.action_create_rfm_marketing_list()
 
     def test_rfm_cron_classifies_top_spender_as_a(self):
         product = self.env['product.product'].create({'name': "Producto RFM", 'type': 'consu'})

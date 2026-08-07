@@ -42,3 +42,36 @@ class TestChatroomSalesIntelligence(TransactionCase):
         for key in ('rfm_category', 'rfm_score', 'commercial_total_sales',
                     'commercial_invoice_count', 'top_products'):
             self.assertIn(key, data)
+
+    def test_my_pending_followups_only_lists_stagnant_own_records(self):
+        partner = self.env['res.partner'].create({'name': "Cliente Pendiente"})
+        stale_channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp',
+            'external_id': '573000000004',
+            'partner_id': partner.id,
+            'assigned_user_id': self.env.uid,
+            'state': 'open',
+        })
+        stale_channel.pinned_lead_id = self.env['crm.lead'].create({
+            'name': "Oportunidad estancada del panel", 'partner_id': partner.id,
+        }).id
+        self.env['crm.lead'].browse(stale_channel.pinned_lead_id).write(
+            {'date_last_stage_update': Datetime.now() - timedelta(days=20)})
+
+        fresh_channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp',
+            'external_id': '573000000005',
+            'assigned_user_id': self.env.uid,
+            'state': 'open',
+        })
+
+        other_user_lead = self.env['crm.lead'].create({
+            'name': "Oportunidad de otro vendedor", 'user_id': False})
+        other_user_lead.write({'date_last_stage_update': Datetime.now() - timedelta(days=20)})
+
+        data = self.env['chatroom.channel'].get_my_pending_followups()
+
+        channel_ids = [row['id'] for row in data['channels']]
+        self.assertIn(stale_channel.id, channel_ids)
+        self.assertNotIn(fresh_channel.id, channel_ids)
+        self.assertNotIn(other_user_lead.id, [row['id'] for row in data['leads']])

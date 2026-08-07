@@ -1,0 +1,105 @@
+.o_followups_dashboard {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px 16px;
+}
+
+.o_followups_header {
+    margin-bottom: 16px;
+
+    h2 {
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+}
+
+.o_followups_empty {
+    text-align: center;
+    padding: 48px 16px;
+    color: #667781;
+
+    i {
+        font-size: 2.5em;
+        color: #25d366;
+        margin-bottom: 12px;
+        display: block;
+    }
+}
+
+.o_followups_section {
+    margin-bottom: 24px;
+
+    h4 {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        font-size: 0.95em;
+    }
+}
+
+.o_followups_row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    background-color: var(--o-view-background-color, #fff);
+    border: 1px solid var(--border-color, #dee2e6);
+    cursor: pointer;
+
+    &:hover {
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    }
+}
+
+.o_followups_row_red {
+    border-left: 3px solid #dc3545;
+}
+
+.o_followups_row_yellow {
+    border-left: 3px solid #e6a700;
+}
+
+.o_followups_dot {
+    flex: 0 0 auto;
+    font-size: 0.8em;
+}
+
+.o_followups_row_red .o_followups_dot {
+    color: #dc3545;
+}
+
+.o_followups_row_yellow .o_followups_dot {
+    color: #e6a700;
+}
+
+.o_followups_row_body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.o_followups_row_title {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_followups_row_sub {
+    font-size: 0.85em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_followups_row_days {
+    flex: 0 0 auto;
+    font-size: 0.8em;
+    color: #667781;
+    white-space: nowrap;
+}

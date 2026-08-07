@@ -31,6 +31,10 @@ una conversación sin salir del chat:
   para mouse/teclado) con la ficha comercial completa: salud de la
   oportunidad, perfil de compra en chips visuales, última venta, y un
   botón para generar con IA una excusa de seguimiento.
+* **"Mis pendientes de hoy"**: pantalla nueva que junta, para el
+  usuario logueado, sus conversaciones sin gestión reciente y sus
+  oportunidades estancadas, para arrancar el día sabiendo a quién
+  contactar primero sin recorrer el kanban ni el pipeline.
 
 Diseño modular
 ----------------
@@ -62,6 +66,7 @@ agrega la capa visual que los muestra dentro del chat.
 
     'data': [
         'views/chatroom_channel_views.xml',
+        'views/chatroom_menus.xml',
     ],
 
     'assets': {
@@ -73,9 +78,13 @@ agrega la capa visual que los muestra dentro del chat.
             'chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence.scss',
             'chatroom_sales_intelligence/static/src/chatroom_app/chatroom_app_patch.js',
             'chatroom_sales_intelligence/static/src/chatroom_app/chatroom_app_patch.xml',
+            'chatroom_sales_intelligence/static/src/my_followups/my_followups_dashboard.js',
+            'chatroom_sales_intelligence/static/src/my_followups/my_followups_dashboard.xml',
+            'chatroom_sales_intelligence/static/src/my_followups/my_followups_dashboard.scss',
         ],
         'web.assets_web_dark': [
             'chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence.dark.scss',
+            'chatroom_sales_intelligence/static/src/my_followups/my_followups_dashboard.dark.scss',
         ],
     },
 

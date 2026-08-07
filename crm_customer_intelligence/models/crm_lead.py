@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 
 RED_THRESHOLD_DAYS = 15
 YELLOW_THRESHOLD_DAYS = 7
@@ -13,6 +13,11 @@ class CrmLead(models.Model):
     management_alert_state = fields.Selection(
         [('green', "Verde"), ('yellow', "Amarillo"), ('red', "Rojo")],
         string="Alerta de seguimiento", compute='_compute_management_alert')
+    stagnation_alert_notified = fields.Boolean(
+        default=False, copy=False,
+        help="Ya se le avisó al vendedor que esta oportunidad está en "
+             "rojo; evita mandarle el mismo aviso todos los días. Se "
+             "reinicia solo en cuanto vuelve a haber gestión real.")
 
     def _get_last_management_date(self):
         """Última fecha de 'gestión' real de la oportunidad: la más
@@ -58,3 +63,29 @@ class CrmLead(models.Model):
                 lead.management_alert_state = 'yellow'
             else:
                 lead.management_alert_state = 'green'
+
+    @api.model
+    def _cron_notify_stagnant_leads(self):
+        """Avisa una sola vez por vendedor cuando una oportunidad pasa a
+        rojo (no todos los días): se manda como notificación
+        (message_type='notification', el valor por defecto de
+        message_post) para que NO cuente ella misma como "gestión" en
+        _get_last_management_date y se reinicie el semáforo sola."""
+        leads = self.search([('active', '=', True), ('stage_id.is_won', '=', False)])
+        for lead in leads:
+            if lead.management_alert_state == 'red':
+                if not lead.stagnation_alert_notified and lead.user_id:
+                    lead.message_post(
+                        body=_(
+                            "⚠️ Esta oportunidad lleva %(days)s días sin gestión. "
+                            "Contactá a %(contact)s para retomarla."
+                        ) % {
+                            'days': lead.days_since_last_management,
+                            'contact': lead.partner_id.name or lead.name,
+                        },
+                        partner_ids=[lead.user_id.partner_id.id],
+                        subtype_xmlid='mail.mt_comment',
+                    )
+                    lead.stagnation_alert_notified = True
+            elif lead.stagnation_alert_notified:
+                lead.stagnation_alert_notified = False

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="chatroom_sales_intelligence.MyFollowupsDashboard">
+        <div class="o_followups_dashboard">
+            <div class="o_followups_header">
+                <h2><i class="fa fa-check-square-o"/> Mis pendientes de hoy</h2>
+            </div>
+
+            <t t-if="state.loading">
+                <div class="o_chatroom_loading"><i class="fa fa-spin fa-circle-o-notch"/></div>
+            </t>
+            <t t-elif="isEmpty">
+                <div class="o_followups_empty">
+                    <i class="fa fa-check-circle"/>
+                    <p>¡Estás al día! No tenés conversaciones ni oportunidades pendientes de seguimiento.</p>
+                </div>
+            </t>
+            <t t-else="">
+                <div class="o_followups_section" t-if="state.channels.length">
+                    <h4><i class="fa fa-whatsapp"/> Conversaciones sin gestión (<t t-esc="state.channels.length"/>)</h4>
+                    <t t-foreach="state.channels" t-as="row" t-key="row.id">
+                        <div t-attf-class="o_followups_row o_followups_row_{{ row.alert_state }}"
+                             t-on-click="() => this.openChannel(row.id)">
+                            <i t-attf-class="fa {{ row.alert_state === 'red' ? 'fa-circle' : 'fa-clock-o' }} o_followups_dot"/>
+                            <div class="o_followups_row_body">
+                                <div class="o_followups_row_title" t-esc="row.display_name"/>
+                                <div class="o_followups_row_sub text-muted" t-esc="row.last_message_preview"/>
+                            </div>
+                            <div class="o_followups_row_days">
+                                <t t-esc="alertLabel(row)"/> <strong t-esc="row.days_stagnant"/> días
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <div class="o_followups_section" t-if="state.leads.length">
+                    <h4><i class="fa fa-star"/> Oportunidades estancadas (<t t-esc="state.leads.length"/>)</h4>
+                    <t t-foreach="state.leads" t-as="row" t-key="row.id">
+                        <div t-attf-class="o_followups_row o_followups_row_{{ row.alert_state }}"
+                             t-on-click="() => this.openLead(row.id)">
+                            <i t-attf-class="fa {{ row.alert_state === 'red' ? 'fa-circle' : 'fa-clock-o' }} o_followups_dot"/>
+                            <div class="o_followups_row_body">
+                                <div class="o_followups_row_title" t-esc="row.name"/>
+                                <div class="o_followups_row_sub text-muted" t-esc="row.partner_name"/>
+                            </div>
+                            <div class="o_followups_row_days">
+                                <t t-esc="alertLabel(row)"/> <strong t-esc="row.days_stagnant"/> días
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>
