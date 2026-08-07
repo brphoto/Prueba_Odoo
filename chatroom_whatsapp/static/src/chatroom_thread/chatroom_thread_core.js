@@ -81,8 +81,21 @@ export class ChatroomThreadCore extends Component {
 
         this._shouldScroll = true;
         this._onBusNotification = this._onBusNotification.bind(this);
+        // Se actualiza de forma síncrona (no esperando a que Owl confirme
+        // los nuevos props) para saber qué canal ya se está cargando: el
+        // propio _loadForCurrentRecord dispara onMessagesLoaded, que hace
+        // que el padre (chatroom_app) vuelva a renderizar mientras este
+        // onWillUpdateProps todavía está pendiente. Owl cancela ese fiber
+        // y arranca uno nuevo antes de que this.props llegue a
+        // actualizarse, así que comparar contra this.props.channelId deja
+        // la comparación siempre en "distinto" y dispara la carga en
+        // bucle infinito. Comparar contra este campo propio evita el bucle.
+        this._loadedChannelId = false;
 
-        onWillStart(() => this._loadForCurrentRecord());
+        onWillStart(() => {
+            this._loadedChannelId = this.channelId;
+            return this._loadForCurrentRecord();
+        });
 
         onMounted(() => {
             this.busService.addEventListener("notification", this._onBusNotification);
@@ -97,7 +110,8 @@ export class ChatroomThreadCore extends Component {
         });
 
         onWillUpdateProps((nextProps) => {
-            if (nextProps.channelId !== this.props.channelId) {
+            if (nextProps.channelId !== this._loadedChannelId) {
+                this._loadedChannelId = nextProps.channelId;
                 return this._loadForCurrentRecord(nextProps.channelId);
             }
         });
