@@ -74,6 +74,7 @@ class ChatroomWhatsappNumber(models.Model):
             'name': self.name,
             'res_model': 'chatroom.channel',
             'view_mode': 'list,kanban,form',
+            'views': [(False, 'list'), (False, 'kanban'), (False, 'form')],
             'domain': [('whatsapp_number_id', '=', self.id)],
         }
 

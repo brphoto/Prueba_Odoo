@@ -993,6 +993,23 @@ class ChatroomChannel(models.Model):
     # ------------------------------------------------------------------
     # Flujo comercial: crear oportunidad / presupuesto desde la conversación
     # ------------------------------------------------------------------
+    @staticmethod
+    def _window_action(view_mode='list,form', **vals):
+        """Arma una acción ir.actions.act_window ya lista para
+        this.action.doAction() en JS.
+
+        Un <button type="object"> de una vista clásica pasa por el
+        endpoint call_button, que llama a clean_action() en el servidor
+        y ahí se rellena 'views' a partir de 'view_mode' solo. Pero un
+        orm.call() común (como usa el panel de contacto de la app) NO
+        pasa por ahí: si el dict no trae 'views' ya armado, el webclient
+        revienta con "Cannot read properties of undefined (reading
+        'map')" al hacer action.views.map(...). Con este helper, estas
+        acciones funcionan llamadas desde cualquiera de los dos lados.
+        """
+        vals.setdefault('views', [(False, mode) for mode in view_mode.split(',')])
+        return {'type': 'ir.actions.act_window', 'view_mode': view_mode, **vals}
+
     def action_create_lead(self):
         self.ensure_one()
         if not self.crm_installed:
@@ -1005,25 +1022,15 @@ class ChatroomChannel(models.Model):
                 f"[{m.direction}] {m.body}" for m in self.message_ids.sorted('date') if m.body),
         })
         self.pinned_lead_id = lead.id
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'crm.lead',
-            'res_id': lead.id,
-            'view_mode': 'form',
-            'target': 'current',
-        }
+        return self._window_action(
+            res_model='crm.lead', res_id=lead.id, view_mode='form', target='current')
 
     def action_open_pinned_lead(self):
         self.ensure_one()
         if not self.crm_installed or not self.pinned_lead_id:
             return False
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'crm.lead',
-            'res_id': self.pinned_lead_id,
-            'view_mode': 'form',
-            'target': 'current',
-        }
+        return self._window_action(
+            res_model='crm.lead', res_id=self.pinned_lead_id, view_mode='form', target='current')
 
     def action_create_quotation(self):
         self.ensure_one()
@@ -1035,13 +1042,8 @@ class ChatroomChannel(models.Model):
             'partner_id': self.partner_id.id,
             'origin': self.display_name,
         })
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'sale.order',
-            'res_id': order.id,
-            'view_mode': 'form',
-            'target': 'current',
-        }
+        return self._window_action(
+            res_model='sale.order', res_id=order.id, view_mode='form', target='current')
 
     def action_create_task(self):
         self.ensure_one()
@@ -1055,71 +1057,46 @@ class ChatroomChannel(models.Model):
             'description': self.ai_summary or "\n".join(
                 f"[{m.direction}] {m.body}" for m in self.message_ids.sorted('date') if m.body),
         })
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'project.task',
-            'res_id': task.id,
-            'view_mode': 'form',
-            'target': 'current',
-        }
+        return self._window_action(
+            res_model='project.task', res_id=task.id, view_mode='form', target='current')
 
     def action_view_tasks(self):
         self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _("Tareas"),
-            'res_model': 'project.task',
-            'view_mode': 'list,kanban,form',
-            'domain': [('partner_id', '=', self.partner_id.id)],
-            'context': {'default_partner_id': self.partner_id.id},
-        }
+        return self._window_action(
+            name=_("Tareas"), res_model='project.task', view_mode='list,kanban,form',
+            domain=[('partner_id', '=', self.partner_id.id)],
+            context={'default_partner_id': self.partner_id.id})
 
     def action_view_leads(self):
         self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _("Oportunidades"),
-            'res_model': 'crm.lead',
-            'view_mode': 'list,kanban,form',
-            'domain': [('partner_id', '=', self.partner_id.id)],
-            'context': {'default_partner_id': self.partner_id.id},
-        }
+        return self._window_action(
+            name=_("Oportunidades"), res_model='crm.lead', view_mode='list,kanban,form',
+            domain=[('partner_id', '=', self.partner_id.id)],
+            context={'default_partner_id': self.partner_id.id})
 
     def action_view_sale_orders(self):
         self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _("Presupuestos y Pedidos"),
-            'res_model': 'sale.order',
-            'view_mode': 'list,form',
-            'domain': [('partner_id', '=', self.partner_id.id)],
-            'context': {'default_partner_id': self.partner_id.id},
-        }
+        return self._window_action(
+            name=_("Presupuestos y Pedidos"), res_model='sale.order', view_mode='list,form',
+            domain=[('partner_id', '=', self.partner_id.id)],
+            context={'default_partner_id': self.partner_id.id})
 
     def action_view_invoices(self):
         self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _("Facturas"),
-            'res_model': 'account.move',
-            'view_mode': 'list,form',
-            'domain': [
+        return self._window_action(
+            name=_("Facturas"), res_model='account.move', view_mode='list,form',
+            domain=[
                 ('partner_id', '=', self.partner_id.id),
                 ('move_type', 'in', ('out_invoice', 'out_refund')),
             ],
-            'context': {'default_partner_id': self.partner_id.id, 'default_move_type': 'out_invoice'},
-        }
+            context={'default_partner_id': self.partner_id.id, 'default_move_type': 'out_invoice'})
 
     def action_view_purchases(self):
         self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _("Compras"),
-            'res_model': 'purchase.order',
-            'view_mode': 'list,form',
-            'domain': [('partner_id', '=', self.partner_id.id)],
-            'context': {'default_partner_id': self.partner_id.id},
-        }
+        return self._window_action(
+            name=_("Compras"), res_model='purchase.order', view_mode='list,form',
+            domain=[('partner_id', '=', self.partner_id.id)],
+            context={'default_partner_id': self.partner_id.id})
 
     # ------------------------------------------------------------------
     # Panel de contacto: datos + accesos rápidos a CRM/Ventas/Compras/

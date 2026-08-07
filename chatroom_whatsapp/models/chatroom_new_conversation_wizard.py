@@ -31,5 +31,6 @@ class ChatroomNewConversationWizard(models.TransientModel):
             'res_model': 'chatroom.channel',
             'res_id': channel_id,
             'view_mode': 'form',
+            'views': [(False, 'form')],
             'target': 'current',
         }
