@@ -81,6 +81,36 @@ class ResConfigSettings(models.TransientModel):
         help="Lista separada por comas para reactivar a un contacto dado "
              "de baja.")
 
+    # -- Horario de atención: aviso automático fuera de hora --
+    chatroom_business_hours_enabled = fields.Boolean(
+        string="Activar horario de atención",
+        config_parameter='chatroom_whatsapp.business_hours_enabled',
+        help="Fuera de este horario, la primera vez que escriba cada "
+             "contacto en el día se le manda un aviso automático en vez "
+             "de dejarlo esperando toda la noche sin saber que nadie va "
+             "a contestar hasta la mañana siguiente.")
+    chatroom_business_hours_start = fields.Float(
+        string="Hora de inicio", config_parameter='chatroom_whatsapp.business_hours_start',
+        default=9.0)
+    chatroom_business_hours_end = fields.Float(
+        string="Hora de fin", config_parameter='chatroom_whatsapp.business_hours_end',
+        default=18.0)
+    chatroom_business_hours_weekdays = fields.Char(
+        string="Días (0=lunes ... 6=domingo)",
+        config_parameter='chatroom_whatsapp.business_hours_weekdays',
+        default='0,1,2,3,4',
+        help="Lista separada por comas. Por defecto lunes a viernes.")
+    chatroom_business_hours_tz = fields.Char(
+        string="Zona horaria", config_parameter='chatroom_whatsapp.business_hours_tz',
+        help="Ej: America/Guayaquil. Si se deja vacío, se usa la zona "
+             "horaria del usuario que instaló el módulo.")
+    chatroom_business_hours_away_message = fields.Text(
+        string="Mensaje fuera de horario",
+        config_parameter='chatroom_whatsapp.business_hours_away_message',
+        default="Gracias por escribirnos. En este momento estamos fuera "
+                "de nuestro horario de atención; te respondemos apenas "
+                "volvamos.")
+
     # -- Sugerencias de respuesta con IA (cualquier proveedor LLM) --
     chatroom_ai_enabled = fields.Boolean(
         string="Activar sugerencias con IA",
@@ -115,6 +145,15 @@ class ResConfigSettings(models.TransientModel):
         help="Envía la sugerencia de IA sin intervención humana. "
              "Actívalo solo si confías en las respuestas del modelo/prompt "
              "configurado: no hay revisión previa de un agente.")
+    chatroom_ai_auto_price_reply = fields.Boolean(
+        string="Responder consultas de precio con datos reales",
+        config_parameter='chatroom_whatsapp.ai_auto_price_reply',
+        help="Si el mensaje del cliente menciona el nombre de un producto "
+             "vendible, se le contesta automáticamente con el precio real "
+             "de ese producto (tomado de Odoo, no inventado por el "
+             "modelo). Si no encuentra ningún producto que coincida, no "
+             "hace nada y sigue el flujo normal (sugerencia/auto-reply "
+             "genérico, si están activos).")
 
     def _compute_whatsapp_webhook_url(self):
         base_url = self.env['ir.config_parameter'].sudo().get_param(

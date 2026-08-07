@@ -36,6 +36,37 @@
                 </select>
             </div>
 
+            <div class="o_chatroom_thread_subheader" t-if="!state.loading" t-on-click.stop="">
+                <div class="o_chatroom_tags_row">
+                    <TagsList tags="channelTagsForList()"/>
+                    <span class="o_chatroom_tag_add" title="Agregar etiqueta" t-on-click="toggleTagPicker">
+                        <i class="fa fa-plus"/>
+                    </span>
+                    <div class="o_chatroom_tag_picker" t-if="state.tagPickerOpen">
+                        <t t-if="availableTags().length">
+                            <t t-foreach="availableTags()" t-as="tag" t-key="tag.id">
+                                <div class="o_chatroom_tag_picker_item" t-on-click="() => this.addTag(tag.id)">
+                                    <span t-attf-class="o_tag_color_{{tag.color}} o_chatroom_tag_swatch"/>
+                                    <span t-esc="tag.name"/>
+                                </div>
+                            </t>
+                        </t>
+                        <div class="o_chatroom_tag_picker_empty text-muted" t-else="">
+                            No hay más etiquetas para agregar.
+                        </div>
+                    </div>
+                </div>
+                <select t-if="state.numbers.length" class="o_chatroom_line_select"
+                        t-on-change="transferLine" title="Transferir a otra línea">
+                    <option value="">Sin línea</option>
+                    <t t-foreach="state.numbers" t-as="number" t-key="number.id">
+                        <option t-att-value="number.id" t-att-selected="number.id === state.whatsappNumberId">
+                            <t t-esc="number.name"/>
+                        </option>
+                    </t>
+                </select>
+            </div>
+
             <div class="o_chatroom_opt_out_banner" t-if="!state.loading and state.partnerOptedOut">
                 <i class="fa fa-ban"/>
                 <span>Este contacto se dio de baja de los mensajes. No se le puede escribir.</span>
@@ -180,6 +211,23 @@
                     </button>
                 </div>
                 <div t-else="">
+                    <div class="o_chatroom_scheduled_list" t-if="state.scheduledMessages.length">
+                        <t t-foreach="state.scheduledMessages" t-as="sched" t-key="sched.id">
+                            <div class="o_chatroom_scheduled_item">
+                                <i class="fa fa-clock-o"/>
+                                <span class="o_chatroom_scheduled_item_date"
+                                      t-esc="formatScheduledDate(sched.dateObj)"/>
+                                <span class="o_chatroom_scheduled_item_body" t-esc="(sched.body || '').slice(0, 60)"/>
+                                <i class="fa fa-times o_chatroom_scheduled_item_cancel" title="Cancelar"
+                                   t-on-click="() => this.cancelScheduled(sched.id)"/>
+                            </div>
+                        </t>
+                    </div>
+                    <div class="o_chatroom_schedule_panel" t-if="state.scheduleOpen">
+                        <input type="datetime-local" class="o_chatroom_schedule_input" t-model="state.scheduleDate"/>
+                        <button class="btn btn-sm btn-primary" t-on-click="confirmSchedule">Programar</button>
+                        <button class="btn btn-sm btn-link" t-on-click="toggleSchedule">Cancelar</button>
+                    </div>
                     <div class="o_chatroom_reply_preview" t-if="state.replyingTo">
                         <div class="o_chatroom_reply_preview_bar"/>
                         <div class="o_chatroom_reply_preview_body">
@@ -235,6 +283,11 @@
                         <button t-attf-class="btn btn-link o_chatroom_attach_btn o_chatroom_note_toggle {{ state.noteMode ? 'text-warning' : '' }}"
                                 title="Nota interna (no se envía al cliente)" t-on-click="toggleNoteMode">
                             <i class="fa fa-sticky-note-o"/>
+                        </button>
+                        <button t-if="!state.noteMode"
+                                t-attf-class="btn btn-link o_chatroom_attach_btn {{ state.scheduleOpen ? 'text-primary' : '' }}"
+                                title="Programar envío" t-on-click="toggleSchedule">
+                            <i class="fa fa-clock-o"/>
                         </button>
                         <textarea
                             class="o_chatroom_composer_textarea"

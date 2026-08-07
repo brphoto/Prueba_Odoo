@@ -1,6 +1,7 @@
 /** @odoo-module **/
 
 import { useService } from "@web/core/utils/hooks";
+import { TagsList } from "@web/core/tags_list/tags_list";
 import {
     Component,
     useState,
@@ -46,6 +47,7 @@ function odooDatetimeToDate(value) {
  */
 export class ChatroomThreadCore extends Component {
     static template = "chatroom_whatsapp.ChatroomThreadCore";
+    static components = { TagsList };
     static props = {
         channelId: { type: [Number, { value: false }], optional: true },
         emptyMessage: { type: String, optional: true },
@@ -90,6 +92,14 @@ export class ChatroomThreadCore extends Component {
             agents: [],
             replyingTo: false,
             reactingToId: false,
+            numbers: [],
+            whatsappNumberId: false,
+            allTags: [],
+            channelTagIds: [],
+            tagPickerOpen: false,
+            scheduledMessages: [],
+            scheduleOpen: false,
+            scheduleDate: "",
         });
 
         this._shouldScroll = true;
@@ -164,9 +174,13 @@ export class ChatroomThreadCore extends Component {
         this.state.noteMode = false;
         this.state.replyingTo = false;
         this.state.reactingToId = false;
+        this.state.tagPickerOpen = false;
+        this.state.scheduleOpen = false;
+        this.state.scheduleDate = "";
         if (!channelId) {
             this.state.loading = false;
             this.state.messages = [];
+            this.state.scheduledMessages = [];
             return;
         }
         this.state.loading = true;
@@ -175,6 +189,7 @@ export class ChatroomThreadCore extends Component {
             this._loadChannel(channelId),
             this._loadMessages(channelId),
             this._loadCannedResponses(),
+            this._loadScheduledMessages(channelId),
         ]);
     }
 
@@ -194,13 +209,16 @@ export class ChatroomThreadCore extends Component {
         const [channel] = await this.orm.read(
             "chatroom.channel",
             [channelId],
-            ["display_name", "partner_id", "channel_type", "is_session_open", "assigned_user_id"]
+            ["display_name", "partner_id", "channel_type", "is_session_open",
+             "assigned_user_id", "whatsapp_number_id", "tag_ids"]
         );
         this.state.channelName = channel.display_name;
         this.state.partnerId = channel.partner_id ? channel.partner_id[0] : false;
         this.state.channelType = channel.channel_type;
         this.state.isSessionOpen = channel.is_session_open;
         this.state.assignedUserId = channel.assigned_user_id ? channel.assigned_user_id[0] : false;
+        this.state.whatsappNumberId = channel.whatsapp_number_id ? channel.whatsapp_number_id[0] : false;
+        this.state.channelTagIds = channel.tag_ids || [];
 
         if (this.state.partnerId) {
             const [partner] = await this.orm.read(
@@ -212,6 +230,60 @@ export class ChatroomThreadCore extends Component {
         if (!this.state.agents.length) {
             this.state.agents = await this.orm.call("chatroom.channel", "get_assignable_agents", []);
         }
+        if (!this.state.numbers.length) {
+            this.state.numbers = await this.orm.searchRead(
+                "chatroom.whatsapp.number", [["active", "=", true]], ["name"], { order: "name" });
+        }
+        if (!this.state.allTags.length) {
+            this.state.allTags = await this.orm.searchRead(
+                "chatroom.tag", [], ["name", "color"], { order: "name" });
+        }
+    }
+
+    async transferLine(ev) {
+        if (!this.channelId) {
+            return;
+        }
+        const newNumberId = parseInt(ev.target.value, 10) || false;
+        await this.orm.write("chatroom.channel", [this.channelId], { whatsapp_number_id: newNumberId });
+        this.state.whatsappNumberId = newNumberId;
+        await Promise.all([this._loadChannel(), this._loadMessages()]);
+    }
+
+    toggleTagPicker() {
+        this.state.tagPickerOpen = !this.state.tagPickerOpen;
+    }
+
+    channelTagsForList() {
+        return this.state.allTags
+            .filter((tag) => this.state.channelTagIds.includes(tag.id))
+            .map((tag) => ({
+                id: tag.id,
+                text: tag.name,
+                colorIndex: tag.color,
+                onDelete: () => this.removeTag(tag.id),
+            }));
+    }
+
+    availableTags() {
+        return this.state.allTags.filter((tag) => !this.state.channelTagIds.includes(tag.id));
+    }
+
+    async addTag(tagId) {
+        if (!this.channelId) {
+            return;
+        }
+        await this.orm.write("chatroom.channel", [this.channelId], { tag_ids: [[4, tagId]] });
+        this.state.channelTagIds = [...this.state.channelTagIds, tagId];
+        this.state.tagPickerOpen = false;
+    }
+
+    async removeTag(tagId) {
+        if (!this.channelId) {
+            return;
+        }
+        await this.orm.write("chatroom.channel", [this.channelId], { tag_ids: [[3, tagId]] });
+        this.state.channelTagIds = this.state.channelTagIds.filter((id) => id !== tagId);
     }
 
     async reassign(ev) {
@@ -383,6 +455,73 @@ export class ChatroomThreadCore extends Component {
                 type: "danger",
             });
         }
+    }
+
+    toggleSchedule() {
+        this.state.scheduleOpen = !this.state.scheduleOpen;
+    }
+
+    _localDatetimeToOdoo(localValue) {
+        // El input datetime-local no trae zona horaria (se interpreta en
+        // hora local del navegador); Date lo toma como tal, y toISOString
+        // ya lo pasa a UTC, que es lo que espera el campo Datetime.
+        const dt = new Date(localValue);
+        return dt.toISOString().slice(0, 19).replace("T", " ");
+    }
+
+    async confirmSchedule() {
+        const body = this.state.composerText.trim();
+        if (!body) {
+            this.notification.add("Escribe el mensaje que querés programar.", { type: "warning" });
+            return;
+        }
+        if (!this.state.scheduleDate) {
+            this.notification.add("Elegí fecha y hora para el envío.", { type: "warning" });
+            return;
+        }
+        try {
+            await this.orm.call(
+                "chatroom.channel", "action_schedule_message", [this.channelId],
+                { body, scheduled_date: this._localDatetimeToOdoo(this.state.scheduleDate) });
+            this.state.composerText = "";
+            this.state.scheduleOpen = false;
+            this.state.scheduleDate = "";
+            await this._loadScheduledMessages();
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
+    }
+
+    async _loadScheduledMessages(channelId = this.channelId) {
+        if (!channelId) {
+            this.state.scheduledMessages = [];
+            return;
+        }
+        const items = await this.orm.call("chatroom.channel", "get_scheduled_messages", [channelId]);
+        this.state.scheduledMessages = items.map((item) => ({
+            ...item,
+            dateObj: odooDatetimeToDate(item.scheduled_date),
+        }));
+    }
+
+    async cancelScheduled(scheduledId) {
+        if (!this.channelId) {
+            return;
+        }
+        await this.orm.call(
+            "chatroom.channel", "action_cancel_scheduled_message", [this.channelId, scheduledId]);
+        await this._loadScheduledMessages();
+    }
+
+    formatScheduledDate(dateObj) {
+        if (!dateObj) {
+            return "";
+        }
+        return dateObj.toLocaleString(undefined, {
+            day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+        });
     }
 
     async translateMessage(message) {

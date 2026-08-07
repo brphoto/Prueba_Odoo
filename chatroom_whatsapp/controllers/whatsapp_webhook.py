@@ -144,7 +144,8 @@ class WhatsAppWebhookController(http.Controller):
                 'state': 'pending',
             })
             channel._handle_opt_keywords(message)
-            channel._ai_process_inbound_message(message)
+            if not channel._maybe_send_away_message():
+                channel._ai_process_inbound_message(message)
             channel._notify_assigned_agent(message)
             channel._notify_thread_update()
             channel._notify_new_inbound_message(message)
@@ -198,7 +199,8 @@ class WhatsAppWebhookController(http.Controller):
             'state': 'pending',
         })
         channel._handle_opt_keywords(message)
-        channel._ai_process_inbound_message(message)
+        if not channel._maybe_send_away_message():
+            channel._ai_process_inbound_message(message)
         channel._notify_assigned_agent(message)
         channel._notify_thread_update()
         channel._notify_new_inbound_message(message)

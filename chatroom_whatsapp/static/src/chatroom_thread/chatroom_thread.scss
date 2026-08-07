@@ -88,6 +88,143 @@
     }
 }
 
+.o_chatroom_thread_subheader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 14px;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    flex: 0 0 auto;
+    font-size: 0.85em;
+}
+
+.o_chatroom_tags_row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-width: 0;
+}
+
+.o_chatroom_tag_add {
+    cursor: pointer;
+    opacity: 0.6;
+    padding: 2px 4px;
+
+    &:hover {
+        opacity: 1;
+    }
+}
+
+.o_chatroom_tag_picker {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 5;
+    margin-top: 4px;
+    min-width: 160px;
+    max-height: 220px;
+    overflow-y: auto;
+    border-radius: 6px;
+    background-color: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.o_chatroom_tag_picker_item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+
+    &:hover {
+        background-color: #f0f2f5;
+    }
+}
+
+.o_chatroom_tag_picker_empty {
+    padding: 8px 10px;
+    font-size: 0.9em;
+}
+
+.o_chatroom_tag_swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+
+.o_chatroom_line_select {
+    flex: 0 0 auto;
+    max-width: 160px;
+    font-size: 0.85em;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 12px;
+    padding: 2px 8px;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.o_chatroom_scheduled_list {
+    margin-bottom: 6px;
+}
+
+.o_chatroom_scheduled_item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    margin-bottom: 4px;
+    border-radius: 6px;
+    background-color: #f0f2f5;
+    font-size: 0.8em;
+}
+
+.o_chatroom_scheduled_item_date {
+    font-weight: 600;
+    color: var(--o-brand-primary, #714B67);
+    white-space: nowrap;
+}
+
+.o_chatroom_scheduled_item_body {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #667781;
+}
+
+.o_chatroom_scheduled_item_cancel {
+    cursor: pointer;
+    opacity: 0.6;
+
+    &:hover {
+        opacity: 1;
+    }
+}
+
+.o_chatroom_schedule_panel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    padding: 6px 8px;
+    background-color: #f0f2f5;
+    border-radius: 8px;
+}
+
+.o_chatroom_schedule_input {
+    flex: 1 1 auto;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.85em;
+}
+
 .o_chatroom_session_banner,
 .o_chatroom_opt_out_banner {
     display: flex;

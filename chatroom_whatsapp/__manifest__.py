@@ -45,7 +45,7 @@ Requisitos
     'license': 'LGPL-3',
 
     'category': 'Discuss',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.2.0',
 
     'depends': ['base', 'mail', 'bus', 'contacts'],
 
@@ -54,12 +54,14 @@ Requisitos
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
         'views/chatroom_whatsapp_number_views.xml',
+        'views/chatroom_tag_views.xml',
         'views/chatroom_new_conversation_wizard_views.xml',
         'views/chatroom_reassign_wizard_views.xml',
         'views/chatroom_template_views.xml',
         'views/chatroom_channel_views.xml',
         'views/chatroom_metrics_views.xml',
         'views/chatroom_message_views.xml',
+        'views/chatroom_scheduled_message_views.xml',
         'views/chatroom_canned_response_views.xml',
         'views/res_config_settings_views.xml',
         'views/res_partner_views.xml',

@@ -6,6 +6,7 @@ import mimetypes
 import re
 from datetime import timedelta
 
+import pytz
 import requests
 
 from odoo import _, api, fields, models, tools
@@ -86,6 +87,14 @@ class ChatroomChannel(models.Model):
         string="Intención (IA)", tracking=True)
     company_id = fields.Many2one(
         'res.company', default=lambda self: self.env.company)
+    tag_ids = fields.Many2many(
+        'chatroom.tag', 'chatroom_channel_tag_rel', 'channel_id', 'tag_id',
+        string="Etiquetas")
+    last_away_message_date = fields.Datetime(
+        copy=False,
+        help="Última vez que se mandó el aviso automático de 'fuera de "
+             "horario' en esta conversación. Se usa para no repetirlo en "
+             "cada mensaje que manda el cliente de madrugada.")
 
     # No es un Many2one a 'crm.lead': CRM es un módulo opcional (no está
     # en 'depends'), y un campo relacional a un modelo no instalado rompe
@@ -394,6 +403,7 @@ class ChatroomChannel(models.Model):
 
     def write(self, vals):
         previous_assignees = {rec.id: rec.assigned_user_id for rec in self} if 'assigned_user_id' in vals else {}
+        previous_numbers = {rec.id: rec.whatsapp_number_id for rec in self} if 'whatsapp_number_id' in vals else {}
         res = super().write(vals)
         if 'assigned_user_id' in vals:
             for rec in self:
@@ -405,6 +415,28 @@ class ChatroomChannel(models.Model):
                         partner_ids=[rec.assigned_user_id.partner_id.id],
                         subtype_xmlid='mail.mt_comment',
                     )
+        if 'whatsapp_number_id' in vals:
+            # Transferir de línea/equipo: se resuelve con el mismo campo de
+            # siempre (no hay una acción/wizard aparte), pero acá se deja
+            # rastro en las notas internas y, si no se pidió también un
+            # agente puntual en el mismo write, se reparte entre el equipo
+            # de la línea nueva en vez de dejarla en el agente de la línea
+            # vieja (que puede no pertenecer al equipo nuevo).
+            for rec in self:
+                old_number = previous_numbers.get(rec.id)
+                if rec.whatsapp_number_id == old_number:
+                    continue
+                rec.message_post(
+                    body=_("Conversación transferida de %(old)s a %(new)s.") % {
+                        'old': old_number.name if old_number else _("sin línea"),
+                        'new': rec.whatsapp_number_id.name if rec.whatsapp_number_id else _("sin línea"),
+                    },
+                    subtype_xmlid='mail.mt_note',
+                )
+                if 'assigned_user_id' not in vals and rec.whatsapp_number_id:
+                    next_agent = rec.whatsapp_number_id._get_next_assignee()
+                    if next_agent:
+                        rec.assigned_user_id = next_agent.id
         return res
 
     # ------------------------------------------------------------------
@@ -456,6 +488,68 @@ class ChatroomChannel(models.Model):
                 self.action_send_text(_("Listo, has vuelto a activar los mensajes de este número."))
             except UserError as exc:
                 _logger.warning("No se pudo confirmar el alta en canal %s: %s", self.id, exc)
+
+    # ------------------------------------------------------------------
+    # Horario de atención: aviso automático fuera de horas, para no dejar
+    # a alguien esperando toda la noche sin saber que nadie va a
+    # contestar hasta la mañana siguiente.
+    # ------------------------------------------------------------------
+    def _is_within_business_hours(self, dt=None):
+        """True si el horario de atención está desactivado (no hay
+        restricción) o si `dt` (o ahora) cae dentro del horario
+        configurado en la zona horaria de la empresa."""
+        icp = self.env['ir.config_parameter'].sudo()
+        if not icp.get_param('chatroom_whatsapp.business_hours_enabled'):
+            return True
+        # 'res.company' no tiene campo 'tz' propio en Odoo base (lo agrega
+        # el módulo 'resource', que este módulo no depende de); se usa el
+        # de un parámetro explícito y, si no está, el del usuario actual.
+        tz_name = icp.get_param('chatroom_whatsapp.business_hours_tz') \
+            or self.env.user.tz or 'UTC'
+        try:
+            tz = pytz.timezone(tz_name)
+        except pytz.UnknownTimeZoneError:
+            tz = pytz.UTC
+        now_utc = dt or fields.Datetime.now()
+        local = pytz.UTC.localize(now_utc).astimezone(tz)
+
+        weekdays_param = icp.get_param('chatroom_whatsapp.business_hours_weekdays', '0,1,2,3,4')
+        weekdays = {int(d) for d in weekdays_param.split(',') if d.strip().isdigit()}
+        if weekdays and local.weekday() not in weekdays:
+            return False
+
+        start = float(icp.get_param('chatroom_whatsapp.business_hours_start', '0') or 0)
+        end = float(icp.get_param('chatroom_whatsapp.business_hours_end', '24') or 24)
+        hour_decimal = local.hour + local.minute / 60.0
+        return start <= hour_decimal < end
+
+    def _maybe_send_away_message(self):
+        """Si el horario de atención está activo y ahora está fuera de
+        hora, manda el aviso automático (una sola vez por día por
+        conversación, no en cada mensaje que llegue de madrugada).
+        Devuelve True si lo mandó, para que el llamador decida si tiene
+        sentido seguir con el resto de las automatizaciones (por ejemplo,
+        no tiene mucho sentido que la IA también responda de una)."""
+        self.ensure_one()
+        icp = self.env['ir.config_parameter'].sudo()
+        if not icp.get_param('chatroom_whatsapp.business_hours_enabled'):
+            return False
+        if self._is_within_business_hours():
+            return False
+        today = fields.Date.context_today(self)
+        if self.last_away_message_date and self.last_away_message_date.date() == today:
+            return False
+        away_message = icp.get_param('chatroom_whatsapp.business_hours_away_message') or _(
+            "Gracias por escribirnos. En este momento estamos fuera de "
+            "nuestro horario de atención; te respondemos apenas volvamos.")
+        try:
+            self.action_send_text(away_message)
+        except UserError as exc:
+            _logger.warning(
+                "No se pudo mandar el aviso de fuera de horario en canal %s: %s", self.id, exc)
+            return False
+        self.last_away_message_date = fields.Datetime.now()
+        return True
 
     def _get_meta_credentials(self):
         """Si la conversación pertenece a una línea con Phone Number ID
@@ -831,6 +925,41 @@ class ChatroomChannel(models.Model):
                 _logger.info(
                     "Reintento automático omitido para el mensaje %s: %s", message.id, exc)
 
+    # ------------------------------------------------------------------
+    # Mensajes programados: se guardan aparte (chatroom.scheduled.message)
+    # y un cron los va enviando; no son chatroom.message hasta que salen
+    # de verdad, para no mostrar en el hilo algo que todavía no se mandó.
+    # ------------------------------------------------------------------
+    def action_schedule_message(self, body, scheduled_date):
+        self.ensure_one()
+        if not (body or '').strip():
+            raise UserError(_("Escribe un mensaje para programar."))
+        if not scheduled_date or fields.Datetime.to_datetime(scheduled_date) <= fields.Datetime.now():
+            raise UserError(_("La fecha programada tiene que ser en el futuro."))
+        record = self.env['chatroom.scheduled.message'].create({
+            'channel_id': self.id,
+            'body': body,
+            'scheduled_date': scheduled_date,
+        })
+        return record.id
+
+    def get_scheduled_messages(self):
+        self.ensure_one()
+        records = self.env['chatroom.scheduled.message'].search(
+            [('channel_id', '=', self.id), ('state', '=', 'pending')], order='scheduled_date asc')
+        return [{
+            'id': r.id,
+            'body': r.body,
+            'scheduled_date': r.scheduled_date,
+        } for r in records]
+
+    def action_cancel_scheduled_message(self, scheduled_id):
+        self.ensure_one()
+        record = self.env['chatroom.scheduled.message'].browse(scheduled_id)
+        if record.exists() and record.channel_id.id == self.id:
+            record.action_cancel()
+        return True
+
     def action_send_template(self, template_name, language_code, variables=None):
         """Envía una plantilla aprobada por Meta (HSM). Es la única forma
         de iniciar/retomar conversación fuera de la ventana de 24h."""
@@ -1146,6 +1275,52 @@ class ChatroomChannel(models.Model):
         valid_intents = dict(self._fields['ai_intent'].selection)
         return intent if intent in valid_intents else 'otro'
 
+    def _ai_search_products_mentioned(self, text, limit=5):
+        """Busca productos vendibles cuyo nombre el cliente mencionó en su
+        mensaje, para poder responder consultas de precio con datos
+        reales en vez de dejar que el modelo los invente.
+
+        Búsqueda simple y a propósito literal (palabras de 4+ letras del
+        mensaje, comparadas contra el nombre del producto): nada de
+        embeddings ni fuzzy match, para que sea 100% predecible qué datos
+        se le terminan pasando a la IA como "verdad".
+        """
+        self.ensure_one()
+        if 'product.template' not in self.env:
+            return self.env['product.template']
+        words = {w.lower() for w in re.findall(r'\w{4,}', text or '', re.UNICODE)}
+        if not words:
+            return self.env['product.template']
+        name_domain = [('name', 'ilike', w) for w in words]
+        if len(name_domain) > 1:
+            name_domain = ['|'] * (len(name_domain) - 1) + name_domain
+        domain = [('sale_ok', '=', True), ('active', '=', True)] + name_domain
+        return self.env['product.template'].search(domain, limit=limit)
+
+    def _ai_price_context_system_message(self, products):
+        currency = self.env.company.currency_id
+        lines = [
+            f"- {product.name}: {product.list_price:.2f} {currency.symbol}"
+            for product in products
+        ]
+        return _(
+            "Estos son los ÚNICOS precios reales disponibles ahora mismo "
+            "para productos que el cliente mencionó. Si respondés sobre "
+            "precios, usá EXCLUSIVAMENTE estos datos; si el cliente "
+            "pregunta por algo que no está en esta lista, decile que no "
+            "tenés esa información a mano y que un agente lo va a "
+            "confirmar. Nunca inventes un precio que no esté acá:\n%s"
+        ) % "\n".join(lines)
+
+    def _ai_reply_with_product_prices(self, products):
+        self.ensure_one()
+        system_prompt = self._ai_price_context_system_message(products) + "\n\n" + _(
+            "Sos un asistente de ventas por WhatsApp. Con los datos de "
+            "arriba, respondé en español, breve y cordial, la consulta "
+            "de precio del cliente.")
+        reply = self._ai_chat_completion(self._ai_build_conversation(extra_system=system_prompt))
+        self.action_send_text(reply)
+
     def _ai_process_inbound_message(self, message):
         """Automatizaciones opcionales al recibir un mensaje: clasificar
         la intención, crear una oportunidad automáticamente si aplica y/o
@@ -1164,7 +1339,14 @@ class ChatroomChannel(models.Model):
                     and self.crm_installed and self.partner_id):
                 self.action_create_lead()
 
-            if icp.get_param('chatroom_whatsapp.ai_auto_reply'):
+            price_replied = False
+            if icp.get_param('chatroom_whatsapp.ai_auto_price_reply') and message.body:
+                matched_products = self._ai_search_products_mentioned(message.body)
+                if matched_products:
+                    self._ai_reply_with_product_prices(matched_products)
+                    price_replied = True
+
+            if not price_replied and icp.get_param('chatroom_whatsapp.ai_auto_reply'):
                 self.action_ai_suggest_reply()
                 self.action_send_ai_suggestion()
         except UserError as exc:

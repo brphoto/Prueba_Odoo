@@ -198,6 +198,14 @@ primero las sugerencias de IA):
   agente la revise antes. Apagado por defecto — actívalo solo si confías
   en el prompt/modelo configurado, ya que no hay paso de aprobación
   humana.
+- **Responder consultas de precio con datos reales**: si el mensaje del
+  cliente menciona el nombre de un producto vendible (búsqueda literal
+  por palabra, no semántica), se le contesta con el precio **real**
+  tomado de Odoo, no inventado por el modelo — el prompt le pasa a la IA
+  la lista exacta de productos encontrados con su precio y le prohíbe
+  usar cualquier otro dato. Si no encuentra ningún producto que
+  coincida, no hace nada y sigue el flujo normal (clasificación /
+  auto-reply genérico, si están activos) en vez de quedarse callado.
 
 Cualquier error de IA (endpoint caído, credenciales inválidas, respuesta
 inesperada) se registra en el log del servidor y **no interrumpe** la
@@ -239,6 +247,43 @@ aprobada por Meta**:
   abierta) cada vez que llega un mensaje nuevo o cuando le reasignan una
   conversación — usa `mail.thread`, no infraestructura adicional.
 
+## Horario de atención
+
+En **Ajustes > Chatroom WhatsApp > Horario de atención** se puede definir
+un horario (hora de inicio/fin, días de la semana, zona horaria) fuera
+del cual se manda un aviso automático de "estamos fuera de horario" al
+primer mensaje del día de cada conversación — no en cada mensaje que
+mande el cliente de madrugada, solo el primero (`last_away_message_date`
+lo controla). El texto del aviso también es configurable. Desactivado
+por defecto: sin activarlo, el chat sigue respondiendo/asignando
+conversaciones a toda hora, igual que siempre. Cuando se manda el aviso,
+no se dispara además la automatización de IA para ese mismo mensaje (no
+tiene sentido que conteste dos veces).
+
+## Etiquetas de conversación
+
+**Chatroom > Configuración > Etiquetas** para crear etiquetas libres
+(nombre + color) y así categorizar conversaciones más allá del estado o
+la intención detectada por IA — por ejemplo "Reclamo" o "Venta caliente".
+Se agregan/quitan desde el encabezado del chat (ícono "+", junto a las
+etiquetas ya puestas) tanto en la app como en el formulario clásico, y
+se pueden filtrar y agrupar en la vista clásica (kanban/lista) para
+reportes — la app de una sola pantalla todavía no tiene un filtro por
+etiqueta en su propia lista de conversaciones, solo verlas/editarlas por
+chat.
+
+## Mensajes programados
+
+El ícono de reloj en el composer permite dejar un mensaje de texto
+armado para que salga más tarde (seguimiento a las 48h, recordatorio de
+pago, etc.) en vez de mandarlo ya: se elige fecha/hora y un cron
+(`Chatroom: enviar mensajes programados`, cada 5 minutos) lo manda solo
+cuando se cumple. Los pendientes de esa conversación se ven arriba del
+composer, con opción de cancelarlos antes de que salgan. Por ahora es
+solo texto simple (sin adjuntos ni plantillas); **Chatroom > Mensajes
+programados** lista todos los de todas las conversaciones, útil para un
+manager que quiere ver/cancelar en un solo lugar.
+
 ## Múltiples líneas de WhatsApp (Ventas, Soporte, etc.)
 
 Si atiendes con **más de un número de WhatsApp Business**, dalos de alta en
@@ -268,6 +313,24 @@ nombre, `Phone Number ID` propio y, opcionalmente, agentes asignados
 - El `access_token` de cada línea solo lo puede leer/editar el grupo
   *Chatroom / Administrador* (campo con `groups=` a nivel de modelo, no
   solo oculto en la vista).
+- **Transferir una conversación a otra línea/equipo**: en el encabezado
+  del chat (app y widget clásico) hay un selector para cambiar la línea
+  de la conversación en cualquier momento, sin salir del chat. Al
+  cambiarla queda una nota interna con el rastro ("Conversación
+  transferida de X a Y") y, si no se reasignó también a un agente
+  puntual en la misma acción, se reparte sola entre el equipo de la
+  línea nueva — para no dejarla en un agente que puede no pertenecer a
+  ese equipo.
+  > **Ojo con esto si de verdad usás números de WhatsApp distintos** (no
+  > solo "líneas" internas del mismo número): la ventana de 24h para
+  > responder libremente la abre el número **al que el cliente le
+  > escribió**. Si transferís a una línea con un Phone Number ID
+  > realmente distinto, los próximos mensajes van a intentar salir desde
+  > ese número nuevo hacia un cliente que nunca le escribió a ese
+  > número — Meta puede rechazarlo o exigir una plantilla en vez de
+  > texto libre. Es 100% seguro para reorganizar equipos que comparten
+  > la misma línea real; con líneas de verdad distintas, usalo sabiendo
+  > esto.
 
 ## Dashboard
 
@@ -589,3 +652,18 @@ Pensado para tráfico real, no solo para la demo:
   confiar en producción conviene probar a mano: reintentar un mensaje
   fallido, citar un mensaje real, reaccionar y confirmar que la reacción
   llega también desde el lado del cliente.
+- **Horario de atención, etiquetas, transferir a otra línea, mensajes
+  programados y respuesta de IA con precios reales son nuevos en esta
+  iteración**: validado con `py_compile` de todo el módulo y parseo de
+  XML, con los mismos huecos honestos que la tanda anterior — **sin
+  prueba en navegador todavía**. Adicionalmente, acá conviene remarcar
+  dos puntos de diseño, no solo bugs posibles: (1) la búsqueda de
+  productos para la respuesta de precios es literal por palabra del
+  nombre, no semántica — si el cliente escribe con errores de tipeo o
+  usa un sinónimo que no está en el nombre del producto, no va a
+  encontrar nada (y ahí cae al flujo normal, no se queda sin contestar
+  nada raro, pero tampoco "entiende" lo que quiso decir); (2) transferir
+  a otra línea reutiliza el campo `whatsapp_number_id` de siempre (no
+  hay una acción/wizard separada) — ver la advertencia sobre la ventana
+  de 24h en la sección "Múltiples líneas" de arriba antes de usarlo con
+  números de WhatsApp genuinamente distintos.

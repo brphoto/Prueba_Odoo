@@ -42,6 +42,10 @@
               parent="menu_chatroom_root" action="action_chatroom_message"
               sequence="20" groups="chatroom_whatsapp.group_chatroom_manager"/>
 
+    <menuitem id="menu_chatroom_scheduled_messages" name="Mensajes programados"
+              parent="menu_chatroom_root" action="action_chatroom_scheduled_message"
+              sequence="25"/>
+
     <menuitem id="menu_chatroom_metrics" name="Métricas"
               parent="menu_chatroom_root" action="action_chatroom_metrics"
               sequence="30" groups="chatroom_whatsapp.group_chatroom_manager"/>
@@ -65,6 +69,10 @@
     <menuitem id="menu_chatroom_config_numbers" name="Líneas de WhatsApp"
               parent="menu_chatroom_config" sequence="15"
               action="action_chatroom_whatsapp_number"/>
+
+    <menuitem id="menu_chatroom_config_tags" name="Etiquetas"
+              parent="menu_chatroom_config" sequence="17"
+              action="action_chatroom_tag"/>
 
     <menuitem id="menu_chatroom_config_demo" name="Generar conversaciones de prueba"
               parent="menu_chatroom_config" sequence="99"
