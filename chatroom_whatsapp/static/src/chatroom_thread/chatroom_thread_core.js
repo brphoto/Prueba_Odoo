@@ -1,6 +1,7 @@
 /** @odoo-module **/
 
 import { useService } from "@web/core/utils/hooks";
+import { imageUrl } from "@web/core/utils/urls";
 import { TagsList } from "@web/core/tags_list/tags_list";
 import {
     Component,
@@ -75,6 +76,7 @@ export class ChatroomThreadCore extends Component {
             dragOver: false,
             channelName: "",
             partnerId: false,
+            partnerWriteDate: false,
             messages: [],
             composerText: "",
             pendingAttachments: [],
@@ -224,10 +226,12 @@ export class ChatroomThreadCore extends Component {
 
         if (this.state.partnerId) {
             const [partner] = await this.orm.read(
-                "res.partner", [this.state.partnerId], ["whatsapp_opt_out"]);
+                "res.partner", [this.state.partnerId], ["whatsapp_opt_out", "write_date"]);
             this.state.partnerOptedOut = partner.whatsapp_opt_out;
+            this.state.partnerWriteDate = partner.write_date;
         } else {
             this.state.partnerOptedOut = false;
+            this.state.partnerWriteDate = false;
         }
         if (!this.state.agents.length) {
             this.state.agents = await this.orm.call("chatroom.channel", "get_assignable_agents", []);
@@ -623,6 +627,18 @@ export class ChatroomThreadCore extends Component {
         } finally {
             message.retrying = false;
         }
+    }
+
+    partnerAvatarUrl() {
+        if (!this.state.partnerId) {
+            return "";
+        }
+        // unique=write_date rompe el caché del navegador cuando se
+        // sube una foto nueva -sin esto, el <img> seguía mostrando la
+        // respuesta vieja cacheada aunque el campo ya hubiera cambiado.
+        return imageUrl("res.partner", this.state.partnerId, "avatar_128", {
+            unique: this.state.partnerWriteDate,
+        });
     }
 
     openPartner() {

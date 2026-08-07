@@ -663,6 +663,15 @@ de API que rompen módulos escritos "a la manera de Odoo 17/18":
   `target: "new"`, para browsear con Odoo completo (kanban con
   arrastrar y soltar, filtros, lote) en una pestaña nueva sin perder el
   chat en la original — ver "Panel de contacto" más abajo.
+- **El avatar del contacto (`/web/image/res.partner/<id>/avatar_128`)
+  se queda con la respuesta vieja cacheada por el navegador** si subís
+  una foto nueva después de haber abierto esa conversación una vez: la
+  URL es siempre la misma string, así que el navegador nunca vuelve a
+  pedirla. Se corrigió agregando `?unique=<write_date>` a la URL (con
+  el helper `imageUrl()` de `@web/core/utils/urls`) — el mismo patrón
+  que usa el propio menú de usuario de Odoo (`user_menu.js`) para el
+  mismo campo, encontrado ahí buscando cómo lo resuelve el core en vez
+  de inventar una solución propia.
 
 Se verificó con capturas de pantalla (Playwright + Chromium headless,
 sin errores de consola) que el kanban (con el ícono nuevo de canal y

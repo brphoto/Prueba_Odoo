@@ -1,6 +1,7 @@
 /** @odoo-module **/
 
 import { useService } from "@web/core/utils/hooks";
+import { imageUrl } from "@web/core/utils/urls";
 import { Component, useState, onWillStart, onWillUpdateProps, onMounted, onWillUnmount } from "@odoo/owl";
 
 const COLLAPSED_SECTIONS_STORAGE_KEY = "chatroom_whatsapp.contact_panel_collapsed_sections";
@@ -100,6 +101,18 @@ export class ContactPanel extends Component {
             // Sin localStorage el plegado sigue funcionando, solo no se
             // recuerda entre sesiones.
         }
+    }
+
+    partnerAvatarUrl() {
+        if (!this.state.data || !this.state.data.partner_id) {
+            return "";
+        }
+        // unique=write_date rompe el caché del navegador cuando se
+        // sube una foto nueva -sin esto, el <img> seguía mostrando la
+        // respuesta vieja cacheada aunque el campo ya hubiera cambiado.
+        return imageUrl("res.partner", this.state.data.partner_id, "avatar_128", {
+            unique: this.state.data.partner_write_date,
+        });
     }
 
     formatMoney(amount, symbol) {

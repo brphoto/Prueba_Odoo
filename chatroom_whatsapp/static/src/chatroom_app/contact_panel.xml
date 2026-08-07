@@ -14,7 +14,7 @@
             <t t-else="">
                 <div class="o_chatroom_contact_header" t-on-click="openPartner">
                     <img class="o_chatroom_contact_avatar"
-                         t-att-src="'/web/image/res.partner/' + state.data.partner_id + '/avatar_128'" alt=""/>
+                         t-att-src="partnerAvatarUrl()" alt=""/>
                     <div class="o_chatroom_contact_name" t-esc="state.data.name"/>
                     <div class="o_chatroom_contact_sub text-muted" t-if="state.data.company_name" t-esc="state.data.company_name"/>
                     <div class="o_chatroom_contact_sub text-muted" t-if="state.data.city or state.data.country_name"

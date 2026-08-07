@@ -15,7 +15,7 @@
             <div class="o_chatroom_thread_header" t-on-click="openPartner">
                 <div class="o_chatroom_avatar">
                     <img t-if="state.partnerId"
-                         t-att-src="'/web/image/res.partner/' + state.partnerId + '/avatar_128'"
+                         t-att-src="partnerAvatarUrl()"
                          alt=""/>
                     <t t-else="">
                         <t t-esc="state.channelName ? state.channelName.charAt(0).toUpperCase() : '?'"/>

@@ -45,7 +45,7 @@ Requisitos
     'license': 'LGPL-3',
 
     'category': 'Discuss',
-    'version': '19.0.2.0.1',
+    'version': '19.0.2.0.2',
 
     # sale/purchase/crm/account eran opcionales hasta esta versión (el
     # módulo revisaba 'modelo' in self.env por todos lados para no

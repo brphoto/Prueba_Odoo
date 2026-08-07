@@ -1744,6 +1744,12 @@ class ChatroomChannel(models.Model):
         return {
             'has_partner': bool(partner),
             'partner_id': partner.id,
+            # Para "romper" el caché del navegador en la URL del avatar
+            # (/web/image/...) cuando se sube una foto nueva: sin esto,
+            # el <img> sigue mostrando la respuesta vieja cacheada
+            # aunque el campo haya cambiado. Mismo patrón que usa el
+            # propio menú de usuario de Odoo (user_menu.js).
+            'partner_write_date': partner.write_date,
             'name': partner.name or '',
             'phone': partner.phone or '',
             'email': partner.email or '',
