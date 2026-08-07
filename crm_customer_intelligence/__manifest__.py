@@ -1,0 +1,63 @@
+# -*- coding: utf-8 -*-
+{
+    'name': "Inteligencia de Clientes (RFM / Pareto)",
+
+    'summary': """
+        Clasificación RFM/ABC, alerta de oportunidades estancadas,
+        histórico de ventas y análisis Pareto (80/20) de productos por
+        contacto. Módulo independiente: no depende de ningún canal de
+        comunicación (WhatsApp, email, etc.), solo de CRM/Ventas/
+        Facturación.""",
+
+    'description': """
+Inteligencia de Clientes (RFM / Pareto)
+==========================================
+
+Agrega a **Contactos** y **CRM** la capa de análisis comercial que
+cualquier equipo (ventas, marketing, atención al cliente) puede
+necesitar, sin importar por qué canal habla con el cliente:
+
+* **Clasificación RFM/ABC**: cron diario que calcula, para toda la
+  cartera con al menos una factura, un score 1-100 (percentiles de
+  Recencia 20% + Frecuencia 30% + Monto 50%) y lo traduce a categoría
+  A/B/C. Al vivir en ``res.partner``, sirve tal cual para segmentar
+  campañas de Email/SMS Marketing por ``rfm_category``/``rfm_score``.
+* **Oportunidades estancadas**: sobre ``crm.lead``, un semáforo
+  verde/amarillo/rojo según los días desde la última gestión real
+  (cambio de etapa, nota/comentario humano o actividad).
+* **Métricas históricas de venta**: total facturado, cantidad de
+  facturas, fecha de la última venta y ticket promedio del contacto.
+* **Análisis Pareto (80/20)**: producto más comprado y detalle de los
+  top 5 productos, con un botón inteligente en la ficha de contacto.
+
+Por qué es un módulo aparte
+------------------------------
+Este módulo nació dentro de ``chatroom_sales_intelligence`` (para
+mostrar esta misma información en el chat de WhatsApp), pero la
+clasificación de clientes es útil para cualquier equipo, no solo para
+quien atiende WhatsApp. Se separó para que se pueda instalar sin
+ninguna dependencia de mensajería: solo requiere ``crm``, ``sale`` y
+``account``, los módulos nativos de Odoo. ``chatroom_sales_intelligence``
+ahora depende de este módulo (no al revés) para no duplicar la lógica.
+    """,
+
+    'author': "Bryan Cando",
+    'website': "https://github.com/brphoto/Prueba_Odoo",
+    'license': 'LGPL-3',
+
+    'category': 'Sales/CRM',
+    'version': '19.0.1.0.0',
+
+    'depends': ['crm', 'sale', 'account'],
+
+    'data': [
+        'data/ir_cron_data.xml',
+        'views/res_partner_views.xml',
+    ],
+
+    'demo': [],
+
+    'installable': True,
+    'application': False,
+    'auto_install': False,
+}

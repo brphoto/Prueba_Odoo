@@ -34,13 +34,21 @@ una conversación sin salir del chat:
 
 Diseño modular
 ----------------
-Este módulo **depende de** ``chatroom_whatsapp`` (además de ``crm``,
-``sale`` y ``account``), pero ``chatroom_whatsapp`` no depende de él ni
-sabe que existe: toda la integración se hace por herencia de vistas
-(``ir.ui.view`` para el formulario de contacto y el kanban) y por
-extensión de los componentes OWL existentes (``t-inherit`` de templates +
-``patch()`` de las clases JS). Desinstalar este módulo deja el chatroom
-exactamente como estaba antes de instalarlo.
+Este módulo **depende de** ``chatroom_whatsapp`` y de
+``crm_customer_intelligence`` (que a su vez solo depende de ``crm``,
+``sale`` y ``account`` — sin ningún canal de mensajería), pero ninguno
+de los dos depende de este ni sabe que existe: toda la integración se
+hace por herencia de vistas (``ir.ui.view`` para el kanban) y por
+extensión de los componentes OWL existentes (``t-inherit`` de templates
++ ``patch()`` de las clases JS). Desinstalar este módulo deja tanto el
+chatroom como la clasificación de clientes exactamente como estaban
+antes de instalarlo.
+
+La clasificación RFM/ABC, el semáforo de oportunidades estancadas y el
+análisis Pareto viven en ``crm_customer_intelligence`` (instalable solo
+si se necesita esa inteligencia comercial sin el chatroom, por ejemplo
+para segmentar campañas de Email/SMS Marketing); este módulo solo
+agrega la capa visual que los muestra dentro del chat.
     """,
 
     'author': "Bryan Cando",
@@ -50,11 +58,9 @@ exactamente como estaba antes de instalarlo.
     'category': 'Sales/CRM',
     'version': '19.0.1.0.0',
 
-    'depends': ['chatroom_whatsapp', 'crm', 'sale', 'account'],
+    'depends': ['chatroom_whatsapp', 'crm_customer_intelligence'],
 
     'data': [
-        'data/ir_cron_data.xml',
-        'views/res_partner_views.xml',
         'views/chatroom_channel_views.xml',
     ],
 

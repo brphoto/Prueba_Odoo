@@ -7,60 +7,50 @@ venta y análisis de Pareto (80/20), todo visible sin salir del chat.
 
 ## Diseño modular: "engancha", no modifica
 
-Este módulo **depende de** `chatroom_whatsapp` (además de `crm`, `sale` y
-`account`), pero `chatroom_whatsapp` **no depende de él ni sabe que
-existe**. Toda la integración se hace desde afuera:
+Este módulo **depende de** `chatroom_whatsapp` y de
+[`crm_customer_intelligence`](../crm_customer_intelligence/README.md)
+(que a su vez solo depende de `crm`/`sale`/`account`, sin ningún canal
+de mensajería), pero ninguno de los dos depende de este ni sabe que
+existe. Toda la integración se hace desde afuera:
 
 - **Vistas**: herencia estándar de `ir.ui.view` (`inherit_id` +
-  `xpath`) sobre el formulario de contacto y el kanban de conversaciones.
+  `xpath`) sobre el kanban de conversaciones.
 - **Componentes OWL**: herencia de templates (`t-inherit` +
   `t-inherit-mode="extension"`) y `patch()` de las clases JS existentes
   (`ChatroomThreadCore`, `ChatroomApp`), en vez de copiar o reemplazar
   esos archivos.
-- **Ningún modelo nuevo**: todos los campos son extensiones
-  (`_inherit`) de `res.partner`, `crm.lead` y `chatroom.channel`, así que
-  no hace falta tocar `ir.model.access.csv`.
+- **Ningún modelo nuevo**: el único campo/método propio de este módulo
+  vive en `chatroom.channel` (resolver qué oportunidad "cuenta" para la
+  conversación y armar el paquete de datos del panel); la clasificación
+  RFM, las métricas de venta y el Pareto de productos son de
+  `crm_customer_intelligence`. No hace falta tocar `ir.model.access.csv`.
 
 Si desinstalás `chatroom_sales_intelligence`, el chatroom queda
 exactamente como estaba antes de instalarlo — ni un botón, badge o campo
-de más.
+de más. La clasificación RFM y el resto de `crm_customer_intelligence`
+siguen funcionando igual (ese módulo no sabe que este existió).
+
+**¿Por qué separado en dos módulos?** Porque la clasificación de
+clientes por valor (RFM) sirve para más que el chat — por ejemplo para
+segmentar una campaña de Email/SMS Marketing por `rfm_category` — y no
+tiene sentido que instalar eso obligue a instalar WhatsApp. Si solo
+necesitás la inteligencia de clientes sin el chatroom, instalá
+únicamente `crm_customer_intelligence`.
 
 ## Qué agrega
 
-### 1. Oportunidades estancadas (semáforo de seguimiento)
+### 1-4. Oportunidades estancadas, RFM/ABC, ventas históricas y Pareto
 
-Sobre `crm.lead`: `days_since_last_management` (días desde la fecha más
-reciente entre el cambio de etapa nativo `date_last_stage_update`, el
-último mensaje del chatter y la última actividad registrada) y
-`management_alert_state` (🟢 ≤7 días, 🟡 8-15 días, 🔴 >15 días).
-`chatroom.channel` resuelve automáticamente qué oportunidad "cuenta"
-para la conversación: la anclada (`pinned_lead_id`) si sigue abierta, o
-si no la oportunidad abierta más reciente del contacto.
-
-### 2. Clasificación RFM / ABC
-
-Cron diario (`_cron_compute_rfm_scores`) que calcula, para toda la
-cartera de clientes con al menos una factura, un score 1-100 combinando
-percentiles de Recencia (20%), Frecuencia (30%) y Monto (50%), y lo
-traduce a una categoría simple: **A** (≥70), **B** (≥40) o **C**. Es a
-propósito un cálculo relativo entre clientes (no un umbral fijo por
-contacto), por eso corre en lote en vez de como campo computado normal.
-
-### 3. Métricas históricas de venta
-
-En `res.partner`: total facturado (facturas de venta en estado
-publicada), cantidad de facturas, fecha de la última venta y ticket
-promedio — visibles en una pestaña nueva "Inteligencia Comercial" en la
-ficha del contacto.
-
-### 4. Análisis Pareto (80/20)
-
-`res.partner._get_top_products()` calcula, a partir de las líneas de
-factura publicadas, los productos más comprados por el contacto con su
-% sobre el total. Se resume en un campo (`commercial_top_product_summary`,
-ej. *"Top: Producto X (42% de sus compras)"*) y hay un botón inteligente
-**Top Productos** en la ficha del contacto que abre `account.invoice.report`
-agrupado por producto para ver el detalle completo.
+Los campos y la lógica (`crm.lead.management_alert_state`,
+`res.partner.rfm_category`/`rfm_score`, métricas de venta,
+`_get_top_products()`) viven en
+[`crm_customer_intelligence`](../crm_customer_intelligence/README.md) —
+ver ese README para el detalle de cada uno. Este módulo solo agrega:
+`chatroom.channel._get_relevant_lead()` (qué oportunidad "cuenta" para
+la conversación: la anclada vía `pinned_lead_id` si sigue abierta, o si
+no la más reciente del contacto) y
+`chatroom.channel.get_commercial_intelligence()` (arma en una sola
+llamada todo el paquete de datos que necesita el panel lateral).
 
 ### 5. Micro-indicadores en el chat
 
@@ -97,11 +87,12 @@ sí se cargan siempre, pero son solo 2-3 campos livianos.
 ## Instalación
 
 1. Instalar `chatroom_whatsapp` (si no está instalado).
-2. Instalar `crm`, `sale` y `account` (dependencias nativas de Odoo).
-3. Instalar `chatroom_sales_intelligence`.
-4. (Opcional) Ejecutar manualmente el cron **Chatroom: recalcular
-   clasificación RFM de clientes** la primera vez, en vez de esperar a
-   que corra solo, para ver las categorías A/B/C de inmediato.
+2. Instalar `chatroom_sales_intelligence` — arrastra automáticamente
+   `crm_customer_intelligence` (y con él `crm`/`sale`/`account`) como
+   dependencia.
+3. (Opcional) Ejecutar manualmente el cron **Recalcular clasificación
+   RFM de clientes** la primera vez, en vez de esperar a que corra
+   solo, para ver las categorías A/B/C de inmediato.
 
 ## Alcance de esta versión
 
