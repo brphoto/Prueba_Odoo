@@ -4,7 +4,8 @@ import logging
 
 import requests
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -36,6 +37,10 @@ class ChatroomMessage(models.Model):
         'ir.attachment', 'chatroom_message_ir_attachments_rel',
         'message_id', 'attachment_id', string="Adjuntos")
     wa_message_id = fields.Char(string="ID de mensaje (Meta)", index=True, copy=False)
+    reply_to_id = fields.Many2one(
+        'chatroom.message', string="Respuesta a", ondelete='set null',
+        help="Mensaje citado, cuando el cliente responde a un mensaje "
+             "específico desde WhatsApp.")
     state = fields.Selection(
         [('received', "Recibido"),
          ('sent', "Enviado"),
@@ -49,6 +54,28 @@ class ChatroomMessage(models.Model):
     def _compute_display_name(self):
         for rec in self:
             rec.display_name = (rec.body or '')[:60]
+
+    def action_ai_translate(self):
+        """Traduce este mensaje al idioma del usuario actual usando el
+        mismo proveedor de IA configurado para sugerencias/resúmenes.
+        No persiste la traducción: se devuelve al widget para mostrarla
+        en línea bajo el mensaje original."""
+        self.ensure_one()
+        if not self.body:
+            return ''
+        target_lang = self.env.user.lang or 'es_ES'
+        system_prompt = _(
+            "Traduce el siguiente mensaje de WhatsApp al idioma con "
+            "código '%s'. Responde ÚNICAMENTE con la traducción, sin "
+            "comillas ni explicaciones adicionales.") % target_lang
+        try:
+            return self.channel_id._ai_chat_completion([
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": self.body},
+            ])
+        except (requests.RequestException, KeyError, IndexError) as exc:
+            _logger.error("Error consultando IA para traducción: %s", exc)
+            raise UserError(_("No se pudo traducir el mensaje: %s") % exc)
 
     def _fetch_whatsapp_media(self, media_id):
         """Descarga un adjunto entrante desde Meta y lo guarda como

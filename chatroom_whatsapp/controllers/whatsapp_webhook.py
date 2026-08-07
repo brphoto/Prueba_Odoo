@@ -106,6 +106,10 @@ class WhatsAppWebhookController(http.Controller):
             msg_type = msg.get('type', 'text')
             body, media_id = self._extract_body(msg, msg_type)
 
+            context_id = (msg.get('context') or {}).get('id')
+            reply_to = env['chatroom.message'].search(
+                [('wa_message_id', '=', context_id)], limit=1) if context_id else None
+
             message = env['chatroom.message'].create({
                 'channel_id': channel.id,
                 'direction': 'inbound',
@@ -114,6 +118,7 @@ class WhatsAppWebhookController(http.Controller):
                 ) else 'other',
                 'body': body,
                 'wa_message_id': msg.get('id'),
+                'reply_to_id': reply_to.id if reply_to else False,
                 'state': 'received',
             })
             if media_id:

@@ -9,7 +9,12 @@
 
             <div class="o_chatroom_thread_header" t-on-click="openPartner">
                 <div class="o_chatroom_avatar">
-                    <t t-esc="state.channelName ? state.channelName.charAt(0).toUpperCase() : '?'"/>
+                    <img t-if="state.partnerId"
+                         t-att-src="'/web/image/res.partner/' + state.partnerId + '/avatar_128'"
+                         alt=""/>
+                    <t t-else="">
+                        <t t-esc="state.channelName ? state.channelName.charAt(0).toUpperCase() : '?'"/>
+                    </t>
                 </div>
                 <div class="o_chatroom_header_info">
                     <div class="o_chatroom_header_name" t-esc="state.channelName"/>
@@ -41,7 +46,13 @@
                 </t>
                 <t t-else="">
                     <t t-foreach="state.messages" t-as="message" t-key="message.id">
+                        <div class="o_chatroom_date_separator" t-if="isNewDay(message_index)">
+                            <span t-esc="dateSeparatorLabel(message.dateObj)"/>
+                        </div>
                         <div t-attf-class="o_chatroom_bubble o_chatroom_bubble_{{ message.direction === 'outbound' ? 'out' : 'in' }}">
+                            <div class="o_chatroom_bubble_quote" t-if="replyPreview(message)">
+                                <span t-esc="(replyPreview(message).body || '').slice(0, 120)"/>
+                            </div>
                             <t t-if="message.attachments.length">
                                 <t t-foreach="message.attachments" t-as="attachment" t-key="attachment.id">
                                     <t t-if="isImage(attachment)">
@@ -65,7 +76,16 @@
                                 </t>
                             </t>
                             <div class="o_chatroom_bubble_body" t-if="message.body" t-esc="message.body"/>
+                            <div class="o_chatroom_bubble_translation" t-if="message.translatedBody">
+                                <i class="fa fa-language"/>
+                                <span t-esc="message.translatedBody"/>
+                            </div>
                             <div class="o_chatroom_bubble_meta">
+                                <i t-if="message.body and message.direction === 'inbound'"
+                                   class="fa fa-language o_chatroom_bubble_translate"
+                                   title="Traducir mensaje"
+                                   t-on-click="() => this.translateMessage(message)"/>
+                                <i t-if="message.translating" class="fa fa-spin fa-circle-o-notch"/>
                                 <span class="o_chatroom_bubble_time" t-esc="formatTime(message.dateObj)"/>
                                 <i t-if="message.direction === 'outbound'"
                                    t-attf-class="fa {{ statusIcon(message) }} o_chatroom_bubble_status"/>

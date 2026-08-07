@@ -21,6 +21,7 @@ const MESSAGE_FIELDS = [
     "state",
     "date",
     "attachment_ids",
+    "reply_to_id",
 ];
 
 function odooDatetimeToDate(value) {
@@ -176,6 +177,64 @@ export class ChatroomThread extends Component {
         const hasUnread = messages.some((m) => m.direction === "inbound" && m.state !== "read");
         if (hasUnread) {
             this.orm.call("chatroom.channel", "action_mark_read", [this.channelId]);
+        }
+    }
+
+    isSameDay(a, b) {
+        return Boolean(a) && Boolean(b)
+            && a.getFullYear() === b.getFullYear()
+            && a.getMonth() === b.getMonth()
+            && a.getDate() === b.getDate();
+    }
+
+    isNewDay(index) {
+        if (index === 0) {
+            return true;
+        }
+        return !this.isSameDay(
+            this.state.messages[index].dateObj,
+            this.state.messages[index - 1].dateObj
+        );
+    }
+
+    dateSeparatorLabel(dateObj) {
+        if (!dateObj) {
+            return "";
+        }
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const day = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+        const diffDays = Math.round((today - day) / 86400000);
+        if (diffDays === 0) {
+            return "Hoy";
+        }
+        if (diffDays === 1) {
+            return "Ayer";
+        }
+        return dateObj.toLocaleDateString();
+    }
+
+    replyPreview(message) {
+        if (!message.reply_to_id) {
+            return false;
+        }
+        return this.state.messages.find((m) => m.id === message.reply_to_id[0]) || false;
+    }
+
+    async translateMessage(message) {
+        if (message.translating) {
+            return;
+        }
+        message.translating = true;
+        try {
+            message.translatedBody = await this.orm.call(
+                "chatroom.message", "action_ai_translate", [message.id]);
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        } finally {
+            message.translating = false;
         }
     }
 

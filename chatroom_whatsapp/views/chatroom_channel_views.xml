@@ -80,6 +80,8 @@
                             invisible="not ai_suggested_reply"/>
                     <button name="action_ai_suggest_reply" type="object"
                             string="Sugerir respuesta con IA" class="btn-secondary"/>
+                    <button name="action_ai_summarize" type="object"
+                            string="Resumir con IA" class="btn-secondary"/>
                     <button name="%(action_chatroom_send_template_wizard)d" type="action"
                             string="Enviar plantilla" class="btn-secondary"
                             context="{'default_channel_id': id}"/>
@@ -87,6 +89,9 @@
                             string="Crear Oportunidad" class="btn-secondary"/>
                     <button name="action_create_quotation" type="object"
                             string="Crear Presupuesto" class="btn-secondary"/>
+                    <button name="action_create_task" type="object"
+                            string="Crear Tarea" class="btn-secondary"
+                            invisible="not project_installed"/>
                     <button name="action_close" type="object"
                             string="Cerrar conversación"
                             invisible="state == 'closed'"/>
@@ -105,6 +110,10 @@
                         <button name="action_view_invoices" type="object" class="oe_stat_button"
                                 icon="fa-usd" invisible="not account_installed">
                             <field name="invoice_count" widget="statinfo" string="Facturas"/>
+                        </button>
+                        <button name="action_view_tasks" type="object" class="oe_stat_button"
+                                icon="fa-tasks" invisible="not project_installed">
+                            <field name="task_count" widget="statinfo" string="Tareas"/>
                         </button>
                     </div>
                     <div class="oe_title">
@@ -133,6 +142,9 @@
                             Oportunidad anclada: <field name="pinned_lead_name" nolabel="1" readonly="1"/>
                         </button>
                     </div>
+                    <group string="Resumen de IA" invisible="not ai_summary">
+                        <field name="ai_summary" nolabel="1"/>
+                    </group>
                     <group string="Sugerencia de IA" invisible="not ai_suggested_reply">
                         <field name="ai_suggested_reply" nolabel="1"/>
                     </group>

@@ -65,7 +65,19 @@ widget de chat propio (`static/src/chatroom_thread/`), no una lista plana:
   > y sí se ve como nota de voz nativa. Convertir el códec en servidor
   > (p.ej. con `ffmpeg`) queda fuera del alcance de este módulo.
 - Actualización en **tiempo real** (bus de Odoo) sin recargar la página.
-- El encabezado del chat es clicable y abre la ficha del contacto.
+- El encabezado del chat es clicable y abre la ficha del contacto, y
+  muestra la **foto real del contacto** (`res.partner.avatar_128`) en vez
+  de solo un ícono con la inicial cuando hay una cargada.
+- **Separadores de fecha** ("Hoy", "Ayer" o la fecha) entre bloques de
+  mensajes de días distintos, igual que WhatsApp.
+- **Mensajes citados**: cuando el cliente responde a un mensaje concreto
+  desde WhatsApp, la burbuja muestra una vista previa del mensaje
+  original citado (se extrae del campo `context.id` que envía Meta en el
+  webhook y se resuelve contra `wa_message_id`).
+- **Traducir un mensaje entrante**: ícono de traducción en cada burbuja
+  entrante con texto; llama al mismo proveedor de IA configurado y
+  muestra la traducción al idioma del usuario debajo del mensaje
+  original, sin sobrescribirlo ni persistirla.
 
 ## Flujo comercial y panel de accesos rápidos
 
@@ -76,16 +88,23 @@ Desde cada conversación un agente puede:
   con IA*) — configurable en Ajustes con cualquier proveedor LLM que
   exponga un endpoint tipo *chat completions* (OpenAI, Anthropic vía proxy
   compatible, Azure OpenAI, modelo propio, etc.).
-- **Crear una Oportunidad** (CRM) o un **Presupuesto** (Ventas) con un
-  clic, precargando el contacto y el historial de la conversación. La
-  oportunidad creada queda **anclada** a la conversación
-  (`pinned_lead_id`); también se puede vincular una ya existente
-  eligiéndola en ese mismo campo.
+- **Crear una Oportunidad** (CRM), un **Presupuesto** (Ventas) o una
+  **Tarea** (Proyectos) con un clic, precargando el contacto y el
+  historial de la conversación (o el **resumen de IA**, si ya se generó
+  uno, en vez del volcado completo de mensajes). La oportunidad creada
+  queda **anclada** a la conversación (`pinned_lead_id`); también se
+  puede vincular una ya existente eligiéndola en ese mismo campo.
 - **Botones inteligentes** en la ficha (arriba a la derecha) con el
-  conteo de Oportunidades, Presupuestos y Facturas del contacto — un
-  clic abre esos registros filtrados, sin salir del contexto de la
-  conversación. Se ocultan automáticamente si CRM, Ventas o Contabilidad
-  no están instalados.
+  conteo de Oportunidades, Presupuestos, Facturas y Tareas del contacto
+  — un clic abre esos registros filtrados, sin salir del contexto de la
+  conversación. Se ocultan automáticamente si CRM, Ventas, Contabilidad
+  o Proyectos no están instalados.
+- **Actividades y calendario nativos de Odoo**: al heredar
+  `mail.activity.mixin`, cada conversación puede tener actividades
+  programadas (llamada, reunión, tarea de seguimiento) desde el propio
+  chatter — aparecen en la campanita de Actividades y en el Calendario
+  de Odoo como cualquier otro registro con actividades, sin
+  desarrollo adicional.
 
 ## Automatización con IA
 
@@ -107,6 +126,12 @@ primero las sugerencias de IA):
 Cualquier error de IA (endpoint caído, credenciales inválidas, respuesta
 inesperada) se registra en el log del servidor y **no interrumpe** la
 recepción de mensajes por el webhook.
+
+Además, con un clic (botón **Resumir con IA** en el encabezado) se puede
+generar un resumen corto de toda la conversación (`ai_summary`) para que
+un agente que recién la recibe se ponga al día sin leer todo el
+historial; ese resumen también se usa como descripción al crear una
+Oportunidad o Tarea, en vez del volcado completo de mensajes.
 
 ## Plantillas de WhatsApp (HSM) — mensajes fuera de la ventana de 24h
 

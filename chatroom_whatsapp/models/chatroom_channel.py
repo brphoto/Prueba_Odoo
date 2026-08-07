@@ -20,7 +20,12 @@ class ChatroomChannel(models.Model):
     """
     _name = 'chatroom.channel'
     _description = "Conversación de Chatroom (WhatsApp / Redes Sociales)"
-    _inherit = ['mail.thread', 'chatroom.meta.mixin']
+    # mail.activity.mixin conecta la conversación gratis con el sistema de
+    # Actividades de Odoo (llamadas, reuniones, to-dos con fecha): aparecen
+    # en el menú de Actividades de cada usuario y, si son de tipo reunión,
+    # también en Calendario. Ningún código propio necesario más allá del
+    # mixin: el chatter ya sabe pintar el botón "Programar actividad".
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'chatroom.meta.mixin']
     _order = 'last_message_date desc'
     _rec_name = 'display_name'
 
@@ -51,6 +56,7 @@ class ChatroomChannel(models.Model):
     last_message_date = fields.Datetime(index=True)
     last_message_preview = fields.Char(compute='_compute_message_stats', store=True)
     ai_suggested_reply = fields.Text(string="Sugerencia de IA")
+    ai_summary = fields.Text(string="Resumen de IA")
     ai_intent = fields.Selection(
         [('consulta', "Consulta"),
          ('venta', "Venta"),
@@ -70,9 +76,11 @@ class ChatroomChannel(models.Model):
     crm_installed = fields.Boolean(compute='_compute_related_counts')
     sale_installed = fields.Boolean(compute='_compute_related_counts')
     account_installed = fields.Boolean(compute='_compute_related_counts')
+    project_installed = fields.Boolean(compute='_compute_related_counts')
     lead_count = fields.Integer(compute='_compute_related_counts')
     sale_order_count = fields.Integer(compute='_compute_related_counts')
     invoice_count = fields.Integer(compute='_compute_related_counts')
+    task_count = fields.Integer(compute='_compute_related_counts')
 
     window_expires_at = fields.Datetime(compute='_compute_session_window')
     is_session_open = fields.Boolean(
@@ -111,6 +119,7 @@ class ChatroomChannel(models.Model):
         crm_installed = 'crm.lead' in self.env
         sale_installed = 'sale.order' in self.env
         account_installed = 'account.move' in self.env
+        project_installed = 'project.task' in self.env
         pinned_leads = {}
         if crm_installed:
             pinned_ids = [rec.pinned_lead_id for rec in self if rec.pinned_lead_id]
@@ -123,6 +132,7 @@ class ChatroomChannel(models.Model):
             rec.crm_installed = crm_installed
             rec.sale_installed = sale_installed
             rec.account_installed = account_installed
+            rec.project_installed = project_installed
             rec.pinned_lead_name = pinned_leads.get(rec.pinned_lead_id, False)
             partner = rec.partner_id
             rec.lead_count = (
@@ -136,6 +146,9 @@ class ChatroomChannel(models.Model):
                     ('partner_id', '=', partner.id),
                     ('move_type', 'in', ('out_invoice', 'out_refund')),
                 ]) if account_installed and partner else 0)
+            rec.task_count = (
+                self.env['project.task'].search_count([('partner_id', '=', partner.id)])
+                if project_installed and partner else 0)
 
     def _compute_session_window(self):
         now = fields.Datetime.now()
@@ -701,6 +714,21 @@ class ChatroomChannel(models.Model):
         self.ai_suggested_reply = False
         return True
 
+    def action_ai_summarize(self):
+        self.ensure_one()
+        system_prompt = _(
+            "Resume esta conversación de WhatsApp para un agente humano "
+            "que se está poniendo al día. Responde en español, en un "
+            "párrafo corto (máximo 5 líneas), mencionando qué quiere el "
+            "cliente y en qué quedó la conversación hasta ahora.")
+        try:
+            self.ai_summary = self._ai_chat_completion(
+                self._ai_build_conversation(extra_system=system_prompt))
+        except (requests.RequestException, KeyError, IndexError) as exc:
+            _logger.error("Error consultando IA: %s", exc)
+            raise UserError(_("No se pudo generar el resumen con IA: %s") % exc)
+        return True
+
     def _ai_classify_intent(self):
         self.ensure_one()
         system_prompt = _(
@@ -753,7 +781,7 @@ class ChatroomChannel(models.Model):
             'name': _("Oportunidad WhatsApp - %s") % (self.partner_id.name or self.external_id),
             'partner_id': self.partner_id.id,
             'phone': self.partner_id.phone,
-            'description': "\n".join(
+            'description': self.ai_summary or "\n".join(
                 f"[{m.direction}] {m.body}" for m in self.message_ids.sorted('date') if m.body),
         })
         self.pinned_lead_id = lead.id
@@ -793,6 +821,37 @@ class ChatroomChannel(models.Model):
             'res_id': order.id,
             'view_mode': 'form',
             'target': 'current',
+        }
+
+    def action_create_task(self):
+        self.ensure_one()
+        if not self.project_installed:
+            raise UserError(_("El módulo Proyectos no está instalado."))
+        if not self.partner_id:
+            raise UserError(_("La conversación no tiene un contacto asociado."))
+        task = self.env['project.task'].create({
+            'name': _("WhatsApp - %s") % (self.partner_id.name or self.external_id),
+            'partner_id': self.partner_id.id,
+            'description': self.ai_summary or "\n".join(
+                f"[{m.direction}] {m.body}" for m in self.message_ids.sorted('date') if m.body),
+        })
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'project.task',
+            'res_id': task.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def action_view_tasks(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Tareas"),
+            'res_model': 'project.task',
+            'view_mode': 'list,kanban,form',
+            'domain': [('partner_id', '=', self.partner_id.id)],
+            'context': {'default_partner_id': self.partner_id.id},
         }
 
     def action_view_leads(self):
