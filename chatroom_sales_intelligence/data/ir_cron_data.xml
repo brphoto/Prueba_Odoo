@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="ir_cron_process_campaigns" model="ir.cron">
+        <field name="name">Chatroom: procesar campañas de WhatsApp por lotes</field>
+        <field name="model_id" ref="model_chatroom_campaign"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_process_campaigns()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+
+</odoo>

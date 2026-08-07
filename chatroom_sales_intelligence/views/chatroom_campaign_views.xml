@@ -10,9 +10,11 @@
                 <field name="template_id"/>
                 <field name="recipient_count"/>
                 <field name="sent_count"/>
+                <field name="pending_count"/>
                 <field name="failed_count"/>
                 <field name="state" widget="badge"
                        decoration-muted="state == 'draft'"
+                       decoration-warning="state == 'sending'"
                        decoration-success="state == 'sent'"/>
                 <field name="sent_date"/>
             </list>
@@ -25,31 +27,49 @@
         <field name="arch" type="xml">
             <form string="Campaña de WhatsApp">
                 <header>
-                    <button name="action_send" type="object" string="Enviar campaña"
-                            class="btn-primary" invisible="state == 'sent'"
-                            confirm="Se va a mandar la plantilla a todos los contactos que cumplan la segmentación elegida. ¿Continuar?"/>
+                    <button name="action_send" type="object" string="Encolar campaña"
+                            class="btn-primary" invisible="state != 'draft'"
+                            confirm="Se va a encolar la plantilla para todos los contactos que cumplan la segmentación elegida y se mandará en lotes. ¿Continuar?"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
-                        <h1><field name="name" placeholder="Ej: Reactivación clientes categoría C"/></h1>
+                        <h1><field name="name" placeholder="Ej: Reactivación clientes categoría C"
+                                   readonly="state != 'draft'"/></h1>
                     </div>
                     <group>
                         <group string="Plantilla">
-                            <field name="template_id"/>
+                            <field name="template_id" readonly="state != 'draft'"/>
+                            <field name="batch_size" readonly="state != 'draft'"/>
                         </group>
                         <group string="Segmentación RFM">
-                            <field name="target_rfm_a"/>
-                            <field name="target_rfm_b"/>
-                            <field name="target_rfm_c"/>
+                            <field name="target_rfm_a" readonly="state != 'draft'"/>
+                            <field name="target_rfm_b" readonly="state != 'draft'"/>
+                            <field name="target_rfm_c" readonly="state != 'draft'"/>
                             <field name="recipient_count"/>
                         </group>
                     </group>
-                    <group string="Resultado" invisible="state != 'sent'">
+                    <group string="Resultado" invisible="state == 'draft'">
+                        <field name="queued_date"/>
                         <field name="sent_date"/>
                         <field name="sent_count"/>
+                        <field name="pending_count"/>
                         <field name="failed_count"/>
                     </group>
+                    <notebook invisible="state == 'draft'">
+                        <page string="Destinatarios">
+                            <field name="recipient_ids" readonly="1">
+                                <list>
+                                    <field name="partner_id"/>
+                                    <field name="state" widget="badge"
+                                           decoration-muted="state == 'pending'"
+                                           decoration-success="state == 'sent'"
+                                           decoration-danger="state == 'failed'"/>
+                                    <field name="error_message"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
                 </sheet>
                 <chatter/>
             </form>

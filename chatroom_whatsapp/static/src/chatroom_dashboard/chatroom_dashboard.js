@@ -28,6 +28,10 @@ export class ChatroomDashboard extends Component {
             responseByAgent: [],
             lastWebhookDisplay: "",
             lastWebhookOk: true,
+            slaComplianceRate: null,
+            slaAnsweredCount: 0,
+            avgCsatScore: 0,
+            csatAnsweredCount: 0,
         });
 
         onWillStart(() => this._loadData());
@@ -45,6 +49,10 @@ export class ChatroomDashboard extends Component {
         this.state.responseByAgent = data.response_by_agent;
         this.state.lastWebhookDisplay = data.last_webhook_display;
         this.state.lastWebhookOk = data.last_webhook_ok;
+        this.state.slaComplianceRate = data.sla_compliance_rate;
+        this.state.slaAnsweredCount = data.sla_answered_count;
+        this.state.avgCsatScore = data.avg_csat_score;
+        this.state.csatAnsweredCount = data.csat_answered_count;
         this.state.loading = false;
     }
 

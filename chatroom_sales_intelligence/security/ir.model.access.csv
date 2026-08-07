@@ -1,3 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_chatroom_campaign_manager,chatroom.campaign.manager,model_chatroom_campaign,chatroom_whatsapp.group_chatroom_manager,1,1,1,1
 access_chatroom_campaign_user,chatroom.campaign.user,model_chatroom_campaign,chatroom_whatsapp.group_chatroom_user,1,0,0,0
+access_chatroom_campaign_recipient_manager,chatroom.campaign.recipient.manager,model_chatroom_campaign_recipient,chatroom_whatsapp.group_chatroom_manager,1,1,1,1
+access_chatroom_campaign_recipient_user,chatroom.campaign.recipient.user,model_chatroom_campaign_recipient,chatroom_whatsapp.group_chatroom_user,1,0,0,0

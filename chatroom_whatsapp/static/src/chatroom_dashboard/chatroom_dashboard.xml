@@ -43,6 +43,22 @@
                         <div class="o_chatroom_kpi_value" t-esc="formatMinutes(state.avgFirstResponseMinutes)"/>
                         <div class="o_chatroom_kpi_label">Primera respuesta (prom. 30 días)</div>
                     </div>
+                    <div t-attf-class="o_chatroom_kpi_tile {{ state.slaComplianceRate !== null and state.slaComplianceRate &lt; 80 ? 'o_chatroom_kpi_danger' : '' }}">
+                        <i class="fa fa-shield o_chatroom_kpi_icon"/>
+                        <div class="o_chatroom_kpi_value">
+                            <t t-if="state.slaComplianceRate === null">-</t>
+                            <t t-else=""><t t-esc="state.slaComplianceRate"/>%</t>
+                        </div>
+                        <div class="o_chatroom_kpi_label">SLA cumplido (<t t-esc="state.slaAnsweredCount"/> resp., 30 días)</div>
+                    </div>
+                    <div class="o_chatroom_kpi_tile">
+                        <i class="fa fa-star o_chatroom_kpi_icon"/>
+                        <div class="o_chatroom_kpi_value">
+                            <t t-if="!state.csatAnsweredCount">-</t>
+                            <t t-else=""><t t-esc="state.avgCsatScore"/> / 5</t>
+                        </div>
+                        <div class="o_chatroom_kpi_label">Satisfacción (<t t-esc="state.csatAnsweredCount"/> encuestas, 30 días)</div>
+                    </div>
                 </div>
 
                 <div class="o_chatroom_dashboard_panels">

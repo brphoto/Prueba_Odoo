@@ -69,6 +69,7 @@ agrega la capa visual que los muestra dentro del chat.
 
     'data': [
         'security/ir.model.access.csv',
+        'data/ir_cron_data.xml',
         'views/chatroom_channel_views.xml',
         'views/chatroom_campaign_views.xml',
         'views/chatroom_menus.xml',

@@ -114,10 +114,35 @@ class TestChatroomSalesIntelligence(TransactionCase):
         with self.assertRaises(UserError):
             campaign.action_send()
 
-    def test_campaign_send_without_credentials_counts_failures_and_finishes(self):
+    def test_campaign_send_only_queues_recipients(self):
+        """action_send ya no manda nada: solo toma la foto de
+        destinatarios y pasa a 'sending'. El envío real lo hace el cron
+        (ver test_campaign_cron_processes_batch_and_finishes)."""
+        partner = self.env['res.partner'].create({'name': "Cliente Cola", 'phone': "+573002000004"})
+        partner.rfm_category = 'a'
+        campaign = self.env['chatroom.campaign'].create({
+            'name': "Campaña en cola",
+            'template_id': self.env['chatroom.template'].create({
+                'name': 'test_campaign_template_4', 'language': 'es', 'body': "Hola.",
+                'status': 'approved',
+            }).id,
+            'target_rfm_a': True, 'target_rfm_b': False, 'target_rfm_c': False,
+        })
+
+        campaign.action_send()
+
+        self.assertEqual(campaign.state, 'sending')
+        self.assertEqual(campaign.pending_count, 1)
+        self.assertEqual(len(campaign.recipient_ids), 1)
+        self.assertEqual(campaign.recipient_ids.partner_id, partner)
+        self.assertTrue(campaign.queued_date)
+        self.assertFalse(campaign.sent_date, "todavía no terminó de mandarse")
+
+    def test_campaign_cron_processes_batch_and_finishes(self):
         """Sin credenciales de WhatsApp configuradas, cada envío individual
-        falla, pero la campaña completa no debe romperse: tiene que
-        terminar en 'sent' con el detalle de cuántos fallaron."""
+        falla, pero el lote no debe romperse: la primera corrida del cron
+        marca los destinatarios como fallidos, y una segunda corrida (sin
+        pendientes) cierra la campaña en 'sent' con el detalle."""
         self.env['ir.config_parameter'].sudo().set_param('chatroom_whatsapp.access_token', False)
         self.env['ir.config_parameter'].sudo().set_param('chatroom_whatsapp.phone_number_id', False)
         partner = self.env['res.partner'].create({'name': "Cliente Campaña", 'phone': "+573002000003"})
@@ -130,10 +155,48 @@ class TestChatroomSalesIntelligence(TransactionCase):
             }).id,
             'target_rfm_a': True, 'target_rfm_b': False, 'target_rfm_c': False,
         })
-
         campaign.action_send()
 
+        self.env['chatroom.campaign']._cron_process_campaigns()
+        self.assertEqual(campaign.state, 'sending', "todavía debe cerrar en la próxima corrida")
+        self.assertEqual(campaign.failed_count, 1)
+        self.assertEqual(campaign.pending_count, 0)
+
+        self.env['chatroom.campaign']._cron_process_campaigns()
         self.assertEqual(campaign.state, 'sent')
         self.assertEqual(campaign.sent_count, 0)
         self.assertEqual(campaign.failed_count, 1)
         self.assertTrue(campaign.sent_date)
+
+    def test_campaign_cron_respects_batch_size(self):
+        """Con batch_size=2 y 3 destinatarios, la primera corrida procesa
+        solo 2 (deja 1 pendiente y sigue en 'sending')."""
+        self.env['ir.config_parameter'].sudo().set_param('chatroom_whatsapp.access_token', False)
+        self.env['ir.config_parameter'].sudo().set_param('chatroom_whatsapp.phone_number_id', False)
+        for i in range(3):
+            partner = self.env['res.partner'].create({
+                'name': f"Cliente Lote {i}", 'phone': f"+57300210000{i}"})
+            partner.rfm_category = 'a'
+        campaign = self.env['chatroom.campaign'].create({
+            'name': "Campaña con lotes",
+            'template_id': self.env['chatroom.template'].create({
+                'name': 'test_campaign_template_5', 'language': 'es', 'body': "Hola.",
+                'status': 'approved',
+            }).id,
+            'target_rfm_a': True, 'batch_size': 2,
+        })
+        campaign.action_send()
+        self.assertEqual(campaign.pending_count, 3)
+
+        self.env['chatroom.campaign']._cron_process_campaigns()
+        self.assertEqual(campaign.state, 'sending')
+        self.assertEqual(campaign.failed_count, 2)
+        self.assertEqual(campaign.pending_count, 1)
+
+        self.env['chatroom.campaign']._cron_process_campaigns()
+        self.assertEqual(campaign.state, 'sending')
+        self.assertEqual(campaign.failed_count, 3)
+        self.assertEqual(campaign.pending_count, 0)
+
+        self.env['chatroom.campaign']._cron_process_campaigns()
+        self.assertEqual(campaign.state, 'sent')

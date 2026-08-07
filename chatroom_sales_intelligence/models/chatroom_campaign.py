@@ -12,7 +12,12 @@ class ChatroomCampaign(models.Model):
     una o más categorías RFM (ej. reactivar la categoría C, agradecer a
     la A). Vive en este módulo -no en chatroom_whatsapp ni en
     crm_customer_intelligence- porque necesita los dos a la vez: la
-    segmentación RFM y el canal de envío por WhatsApp."""
+    segmentación RFM y el canal de envío por WhatsApp.
+
+    El envío en sí lo hace un cron en lotes (ver _cron_process_campaigns):
+    mandar todo de una en un solo request, además de poder hacer timeout
+    con segmentaciones grandes, ignora los límites de tasa de envío de la
+    Cloud API de Meta."""
     _name = 'chatroom.campaign'
     _description = "Campaña de WhatsApp por categoría RFM"
     _inherit = ['mail.thread']
@@ -28,19 +33,35 @@ class ChatroomCampaign(models.Model):
     target_rfm_a = fields.Boolean(string="Categoría A (mejores clientes)", default=True)
     target_rfm_b = fields.Boolean(string="Categoría B (intermedios)")
     target_rfm_c = fields.Boolean(string="Categoría C (en riesgo/inactivos)")
+    batch_size = fields.Integer(
+        default=20, required=True, string="Tamaño de lote",
+        help="Cuántos mensajes manda cada corrida del cron (cada 5 "
+             "minutos), para no pegarle de una a los límites de envío de "
+             "la Cloud API de Meta ni hacer timeout en segmentaciones "
+             "grandes.")
     state = fields.Selection(
-        [('draft', "Borrador"), ('sent', "Enviada")],
+        [('draft', "Borrador"), ('sending', "Enviando"), ('sent', "Enviada")],
         default='draft', required=True, copy=False)
+    recipient_ids = fields.One2many('chatroom.campaign.recipient', 'campaign_id')
     recipient_count = fields.Integer(
-        compute='_compute_recipient_count', string="Destinatarios estimados")
-    sent_count = fields.Integer(readonly=True, copy=False)
-    failed_count = fields.Integer(readonly=True, copy=False)
+        compute='_compute_recipient_stats', string="Destinatarios")
+    sent_count = fields.Integer(compute='_compute_recipient_stats')
+    failed_count = fields.Integer(compute='_compute_recipient_stats')
+    pending_count = fields.Integer(compute='_compute_recipient_stats')
+    queued_date = fields.Datetime(readonly=True, copy=False)
     sent_date = fields.Datetime(readonly=True, copy=False)
 
-    @api.depends('target_rfm_a', 'target_rfm_b', 'target_rfm_c')
-    def _compute_recipient_count(self):
+    @api.depends('target_rfm_a', 'target_rfm_b', 'target_rfm_c',
+                 'recipient_ids.state', 'state')
+    def _compute_recipient_stats(self):
         for rec in self:
-            rec.recipient_count = len(rec._get_target_partners())
+            if rec.state == 'draft':
+                rec.recipient_count = len(rec._get_target_partners())
+            else:
+                rec.recipient_count = len(rec.recipient_ids)
+            rec.sent_count = len(rec.recipient_ids.filtered(lambda r: r.state == 'sent'))
+            rec.failed_count = len(rec.recipient_ids.filtered(lambda r: r.state == 'failed'))
+            rec.pending_count = len(rec.recipient_ids.filtered(lambda r: r.state == 'pending'))
 
     def _target_categories(self):
         self.ensure_one()
@@ -69,38 +90,56 @@ class ChatroomCampaign(models.Model):
         ])
 
     def action_send(self):
+        """Toma la foto de destinatarios y encola la campaña: el envío
+        real lo hace _cron_process_campaigns en lotes, no este método."""
         self.ensure_one()
-        if self.state == 'sent':
-            raise UserError(_("Esta campaña ya se mandó."))
+        if self.state != 'draft':
+            raise UserError(_("Esta campaña ya se encoló o se mandó."))
         partners = self._get_target_partners()
         if not partners:
             raise UserError(_(
                 "No hay contactos que cumplan la segmentación elegida "
                 "(con teléfono cargado y sin baja de WhatsApp)."))
 
-        Channel = self.env['chatroom.channel']
-        sent = failed = 0
-        for partner in partners:
-            try:
-                channel_id = Channel.action_start_conversation(partner.id, phone=partner.phone)
-                channel = Channel.browse(channel_id)
-                values = [partner.name] if self.template_id.variable_count else []
-                channel.action_send_template(
-                    self.template_id.name, self.template_id.language, values)
-                sent += 1
-            except Exception:  # noqa: BLE001 - una falla individual no debe frenar la campaña
-                _logger.exception(
-                    "No se pudo enviar la campaña %s al contacto %s (%s)",
-                    self.name, partner.name, partner.id)
-                failed += 1
-
-        self.write({
-            'state': 'sent',
-            'sent_count': sent,
-            'failed_count': failed,
-            'sent_date': fields.Datetime.now(),
-        })
+        self.env['chatroom.campaign.recipient'].create([
+            {'campaign_id': self.id, 'partner_id': partner.id} for partner in partners
+        ])
+        self.write({'state': 'sending', 'queued_date': fields.Datetime.now()})
         self.message_post(body=_(
-            "Campaña enviada: %(sent)s mensajes mandados, %(failed)s fallaron, "
-            "sobre %(total)s contactos objetivo."
-        ) % {'sent': sent, 'failed': failed, 'total': len(partners)})
+            "Campaña encolada: %(total)s contactos objetivo, se van a mandar "
+            "en lotes de %(batch)s cada 5 minutos."
+        ) % {'total': len(partners), 'batch': self.batch_size})
+
+    @api.model
+    def _cron_process_campaigns(self):
+        campaigns = self.search([('state', '=', 'sending')])
+        Channel = self.env['chatroom.channel']
+        for campaign in campaigns:
+            batch_size = campaign.batch_size or 20
+            pending = campaign.recipient_ids.filtered(lambda r: r.state == 'pending')[:batch_size]
+            if not pending:
+                campaign.write({'state': 'sent', 'sent_date': fields.Datetime.now()})
+                campaign.message_post(body=_(
+                    "Campaña terminada: %(sent)s mensajes mandados, %(failed)s "
+                    "fallaron, sobre %(total)s contactos objetivo."
+                ) % {
+                    'sent': campaign.sent_count,
+                    'failed': campaign.failed_count,
+                    'total': len(campaign.recipient_ids),
+                })
+                continue
+
+            for recipient in pending:
+                partner = recipient.partner_id
+                try:
+                    channel_id = Channel.action_start_conversation(partner.id, phone=partner.phone)
+                    channel = Channel.browse(channel_id)
+                    values = [partner.name] if campaign.template_id.variable_count else []
+                    channel.action_send_template(
+                        campaign.template_id.name, campaign.template_id.language, values)
+                    recipient.state = 'sent'
+                except Exception as exc:  # noqa: BLE001 - una falla individual no debe frenar el lote
+                    _logger.exception(
+                        "No se pudo enviar la campaña %s al contacto %s (%s)",
+                        campaign.name, partner.name, partner.id)
+                    recipient.write({'state': 'failed', 'error_message': str(exc)[:200]})

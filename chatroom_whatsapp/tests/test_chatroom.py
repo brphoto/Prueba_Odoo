@@ -369,3 +369,26 @@ class TestChatroomWhatsapp(TransactionCase):
 
         with self.assertRaises(UserError):
             channel.action_send_product_catalog(product.ids)
+
+    def test_dashboard_data_includes_sla_and_csat_aggregates(self):
+        partner = self.env['res.partner'].create({'name': "Cliente Dashboard"})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': '573001130001', 'partner_id': partner.id,
+        })
+        inbound_date = Datetime.now() - timedelta(days=1)
+        self.env['chatroom.message'].create({
+            'channel_id': channel.id, 'direction': 'inbound', 'message_type': 'text',
+            'body': "Hola", 'date': inbound_date,
+        })
+        self.env['chatroom.message'].create({
+            'channel_id': channel.id, 'direction': 'outbound', 'message_type': 'text',
+            'body': "Hola, ¿en qué te ayudo?", 'date': inbound_date + timedelta(minutes=10),
+        })
+        channel.write({'csat_score': 4, 'csat_answered_at': Datetime.now()})
+
+        data = self.env['chatroom.channel'].get_dashboard_data()
+
+        self.assertIsNotNone(data['sla_compliance_rate'])
+        self.assertGreaterEqual(data['sla_answered_count'], 1)
+        self.assertGreaterEqual(data['csat_answered_count'], 1)
+        self.assertGreater(data['avg_csat_score'], 0)

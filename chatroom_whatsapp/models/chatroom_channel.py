@@ -1446,6 +1446,29 @@ class ChatroomChannel(models.Model):
             ['assigned_user_id'], ['first_response_minutes:avg'],
             order='first_response_minutes:avg asc', limit=agent_limit)
 
+        # SLA: sobre las conversaciones que ya tuvieron primera respuesta
+        # en los últimos 30 días, qué porcentaje la tuvo antes del umbral
+        # de "vencido" (mismo umbral que pinta el semáforo en vivo).
+        sla_answered_count = self.search_count(
+            [('create_date', '>=', month_ago), ('first_response_minutes', '>', 0)])
+        sla_compliant_count = self.search_count([
+            ('create_date', '>=', month_ago), ('first_response_minutes', '>', 0),
+            ('first_response_minutes', '<', SLA_FIRST_RESPONSE_RED_MINUTES),
+        ])
+        sla_compliance_rate = (
+            round(sla_compliant_count / sla_answered_count * 100, 1)
+            if sla_answered_count else None)
+
+        # CSAT: promedio de las encuestas contestadas en los últimos 30
+        # días (csat_score solo tiene un valor real una vez que el
+        # cliente respondió; ver _record_csat_response).
+        csat_answered_count = self.search_count(
+            [('csat_answered_at', '>=', month_ago), ('csat_score', '>', 0)])
+        csat_avg_group = self._read_group(
+            [('csat_answered_at', '>=', month_ago), ('csat_score', '>', 0)],
+            [], ['csat_score:avg'])
+        avg_csat_score = csat_avg_group[0][0] if csat_avg_group else 0.0
+
         raw_last_webhook = self.env['ir.config_parameter'].sudo().get_param(
             'chatroom_whatsapp.last_webhook_at')
         last_webhook = fields.Datetime.to_datetime(raw_last_webhook) if raw_last_webhook else False
@@ -1467,6 +1490,10 @@ class ChatroomChannel(models.Model):
                 {'name': user.name, 'minutes': round(minutes, 1)}
                 for user, minutes in response_by_agent
             ],
+            'sla_compliance_rate': sla_compliance_rate,
+            'sla_answered_count': sla_answered_count,
+            'avg_csat_score': round(avg_csat_score or 0.0, 2),
+            'csat_answered_count': csat_answered_count,
         }
 
     # ------------------------------------------------------------------
