@@ -69,6 +69,23 @@
         opacity: 0.85;
         text-transform: capitalize;
     }
+
+    .o_chatroom_assignee_select {
+        margin-left: auto;
+        flex: 0 0 auto;
+        max-width: 140px;
+        font-size: 0.8em;
+        border: none;
+        border-radius: 12px;
+        padding: 3px 8px;
+        background-color: rgba(255, 255, 255, 0.2);
+        color: #fff;
+        cursor: pointer;
+
+        option {
+            color: #111b21;
+        }
+    }
 }
 
 .o_chatroom_session_banner,
@@ -127,6 +144,44 @@
     color: #667781;
     font-size: 0.75em;
     font-weight: 600;
+}
+
+.o_chatroom_note_bubble {
+    align-self: center;
+    max-width: 85%;
+    margin: 4px 0;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background-color: #fff3cd;
+    color: #664d03;
+    font-size: 0.85em;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+
+    .fa-sticky-note-o {
+        margin-top: 2px;
+    }
+}
+
+.o_chatroom_note_body {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.o_chatroom_note_meta {
+    font-size: 0.8em;
+    opacity: 0.75;
+    margin-top: 2px;
+}
+
+.o_chatroom_composer_note_mode {
+    background-color: #fff8e6;
+    border-radius: 8px;
+}
+
+.o_chatroom_note_toggle.text-warning {
+    color: #b45309 !important;
 }
 
 .o_chatroom_bubble {

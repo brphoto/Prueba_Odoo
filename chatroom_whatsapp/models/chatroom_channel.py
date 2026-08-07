@@ -8,10 +8,22 @@ from datetime import timedelta
 
 import requests
 
-from odoo import _, api, fields, models
+from odoo import _, api, fields, models, tools
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
+
+# Para la vista previa del último mensaje en el kanban/lista/sidebar de la
+# app cuando no tiene texto (una foto sin pie de foto, por ejemplo): sin
+# esto se veía en blanco, como si no hubiera pasado nada.
+MESSAGE_TYPE_PREVIEW = {
+    'image': "📷 Foto",
+    'audio': "🎤 Audio",
+    'video': "🎥 Video",
+    'document': "📄 Documento",
+    'template': "📋 Plantilla",
+    'other': "📎 Adjunto",
+}
 
 
 class ChatroomChannel(models.Model):
@@ -123,7 +135,11 @@ class ChatroomChannel(models.Model):
             rec.unread_count = len(messages.filtered(
                 lambda m: m.direction == 'inbound' and m.state != 'read'))
             last = messages.sorted('date', reverse=True)[:1]
-            rec.last_message_preview = (last.body or '')[:120] if last else ''
+            if last:
+                preview = last.body or MESSAGE_TYPE_PREVIEW.get(last.message_type, '')
+                rec.last_message_preview = preview[:120]
+            else:
+                rec.last_message_preview = ''
 
     def _compute_related_counts(self):
         crm_installed = 'crm.lead' in self.env
@@ -287,6 +303,23 @@ class ChatroomChannel(models.Model):
         return channel.id
 
     @api.model
+    def _get_default_agents(self):
+        """Todos los agentes del grupo 'Chatroom / Agente' + 'Chatroom /
+        Administrador'. No basta con leer solo 'Agente': pertenecer a
+        'Administrador' no vuelve a alguien miembro explícito del grupo
+        que implica ('user_ids' no incluye la membresía heredada), así
+        que se unen ambos para no dejar afuera a los managers."""
+        return (
+            self.env.ref('chatroom_whatsapp.group_chatroom_user').user_ids
+            | self.env.ref('chatroom_whatsapp.group_chatroom_manager').user_ids
+        )
+
+    @api.model
+    def get_assignable_agents(self):
+        """Para el selector de reasignación rápida del chat."""
+        return [{'id': u.id, 'name': u.name} for u in self._get_default_agents()]
+
+    @api.model
     def _get_next_assignee(self, agents=None):
         """Reparte las conversaciones nuevas entre agentes, asignando al
         que menos conversaciones abiertas tenga en este momento (balanceo
@@ -301,15 +334,7 @@ class ChatroomChannel(models.Model):
         if icp.get_param('chatroom_whatsapp.auto_assign', 'True') == 'False':
             return self.env.user
         if agents is None:
-            # No basta con leer el grupo 'Agente': pertenecer a
-            # 'Administrador' no vuelve a alguien miembro explícito del
-            # grupo que implica ('user_ids' no incluye la membresía
-            # heredada), así que se unen ambos para no dejar afuera a los
-            # managers.
-            agents = (
-                self.env.ref('chatroom_whatsapp.group_chatroom_user').user_ids
-                | self.env.ref('chatroom_whatsapp.group_chatroom_manager').user_ids
-            )
+            agents = self._get_default_agents()
         if not agents:
             return self.env.user
         open_counts = self.env['chatroom.channel']._read_group(
@@ -333,6 +358,39 @@ class ChatroomChannel(models.Model):
             partner_ids=[self.assigned_user_id.partner_id.id],
             subtype_xmlid='mail.mt_comment',
         )
+
+    # ------------------------------------------------------------------
+    # Notas internas: se ven mezcladas con las burbujas del chat (con
+    # otro estilo, para no confundirlas con mensajes reales al cliente)
+    # pero viven en el chatter de siempre (mail.message, subtipo "nota"),
+    # no en chatroom.message — nunca pueden confundirse con algo que
+    # salió de verdad por WhatsApp.
+    # ------------------------------------------------------------------
+    def action_post_internal_note(self, body):
+        self.ensure_one()
+        if not (body or '').strip():
+            raise UserError(_("Escribe algo para la nota."))
+        self.message_post(body=body, subtype_xmlid='mail.mt_note')
+        self._notify_thread_update()
+        return True
+
+    def get_internal_notes(self):
+        self.ensure_one()
+        note_subtype = self.env.ref('mail.mt_note', raise_if_not_found=False)
+        domain = [
+            ('model', '=', 'chatroom.channel'),
+            ('res_id', '=', self.id),
+            ('message_type', '=', 'comment'),
+        ]
+        if note_subtype:
+            domain.append(('subtype_id', '=', note_subtype.id))
+        notes = self.env['mail.message'].search(domain, order='date asc')
+        return [{
+            'id': f'note-{note.id}',
+            'body': tools.html2plaintext(note.body) if note.body else '',
+            'date': note.date,
+            'author_name': note.author_id.name or _("Sistema"),
+        } for note in notes]
 
     def write(self, vals):
         previous_assignees = {rec.id: rec.assigned_user_id for rec in self} if 'assigned_user_id' in vals else {}

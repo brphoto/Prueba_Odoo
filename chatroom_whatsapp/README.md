@@ -302,6 +302,29 @@ contacto y el texto, aunque tengas Odoo en otra pestaña. Un clic en la
 notificación te lleva directo al Chatroom. No suena para conversaciones
 asignadas a otro agente.
 
+## Notas internas, reasignar y cola de pendientes
+
+- **Notas internas**: el ícono de nota amarilla en el composer alterna
+  entre "mensaje al cliente" y "nota interna" (el composer y el botón de
+  enviar cambian de color mientras está activo, para no mandarle a un
+  cliente algo que era solo para el equipo). Las notas se guardan en el
+  chatter de siempre (`mail.message`, subtipo "Nota") pero se ven
+  mezcladas con las burbujas del chat, con otro estilo (centrada,
+  amarilla, con el nombre de quien la escribió) para no confundirlas con
+  un mensaje real. El modo se desactiva solo después de mandar una nota.
+- **Reasignar rápido**: el selector que aparece en el encabezado del chat
+  (a la derecha del nombre del canal) cambia el agente asignado con un
+  clic, sin abrir el formulario. Para reasignar varias conversaciones a
+  la vez, seleccionalas en **Chatroom > Vista clásica** (lista) y usá
+  "Reasignar conversaciones" en el menú de Acción.
+- **Siguiente pendiente**: el botón "Siguiente" de la barra de
+  herramientas salta a la conversación pendiente más antigua (distinta
+  de la que tenés abierta) — útil para no andar buscando manualmente
+  cuál atender primero.
+- **Vista previa de adjuntos**: si el último mensaje de una conversación
+  no tiene texto (una foto, un audio...), la lista/kanban/sidebar
+  muestran "📷 Foto", "🎤 Audio", etc. en vez de quedar en blanco.
+
 ## Botones de respuesta rápida (WhatsApp Interactive Messages)
 
 El ícono de lista en el composer del chat abre un panel para definir
@@ -468,12 +491,15 @@ Pensado para tráfico real, no solo para la demo:
   navega correctamente contra un Odoo real corriendo.
 - **Iniciar conversación (diálogo "+" / Nueva conversación), panel de
   contacto, envío de PDF por WhatsApp, probar conexión, salud del
-  webhook y notificaciones de escritorio son nuevos en esta
-  iteración**: mismo nivel de validación por sintaxis + revisión contra
-  el código fuente real de Odoo 19 (reportes PDF, `Notification` API,
-  etc.), pero **todavía no se probaron en navegador** — conviene abrir
-  el panel de contacto con un contacto que tenga ventas/facturas reales
-  y mandar un PDF de prueba antes de usarlo con un cliente.
+  webhook, notificaciones de escritorio, notas internas, reasignar
+  rápido, "Siguiente pendiente" y preview de adjuntos son nuevos en
+  esta iteración**: mismo nivel de validación por sintaxis + revisión
+  contra el código fuente real de Odoo 19 (reportes PDF, `Notification`
+  API, `binding_view_types`, `html2plaintext`, etc.), pero **todavía no
+  se probaron en navegador** — conviene abrir el panel de contacto con
+  un contacto que tenga ventas/facturas reales y mandar un PDF de
+  prueba, y probar el modo nota interna, antes de usarlos con un
+  cliente de verdad.
 - La deduplicación de contactos por teléfono compara en Python sobre
   los contactos con `phone` cargado (no hay forma limpia de comparar
   "solo dígitos" a nivel SQL sin una extensión de PostgreSQL); en bases

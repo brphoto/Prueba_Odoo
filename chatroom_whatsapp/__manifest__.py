@@ -55,6 +55,7 @@ Requisitos
         'data/ir_cron_data.xml',
         'views/chatroom_whatsapp_number_views.xml',
         'views/chatroom_new_conversation_wizard_views.xml',
+        'views/chatroom_reassign_wizard_views.xml',
         'views/chatroom_template_views.xml',
         'views/chatroom_channel_views.xml',
         'views/chatroom_metrics_views.xml',

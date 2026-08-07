@@ -77,6 +77,9 @@ export class ChatroomThreadCore extends Component {
             cannedOpen: false,
             cannedResponses: [],
             lightboxUrl: false,
+            noteMode: false,
+            assignedUserId: false,
+            agents: [],
         });
 
         this._shouldScroll = true;
@@ -148,6 +151,7 @@ export class ChatroomThreadCore extends Component {
         this.state.pendingAttachments = [];
         this.state.quickButtonsOpen = false;
         this.state.cannedOpen = false;
+        this.state.noteMode = false;
         if (!channelId) {
             this.state.loading = false;
             this.state.messages = [];
@@ -178,12 +182,13 @@ export class ChatroomThreadCore extends Component {
         const [channel] = await this.orm.read(
             "chatroom.channel",
             [channelId],
-            ["display_name", "partner_id", "channel_type", "is_session_open"]
+            ["display_name", "partner_id", "channel_type", "is_session_open", "assigned_user_id"]
         );
         this.state.channelName = channel.display_name;
         this.state.partnerId = channel.partner_id ? channel.partner_id[0] : false;
         this.state.channelType = channel.channel_type;
         this.state.isSessionOpen = channel.is_session_open;
+        this.state.assignedUserId = channel.assigned_user_id ? channel.assigned_user_id[0] : false;
 
         if (this.state.partnerId) {
             const [partner] = await this.orm.read(
@@ -192,6 +197,18 @@ export class ChatroomThreadCore extends Component {
         } else {
             this.state.partnerOptedOut = false;
         }
+        if (!this.state.agents.length) {
+            this.state.agents = await this.orm.call("chatroom.channel", "get_assignable_agents", []);
+        }
+    }
+
+    async reassign(ev) {
+        const newUserId = parseInt(ev.target.value, 10);
+        if (!newUserId || !this.channelId) {
+            return;
+        }
+        await this.orm.write("chatroom.channel", [this.channelId], { assigned_user_id: newUserId });
+        this.state.assignedUserId = newUserId;
     }
 
     async _loadCannedResponses() {
@@ -225,12 +242,15 @@ export class ChatroomThreadCore extends Component {
             this.state.loading = false;
             return;
         }
-        const messages = await this.orm.searchRead(
-            "chatroom.message",
-            [["channel_id", "=", channelId]],
-            MESSAGE_FIELDS,
-            { order: "date asc" }
-        );
+        const [messages, notes] = await Promise.all([
+            this.orm.searchRead(
+                "chatroom.message",
+                [["channel_id", "=", channelId]],
+                MESSAGE_FIELDS,
+                { order: "date asc" }
+            ),
+            this.orm.call("chatroom.channel", "get_internal_notes", [channelId]),
+        ]);
         const attachmentIds = [...new Set(messages.flatMap((m) => m.attachment_ids))];
         let attachmentsById = {};
         if (attachmentIds.length) {
@@ -240,11 +260,19 @@ export class ChatroomThreadCore extends Component {
             ]);
             attachmentsById = Object.fromEntries(attachments.map((a) => [a.id, a]));
         }
-        this.state.messages = messages.map((m) => ({
+        const messageItems = messages.map((m) => ({
             ...m,
             dateObj: odooDatetimeToDate(m.date),
             attachments: m.attachment_ids.map((id) => attachmentsById[id]).filter(Boolean),
         }));
+        const noteItems = notes.map((n) => ({
+            ...n,
+            isNote: true,
+            dateObj: odooDatetimeToDate(n.date),
+            attachments: [],
+        }));
+        this.state.messages = [...messageItems, ...noteItems].sort(
+            (a, b) => (a.dateObj || 0) - (b.dateObj || 0));
         this.state.loading = false;
         this._shouldScroll = true;
 
@@ -544,11 +572,38 @@ export class ChatroomThreadCore extends Component {
         this.state.quickButtons[index] = value;
     }
 
+    // ------------------------------------------------------------------
+    // Notas internas (no se envían al cliente, quedan solo en Odoo)
+    // ------------------------------------------------------------------
+    toggleNoteMode() {
+        this.state.noteMode = !this.state.noteMode;
+    }
+
     async send() {
         if (!this.channelId) {
             return;
         }
         const body = this.state.composerText.trim();
+        if (this.state.noteMode) {
+            if (!body) {
+                return;
+            }
+            this.state.sending = true;
+            try {
+                await this.orm.call(
+                    "chatroom.channel", "action_post_internal_note", [this.channelId], { body });
+                this.state.composerText = "";
+                this.state.noteMode = false;
+                await this._loadMessages();
+            } catch (error) {
+                this.notification.add(error.data ? error.data.message : error.message, {
+                    type: "danger",
+                });
+            } finally {
+                this.state.sending = false;
+            }
+            return;
+        }
         const attachments = this.state.pendingAttachments;
         const buttons = this.state.quickButtonsOpen
             ? this.state.quickButtons.filter((b) => b.trim())

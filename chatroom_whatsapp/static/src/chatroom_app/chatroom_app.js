@@ -60,6 +60,7 @@ export class ChatroomApp extends Component {
         this.busService = useService("bus_service");
         this.dialogService = useService("dialog");
         this.action = useService("action");
+        this.notification = useService("notification");
 
         this.state = useState({
             loading: true,
@@ -220,6 +221,20 @@ export class ChatroomApp extends Component {
 
     openDashboard() {
         this.action.doAction("chatroom_whatsapp.action_chatroom_dashboard");
+    }
+
+    async goToNextPending() {
+        const domain = [["state", "=", "pending"]];
+        if (this.state.selectedChannelId) {
+            domain.push(["id", "!=", this.state.selectedChannelId]);
+        }
+        const [next] = await this.orm.searchRead(
+            "chatroom.channel", domain, ["id"], { order: "last_message_date asc", limit: 1 });
+        if (next) {
+            this.selectChannel(next.id);
+        } else {
+            this.notification.add("No hay más conversaciones pendientes.", { type: "info" });
+        }
     }
 
     backToList() {

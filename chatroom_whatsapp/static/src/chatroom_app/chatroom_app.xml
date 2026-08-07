@@ -24,6 +24,10 @@
                     </div>
                 </div>
                 <div class="o_chatroom_app_toolbar">
+                    <button class="btn btn-link" title="Ir a la próxima conversación pendiente"
+                            t-on-click="goToNextPending">
+                        <i class="fa fa-forward"/> Siguiente
+                    </button>
                     <button class="btn btn-link" title="Dashboard" t-on-click="openDashboard">
                         <i class="fa fa-bar-chart"/> Dashboard
                     </button>
