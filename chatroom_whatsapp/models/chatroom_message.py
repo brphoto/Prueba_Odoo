@@ -49,6 +49,24 @@ class ChatroomMessage(models.Model):
          ('failed', "Fallido")],
         default='received')
     date = fields.Datetime(default=fields.Datetime.now, required=True)
+    retry_count = fields.Integer(
+        default=0, copy=False,
+        help="Cuántas veces se reintentó el envío (a mano o automático). "
+             "El cron de reintentos deja de intentar después de 3.")
+    sender_user_id = fields.Many2one(
+        'res.users', string="Enviado por", copy=False,
+        help="Agente que escribió este mensaje saliente. Vacío en "
+             "mensajes entrantes y en los que mandó la automatización de "
+             "IA (corren con el usuario del webhook, no de una persona).")
+    own_reaction = fields.Char(
+        copy=False,
+        help="Emoji con el que reaccionamos nosotros a este mensaje "
+             "(estilo WhatsApp: la reacción se pega al mensaje, no genera "
+             "un mensaje nuevo).")
+    partner_reaction = fields.Char(
+        copy=False,
+        help="Emoji con el que reaccionó el contacto a este mensaje, "
+             "recibido por webhook.")
 
     @api.depends('body')
     def _compute_display_name(self):

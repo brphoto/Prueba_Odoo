@@ -469,7 +469,28 @@ class ChatroomChannel(models.Model):
     # ------------------------------------------------------------------
     # Envío de mensajes (API directa de Meta, sin proveedores externos)
     # ------------------------------------------------------------------
-    def action_send_text(self, body):
+    def _get_reply_context(self, reply_to_id):
+        """Valida y devuelve el mensaje que se quiere citar (respuesta con
+        cita, al estilo WhatsApp), o False si no se pidió citar nada.
+
+        Meta solo permite citar mensajes que ya tienen un wa_message_id
+        confirmado (el ID que asignó WhatsApp), así que un mensaje fallido
+        o una nota interna no se pueden citar.
+        """
+        self.ensure_one()
+        if not reply_to_id:
+            return False
+        message = self.env['chatroom.message'].browse(reply_to_id)
+        if not message.exists() or message.channel_id.id != self.id:
+            raise UserError(_("No se puede citar ese mensaje."))
+        if not message.wa_message_id:
+            raise UserError(_(
+                "No se puede citar este mensaje: todavía no tiene un ID "
+                "de WhatsApp confirmado (puede estar fallido o pendiente "
+                "de enviarse)."))
+        return message
+
+    def action_send_text(self, body, reply_to_id=False):
         """Envía un mensaje de texto directo al Graph API de Meta y guarda
         el registro saliente."""
         self.ensure_one()
@@ -477,6 +498,7 @@ class ChatroomChannel(models.Model):
         if self.channel_type != 'whatsapp':
             return self._send_meta_page_text(body)
 
+        reply_to = self._get_reply_context(reply_to_id)
         token, phone_number_id, api_version = self._get_meta_credentials()
         url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
         payload = {
@@ -485,6 +507,8 @@ class ChatroomChannel(models.Model):
             "type": "text",
             "text": {"body": body},
         }
+        if reply_to:
+            payload["context"] = {"message_id": reply_to.wa_message_id}
         headers = {"Authorization": f"Bearer {token}"}
 
         message = self.env['chatroom.message'].create({
@@ -494,6 +518,8 @@ class ChatroomChannel(models.Model):
             'body': body,
             'state': 'sent',
             'date': fields.Datetime.now(),
+            'sender_user_id': self.env.user.id,
+            'reply_to_id': reply_to.id if reply_to else False,
         })
 
         try:
@@ -535,6 +561,7 @@ class ChatroomChannel(models.Model):
             'body': body,
             'state': 'sent',
             'date': fields.Datetime.now(),
+            'sender_user_id': self.env.user.id,
         })
         try:
             response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)
@@ -577,7 +604,7 @@ class ChatroomChannel(models.Model):
         response.raise_for_status()
         return response.json()['id']
 
-    def action_send_message(self, body=False, attachments=None):
+    def action_send_message(self, body=False, attachments=None, reply_to_id=False):
         """Punto de entrada único usado por la interfaz de chat: envía
         texto y/o uno o varios archivos adjuntos (arrastrados o
         seleccionados) en la misma conversación.
@@ -593,8 +620,9 @@ class ChatroomChannel(models.Model):
         if not attachments:
             if not body:
                 raise UserError(_("Escribe un mensaje o adjunta un archivo."))
-            return self.action_send_text(body)
+            return self.action_send_text(body, reply_to_id=reply_to_id)
 
+        reply_to = self._get_reply_context(reply_to_id)
         token, phone_number_id, api_version = self._get_meta_credentials()
         url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
         headers = {"Authorization": f"Bearer {token}"}
@@ -608,6 +636,10 @@ class ChatroomChannel(models.Model):
             })
             media_type = self._meta_media_type(attachment.mimetype)
             caption = body if index == 0 else False
+            # La cita solo tiene sentido en el primer adjunto del lote: cada
+            # adjunto es un mensaje de WhatsApp aparte, y citar el mismo
+            # mensaje varias veces seguidas no aporta nada.
+            reply_here = reply_to if index == 0 else False
 
             message = self.env['chatroom.message'].create({
                 'channel_id': self.id,
@@ -617,6 +649,8 @@ class ChatroomChannel(models.Model):
                 'state': 'sent',
                 'date': fields.Datetime.now(),
                 'attachment_ids': [(4, attachment.id)],
+                'sender_user_id': self.env.user.id,
+                'reply_to_id': reply_here.id if reply_here else False,
             })
 
             try:
@@ -630,6 +664,8 @@ class ChatroomChannel(models.Model):
                     "type": media_type,
                     media_type: media_payload,
                 }
+                if reply_here:
+                    payload["context"] = {"message_id": reply_here.wa_message_id}
                 response = self._meta_request('POST', url, json=payload, headers=headers, timeout=60)
                 response.raise_for_status()
                 data = response.json()
@@ -650,6 +686,150 @@ class ChatroomChannel(models.Model):
         })
         self._notify_thread_update()
         return messages
+
+    def action_send_reaction(self, message_id, emoji):
+        """Reacciona con un emoji a un mensaje puntual (estilo WhatsApp: la
+        reacción se pega al mensaje citado, no genera un mensaje nuevo en
+        el hilo). Mandar emoji='' quita la reacción que había."""
+        self.ensure_one()
+        self._check_can_send()
+        if self.channel_type != 'whatsapp':
+            raise UserError(_("Las reacciones solo están implementadas "
+                               "para WhatsApp en este módulo base."))
+        target = self.env['chatroom.message'].browse(message_id)
+        if not target.exists() or target.channel_id.id != self.id:
+            raise UserError(_("No se puede reaccionar a ese mensaje."))
+        if not target.wa_message_id:
+            raise UserError(_(
+                "No se puede reaccionar: este mensaje todavía no tiene un "
+                "ID de WhatsApp confirmado (puede estar fallido o "
+                "pendiente de enviarse)."))
+
+        token, phone_number_id, api_version = self._get_meta_credentials()
+        url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": self.external_id,
+            "type": "reaction",
+            "reaction": {"message_id": target.wa_message_id, "emoji": emoji or ""},
+        }
+        headers = {"Authorization": f"Bearer {token}"}
+        try:
+            response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)
+            response.raise_for_status()
+        except requests.RequestException as exc:
+            _logger.error("Error enviando reacción de WhatsApp: %s", exc)
+            raise UserError(_("No se pudo enviar la reacción: %s") % exc)
+
+        target.write({'own_reaction': emoji or False})
+        self._notify_thread_update()
+        return True
+
+    # ------------------------------------------------------------------
+    # Reintentar un mensaje que falló (a mano, desde el chat, o solo
+    # desde el cron de reintentos automáticos)
+    # ------------------------------------------------------------------
+    def action_retry_message(self, message_id):
+        self.ensure_one()
+        message = self.env['chatroom.message'].browse(message_id)
+        if not message.exists() or message.channel_id.id != self.id \
+                or message.direction != 'outbound':
+            raise UserError(_("No se puede reintentar este mensaje."))
+        if message.message_type in ('template', 'interactive'):
+            raise UserError(_(
+                "Las plantillas y los botones de respuesta rápida no se "
+                "pueden reintentar automáticamente: mandalos de nuevo "
+                "desde el composer."))
+        if message.state != 'failed':
+            return True
+
+        self._check_can_send()
+        message.retry_count += 1
+
+        if self.channel_type != 'whatsapp':
+            return self._retry_meta_page_text(message)
+
+        token, phone_number_id, api_version = self._get_meta_credentials()
+        url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
+        headers = {"Authorization": f"Bearer {token}"}
+
+        try:
+            if message.attachment_ids:
+                attachment = message.attachment_ids[0]
+                media_id = self._upload_whatsapp_media(attachment)
+                media_payload = {'id': media_id}
+                if message.body and message.message_type in ('image', 'video', 'document'):
+                    media_payload['caption'] = message.body
+                payload = {
+                    "messaging_product": "whatsapp",
+                    "to": self.external_id,
+                    "type": message.message_type,
+                    message.message_type: media_payload,
+                }
+            else:
+                payload = {
+                    "messaging_product": "whatsapp",
+                    "to": self.external_id,
+                    "type": "text",
+                    "text": {"body": message.body},
+                }
+            response = self._meta_request('POST', url, json=payload, headers=headers, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            wa_message_id = data.get('messages', [{}])[0].get('id')
+            message.write({'wa_message_id': wa_message_id, 'state': 'sent'})
+        except (requests.RequestException, KeyError) as exc:
+            _logger.error("Error reintentando el mensaje %s: %s", message.id, exc)
+            message.write({'state': 'failed'})
+            raise UserError(_("No se pudo reenviar el mensaje: %s") % exc)
+
+        self.write({'last_message_date': fields.Datetime.now(), 'state': 'open'})
+        self._notify_thread_update()
+        return True
+
+    def _retry_meta_page_text(self, message):
+        """Reintento para Messenger/Instagram: hoy solo se reintenta
+        texto (los adjuntos salientes por esos canales no están
+        implementados, ver action_send_message)."""
+        self.ensure_one()
+        token, api_version = self._get_meta_page_credentials()
+        url = f"https://graph.facebook.com/{api_version}/me/messages"
+        payload = {
+            "recipient": {"id": self.external_id},
+            "message": {"text": message.body},
+            "messaging_type": "RESPONSE",
+        }
+        headers = {"Authorization": f"Bearer {token}"}
+        try:
+            response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)
+            response.raise_for_status()
+            message.write({'wa_message_id': response.json().get('message_id'), 'state': 'sent'})
+        except requests.RequestException as exc:
+            message.write({'state': 'failed'})
+            raise UserError(_("No se pudo reenviar el mensaje: %s") % exc)
+        self.write({'last_message_date': fields.Datetime.now(), 'state': 'open'})
+        self._notify_thread_update()
+        return True
+
+    @api.model
+    def _cron_retry_failed_messages(self):
+        """Reintenta solo, en segundo plano, mensajes fallidos recientes
+        (menos de 1 hora, hasta 3 veces): un corte de red pasajero no
+        debería obligar al agente a darse cuenta y reintentar a mano."""
+        cutoff = fields.Datetime.subtract(fields.Datetime.now(), hours=1)
+        failed = self.env['chatroom.message'].search([
+            ('direction', '=', 'outbound'),
+            ('state', '=', 'failed'),
+            ('message_type', 'not in', ('template', 'interactive')),
+            ('retry_count', '<', 3),
+            ('date', '>=', cutoff),
+        ], limit=50)
+        for message in failed:
+            try:
+                message.channel_id.action_retry_message(message.id)
+            except UserError as exc:
+                _logger.info(
+                    "Reintento automático omitido para el mensaje %s: %s", message.id, exc)
 
     def action_send_template(self, template_name, language_code, variables=None):
         """Envía una plantilla aprobada por Meta (HSM). Es la única forma
@@ -686,6 +866,7 @@ class ChatroomChannel(models.Model):
             'body': _("[Plantilla: %s]") % template_name,
             'state': 'sent',
             'date': fields.Datetime.now(),
+            'sender_user_id': self.env.user.id,
         })
         try:
             response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)
@@ -741,6 +922,7 @@ class ChatroomChannel(models.Model):
                     else "\n".join(f"[{label}]" for label in buttons),
             'state': 'sent',
             'date': fields.Datetime.now(),
+            'sender_user_id': self.env.user.id,
         })
         try:
             response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)

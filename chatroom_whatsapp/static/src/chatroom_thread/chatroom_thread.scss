@@ -185,6 +185,7 @@
 }
 
 .o_chatroom_bubble {
+    position: relative;
     max-width: 70%;
     padding: 6px 10px;
     border-radius: 10px;
@@ -243,6 +244,119 @@
 }
 
 .o_chatroom_bubble_translate {
+    cursor: pointer;
+    opacity: 0.6;
+
+    &:hover {
+        opacity: 1;
+    }
+}
+
+.o_chatroom_bubble_sender {
+    font-weight: 600;
+    opacity: 0.7;
+    margin-right: 2px;
+}
+
+.o_chatroom_bubble_retry {
+    cursor: pointer;
+    color: #d03b3b;
+    font-weight: 600;
+    white-space: nowrap;
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+.o_chatroom_bubble_reply {
+    cursor: pointer;
+    opacity: 0.6;
+
+    &:hover {
+        opacity: 1;
+    }
+}
+
+.o_chatroom_reaction_picker {
+    position: absolute;
+    top: -34px;
+    right: 4px;
+    z-index: 5;
+    display: flex;
+    gap: 4px;
+    padding: 4px 6px;
+    border-radius: 16px;
+    background-color: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.o_chatroom_reaction_option {
+    cursor: pointer;
+    font-size: 1.1em;
+    line-height: 1;
+    padding: 2px;
+    border-radius: 50%;
+    transition: transform 0.1s ease-in-out;
+
+    &:hover {
+        transform: scale(1.25);
+    }
+}
+
+.o_chatroom_bubble_reactions {
+    position: absolute;
+    bottom: -10px;
+    right: 6px;
+    display: flex;
+    gap: 2px;
+    padding: 1px 4px;
+    border-radius: 10px;
+    background-color: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    font-size: 0.85em;
+    line-height: 1.4;
+}
+
+.o_chatroom_reply_preview {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    margin-bottom: 6px;
+    padding: 4px 8px;
+    background-color: #f0f2f5;
+    border-radius: 6px;
+}
+
+.o_chatroom_reply_preview_bar {
+    flex: 0 0 auto;
+    width: 3px;
+    border-radius: 2px;
+    background-color: var(--o-brand-primary, #714B67);
+}
+
+.o_chatroom_reply_preview_body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.o_chatroom_reply_preview_label {
+    font-size: 0.75em;
+    font-weight: 600;
+    color: var(--o-brand-primary, #714B67);
+}
+
+.o_chatroom_reply_preview_text {
+    font-size: 0.8em;
+    color: #667781;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_chatroom_reply_preview_close {
+    flex: 0 0 auto;
+    align-self: center;
     cursor: pointer;
     opacity: 0.6;
 

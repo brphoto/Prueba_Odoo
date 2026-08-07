@@ -99,6 +99,28 @@
     color: #ffe69c;
 }
 
+.o_chatroom_reply_preview {
+    background-color: #202c33;
+}
+
+.o_chatroom_reply_preview_bar {
+    background-color: #00a884;
+}
+
+.o_chatroom_reply_preview_label {
+    color: #00a884;
+}
+
+.o_chatroom_reply_preview_text {
+    color: #8696a0;
+}
+
+.o_chatroom_reaction_picker,
+.o_chatroom_bubble_reactions {
+    background-color: #233138;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
 .o_chatroom_composer_note_mode {
     background-color: #332a10;
 }

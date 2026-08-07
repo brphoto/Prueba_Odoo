@@ -21,7 +21,14 @@ const MESSAGE_FIELDS = [
     "date",
     "attachment_ids",
     "reply_to_id",
+    "sender_user_id",
+    "retry_count",
+    "wa_message_id",
+    "own_reaction",
+    "partner_reaction",
 ];
+
+const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
 function odooDatetimeToDate(value) {
     if (!value) {
@@ -56,6 +63,7 @@ export class ChatroomThreadCore extends Component {
         this.busService = useService("bus_service");
         this.fileInput = useRef("fileInput");
         this.messagesRef = useRef("messages");
+        this.REACTION_EMOJIS = REACTION_EMOJIS;
 
         this._busChannel = false;
 
@@ -80,6 +88,8 @@ export class ChatroomThreadCore extends Component {
             noteMode: false,
             assignedUserId: false,
             agents: [],
+            replyingTo: false,
+            reactingToId: false,
         });
 
         this._shouldScroll = true;
@@ -152,6 +162,8 @@ export class ChatroomThreadCore extends Component {
         this.state.quickButtonsOpen = false;
         this.state.cannedOpen = false;
         this.state.noteMode = false;
+        this.state.replyingTo = false;
+        this.state.reactingToId = false;
         if (!channelId) {
             this.state.loading = false;
             this.state.messages = [];
@@ -326,6 +338,53 @@ export class ChatroomThreadCore extends Component {
         return this.state.messages.find((m) => m.id === message.reply_to_id[0]) || false;
     }
 
+    canReply(message) {
+        // Meta solo deja citar mensajes que ya tienen un wa_message_id
+        // confirmado, y solo implementamos la cita del lado de WhatsApp
+        // (Messenger/Instagram no están verificados con este flujo).
+        return this.state.channelType === "whatsapp"
+            && !message.isNote
+            && Boolean(message.wa_message_id);
+    }
+
+    startReply(message) {
+        this.state.replyingTo = message;
+    }
+
+    cancelReply() {
+        this.state.replyingTo = false;
+    }
+
+    replyingToLabel() {
+        const msg = this.state.replyingTo;
+        if (!msg) {
+            return "";
+        }
+        if (msg.direction === "inbound") {
+            return this.state.channelName;
+        }
+        return this.senderName(msg) || "vos";
+    }
+
+    toggleReactionPicker(message) {
+        this.state.reactingToId = this.state.reactingToId === message.id ? false : message.id;
+    }
+
+    async sendReaction(message, emoji) {
+        this.state.reactingToId = false;
+        const newEmoji = message.own_reaction === emoji ? "" : emoji;
+        try {
+            await this.orm.call(
+                "chatroom.channel", "action_send_reaction",
+                [this.channelId, message.id], { emoji: newEmoji });
+            message.own_reaction = newEmoji || false;
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
+    }
+
     async translateMessage(message) {
         if (message.translating) {
             return;
@@ -391,6 +450,28 @@ export class ChatroomThreadCore extends Component {
             read: "fa-check-double text-primary",
             failed: "fa-exclamation-circle text-danger",
         }[message.state] || "fa-clock-o text-muted";
+    }
+
+    senderName(message) {
+        return message.sender_user_id ? message.sender_user_id[1] : "";
+    }
+
+    async retryMessage(message) {
+        if (message.retrying || !this.channelId) {
+            return;
+        }
+        message.retrying = true;
+        try {
+            await this.orm.call(
+                "chatroom.channel", "action_retry_message", [this.channelId, message.id]);
+            await this._loadMessages();
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        } finally {
+            message.retrying = false;
+        }
     }
 
     openPartner() {
@@ -614,6 +695,7 @@ export class ChatroomThreadCore extends Component {
         if (!body && !attachments.length && !buttons.length) {
             return;
         }
+        const replyToId = this.state.replyingTo ? this.state.replyingTo.id : false;
         this.state.sending = true;
         try {
             if (buttons.length) {
@@ -633,10 +715,12 @@ export class ChatroomThreadCore extends Component {
                         mimetype,
                         data,
                     })),
+                    reply_to_id: replyToId,
                 });
             }
             this.state.composerText = "";
             this.state.pendingAttachments = [];
+            this.state.replyingTo = false;
             await this._loadMessages();
             await this._loadChannel();
         } catch (error) {

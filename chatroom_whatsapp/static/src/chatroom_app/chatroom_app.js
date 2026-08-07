@@ -150,7 +150,15 @@ export class ChatroomApp extends Component {
         }
         if (this.state.searchText.trim()) {
             const term = this.state.searchText.trim();
-            domain.push("|", ["display_name", "ilike", term], ["partner_id", "ilike", term]);
+            // Busca por nombre del contacto/canal o por el contenido de
+            // cualquier mensaje de la conversación (para encontrar "quién
+            // preguntó por X" sin abrir chat por chat).
+            domain.push(
+                "|", "|",
+                ["display_name", "ilike", term],
+                ["partner_id", "ilike", term],
+                ["message_ids.body", "ilike", term],
+            );
         }
         return domain;
     }

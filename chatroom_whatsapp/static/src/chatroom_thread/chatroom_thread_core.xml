@@ -103,14 +103,43 @@
                                 <span t-esc="message.translatedBody"/>
                             </div>
                             <div class="o_chatroom_bubble_meta">
+                                <i t-if="canReply(message)"
+                                   class="fa fa-smile-o o_chatroom_bubble_reply"
+                                   title="Reaccionar"
+                                   t-on-click="() => this.toggleReactionPicker(message)"/>
+                                <i t-if="canReply(message)"
+                                   class="fa fa-reply o_chatroom_bubble_reply"
+                                   title="Responder citando"
+                                   t-on-click="() => this.startReply(message)"/>
                                 <i t-if="message.body and message.direction === 'inbound'"
                                    class="fa fa-language o_chatroom_bubble_translate"
                                    title="Traducir mensaje"
                                    t-on-click="() => this.translateMessage(message)"/>
                                 <i t-if="message.translating" class="fa fa-spin fa-circle-o-notch"/>
+                                <span class="o_chatroom_bubble_sender" t-if="senderName(message)"
+                                      t-esc="senderName(message)"/>
                                 <span class="o_chatroom_bubble_time" t-esc="formatTime(message.dateObj)"/>
+                                <a t-if="message.state === 'failed'" class="o_chatroom_bubble_retry"
+                                   title="Reintentar envío" t-on-click="() => this.retryMessage(message)">
+                                    <i t-if="message.retrying" class="fa fa-spin fa-circle-o-notch"/>
+                                    <t t-else="">
+                                        <i class="fa fa-refresh"/> Reintentar
+                                    </t>
+                                </a>
                                 <i t-if="message.direction === 'outbound'"
                                    t-attf-class="fa {{ statusIcon(message) }} o_chatroom_bubble_status"/>
+                            </div>
+                            <div class="o_chatroom_reaction_picker" t-if="state.reactingToId === message.id">
+                                <t t-foreach="REACTION_EMOJIS" t-as="emoji" t-key="emoji">
+                                    <span class="o_chatroom_reaction_option"
+                                          t-on-click="() => this.sendReaction(message, emoji)"
+                                          t-esc="emoji"/>
+                                </t>
+                            </div>
+                            <div class="o_chatroom_bubble_reactions"
+                                 t-if="message.own_reaction or message.partner_reaction">
+                                <span t-if="message.partner_reaction" t-esc="message.partner_reaction"/>
+                                <span t-if="message.own_reaction" t-esc="message.own_reaction"/>
                             </div>
                         </div>
                     </t>
@@ -151,6 +180,18 @@
                     </button>
                 </div>
                 <div t-else="">
+                    <div class="o_chatroom_reply_preview" t-if="state.replyingTo">
+                        <div class="o_chatroom_reply_preview_bar"/>
+                        <div class="o_chatroom_reply_preview_body">
+                            <div class="o_chatroom_reply_preview_label">
+                                Respondiendo a <t t-esc="replyingToLabel()"/>
+                            </div>
+                            <div class="o_chatroom_reply_preview_text"
+                                 t-esc="(state.replyingTo.body || '').slice(0, 120)"/>
+                        </div>
+                        <i class="fa fa-times o_chatroom_reply_preview_close" title="Cancelar"
+                           t-on-click="cancelReply"/>
+                    </div>
                     <div class="o_chatroom_quick_buttons_panel" t-if="state.quickButtonsOpen">
                         <div class="o_chatroom_quick_buttons_hint text-muted">
                             Hasta 3 botones de respuesta rápida:

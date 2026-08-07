@@ -72,10 +72,33 @@ plana:
   de solo un ícono con la inicial cuando hay una cargada.
 - **Separadores de fecha** ("Hoy", "Ayer" o la fecha) entre bloques de
   mensajes de días distintos, igual que WhatsApp.
-- **Mensajes citados**: cuando el cliente responde a un mensaje concreto
-  desde WhatsApp, la burbuja muestra una vista previa del mensaje
-  original citado (se extrae del campo `context.id` que envía Meta en el
-  webhook y se resuelve contra `wa_message_id`).
+- **Mensajes citados (en los dos sentidos)**: cuando el cliente responde a
+  un mensaje concreto desde WhatsApp, la burbuja muestra una vista previa
+  del mensaje original citado (se extrae del campo `context.id` que envía
+  Meta en el webhook y se resuelve contra `wa_message_id`). Y desde
+  nuestro lado, el ícono de responder (📩) en cualquier burbuja con
+  `wa_message_id` confirmado arma la cita: el composer muestra qué se está
+  citando (con botón para cancelar) y el mensaje sale con
+  `context: {message_id}` hacia el Graph API, así aparece como respuesta
+  citada también del lado del cliente. Solo implementado para WhatsApp
+  (Messenger/Instagram no soportan este flujo todavía en este módulo).
+- **Reacciones con emoji**: ícono de carita en cada burbuja abre un
+  selector de 6 emojis comunes (👍❤️😂😮😢🙏); reaccionar (o volver a
+  tocar el mismo emoji para quitarla) manda un mensaje `type: reaction`
+  al Graph API y la reacción se pega como una etiqueta sobre la esquina
+  de la burbuja, sin generar un mensaje nuevo en el hilo — igual que en
+  la app real de WhatsApp. Las reacciones que manda el cliente también se
+  reciben por webhook y se muestran igual.
+- **Reintentar envíos fallidos**: los mensajes marcados como `Fallido`
+  muestran un enlace "Reintentar" en la burbuja; también hay un cron
+  (`Chatroom: reintentar mensajes fallidos`, cada 10 minutos) que
+  reintenta automáticamente hasta 3 veces los mensajes de texto/adjunto
+  fallidos de la última hora (las plantillas y los botones interactivos
+  quedan afuera del reintento automático porque su contenido puede
+  necesitar ajustes manuales).
+- **Quién mandó cada mensaje**: los mensajes salientes muestran el nombre
+  del agente que los escribió (vacío en los que mandó la automatización
+  de IA, que corre con el usuario del webhook).
 - **Traducir un mensaje entrante**: ícono de traducción en cada burbuja
   entrante con texto; llama al mismo proveedor de IA configurado y
   muestra la traducción al idioma del usuario debajo del mensaje
@@ -85,8 +108,11 @@ plana:
 
 **Chatroom > Chatroom** (el ícono de la app, primer ítem del menú) abre una
 pantalla única en vez de navegar entre kanban/lista/formulario: lista de
-conversaciones a la izquierda (buscador, filtros *Todas / No leídas / Mías*
-y un selector de línea) + la conversación abierta a la derecha, con el
+conversaciones a la izquierda (buscador —que busca tanto por nombre de
+contacto como dentro del **contenido de los mensajes**, para encontrar
+"quién preguntó por X" sin abrir chat por chat—, filtros
+*Todas / No leídas / Mías* y un selector de línea) + la conversación
+abierta a la derecha, con el
 mismo widget de burbujas de siempre (`chatroom_thread_core`, ahora
 reutilizado en vez de duplicado). En pantallas angostas (celular/tablet)
 la lista y el chat ocupan toda la pantalla por turnos, con un botón de
@@ -552,3 +578,14 @@ Pensado para tráfico real, no solo para la demo:
   "solo dígitos" a nivel SQL sin una extensión de PostgreSQL); en bases
   de datos con cientos de miles de contactos esto puede ser lento — no
   es un problema para el volumen típico de una pyme o empresa mediana.
+- **Reintentos de envío, búsqueda por contenido de mensaje, trazabilidad
+  de agente, citar respondiendo y reaccionar con emoji son nuevos en
+  esta iteración**: se validó sintaxis (`py_compile` de los tres archivos
+  Python tocados, parseo del XML del template) y se revisó el payload
+  del Graph API (`context`/`reaction`) contra la documentación de la
+  Cloud API de Meta, pero **no se probaron todavía en un navegador contra
+  un Odoo corriendo** — a diferencia de otras secciones de este README,
+  esta no tiene una prueba end-to-end real detrás todavía. Antes de
+  confiar en producción conviene probar a mano: reintentar un mensaje
+  fallido, citar un mensaje real, reaccionar y confirmar que la reacción
+  llega también desde el lado del cliente.
