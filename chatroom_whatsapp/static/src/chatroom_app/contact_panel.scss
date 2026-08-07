@@ -125,6 +125,15 @@
     min-width: 0;
 }
 
+.o_chatroom_contact_doc_link {
+    cursor: pointer;
+
+    &:hover {
+        color: var(--o-brand-primary, #714B67);
+        text-decoration: underline;
+    }
+}
+
 .o_chatroom_contact_doc_amount {
     flex: 0 0 auto;
     color: #667781;

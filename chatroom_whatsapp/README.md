@@ -265,8 +265,17 @@ un panel lateral con:
 - Contadores clicables de Oportunidades, Ventas, Compras, Facturas y
   Tareas (cada uno se oculta solo si el módulo correspondiente no está
   instalado, igual que los stat buttons de la ficha clásica).
-- Botones para crear una Oportunidad, un Presupuesto o una Tarea sin
-  salir del contexto de la conversación.
+- Botones para crear una Oportunidad, un Presupuesto o una Tarea.
+- **Todo lo anterior (contadores, crear, y el nombre de cada presupuesto/
+  factura reciente) abre el formulario o la lista real de Odoo como
+  diálogo encima de la app, no navegando a otra pantalla** — es la
+  vista normal de Odoo (con sus botones nativos: Confirmar, Crear
+  factura, Registrar pago, etc.), no una versión reducida propia. Cerrar
+  el diálogo te deja exactamente donde estabas, con el panel actualizado.
+  Así, para pasar un Presupuesto a Factura: abrilo desde "Crear
+  Presupuesto" o desde la lista de recientes, agregale las líneas,
+  confirmalo y usá el botón "Crear factura" del propio formulario de
+  Odoo — sin salir nunca del chat.
 - **Últimos presupuestos y facturas del contacto, con un botón para
   mandar el PDF directo por la misma conversación de WhatsApp** (botón
   de avión de papel junto a cada uno): genera el reporte con el motor de

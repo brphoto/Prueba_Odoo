@@ -74,7 +74,10 @@
                     <h6>Presupuestos recientes</h6>
                     <t t-foreach="state.data.recent_orders" t-as="order" t-key="order.id">
                         <div class="o_chatroom_contact_doc_row">
-                            <span class="o_chatroom_contact_doc_name text-truncate" t-esc="order.name"/>
+                            <span class="o_chatroom_contact_doc_name text-truncate o_chatroom_contact_doc_link"
+                                  title="Abrir presupuesto"
+                                  t-on-click="() => this.openRecord('sale.order', order.id)"
+                                  t-esc="order.name"/>
                             <span class="o_chatroom_contact_doc_amount"
                                   t-esc="formatMoney(order.amount_total, order.currency_symbol)"/>
                             <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
@@ -92,7 +95,10 @@
                     <h6>Facturas recientes</h6>
                     <t t-foreach="state.data.recent_invoices" t-as="invoice" t-key="invoice.id">
                         <div class="o_chatroom_contact_doc_row">
-                            <span class="o_chatroom_contact_doc_name text-truncate" t-esc="invoice.name"/>
+                            <span class="o_chatroom_contact_doc_name text-truncate o_chatroom_contact_doc_link"
+                                  title="Abrir factura"
+                                  t-on-click="() => this.openRecord('account.move', invoice.id)"
+                                  t-esc="invoice.name"/>
                             <span class="o_chatroom_contact_doc_amount"
                                   t-esc="formatMoney(invoice.amount_total, invoice.currency_symbol)"/>
                             <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"

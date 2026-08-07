@@ -69,23 +69,43 @@ export class ContactPanel extends Component {
         return symbol ? `${value} ${symbol}` : value;
     }
 
+    // Todo lo que abre un formulario/lista de Odoo se abre como diálogo
+    // (target "new") encima de la app, no navegando afuera: el pedido
+    // explícito fue no perder el chat para ir a buscar Ventas/Facturas
+    // a otro lado. Es el formulario real de Odoo (con sus botones
+    // nativos: Confirmar, Crear factura, etc.), no una versión propia.
     openPartner() {
         if (!this.state.data || !this.state.data.partner_id) {
             return;
         }
-        this.action.doAction({
+        this._openDialog({
             type: "ir.actions.act_window",
             res_model: "res.partner",
             res_id: this.state.data.partner_id,
             views: [[false, "form"]],
-            target: "current",
         });
+    }
+
+    openRecord(resModel, resId) {
+        this._openDialog({
+            type: "ir.actions.act_window",
+            res_model: resModel,
+            res_id: resId,
+            views: [[false, "form"]],
+        });
+    }
+
+    _openDialog(action) {
+        this.action.doAction(
+            { ...action, target: "new" },
+            { onClose: () => this._reload() }
+        );
     }
 
     async _openChannelAction(methodName) {
         const result = await this.orm.call(
             "chatroom.channel", methodName, [this.props.channelId]);
-        this.action.doAction(result);
+        this._openDialog(result);
     }
 
     openLeads() {
@@ -108,19 +128,16 @@ export class ContactPanel extends Component {
         this._openChannelAction("action_view_tasks");
     }
 
-    async createLead() {
-        await this._openChannelAction("action_create_lead");
-        await this._reload();
+    createLead() {
+        this._openChannelAction("action_create_lead");
     }
 
-    async createQuotation() {
-        await this._openChannelAction("action_create_quotation");
-        await this._reload();
+    createQuotation() {
+        this._openChannelAction("action_create_quotation");
     }
 
-    async createTask() {
-        await this._openChannelAction("action_create_task");
-        await this._reload();
+    createTask() {
+        this._openChannelAction("action_create_task");
     }
 
     async sendOrderPdf(order) {
@@ -166,9 +183,9 @@ export class ContactPanel extends Component {
         return `/web/image/product.product/${product.id}/image_128`;
     }
 
-    openProductCatalog() {
-        this.orm.call("chatroom.channel", "action_view_products", []).then(
-            (result) => this.action.doAction(result));
+    async openProductCatalog() {
+        const result = await this.orm.call("chatroom.channel", "action_view_products", []);
+        this._openDialog(result);
     }
 
     async sendProduct(product) {

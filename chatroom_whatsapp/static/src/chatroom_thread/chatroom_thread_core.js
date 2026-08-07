@@ -397,12 +397,15 @@ export class ChatroomThreadCore extends Component {
         if (!this.state.partnerId) {
             return;
         }
+        // target "new" (diálogo encima) en vez de "current": abrir el
+        // contacto no debe hacerte perder la conversación que tenías
+        // abierta, ni en la app ni en el formulario clásico.
         this.action.doAction({
             type: "ir.actions.act_window",
             res_model: "res.partner",
             res_id: this.state.partnerId,
             views: [[false, "form"]],
-            target: "current",
+            target: "new",
         });
     }
 
