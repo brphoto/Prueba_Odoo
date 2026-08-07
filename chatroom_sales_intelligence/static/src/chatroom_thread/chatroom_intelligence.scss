@@ -60,11 +60,15 @@
 // Handle para abrir/cerrar el panel lateral (además del gesto de swipe)
 // ------------------------------------------------------------------
 .o_chatroom_intel_handle {
+    // Se posiciona pegado abajo (no verticalmente centrado ni arriba) a
+    // propósito: chatroom_whatsapp ya tiene su propio botón de panel
+    // ("Datos del contacto") arriba a la derecha (top:10px, right:10px,
+    // z-index:5) en la app de una sola pantalla. Compartir esa esquina
+    // haría que uno tape al otro cuando ambos paneles están disponibles.
     position: absolute;
-    top: 50%;
+    bottom: 90px;
     right: 0;
-    transform: translateY(-50%);
-    z-index: 6;
+    z-index: 4;
     width: 22px;
     height: 56px;
     border: none;
@@ -84,6 +88,9 @@
 // Panel lateral deslizable
 // ------------------------------------------------------------------
 .o_chatroom_intel_panel {
+    // z-index por debajo del botón "Datos del contacto" de
+    // chatroom_whatsapp (z-index:5) para que ese botón se siga viendo y
+    // pudiéndose clickear por encima del panel cuando ambos coexisten.
     position: absolute;
     top: 0;
     right: 0;
@@ -95,7 +102,7 @@
     box-shadow: -4px 0 12px rgba(0, 0, 0, 0.12);
     transform: translateX(100%);
     transition: transform 0.2s ease-in-out;
-    z-index: 7;
+    z-index: 4;
     display: flex;
     flex-direction: column;
     overflow-y: auto;
