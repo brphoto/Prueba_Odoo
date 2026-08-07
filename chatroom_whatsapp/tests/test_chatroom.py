@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+from datetime import timedelta
+
 from odoo.exceptions import UserError
+from odoo.fields import Datetime
 from odoo.tests import TransactionCase, tagged
 
 from ..controllers.whatsapp_webhook import WhatsAppWebhookController
@@ -209,3 +212,160 @@ class TestChatroomWhatsapp(TransactionCase):
 
         self.assertFalse(wizard.connection_ok)
         self.assertTrue(wizard.connection_result)
+
+    def test_sla_state_none_without_inbound_messages(self):
+        partner = self.env['res.partner'].create({'name': "Cliente SLA 1"})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': '573001110001', 'partner_id': partner.id,
+        })
+        self.assertEqual(channel.first_response_sla_state, 'none')
+
+    def test_sla_turns_red_when_no_reply_past_threshold(self):
+        partner = self.env['res.partner'].create({'name': "Cliente SLA 2"})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': '573001110002', 'partner_id': partner.id,
+        })
+        self.env['chatroom.message'].create({
+            'channel_id': channel.id, 'direction': 'inbound', 'message_type': 'text',
+            'body': "Hola, ¿tienen stock?", 'date': Datetime.now() - timedelta(minutes=90),
+        })
+
+        self.assertEqual(channel.first_response_sla_state, 'red')
+        self.assertGreaterEqual(channel.pending_response_minutes, 60)
+
+    def test_sla_turns_green_once_agent_replies(self):
+        partner = self.env['res.partner'].create({'name': "Cliente SLA 3"})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': '573001110003', 'partner_id': partner.id,
+        })
+        inbound_date = Datetime.now() - timedelta(minutes=90)
+        self.env['chatroom.message'].create({
+            'channel_id': channel.id, 'direction': 'inbound', 'message_type': 'text',
+            'body': "Hola", 'date': inbound_date,
+        })
+        self.env['chatroom.message'].create({
+            'channel_id': channel.id, 'direction': 'outbound', 'message_type': 'text',
+            'body': "¡Hola! Sí, tenemos stock.", 'date': inbound_date + timedelta(minutes=5),
+        })
+
+        self.assertEqual(channel.first_response_sla_state, 'green')
+        self.assertEqual(channel.pending_response_minutes, 0)
+        self.assertEqual(channel.first_response_minutes, 5.0)
+
+    def test_sla_breach_cron_notifies_once_and_resets_on_reply(self):
+        agent = self.env['res.users'].create({
+            'name': "Agente SLA", 'login': 'agente_sla_test', 'email': 'agente_sla_test@example.com',
+        })
+        partner = self.env['res.partner'].create({'name': "Cliente SLA 4"})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': '573001110004', 'partner_id': partner.id,
+            'assigned_user_id': agent.id, 'state': 'open',
+        })
+        self.env['chatroom.message'].create({
+            'channel_id': channel.id, 'direction': 'inbound', 'message_type': 'text',
+            'body': "Hola", 'date': Datetime.now() - timedelta(minutes=90),
+        })
+
+        def chatter_count():
+            # 'message_ids' en chatroom.channel está tapado por el
+            # One2many propio a chatroom.message (las burbujas del chat);
+            # el aviso del cron se manda por el chatter de mail.thread,
+            # que solo se puede contar buscando mail.message por afuera.
+            return self.env['mail.message'].search_count(
+                [('model', '=', 'chatroom.channel'), ('res_id', '=', channel.id)])
+
+        chatter_before = chatter_count()
+
+        self.env['chatroom.channel']._cron_notify_sla_breach()
+        self.assertTrue(channel.sla_breach_notified)
+        self.assertGreater(chatter_count(), chatter_before)
+
+        chatter_after_first_run = chatter_count()
+        self.env['chatroom.channel']._cron_notify_sla_breach()
+        self.assertEqual(chatter_count(), chatter_after_first_run,
+                          "no debe mandar un segundo aviso mientras siga en rojo")
+
+        self.env['chatroom.message'].create({
+            'channel_id': channel.id, 'direction': 'outbound', 'message_type': 'text', 'body': "Ya te respondo",
+        })
+        self.env['chatroom.channel']._cron_notify_sla_breach()
+        self.assertFalse(channel.sla_breach_notified)
+
+    def test_close_without_credentials_does_not_raise(self):
+        """Cerrar la conversación dispara la encuesta de satisfacción,
+        pero si falla el envío (sin credenciales configuradas) el cierre
+        en sí no debe romperse."""
+        self.env['ir.config_parameter'].sudo().set_param('chatroom_whatsapp.access_token', False)
+        self.env['ir.config_parameter'].sudo().set_param('chatroom_whatsapp.phone_number_id', False)
+        partner = self.env['res.partner'].create({'name': "Cliente CSAT 1"})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': '573001120001', 'partner_id': partner.id,
+        })
+        self.env['chatroom.message'].create({
+            'channel_id': channel.id, 'direction': 'inbound', 'message_type': 'text', 'body': "Hola",
+        })
+
+        channel.action_close()
+
+        self.assertEqual(channel.state, 'closed')
+        self.assertFalse(channel.csat_requested)
+
+    def test_csat_reply_records_score(self):
+        partner = self.env['res.partner'].create({'name': "Cliente CSAT 2"})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': '573001120002', 'partner_id': partner.id,
+            'csat_requested': True,
+        })
+
+        channel._handle_interactive_reply('interactive', {
+            'interactive': {'list_reply': {'id': 'csat_4', 'title': '⭐⭐⭐⭐'}},
+        })
+
+        self.assertEqual(channel.csat_score, 4)
+        self.assertFalse(channel.csat_requested)
+        self.assertTrue(channel.csat_answered_at)
+
+    def test_csat_reply_ignored_when_no_survey_pending(self):
+        """Sin una encuesta pendiente (csat_requested=False), un mensaje
+        interactivo cualquiera no debe poder 'inventar' una calificación."""
+        partner = self.env['res.partner'].create({'name': "Cliente CSAT 3"})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': '573001120003', 'partner_id': partner.id,
+        })
+
+        channel._handle_interactive_reply('interactive', {
+            'interactive': {'list_reply': {'id': 'csat_5', 'title': '⭐⭐⭐⭐⭐'}},
+        })
+
+        self.assertFalse(channel.csat_score)
+
+    def test_catalog_reply_adds_product_to_cart(self):
+        if 'product.product' not in self.env:
+            self.skipTest("Módulo de productos no instalado")
+        product = self.env['product.product'].create({
+            'name': "Producto de catálogo test", 'list_price': 10.0})
+        partner = self.env['res.partner'].create({'name': "Cliente Catálogo"})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': '573001120004', 'partner_id': partner.id,
+        })
+
+        channel._handle_interactive_reply('interactive', {
+            'interactive': {'list_reply': {'id': f'prod_{product.id}', 'title': product.name}},
+        })
+
+        self.assertEqual(len(channel.cart_line_ids), 1)
+        self.assertEqual(channel.cart_line_ids.product_id, product.id)
+
+    def test_send_product_catalog_creates_list_message(self):
+        if 'product.product' not in self.env:
+            self.skipTest("Módulo de productos no instalado")
+        self.env['ir.config_parameter'].sudo().set_param('chatroom_whatsapp.access_token', False)
+        self.env['ir.config_parameter'].sudo().set_param('chatroom_whatsapp.phone_number_id', False)
+        product = self.env['product.product'].create({'name': "Producto catálogo", 'list_price': 5.0})
+        partner = self.env['res.partner'].create({'name': "Cliente Catálogo 2"})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': '573001120005', 'partner_id': partner.id,
+        })
+
+        with self.assertRaises(UserError):
+            channel.action_send_product_catalog(product.ids)

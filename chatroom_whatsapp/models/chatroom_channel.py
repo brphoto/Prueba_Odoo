@@ -27,6 +27,11 @@ MESSAGE_TYPE_PREVIEW = {
     'other': "📎 Adjunto",
 }
 
+# Umbral de SLA de primera respuesta: minutos desde el primer mensaje del
+# cliente hasta la primera respuesta de un agente en esa conversación.
+SLA_FIRST_RESPONSE_YELLOW_MINUTES = 15
+SLA_FIRST_RESPONSE_RED_MINUTES = 60
+
 
 class ChatroomChannel(models.Model):
     """Una conversación (WhatsApp / Messenger / Instagram) con un contacto.
@@ -107,11 +112,91 @@ class ChatroomChannel(models.Model):
     cart_line_ids = fields.One2many(
         'chatroom.cart.line', 'channel_id', string="Carrito (IA)")
     cart_total = fields.Float(compute='_compute_cart_total')
+    pending_response_minutes = fields.Integer(
+        compute='_compute_first_response_sla', string="Minutos esperando 1ra respuesta")
+    first_response_sla_state = fields.Selection(
+        [('none', "Sin mensajes del cliente"),
+         ('green', "A tiempo"),
+         ('yellow', "Por vencer"),
+         ('red', "Vencido")],
+        compute='_compute_first_response_sla', string="SLA 1ra respuesta")
+    sla_breach_notified = fields.Boolean(
+        default=False, copy=False,
+        help="Ya se le avisó al agente asignado que esta conversación "
+             "está en rojo de SLA; evita mandarle el mismo aviso en cada "
+             "corrida del cron. Se reinicia solo en cuanto un agente "
+             "responde o llega una conversación nueva.")
+    csat_score = fields.Integer(string="Calificación del cliente (1-5)", copy=False)
+    csat_requested = fields.Boolean(
+        default=False, copy=False,
+        help="Hay una encuesta de satisfacción mandada esperando "
+             "respuesta del cliente.")
+    csat_answered_at = fields.Datetime(copy=False)
 
     @api.depends('cart_line_ids.quantity', 'cart_line_ids.price_unit')
     def _compute_cart_total(self):
         for rec in self:
             rec.cart_total = sum(line.quantity * line.price_unit for line in rec.cart_line_ids)
+
+    @api.depends('message_ids.direction', 'message_ids.date')
+    def _compute_first_response_sla(self):
+        """Semáforo en vivo (no está 'store', a diferencia del campo
+        'first_response_minutes' que ya existe para promediar tiempos de
+        respuesta en las métricas): mientras no haya respuesta saliente
+        cuenta los minutos que lleva esperando el cliente, para poder
+        avisar de un SLA vencido incluso sin que nadie haya respondido
+        todavía (algo que un campo calculado solo al responder no puede
+        mostrar)."""
+        now = fields.Datetime.now()
+        for rec in self:
+            first_inbound = rec.message_ids.filtered(lambda m: m.direction == 'inbound').sorted('date')[:1]
+            if not first_inbound:
+                rec.pending_response_minutes = 0
+                rec.first_response_sla_state = 'none'
+                continue
+            first_inbound_date = first_inbound.date
+            first_outbound = rec.message_ids.filtered(
+                lambda m: m.direction == 'outbound' and m.date >= first_inbound_date
+            ).sorted('date')[:1]
+            if first_outbound:
+                rec.pending_response_minutes = 0
+                rec.first_response_sla_state = 'green'
+                continue
+            minutes = int((now - first_inbound_date).total_seconds() / 60)
+            rec.pending_response_minutes = minutes
+            if minutes < SLA_FIRST_RESPONSE_YELLOW_MINUTES:
+                rec.first_response_sla_state = 'green'
+            elif minutes < SLA_FIRST_RESPONSE_RED_MINUTES:
+                rec.first_response_sla_state = 'yellow'
+            else:
+                rec.first_response_sla_state = 'red'
+
+    @api.model
+    def _cron_notify_sla_breach(self):
+        """Avisa una sola vez por conversación cuando se vence el SLA de
+        primera respuesta (rojo), igual que el aviso de oportunidades
+        estancadas en crm_customer_intelligence: se manda como
+        notificación (message_type='notification' por defecto) para que
+        NO cuente como respuesta y no reinicie el semáforo sola."""
+        channels = self.search([('state', 'in', ('open', 'pending'))])
+        for channel in channels:
+            if channel.first_response_sla_state == 'red':
+                if not channel.sla_breach_notified and channel.assigned_user_id:
+                    channel.message_post(
+                        body=_(
+                            "⏱️ Esta conversación lleva %(minutes)s minutos "
+                            "sin primera respuesta (SLA vencido). Contactá "
+                            "a %(contact)s."
+                        ) % {
+                            'minutes': channel.pending_response_minutes,
+                            'contact': channel.partner_id.name or channel.external_id,
+                        },
+                        partner_ids=[channel.assigned_user_id.partner_id.id],
+                        subtype_xmlid='mail.mt_comment',
+                    )
+                    channel.sla_breach_notified = True
+            elif channel.sla_breach_notified:
+                channel.sla_breach_notified = False
 
     # No es un Many2one a 'crm.lead': CRM es un módulo opcional (no está
     # en 'depends'), y un campo relacional a un modelo no instalado rompe
@@ -1116,6 +1201,159 @@ class ChatroomChannel(models.Model):
         self._notify_thread_update()
         return message
 
+    def _send_interactive_list(self, body, button_label, rows, message_type_body):
+        """Base común para mensajes interactivos tipo 'lista' (hasta 10
+        filas, a diferencia de los botones que solo permiten 3): la
+        encuesta de satisfacción y el catálogo de productos la reusan."""
+        self.ensure_one()
+        self._check_can_send()
+        if self.channel_type != 'whatsapp':
+            raise UserError(_("El envío directo aún solo está implementado "
+                               "para WhatsApp en este módulo base."))
+        token, phone_number_id, api_version = self._get_meta_credentials()
+        url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": self.external_id,
+            "type": "interactive",
+            "interactive": {
+                "type": "list",
+                "body": {"text": body},
+                "action": {
+                    "button": button_label[:20],
+                    "sections": [{"rows": rows}],
+                },
+            },
+        }
+        headers = {"Authorization": f"Bearer {token}"}
+
+        message = self.env['chatroom.message'].create({
+            'channel_id': self.id,
+            'direction': 'outbound',
+            'message_type': 'interactive',
+            'body': message_type_body,
+            'state': 'sent',
+            'date': fields.Datetime.now(),
+            'sender_user_id': self.env.user.id,
+        })
+        try:
+            response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)
+            response.raise_for_status()
+            wa_message_id = response.json().get('messages', [{}])[0].get('id')
+            message.write({'wa_message_id': wa_message_id})
+        except requests.RequestException as exc:
+            _logger.error("Error enviando mensaje de lista de WhatsApp: %s", exc)
+            message.write({'state': 'failed'})
+            raise UserError(_("No se pudo enviar el mensaje: %s") % exc)
+
+        self.write({'last_message_date': fields.Datetime.now(), 'state': 'open'})
+        self._notify_thread_update()
+        return message
+
+    def action_send_csat_survey(self):
+        """Manda la encuesta de satisfacción (1 a 5) como mensaje de lista
+        interactiva. Se llama sola al cerrar la conversación, pero también
+        se puede volver a mandar a mano desde el botón del formulario."""
+        self.ensure_one()
+        rows = [
+            {"id": f"csat_{score}", "title": "⭐" * score, "description": label}
+            for score, label in (
+                (1, _("Muy mala")), (2, _("Mala")), (3, _("Regular")),
+                (4, _("Buena")), (5, _("Excelente")))
+        ]
+        message = self._send_interactive_list(
+            _("¿Cómo calificarías la atención que recibiste? (1 a 5 estrellas)"),
+            _("Calificar"), rows, _("[Encuesta de satisfacción]"))
+        self.csat_requested = True
+        return message
+
+    def action_send_product_catalog(self, product_ids):
+        """Manda hasta 10 productos como lista interactiva para que el
+        cliente elija con un toque. No requiere tener armado un Catálogo
+        de Meta Commerce Manager (API y sincronización de feed aparte,
+        que la mayoría de las pymes no tiene configurado): alcanza con
+        productos de Odoo. Al tocar uno, el webhook lo agrega directo al
+        carrito de esta conversación (ver _handle_interactive_reply)."""
+        self.ensure_one()
+        if 'product.product' not in self.env:
+            raise UserError(_("El módulo de Ventas no está instalado."))
+        products = self.env['product.product'].browse(product_ids)[:10]
+        if not products:
+            raise UserError(_("Elegí al menos un producto."))
+        currency = self.env.company.currency_id
+        rows = [
+            {"id": f"prod_{product.id}",
+             "title": product.display_name[:24],
+             "description": f"{product.list_price:.2f} {currency.symbol}"}
+            for product in products
+        ]
+        return self._send_interactive_list(
+            _("Estos son nuestros productos, tocá el que te interese:"),
+            _("Ver productos"), rows, _("[Catálogo de productos]"))
+
+    def _maybe_send_csat_survey(self):
+        """Dispara la encuesta de satisfacción al cerrar, sin romper el
+        cierre si falla el envío (sin credenciales, cliente dado de baja,
+        etc.) ni volver a preguntar si ya se preguntó o ya contestó."""
+        self.ensure_one()
+        if (self.channel_type != 'whatsapp' or self.csat_requested
+                or self.csat_score or not self.message_ids):
+            return
+        try:
+            self.action_send_csat_survey()
+        except UserError:
+            _logger.info(
+                "No se pudo enviar la encuesta de satisfacción en el canal %s", self.id)
+
+    def _record_csat_response(self, score):
+        """Guarda la calificación que contestó el cliente. Si llega un
+        valor fuera de 1-5 (id manipulado o mensaje inesperado) se
+        ignora en vez de guardar basura."""
+        self.ensure_one()
+        if not self.csat_requested or score not in range(1, 6):
+            return
+        self.write({
+            'csat_score': score,
+            'csat_requested': False,
+            'csat_answered_at': fields.Datetime.now(),
+        })
+        self.message_post(
+            body=_("El cliente calificó la atención con %s/5.") % score,
+            subtype_xmlid='mail.mt_note',
+        )
+
+    def _handle_interactive_reply(self, msg_type, msg):
+        """Interpreta la respuesta a un mensaje interactivo propio
+        (encuesta de satisfacción, catálogo de productos) a partir del
+        'id' de la fila/botón elegido -viene en el payload crudo del
+        webhook, no en el mensaje ya guardado, porque el texto visible
+        (el título) no alcanza para distinguir de forma confiable qué
+        opción tocó el cliente."""
+        self.ensure_one()
+        if msg_type != 'interactive':
+            return
+        interactive = msg.get('interactive') or {}
+        reply = interactive.get('list_reply') or interactive.get('button_reply') or {}
+        reply_id = reply.get('id') or ''
+        if reply_id.startswith('csat_'):
+            try:
+                self._record_csat_response(int(reply_id.split('_', 1)[1]))
+            except (ValueError, IndexError):
+                pass
+        elif reply_id.startswith('prod_'):
+            try:
+                product = self.env['product.product'].browse(int(reply_id.split('_', 1)[1]))
+            except (ValueError, IndexError):
+                return
+            if product.exists():
+                self._add_to_cart(product, 1)
+                self.message_post(
+                    body=_("Se agregó \"%s\" al carrito desde el catálogo de WhatsApp.")
+                    % product.display_name,
+                    subtype_xmlid='mail.mt_note',
+                )
+                self._notify_thread_update()
+
     def _notify_thread_update(self):
         """Notifica por el bus a quien tenga abierta la conversación (y al
         ícono de la barra superior) para refrescar en tiempo real, sin
@@ -1891,6 +2129,8 @@ class ChatroomChannel(models.Model):
 
     def action_close(self):
         self.write({'state': 'closed'})
+        for channel in self:
+            channel._maybe_send_csat_survey()
 
     @api.model
     def _cron_close_inactive_channels(self, days=7):

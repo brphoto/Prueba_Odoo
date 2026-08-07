@@ -35,6 +35,9 @@ una conversación sin salir del chat:
   usuario logueado, sus conversaciones sin gestión reciente y sus
   oportunidades estancadas, para arrancar el día sabiendo a quién
   contactar primero sin recorrer el kanban ni el pipeline.
+* **Campañas de WhatsApp por categoría RFM**: mandar una plantilla
+  aprobada a todos los contactos de una o más categorías (A/B/C) de un
+  solo clic, respetando la baja de WhatsApp de cada contacto.
 
 Diseño modular
 ----------------
@@ -65,7 +68,9 @@ agrega la capa visual que los muestra dentro del chat.
     'depends': ['chatroom_whatsapp', 'crm_customer_intelligence'],
 
     'data': [
+        'security/ir.model.access.csv',
         'views/chatroom_channel_views.xml',
+        'views/chatroom_campaign_views.xml',
         'views/chatroom_menus.xml',
     ],
 

@@ -19,3 +19,4 @@ access_chatroom_scheduled_message_manager,chatroom.scheduled.message.manager,mod
 access_chatroom_cart_line_user,chatroom.cart.line.user,model_chatroom_cart_line,group_chatroom_user,1,1,1,1
 access_chatroom_cart_line_manager,chatroom.cart.line.manager,model_chatroom_cart_line,group_chatroom_manager,1,1,1,1
 access_chatroom_whatsapp_onboarding_wizard_manager,chatroom.whatsapp.onboarding.wizard.manager,model_chatroom_whatsapp_onboarding_wizard,group_chatroom_manager,1,1,1,1
+access_chatroom_send_catalog_wizard_user,chatroom.send.catalog.wizard.user,model_chatroom_send_catalog_wizard,group_chatroom_user,1,1,1,1

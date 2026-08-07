@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_chatroom_campaign_list" model="ir.ui.view">
+        <field name="name">chatroom.campaign.list</field>
+        <field name="model">chatroom.campaign</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="template_id"/>
+                <field name="recipient_count"/>
+                <field name="sent_count"/>
+                <field name="failed_count"/>
+                <field name="state" widget="badge"
+                       decoration-muted="state == 'draft'"
+                       decoration-success="state == 'sent'"/>
+                <field name="sent_date"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_campaign_form" model="ir.ui.view">
+        <field name="name">chatroom.campaign.form</field>
+        <field name="model">chatroom.campaign</field>
+        <field name="arch" type="xml">
+            <form string="Campaña de WhatsApp">
+                <header>
+                    <button name="action_send" type="object" string="Enviar campaña"
+                            class="btn-primary" invisible="state == 'sent'"
+                            confirm="Se va a mandar la plantilla a todos los contactos que cumplan la segmentación elegida. ¿Continuar?"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Ej: Reactivación clientes categoría C"/></h1>
+                    </div>
+                    <group>
+                        <group string="Plantilla">
+                            <field name="template_id"/>
+                        </group>
+                        <group string="Segmentación RFM">
+                            <field name="target_rfm_a"/>
+                            <field name="target_rfm_b"/>
+                            <field name="target_rfm_c"/>
+                            <field name="recipient_count"/>
+                        </group>
+                    </group>
+                    <group string="Resultado" invisible="state != 'sent'">
+                        <field name="sent_date"/>
+                        <field name="sent_count"/>
+                        <field name="failed_count"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_chatroom_campaign" model="ir.actions.act_window">
+        <field name="name">Campañas RFM</field>
+        <field name="res_model">chatroom.campaign</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_chatroom_campaign" name="Campañas RFM"
+              parent="chatroom_whatsapp.menu_chatroom_root"
+              action="action_chatroom_campaign"
+              groups="chatroom_whatsapp.group_chatroom_manager"
+              sequence="27"/>
+
+</odoo>

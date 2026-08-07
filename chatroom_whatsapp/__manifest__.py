@@ -31,6 +31,14 @@ Funcionalidades principales
   modelos propios, etc.).
 * Configuración 100% dentro de Ajustes de Odoo: token permanente,
   Phone Number ID, Verify Token, versión de Graph API.
+* SLA de primera respuesta: semáforo en vivo y aviso automático al
+  agente si una conversación nueva lleva mucho tiempo sin contestarse.
+* Encuesta de satisfacción (1 a 5) enviada sola al cerrar una
+  conversación, con la calificación del cliente guardada en el canal.
+* Catálogo de productos por WhatsApp: lista interactiva de hasta 10
+  productos que el cliente puede tocar para agregarlos directo al
+  carrito de la conversación, sin necesitar un Catálogo de Meta
+  Commerce Manager aparte.
 
 Requisitos
 ----------
@@ -68,6 +76,7 @@ Requisitos
         'views/chatroom_new_conversation_wizard_views.xml',
         'views/chatroom_reassign_wizard_views.xml',
         'views/chatroom_template_views.xml',
+        'views/chatroom_send_catalog_wizard_views.xml',
         'views/chatroom_channel_views.xml',
         'views/chatroom_metrics_views.xml',
         'views/chatroom_message_views.xml',

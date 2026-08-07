@@ -138,6 +138,7 @@ class WhatsAppWebhookController(http.Controller):
             })
             if media_id:
                 message._fetch_whatsapp_media(media_id)
+            channel._handle_interactive_reply(msg_type, msg)
 
             channel.write({
                 'last_message_date': fields.Datetime.now(),
