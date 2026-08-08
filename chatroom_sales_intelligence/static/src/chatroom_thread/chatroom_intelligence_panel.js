@@ -1,6 +1,7 @@
 /** @odoo-module **/
 
-import { Component } from "@odoo/owl";
+import { Component, useState } from "@odoo/owl";
+import { useService } from "@web/core/utils/hooks";
 
 /**
  * Panel lateral deslizable con la "inteligencia comercial" profunda de la
@@ -21,6 +22,32 @@ export class ChatroomIntelligencePanel extends Component {
         onClose: Function,
         onGenerateFollowup: Function,
     };
+
+    setup() {
+        this.action = useService("action");
+        this.state = useState({ activeTab: "summary" });
+    }
+
+    setTab(tab) {
+        this.state.activeTab = tab;
+    }
+
+    isTab(tab) {
+        return this.state.activeTab === tab;
+    }
+
+    openRecord(resModel, resId) {
+        if (!resId) {
+            return;
+        }
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: resModel,
+            res_id: resId,
+            views: [[false, "form"]],
+            target: "new",
+        });
+    }
 
     formatMoney(amount) {
         if (amount === undefined || amount === null) {

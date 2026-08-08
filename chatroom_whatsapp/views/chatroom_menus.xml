@@ -18,40 +18,51 @@
         <field name="code">action = model.action_generate_demo_conversations()</field>
     </record>
 
+    <!-- El icono ya está almacenado en ir.ui.menu. No lo reescribimos en
+         cada actualización para evitar que Odoo intente reemplazar el
+         adjunto del filestore durante el upgrade. -->
     <menuitem id="menu_chatroom_root" name="Chatroom" sequence="30"
-              action="action_chatroom_app"
-              web_icon="chatroom_whatsapp,static/description/icon.png"/>
+              action="action_chatroom_app"/>
+
+    <menuitem id="menu_chatroom_operation" name="Operación"
+              parent="menu_chatroom_root" sequence="5"/>
+
+    <menuitem id="menu_chatroom_communication" name="Comunicación"
+              parent="menu_chatroom_root" sequence="15"/>
+
+    <menuitem id="menu_chatroom_commercial" name="Inteligencia comercial"
+              parent="menu_chatroom_root" sequence="25"/>
 
     <menuitem id="menu_chatroom_app" name="Chatroom"
-              parent="menu_chatroom_root" action="action_chatroom_app"
+              parent="menu_chatroom_operation" action="action_chatroom_app"
               sequence="5"/>
 
     <menuitem id="menu_chatroom_dashboard" name="Dashboard"
-              parent="menu_chatroom_root" action="action_chatroom_dashboard"
+              parent="menu_chatroom_operation" action="action_chatroom_dashboard"
               sequence="7"/>
 
     <menuitem id="menu_chatroom_new_conversation" name="Nueva conversación"
-              parent="menu_chatroom_root" action="action_chatroom_new_conversation_wizard"
+              parent="menu_chatroom_operation" action="action_chatroom_new_conversation_wizard"
               sequence="9"/>
 
     <menuitem id="menu_chatroom_conversations" name="Vista clásica"
-              parent="menu_chatroom_root" action="action_chatroom_channel"
+              parent="menu_chatroom_operation" action="action_chatroom_channel"
               sequence="10"/>
 
     <menuitem id="menu_chatroom_messages" name="Mensajes (auditoría)"
-              parent="menu_chatroom_root" action="action_chatroom_message"
+              parent="menu_chatroom_communication" action="action_chatroom_message"
               sequence="20" groups="chatroom_whatsapp.group_chatroom_manager"/>
 
     <menuitem id="menu_chatroom_scheduled_messages" name="Mensajes programados"
-              parent="menu_chatroom_root" action="action_chatroom_scheduled_message"
+              parent="menu_chatroom_communication" action="action_chatroom_scheduled_message"
               sequence="25"/>
 
     <menuitem id="menu_chatroom_metrics" name="Métricas"
-              parent="menu_chatroom_root" action="action_chatroom_metrics"
+              parent="menu_chatroom_commercial" action="action_chatroom_metrics"
               sequence="30" groups="chatroom_whatsapp.group_chatroom_manager"/>
 
     <menuitem id="menu_chatroom_canned_responses" name="Respuestas rápidas"
-              parent="menu_chatroom_root" action="action_chatroom_canned_response"
+              parent="menu_chatroom_communication" action="action_chatroom_canned_response"
               sequence="40"/>
 
     <menuitem id="menu_chatroom_config" name="Configuración"

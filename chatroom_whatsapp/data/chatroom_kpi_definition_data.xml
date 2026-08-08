@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="chatroom_kpi_open_conversations" model="chatroom.kpi.definition">
+        <field name="name">Conversaciones activas</field>
+        <field name="sequence">10</field>
+        <field name="model_name">chatroom.channel</field>
+        <field name="aggregation">count</field>
+        <field name="measure_field">id</field>
+        <field name="date_field">none</field>
+        <field name="domain_filter">[('state', 'in', ('open', 'pending'))]</field>
+    </record>
+    <record id="chatroom_kpi_unread_messages" model="chatroom.kpi.definition">
+        <field name="name">Mensajes sin leer</field>
+        <field name="sequence">20</field>
+        <field name="model_name">chatroom.channel</field>
+        <field name="aggregation">sum</field>
+        <field name="measure_field">unread_count</field>
+        <field name="date_field">none</field>
+        <field name="domain_filter">[('state', '!=', 'closed')]</field>
+        <field name="goal_direction">lower</field>
+        <field name="target_value">5</field>
+    </record>
+    <record id="chatroom_kpi_first_response" model="chatroom.kpi.definition">
+        <field name="name">Tiempo promedio de primera respuesta</field>
+        <field name="sequence">30</field>
+        <field name="model_name">chatroom.channel</field>
+        <field name="aggregation">avg</field>
+        <field name="measure_field">first_response_minutes</field>
+        <field name="date_field">create_date</field>
+        <field name="format_type">minutes</field>
+        <field name="goal_direction">lower</field>
+        <field name="target_value">15</field>
+    </record>
+    <record id="chatroom_kpi_csat" model="chatroom.kpi.definition">
+        <field name="name">Satisfacción promedio</field>
+        <field name="sequence">40</field>
+        <field name="model_name">chatroom.channel</field>
+        <field name="aggregation">avg</field>
+        <field name="measure_field">csat_score</field>
+        <field name="date_field">create_date</field>
+        <field name="domain_filter">[('csat_score', '&gt;', 0)]</field>
+        <field name="format_type">number</field>
+        <field name="goal_direction">higher</field>
+        <field name="target_value">4</field>
+    </record>
+</odoo>

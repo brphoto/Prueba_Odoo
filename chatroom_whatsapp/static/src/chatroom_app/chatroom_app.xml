@@ -34,6 +34,10 @@
                     <button class="btn btn-link" title="Plantillas de WhatsApp" t-on-click="openTemplates">
                         <i class="fa fa-file-text-o"/> Plantillas
                     </button>
+                    <button class="btn btn-link" title="Sincronizar plantillas desde Meta"
+                            t-on-click="syncTemplates">
+                        <i class="fa fa-refresh"/> Sincronizar
+                    </button>
                     <button class="btn btn-link" title="Respuestas rápidas" t-on-click="openCannedResponses">
                         <i class="fa fa-bolt"/> Respuestas
                     </button>
@@ -52,6 +56,12 @@
                             t-on-click="() => this.setFilter('unread')">No leídas</button>
                     <button t-attf-class="btn btn-sm {{ state.filter === 'mine' ? 'btn-primary' : 'btn-light' }}"
                             t-on-click="() => this.setFilter('mine')">Mías</button>
+                    <button t-attf-class="btn btn-sm {{ state.filter === 'pending' ? 'btn-primary' : 'btn-light' }}"
+                            t-on-click="() => this.setFilter('pending')">Pendientes</button>
+                    <button t-attf-class="btn btn-sm {{ state.filter === 'urgent' ? 'btn-primary' : 'btn-light' }}"
+                            t-on-click="() => this.setFilter('urgent')">Urgentes</button>
+                    <button t-attf-class="btn btn-sm {{ state.filter === 'unassigned' ? 'btn-primary' : 'btn-light' }}"
+                            t-on-click="() => this.setFilter('unassigned')">Sin asignar</button>
                 </div>
                 <div class="o_chatroom_app_list">
                     <t t-if="state.loading">
@@ -73,6 +83,11 @@
                                 <div class="o_chatroom_app_list_body">
                                     <div class="o_chatroom_app_list_row">
                                         <span class="o_chatroom_app_list_name text-truncate" t-esc="channel.display_name"/>
+                                        <span t-if="channel.manual_urgent"
+                                              class="o_chatroom_manual_urgent_badge"
+                                              title="Urgencia marcada manualmente">
+                                            <i class="fa fa-flag"/> Urgente
+                                        </span>
                                         <span class="o_chatroom_app_list_time" t-esc="formatListTime(channel.dateObj)"/>
                                     </div>
                                     <div class="o_chatroom_app_list_row">
@@ -121,7 +136,8 @@
                     channelId="state.selectedChannelId"
                     emptyMessage="'Seleccioná una conversación de la izquierda para empezar.'"
                     onOpenMobileSidebar="() => this.toggleMobileSidebar()"
-                    onMessagesLoaded="() => this.onThreadMessagesLoaded()"/>
+                    onMessagesLoaded="() => this.onThreadMessagesLoaded()"
+                    onChannelPriorityChanged="() => this._loadChannels()"/>
             </div>
             <ContactPanel t-if="state.selectedChannelId and state.contactPanelOpen"
                           channelId="state.selectedChannelId"

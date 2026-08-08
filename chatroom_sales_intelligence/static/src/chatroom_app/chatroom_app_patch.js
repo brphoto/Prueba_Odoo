@@ -1,7 +1,7 @@
 /** @odoo-module **/
 
 import { patch } from "@web/core/utils/patch";
-import { useState, onWillStart, onWillUpdateProps } from "@odoo/owl";
+import { useState, onWillUpdateProps } from "@odoo/owl";
 import { ChatroomApp } from "@chatroom_whatsapp/chatroom_app/chatroom_app";
 import { ContactPanel } from "@chatroom_whatsapp/chatroom_app/contact_panel";
 import { ChatroomIntelligencePanel } from "../chatroom_thread/chatroom_intelligence_panel";
@@ -48,7 +48,6 @@ patch(ContactPanel.prototype, {
             data: false,
             assignmentHistory: [],
         });
-        onWillStart(() => this._loadCommercialIntelligence(this.props.channelId));
         onWillUpdateProps((nextProps) => {
             if (nextProps.channelId !== this.props.channelId) {
                 this.intel.panelOpen = false;

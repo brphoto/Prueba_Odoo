@@ -19,6 +19,8 @@ export class ChatroomDashboard extends Component {
 
         this.state = useState({
             loading: true,
+            periodDays: 30,
+            periodLabel: "Últimos 30 días",
             pendingCount: 0,
             todayCount: 0,
             messagesToday: 0,
@@ -32,6 +34,9 @@ export class ChatroomDashboard extends Component {
             slaAnsweredCount: 0,
             avgCsatScore: 0,
             csatAnsweredCount: 0,
+            customKpis: [],
+            stageBreakdown: [],
+            dashboardWidgets: [],
         });
 
         onWillStart(() => this._loadData());
@@ -39,7 +44,10 @@ export class ChatroomDashboard extends Component {
 
     async _loadData() {
         this.state.loading = true;
-        const data = await this.orm.call("chatroom.channel", "get_dashboard_data", []);
+        const data = await this.orm.call("chatroom.channel", "get_dashboard_data", [
+            this.state.periodDays,
+        ]);
+        this.state.periodLabel = data.period_label;
         this.state.pendingCount = data.pending_count;
         this.state.todayCount = data.today_count;
         this.state.messagesToday = data.messages_today;
@@ -53,7 +61,15 @@ export class ChatroomDashboard extends Component {
         this.state.slaAnsweredCount = data.sla_answered_count;
         this.state.avgCsatScore = data.avg_csat_score;
         this.state.csatAnsweredCount = data.csat_answered_count;
+        this.state.customKpis = data.custom_kpis || [];
+        this.state.stageBreakdown = data.stage_breakdown || [];
+        this.state.dashboardWidgets = data.dashboard_widgets || [];
         this.state.loading = false;
+    }
+
+    async changePeriod(ev) {
+        this.state.periodDays = Number(ev.target.value);
+        await this._loadData();
     }
 
     openSettings() {
@@ -88,6 +104,73 @@ export class ChatroomDashboard extends Component {
 
     openToday() {
         this.action.doAction("chatroom_whatsapp.action_chatroom_channel");
+    }
+
+    openCustomKpi(kpi) {
+        if (!kpi || !kpi.model) {
+            return;
+        }
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            name: kpi.name,
+            res_model: kpi.model,
+            views: [[false, "list"], [false, "form"]],
+            domain: kpi.domain || [],
+            target: "current",
+        });
+    }
+
+    openStage(stage) {
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            name: stage.name,
+            res_model: "chatroom.channel",
+            views: [[false, "kanban"], [false, "list"], [false, "form"]],
+            domain: [["stage_id", "=", stage.id]],
+            target: "current",
+        });
+    }
+
+    openKpiConfigurator() {
+        this.action.doAction("chatroom_whatsapp.action_chatroom_kpi_definition");
+    }
+
+    openReportWizard() {
+        this.action.doAction("chatroom_whatsapp.action_chatroom_dashboard_report_wizard");
+    }
+
+    openWidgetConfigurator() {
+        this.action.doAction("chatroom_whatsapp.action_chatroom_dashboard_widget");
+    }
+
+    widgetBarWidth(value, points) {
+        const max = Math.max(...points.map((point) => Math.abs(point.value || 0)), 1);
+        return Math.max(6, Math.round((Math.abs(value || 0) / max) * 100));
+    }
+
+    widgetPieStyle(widget) {
+        const points = widget.points || [];
+        const total = points.reduce((sum, point) => sum + Math.abs(point.value || 0), 0) || 1;
+        let cursor = 0;
+        const colors = [widget.color || "#714B67", "#00A09D", "#F0A429", "#D9534F", "#6C8EBF", "#6BAA75"];
+        const slices = points.map((point, index) => {
+            const start = cursor;
+            cursor += (Math.abs(point.value || 0) / total) * 100;
+            return `${colors[index % colors.length]} ${start}% ${cursor}%`;
+        });
+        return `background: conic-gradient(${slices.join(", ") || "#283842 0 100%"})`;
+    }
+
+    widgetLinePoints(widget) {
+        const points = widget.points || [];
+        const max = Math.max(...points.map((point) => Number(point.value || 0)), 1);
+        const width = 320;
+        const height = 110;
+        return points.map((point, index) => {
+            const x = points.length === 1 ? width / 2 : (index / (points.length - 1)) * width;
+            const y = height - (Number(point.value || 0) / max) * (height - 12) - 6;
+            return `${x},${y}`;
+        }).join(" ");
     }
 }
 

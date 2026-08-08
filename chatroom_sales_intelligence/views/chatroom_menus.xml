@@ -7,8 +7,22 @@
     </record>
 
     <menuitem id="menu_my_followups_dashboard" name="Mis pendientes"
-              parent="chatroom_whatsapp.menu_chatroom_root"
+              parent="chatroom_whatsapp.menu_chatroom_commercial"
               action="action_my_followups_dashboard"
               sequence="6"/>
+
+    <menuitem id="menu_rfm_dashboard" name="Dashboard RFM y KPIs"
+              parent="chatroom_whatsapp.menu_chatroom_commercial"
+              action="crm_customer_intelligence.action_customer_intelligence_dashboard"
+              sequence="7"/>
+
+    <record id="action_executive_dashboard" model="ir.actions.client">
+        <field name="name">Tablero ejecutivo</field>
+        <field name="tag">chatroom_sales_intelligence.executive_dashboard</field>
+    </record>
+
+    <menuitem id="menu_executive_dashboard" name="Tablero ejecutivo"
+              parent="chatroom_whatsapp.menu_chatroom_commercial"
+              action="action_executive_dashboard" sequence="8"/>
 
 </odoo>

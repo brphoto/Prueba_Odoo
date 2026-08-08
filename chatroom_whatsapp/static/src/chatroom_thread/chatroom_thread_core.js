@@ -54,9 +54,11 @@ export class ChatroomThreadCore extends Component {
         emptyMessage: { type: String, optional: true },
         onOpenMobileSidebar: { type: Function, optional: true },
         onMessagesLoaded: { type: Function, optional: true },
+        onChannelPriorityChanged: { type: Function, optional: true },
     };
     static defaultProps = {
         channelId: false,
+        onChannelPriorityChanged: false,
         emptyMessage: "Seleccioná una conversación para empezar a chatear.",
     };
 
@@ -113,6 +115,7 @@ export class ChatroomThreadCore extends Component {
             scheduleOpen: false,
             scheduleDate: "",
             aiPaused: false,
+            manualUrgent: false,
         });
 
         this._shouldScroll = true;
@@ -224,6 +227,7 @@ export class ChatroomThreadCore extends Component {
             [channelId],
             ["display_name", "partner_id", "channel_type", "is_session_open",
              "assigned_user_id", "assigned_user_initials", "assigned_user_color",
+             "manual_urgent",
              "next_activity_id", "next_activity_summary", "next_activity_date_deadline",
              "next_activity_overdue", "next_activity_user_id", "calendar_installed",
              "whatsapp_number_id", "tag_ids", "ai_paused"]
@@ -236,6 +240,7 @@ export class ChatroomThreadCore extends Component {
         this.state.assignedUserName = channel.assigned_user_id ? channel.assigned_user_id[1] : "Sin asignar";
         this.state.assignedUserInitials = channel.assigned_user_initials || "";
         this.state.assignedUserColor = channel.assigned_user_color || "#94a3b8";
+        this.state.manualUrgent = channel.manual_urgent;
         this.state.activity = channel.next_activity_id ? {
             id: channel.next_activity_id,
             summary: channel.next_activity_summary,
@@ -279,6 +284,28 @@ export class ChatroomThreadCore extends Component {
         await this.orm.write("chatroom.channel", [this.channelId], { whatsapp_number_id: newNumberId });
         this.state.whatsappNumberId = newNumberId;
         await Promise.all([this._loadChannel(), this._loadMessages()]);
+    }
+
+    async toggleManualUrgent() {
+        if (!this.channelId) {
+            return;
+        }
+        try {
+            this.state.manualUrgent = await this.orm.call(
+                "chatroom.channel", "action_toggle_manual_urgent", [this.channelId]);
+            this.notification.add(
+                this.state.manualUrgent ? "Conversación marcada como urgente."
+                    : "Urgencia manual quitada.",
+                { type: "success" }
+            );
+            if (this.props.onChannelPriorityChanged) {
+                await this.props.onChannelPriorityChanged();
+            }
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
     }
 
     async toggleAiPaused() {

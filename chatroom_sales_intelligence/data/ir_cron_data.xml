@@ -11,4 +11,13 @@
         <field name="active">True</field>
     </record>
 
+    <record id="ir_cron_send_management_reports" model="ir.cron">
+        <field name="name">Gerencia: enviar reportes programados</field>
+        <field name="model_id" ref="model_management_report_subscription"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_send_scheduled_reports()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
 </odoo>

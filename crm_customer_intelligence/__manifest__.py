@@ -46,14 +46,31 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
     'license': 'LGPL-3',
 
     'category': 'Sales/CRM',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.4',
 
     'depends': ['crm', 'sale', 'account'],
 
     'data': [
+        'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
+        'data/kpi_definition_data.xml',
+        'views/kpi_definition_views.xml',
+        'views/rfm_dashboard_report_views.xml',
+        'views/crm_kpi_snapshot_views.xml',
+        'views/crm_kpi_target_views.xml',
         'views/res_partner_views.xml',
     ],
+
+    'assets': {
+        'web.assets_backend': [
+            'crm_customer_intelligence/static/src/rfm_dashboard/rfm_dashboard.js',
+            'crm_customer_intelligence/static/src/rfm_dashboard/rfm_dashboard.xml',
+            'crm_customer_intelligence/static/src/rfm_dashboard/rfm_dashboard.scss',
+        ],
+        'web.assets_web_dark': [
+            'crm_customer_intelligence/static/src/rfm_dashboard/rfm_dashboard.dark.scss',
+        ],
+    },
 
     'demo': [],
 

@@ -73,6 +73,15 @@ class ChatroomChannel(models.Model):
          ('pending', "Pendiente"),
          ('closed', "Cerrada")],
         default='open', tracking=True)
+    stage_id = fields.Many2one(
+        'chatroom.channel.stage', string='Etapa', tracking=True, index=True,
+        ondelete='restrict',
+        help='Etapa configurable del flujo de atención, como en CRM.')
+    stage_name = fields.Char(related='stage_id.name', string='Nombre de etapa', store=True)
+    stage_color = fields.Integer(related='stage_id.color', string='Color de etapa', store=True)
+    stage_fold = fields.Boolean(related='stage_id.fold', string='Etapa plegada', store=True)
+    manual_urgent = fields.Boolean(
+        string="Marcada como urgente", default=False, copy=False, tracking=True)
     assigned_user_id = fields.Many2one(
         'res.users', string="Agente asignado", tracking=True,
         default=lambda self: self.env.user)
@@ -303,6 +312,30 @@ class ChatroomChannel(models.Model):
         'unique(external_id, channel_type, company_id)',
         "Ya existe una conversación abierta para este contacto en este canal.",
     )
+
+    @api.model
+    def _get_stage_for_state(self, state, final=False):
+        domain = [('active', '=', True), ('technical_state', '=', state)]
+        if final:
+            domain.append(('is_final', '=', True))
+        stage = self.env['chatroom.channel.stage'].search(
+            domain, order='sequence, id', limit=1)
+        if stage or final:
+            return stage
+        return self.env['chatroom.channel.stage'].search(
+            [('active', '=', True)], order='sequence, id', limit=1)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Asigna una etapa coherente incluso a las creaciones antiguas que
+        todavía envían únicamente el estado técnico."""
+        for vals in vals_list:
+            if not vals.get('stage_id'):
+                state = vals.get('state', 'open')
+                stage = self._get_stage_for_state(state)
+                if stage:
+                    vals['stage_id'] = stage.id
+        return super().create(vals_list)
 
     @api.depends('partner_id', 'external_id', 'channel_type')
     def _compute_display_name(self):
@@ -651,9 +684,29 @@ class ChatroomChannel(models.Model):
         } for note in notes]
 
     def write(self, vals):
+        vals = dict(vals)
+        # Mover una tarjeta en el kanban o elegir una etapa desde el formulario
+        # es la fuente de verdad del flujo; el estado técnico se mantiene para
+        # las automatizaciones antiguas y para los filtros existentes.
+        if 'stage_id' in vals and vals['stage_id']:
+            stage = self.env['chatroom.channel.stage'].browse(vals['stage_id']).exists()
+            if stage:
+                vals['state'] = stage.technical_state
         previous_assignees = {rec.id: rec.assigned_user_id for rec in self} if 'assigned_user_id' in vals else {}
         previous_numbers = {rec.id: rec.whatsapp_number_id for rec in self} if 'whatsapp_number_id' in vals else {}
         res = super().write(vals)
+        # Varias rutas históricas del conector escriben state directamente
+        # (respuesta enviada, cierre por inactividad, etc.). En ese caso
+        # reflejamos el cambio en una etapa del mismo tipo sin romper las
+        # etapas personalizadas que compartan el estado técnico.
+        if 'state' in vals and 'stage_id' not in vals and not self.env.context.get('skip_stage_sync'):
+            for rec in self:
+                if rec.stage_id and rec.stage_id.technical_state == rec.state:
+                    continue
+                stage = rec._get_stage_for_state(
+                    rec.state, final=rec.state == 'closed')
+                if stage:
+                    rec.with_context(skip_stage_sync=True).write({'stage_id': stage.id})
         if 'assigned_user_id' in vals:
             reason = self.env.context.get('chatroom_assignment_reason', 'manual')
             for rec in self:
@@ -734,6 +787,12 @@ class ChatroomChannel(models.Model):
                 % self.env.user.name,
                 subtype_xmlid='mail.mt_note',
             )
+
+    def action_toggle_manual_urgent(self):
+        """Toggle the agent's manual urgency mark for this conversation."""
+        self.ensure_one()
+        self.manual_urgent = not self.manual_urgent
+        return self.manual_urgent
 
     def action_toggle_ai_paused(self):
         self.ensure_one()
@@ -1576,12 +1635,22 @@ class ChatroomChannel(models.Model):
     # Dashboard
     # ------------------------------------------------------------------
     @api.model
-    def get_dashboard_data(self, agent_limit=8):
+    def get_dashboard_data(self, period_days=30, agent_limit=8, include_widgets=True):
         """Datos agregados para el dashboard de Chatroom: se calculan acá
         (con read_group, no trayendo registros al cliente) para que la
         pantalla cargue con pocas consultas livianas."""
+        try:
+            period_days = int(period_days or 0)
+        except (TypeError, ValueError):
+            period_days = 30
+        if period_days < 0:
+            period_days = 30
+        period_start = fields.Datetime.subtract(
+            fields.Datetime.now(), days=period_days) if period_days else False
         today_start = fields.Datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        month_ago = fields.Datetime.subtract(fields.Datetime.now(), days=30)
+        period_label = (
+            _('Todo el historial') if not period_days else
+            _('Últimos %(days)s días') % {'days': period_days})
 
         pending_count = self.search_count([('state', '=', 'pending')])
         today_count = self.search_count([('last_message_date', '>=', today_start)])
@@ -1591,8 +1660,25 @@ class ChatroomChannel(models.Model):
         [(unread_total,)] = self._read_group(
             [('state', '!=', 'closed')], [], ['unread_count:sum']) or [(0,)]
 
+        stage_groups = self._read_group(
+            [], ['stage_id'], ['__count', 'unread_count:sum'],
+            order='stage_id')
+        stage_breakdown = [{
+            'id': stage.id if stage else False,
+            'name': stage.name if stage else _('Sin etapa'),
+            'color': stage.color if stage else 0,
+            'fold': stage.fold if stage else False,
+            'count': count,
+            'unread_count': unread or 0,
+        } for stage, count, unread in stage_groups]
+
+        response_domain = [
+            ('first_response_minutes', '>', 0),
+        ]
+        if period_start:
+            response_domain.insert(0, ('create_date', '>=', period_start))
         responded = self._read_group(
-            [('create_date', '>=', month_ago), ('first_response_minutes', '>', 0)],
+            response_domain,
             [], ['first_response_minutes:avg'])
         avg_first_response = responded[0][0] if responded else 0.0
 
@@ -1601,21 +1687,31 @@ class ChatroomChannel(models.Model):
             ['assigned_user_id'], ['__count'],
             order='__count desc', limit=agent_limit)
 
+        response_by_agent_domain = [
+            ('first_response_minutes', '>', 0),
+            ('assigned_user_id', '!=', False),
+        ]
+        if period_start:
+            response_by_agent_domain.insert(0, ('create_date', '>=', period_start))
         response_by_agent = self._read_group(
-            [('create_date', '>=', month_ago), ('first_response_minutes', '>', 0),
-             ('assigned_user_id', '!=', False)],
+            response_by_agent_domain,
             ['assigned_user_id'], ['first_response_minutes:avg'],
             order='first_response_minutes:avg asc', limit=agent_limit)
 
         # SLA: sobre las conversaciones que ya tuvieron primera respuesta
         # en los últimos 30 días, qué porcentaje la tuvo antes del umbral
         # de "vencido" (mismo umbral que pinta el semáforo en vivo).
-        sla_answered_count = self.search_count(
-            [('create_date', '>=', month_ago), ('first_response_minutes', '>', 0)])
-        sla_compliant_count = self.search_count([
-            ('create_date', '>=', month_ago), ('first_response_minutes', '>', 0),
+        sla_answered_domain = [('first_response_minutes', '>', 0)]
+        if period_start:
+            sla_answered_domain.insert(0, ('create_date', '>=', period_start))
+        sla_answered_count = self.search_count(sla_answered_domain)
+        sla_compliant_domain = [
+            ('first_response_minutes', '>', 0),
             ('first_response_minutes', '<', SLA_FIRST_RESPONSE_RED_MINUTES),
-        ])
+        ]
+        if period_start:
+            sla_compliant_domain.insert(0, ('create_date', '>=', period_start))
+        sla_compliant_count = self.search_count(sla_compliant_domain)
         sla_compliance_rate = (
             round(sla_compliant_count / sla_answered_count * 100, 1)
             if sla_answered_count else None)
@@ -1623,12 +1719,17 @@ class ChatroomChannel(models.Model):
         # CSAT: promedio de las encuestas contestadas en los últimos 30
         # días (csat_score solo tiene un valor real una vez que el
         # cliente respondió; ver _record_csat_response).
-        csat_answered_count = self.search_count(
-            [('csat_answered_at', '>=', month_ago), ('csat_score', '>', 0)])
+        csat_domain = [('csat_score', '>', 0)]
+        if period_start:
+            csat_domain.insert(0, ('csat_answered_at', '>=', period_start))
+        csat_answered_count = self.search_count(csat_domain)
         csat_avg_group = self._read_group(
-            [('csat_answered_at', '>=', month_ago), ('csat_score', '>', 0)],
+            csat_domain,
             [], ['csat_score:avg'])
         avg_csat_score = csat_avg_group[0][0] if csat_avg_group else 0.0
+
+        custom_kpis = self.env['chatroom.kpi.definition'].get_dashboard_values(
+            period_days)
 
         raw_last_webhook = self.env['ir.config_parameter'].sudo().get_param(
             'chatroom_whatsapp.last_webhook_at')
@@ -1642,6 +1743,7 @@ class ChatroomChannel(models.Model):
             'today_count': today_count,
             'messages_today': messages_today,
             'unread_total': unread_total or 0,
+            'stage_breakdown': stage_breakdown,
             'avg_first_response_minutes': round(avg_first_response or 0.0, 1),
             'by_agent': [
                 {'name': user.name, 'count': count}
@@ -1655,6 +1757,11 @@ class ChatroomChannel(models.Model):
             'sla_answered_count': sla_answered_count,
             'avg_csat_score': round(avg_csat_score or 0.0, 2),
             'csat_answered_count': csat_answered_count,
+            'period_days': period_days,
+            'period_label': period_label,
+        'custom_kpis': custom_kpis,
+        'dashboard_widgets': self.env['chatroom.dashboard.widget'].get_dashboard_values(
+            period_days) if include_widgets else [],
         }
 
     # ------------------------------------------------------------------
@@ -2240,6 +2347,7 @@ class ChatroomChannel(models.Model):
                 'date_deadline': a.date_deadline,
                 'is_overdue': a.date_deadline < fields.Date.context_today(self),
             } for a in activities],
+            'calendar_installed': self.calendar_installed,
         }
 
     @api.depends('partner_id', 'pinned_lead_id')
@@ -2308,6 +2416,22 @@ class ChatroomChannel(models.Model):
             'overdue': activity.date_deadline < today,
             'user_id': activity.user_id.id,
             'user_name': activity.user_id.name,
+        }
+
+    def action_open_activity_form(self, activity_id):
+        """Open one pending activity in Odoo's native activity dialog."""
+        self.ensure_one()
+        activity = self.env['mail.activity'].browse(activity_id).exists()
+        if not activity or activity not in self._get_partner_activities(limit=50):
+            raise UserError(_("La actividad ya no está disponible."))
+        return {
+            'name': _('Actividad'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'mail.activity',
+            'res_id': activity.id,
+            'view_mode': 'form',
+            'views': [(self.env.ref('mail.mail_activity_view_form_popup').id, 'form')],
+            'target': 'new',
         }
 
     def action_mark_next_activity_done(self, activity_id=False):

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_kpi_definition_list" model="ir.ui.view">
+        <field name="name">chatroom.kpi.definition.list</field>
+        <field name="model">chatroom.kpi.definition</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="not active">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="model_name"/>
+                <field name="aggregation"/>
+                <field name="measure_field"/>
+                <field name="date_field"/>
+                <field name="target_value"/>
+                <field name="goal_direction"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_kpi_definition_form" model="ir.ui.view">
+        <field name="name">chatroom.kpi.definition.form</field>
+        <field name="model">chatroom.kpi.definition</field>
+        <field name="arch" type="xml">
+            <form string="KPI de Chatroom">
+                <header>
+                    <button name="action_test_kpi" type="object" string="Probar KPI" class="btn-primary"/>
+                    <button name="action_view_snapshots" type="object" string="Ver histórico" class="btn-secondary"/>
+                    <field name="active" widget="boolean_button"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" placeholder="Ej. Conversaciones resueltas en menos de 24 horas"/></h1></div>
+                    <group>
+                        <group string="Qué medir">
+                            <field name="model_name"/>
+                            <field name="aggregation"/>
+                            <field name="measure_field"/>
+                            <field name="format_type"/>
+                        </group>
+                        <group string="Período y objetivo">
+                            <field name="date_field"/>
+                            <field name="target_value"/>
+                            <field name="goal_direction"/>
+                            <field name="sequence"/>
+                        </group>
+                    </group>
+                    <group string="Filtros adicionales">
+                        <field name="domain_filter" placeholder="[('state', '=', 'pending')]" nolabel="1"/>
+                        <div class="text-muted">Ejemplos: [('state', '=', 'pending')] o [('csat_score', '&gt;', 0)].</div>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_chatroom_kpi_definition" model="ir.actions.act_window">
+        <field name="name">KPIs de Chatroom</field>
+        <field name="res_model">chatroom.kpi.definition</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_chatroom_config_kpis" name="KPIs de Chatroom"
+              parent="menu_chatroom_config" action="action_chatroom_kpi_definition"
+              sequence="13" groups="chatroom_whatsapp.group_chatroom_manager"/>
+</odoo>

@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_crm_kpi_definition_user,crm.kpi.definition.user,model_crm_kpi_definition,base.group_user,1,0,0,0
+access_crm_kpi_definition_sales_manager,crm.kpi.definition.sales.manager,model_crm_kpi_definition,sales_team.group_sale_manager,1,1,1,1
+access_crm_kpi_definition_system,crm.kpi.definition.system,model_crm_kpi_definition,base.group_system,1,1,1,1
+access_crm_rfm_dashboard_report_wizard_user,crm.rfm.dashboard.report.wizard.user,model_crm_rfm_dashboard_report_wizard,base.group_user,1,1,1,1
+access_crm_kpi_snapshot_user,crm.kpi.snapshot.user,model_crm_kpi_snapshot,base.group_user,1,0,0,0
+access_crm_kpi_snapshot_manager,crm.kpi.snapshot.manager,model_crm_kpi_snapshot,sales_team.group_sale_manager,1,1,1,1
+access_crm_kpi_target_user,crm.kpi.target.user,model_crm_kpi_target,base.group_user,1,0,0,0
+access_crm_kpi_target_manager,crm.kpi.target.manager,model_crm_kpi_target,sales_team.group_sale_manager,1,1,1,1

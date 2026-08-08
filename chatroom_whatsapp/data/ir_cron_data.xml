@@ -51,4 +51,14 @@
         <field name="active">True</field>
     </record>
 
+    <record id="ir_cron_snapshot_chatroom_kpis" model="ir.cron">
+        <field name="name">Chatroom: guardar históricos de KPIs</field>
+        <field name="model_id" ref="model_chatroom_kpi_snapshot"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_compute_snapshots()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active">True</field>
+    </record>
+
 </odoo>

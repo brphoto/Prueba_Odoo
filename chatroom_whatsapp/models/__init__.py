@@ -6,9 +6,16 @@ from . import chatroom_whatsapp_number
 from . import chatroom_tag
 from . import chatroom_cart_line
 from . import chatroom_channel
+from . import chatroom_channel_stage
+from . import chatroom_kpi_definition
+from . import chatroom_kpi_snapshot
+from . import chatroom_kpi_target
+from . import chatroom_dashboard_widget
+from . import chatroom_dashboard_report
 from . import chatroom_message
 from . import chatroom_scheduled_message
 from . import chatroom_template
+from . import chatroom_template_variable
 from . import chatroom_send_template_wizard
 from . import chatroom_send_catalog_wizard
 from . import chatroom_new_conversation_wizard

@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="crm_customer_intelligence.RfmDashboard">
+        <div class="o_rfm_dashboard">
+            <div class="o_rfm_dashboard_header">
+                <div>
+                    <h2><i class="fa fa-line-chart"/> Dashboard de Inteligencia Comercial</h2>
+                    <p class="text-muted">RFM, ventas, clientes y productos con filtros configurables.</p>
+                </div>
+                <div class="o_rfm_dashboard_filters">
+                    <button type="button" class="btn btn-secondary o_rfm_kpi_config_button"
+                            t-on-click="() => this.state.kpiConfigOpen = !this.state.kpiConfigOpen">
+                        <i class="fa fa-sliders"/> Configurar KPIs
+                    </button>
+                    <button type="button" class="btn btn-primary"
+                            t-on-click="openReportWizard">
+                        <i class="fa fa-file-pdf-o"/> Imprimir PDF
+                    </button>
+                    <label>Período
+                        <select t-on-change="changePeriod">
+                            <option value="30" t-att-selected="state.period === '30'">Últimos 30 días</option>
+                            <option value="90" t-att-selected="state.period === '90'">Últimos 90 días</option>
+                            <option value="365" t-att-selected="state.period === '365'">Últimos 12 meses</option>
+                            <option value="all" t-att-selected="state.period === 'all'">Todo el historial</option>
+                        </select>
+                    </label>
+                    <label>Categoría
+                        <select t-on-change="changeCategory">
+                            <option value="all" t-att-selected="state.category === 'all'">Todas</option>
+                            <option value="a" t-att-selected="state.category === 'a'">A - Alto valor</option>
+                            <option value="b" t-att-selected="state.category === 'b'">B - Valor medio</option>
+                            <option value="c" t-att-selected="state.category === 'c'">C - Bajo valor</option>
+                        </select>
+                    </label>
+                    <div class="o_rfm_kpi_config" t-if="state.kpiConfigOpen">
+                        <div class="o_rfm_kpi_config_title">KPIs visibles</div>
+                        <label t-foreach="kpiOptions()" t-as="option" t-key="option[0]"
+                               class="o_rfm_kpi_config_option">
+                            <input type="checkbox" t-att-checked="state.visibleKpis[option[0]]"
+                                   t-on-change="() => this.toggleKpi(option[0])"/>
+                            <span t-esc="option[1]"/>
+                        </label>
+                        <button type="button" class="btn btn-link btn-sm"
+                                t-on-click="resetKpis">Restablecer</button>
+                    </div>
+                </div>
+            </div>
+
+            <t t-if="state.loading">
+                <div class="o_chatroom_loading"><i class="fa fa-spin fa-circle-o-notch"/></div>
+            </t>
+            <t t-elif="state.data">
+                <div class="o_rfm_kpi_grid">
+                    <button t-if="state.visibleKpis.customer_count" class="o_rfm_kpi_card"
+                            t-on-click="() => this.openPartners()">
+                        <span>Clientes analizados</span><strong t-esc="state.data.customer_count"/>
+                    </button>
+                    <div t-if="state.visibleKpis.total_sales" class="o_rfm_kpi_card">
+                        <span>Ventas del período</span><strong t-esc="formatMoney(state.data.total_sales)"/>
+                    </div>
+                    <div t-if="state.visibleKpis.average_ticket" class="o_rfm_kpi_card">
+                        <span>Ticket promedio</span><strong t-esc="formatMoney(state.data.average_ticket)"/>
+                    </div>
+                    <div t-if="state.visibleKpis.average_score" class="o_rfm_kpi_card">
+                        <span>Score RFM promedio</span><strong t-esc="state.data.average_score"/>
+                    </div>
+                    <button t-if="state.visibleKpis.at_risk_count"
+                            class="o_rfm_kpi_card o_rfm_kpi_danger"
+                            t-on-click="() => this.openPartners('c')">
+                        <span>Clientes en riesgo</span><strong t-esc="state.data.at_risk_count"/>
+                    </button>
+                    <div t-if="state.visibleKpis.active_customer_count" class="o_rfm_kpi_card">
+                        <span>Clientes activos</span><strong t-esc="state.data.active_customer_count"/>
+                    </div>
+                    <div t-if="state.visibleKpis.invoice_count" class="o_rfm_kpi_card">
+                        <span>Facturas del período</span><strong t-esc="state.data.invoice_count"/>
+                    </div>
+                    <t t-foreach="state.data.custom_kpis || []" t-as="kpi" t-key="kpi.id">
+                        <button class="o_rfm_kpi_card o_rfm_custom_kpi"
+                                t-on-click="() => this.openCustomKpi(kpi)">
+                            <span t-esc="kpi.name"/><strong t-esc="kpi.display_value"/>
+                            <small t-if="kpi.goal_direction !== 'none'">Objetivo: <t t-esc="kpi.target_display"/></small>
+                        </button>
+                    </t>
+                </div>
+
+                <div class="o_rfm_dashboard_columns">
+                    <section class="o_rfm_dashboard_panel">
+                        <h4>Distribución RFM</h4>
+                        <t t-foreach="state.data.distribution" t-as="row" t-key="row.category">
+                            <div class="o_rfm_bar_row">
+                                <span t-esc="row.label"/>
+                                <div class="o_rfm_bar_track">
+                                    <div t-attf-class="o_rfm_bar o_rfm_bar_{{ row.category }}"
+                                         t-attf-style="width: {{ barWidth(row.count, state.data.distribution, 'count') }}%"/>
+                                </div>
+                                <strong t-esc="row.count"/>
+                            </div>
+                        </t>
+                    </section>
+
+                    <section class="o_rfm_dashboard_panel">
+                        <h4>Clientes principales</h4>
+                        <t t-if="!state.data.top_customers.length"><p class="text-muted">No hay ventas en este período.</p></t>
+                        <t t-foreach="state.data.top_customers" t-as="row" t-key="row.id">
+                            <button class="o_rfm_rank_row" t-on-click="() => this.openPartner(row.id)">
+                                <span class="o_rfm_rank_name" t-esc="row.name"/>
+                                <span class="o_rfm_rank_category" t-esc="categoryLabel(row.category)"/>
+                                <strong t-esc="formatMoney(row.total)"/>
+                            </button>
+                        </t>
+                    </section>
+
+                    <section class="o_rfm_dashboard_panel">
+                        <h4>Productos principales</h4>
+                        <t t-if="!state.data.top_products.length"><p class="text-muted">No hay productos vendidos en este período.</p></t>
+                        <t t-foreach="state.data.top_products" t-as="row" t-key="row.id">
+                            <div class="o_rfm_bar_row">
+                                <span class="o_rfm_product_name" t-esc="row.name"/>
+                                <div class="o_rfm_bar_track">
+                                    <div class="o_rfm_bar o_rfm_bar_product"
+                                         t-attf-style="width: {{ barWidth(row.total, state.data.top_products, 'total') }}%"/>
+                                </div>
+                                <strong t-esc="formatMoney(row.total)"/>
+                            </div>
+                        </t>
+                    </section>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

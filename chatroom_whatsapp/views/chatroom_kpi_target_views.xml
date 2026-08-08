@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_kpi_target_list" model="ir.ui.view">
+        <field name="name">chatroom.kpi.target.list</field>
+        <field name="model">chatroom.kpi.target</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="kpi_id"/><field name="scope_type"/><field name="company_id"/>
+                <field name="user_id"/><field name="whatsapp_number_id"/>
+                <field name="target_value"/><field name="goal_direction"/><field name="active"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chatroom_kpi_target_form" model="ir.ui.view">
+        <field name="name">chatroom.kpi.target.form</field>
+        <field name="model">chatroom.kpi.target</field>
+        <field name="arch" type="xml">
+            <form string="Objetivo de KPI">
+                <sheet><group>
+                    <field name="kpi_id"/><field name="scope_type"/>
+                    <field name="company_id"/>
+                    <field name="user_id" invisible="scope_type != 'agent'"/>
+                    <field name="whatsapp_number_id" invisible="scope_type != 'line'"/>
+                    <field name="target_value"/><field name="goal_direction"/><field name="active"/>
+                </group></sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chatroom_kpi_target" model="ir.actions.act_window">
+        <field name="name">Objetivos por agente y línea</field>
+        <field name="res_model">chatroom.kpi.target</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <menuitem id="menu_chatroom_config_kpi_targets" name="Objetivos por agente y línea"
+              parent="menu_chatroom_config" action="action_chatroom_kpi_target"
+              sequence="16" groups="chatroom_whatsapp.group_chatroom_manager"/>
+</odoo>

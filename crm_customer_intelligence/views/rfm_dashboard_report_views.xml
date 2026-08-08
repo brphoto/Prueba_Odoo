@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rfm_dashboard_report_wizard" model="ir.ui.view">
+        <field name="name">crm.rfm.dashboard.report.wizard.form</field>
+        <field name="model">crm.rfm.dashboard.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reporte gerencial de Inteligencia Comercial">
+                <group>
+                    <field name="period"/>
+                    <field name="category"/>
+                    <field name="company_id"/>
+                </group>
+                <footer>
+                    <button name="action_print_pdf" type="object" string="Generar PDF" class="btn-primary"/>
+                    <button name="action_export_xlsx" type="object" string="Exportar Excel" class="btn-secondary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_crm_rfm_dashboard_report_wizard" model="ir.actions.act_window">
+        <field name="name">Reporte gerencial RFM</field>
+        <field name="res_model">crm.rfm.dashboard.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_rfm_dashboard_report_wizard"/>
+        <field name="target">new</field>
+    </record>
+
+    <record id="action_report_rfm_dashboard" model="ir.actions.report">
+        <field name="name">Reporte gerencial RFM</field>
+        <field name="model">crm.rfm.dashboard.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">crm_customer_intelligence.rfm_dashboard_report</field>
+        <field name="report_file">crm_customer_intelligence.rfm_dashboard_report</field>
+        <field name="binding_model_id" ref="model_crm_rfm_dashboard_report_wizard"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <menuitem id="menu_crm_rfm_dashboard_report" name="Reporte gerencial RFM"
+              parent="crm.crm_menu_root" action="action_crm_rfm_dashboard_report_wizard"
+              sequence="37"/>
+
+    <template id="rfm_dashboard_report">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h2>Reporte gerencial de Inteligencia Comercial</h2>
+                    <p class="text-muted">
+                        <strong>Período:</strong> <span t-esc="dashboard.get('period')"/>
+                        <br/><strong>Categoría:</strong> <span t-esc="dashboard.get('category')"/>
+                        <br/><strong>Generado:</strong> <span t-esc="generated_at"/>
+                    </p>
+                    <table class="table table-sm table-bordered">
+                        <thead><tr><th>Indicador</th><th class="text-end">Resultado</th></tr></thead>
+                        <tbody>
+                            <tr><td>Clientes analizados</td><td class="text-end"><span t-esc="dashboard.get('customer_count', 0)"/></td></tr>
+                            <tr><td>Ventas del período</td><td class="text-end"><span t-esc="dashboard.get('total_sales', 0)"/></td></tr>
+                            <tr><td>Ticket promedio</td><td class="text-end"><span t-esc="dashboard.get('average_ticket', 0)"/></td></tr>
+                            <tr><td>Score RFM promedio</td><td class="text-end"><span t-esc="dashboard.get('average_score', 0)"/></td></tr>
+                            <tr><td>Clientes en riesgo</td><td class="text-end"><span t-esc="dashboard.get('at_risk_count', 0)"/></td></tr>
+                        </tbody>
+                    </table>
+                    <t t-if="dashboard.get('custom_kpis')">
+                        <h3>KPIs gerenciales configurados</h3>
+                        <table class="table table-sm table-bordered">
+                            <thead><tr><th>KPI</th><th class="text-end">Resultado</th></tr></thead>
+                            <tbody><t t-foreach="dashboard.get('custom_kpis')" t-as="kpi">
+                                <tr><td><span t-esc="kpi.get('name')"/></td><td class="text-end"><span t-esc="kpi.get('display_value')"/></td></tr>
+                            </t></tbody>
+                        </table>
+                    </t>
+                    <h3>Distribución RFM</h3>
+                    <table class="table table-sm table-bordered">
+                        <thead><tr><th>Segmento</th><th class="text-end">Clientes</th><th class="text-end">Ventas</th></tr></thead>
+                        <tbody><t t-foreach="dashboard.get('distribution', [])" t-as="row">
+                            <tr><td><span t-esc="row.get('label')"/></td><td class="text-end"><span t-esc="row.get('count')"/></td><td class="text-end"><span t-esc="row.get('sales')"/></td></tr>
+                        </t></tbody>
+                    </table>
+                    <h3>Clientes principales</h3>
+                    <table class="table table-sm table-bordered">
+                        <thead><tr><th>Cliente</th><th>Segmento</th><th class="text-end">Total</th></tr></thead>
+                        <tbody><t t-foreach="dashboard.get('top_customers', [])" t-as="row">
+                            <tr><td><span t-esc="row.get('name')"/></td><td><span t-esc="row.get('category')"/></td><td class="text-end"><span t-esc="row.get('total')"/></td></tr>
+                        </t></tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

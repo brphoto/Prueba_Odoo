@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_management_report_subscription_list" model="ir.ui.view">
+        <field name="name">management.report.subscription.list</field>
+        <field name="model">management.report.subscription</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="not active">
+                <field name="name"/><field name="report_type"/><field name="frequency"/>
+                <field name="period"/><field name="recipient_ids" widget="many2many_tags"/>
+                <field name="next_run_at"/><field name="last_sent_at"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_management_report_subscription_form" model="ir.ui.view">
+        <field name="name">management.report.subscription.form</field>
+        <field name="model">management.report.subscription</field>
+        <field name="arch" type="xml">
+            <form string="Reporte gerencial programado">
+                <header>
+                    <button name="action_send_now" type="object" string="Enviar ahora" class="btn-primary"/>
+                    <field name="active" widget="boolean_button"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" placeholder="Reporte semanal de gerencia"/></h1></div>
+                    <group>
+                        <group string="Contenido"><field name="report_type"/><field name="period"/></group>
+                        <group string="Programación"><field name="frequency"/><field name="next_run_at"/><field name="company_id"/></group>
+                    </group>
+                    <group string="Destinatarios"><field name="recipient_ids" widget="many2many_tags"/></group>
+                    <group string="Último envío"><field name="last_sent_at" readonly="1"/><field name="last_error" readonly="1"/></group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_management_report_subscription" model="ir.actions.act_window">
+        <field name="name">Reportes programados</field>
+        <field name="res_model">management.report.subscription</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <menuitem id="menu_management_report_subscription" name="Reportes programados"
+              parent="chatroom_whatsapp.menu_chatroom_commercial"
+              action="action_management_report_subscription" sequence="35"
+              groups="chatroom_whatsapp.group_chatroom_manager"/>
+</odoo>

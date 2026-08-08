@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_kpi_snapshot_list" model="ir.ui.view">
+        <field name="name">crm.kpi.snapshot.list</field>
+        <field name="model">crm.kpi.snapshot</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="snapshot_date"/>
+                <field name="kpi_id"/>
+                <field name="period"/>
+                <field name="value"/>
+                <field name="display_value"/>
+                <field name="target_value"/>
+                <field name="status" widget="badge"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_crm_kpi_snapshot_graph" model="ir.ui.view">
+        <field name="name">crm.kpi.snapshot.graph</field>
+        <field name="model">crm.kpi.snapshot</field>
+        <field name="arch" type="xml">
+            <graph string="Evolución de KPIs comerciales" type="line">
+                <field name="snapshot_date" interval="day"/>
+                <field name="value" type="measure"/>
+                <field name="kpi_id"/>
+            </graph>
+        </field>
+    </record>
+    <record id="action_crm_kpi_snapshot" model="ir.actions.act_window">
+        <field name="name">Históricos de KPIs comerciales</field>
+        <field name="res_model">crm.kpi.snapshot</field>
+        <field name="view_mode">graph,list</field>
+    </record>
+    <menuitem id="menu_crm_kpi_snapshot" name="Históricos de KPIs"
+              parent="crm.crm_menu_root" action="action_crm_kpi_snapshot" sequence="38"/>
+</odoo>

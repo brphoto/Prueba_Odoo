@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_kpi_snapshot_list" model="ir.ui.view">
+        <field name="name">chatroom.kpi.snapshot.list</field>
+        <field name="model">chatroom.kpi.snapshot</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="snapshot_date"/>
+                <field name="kpi_id"/>
+                <field name="period_days"/>
+                <field name="value"/>
+                <field name="display_value"/>
+                <field name="target_value"/>
+                <field name="status" widget="badge"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chatroom_kpi_snapshot_graph" model="ir.ui.view">
+        <field name="name">chatroom.kpi.snapshot.graph</field>
+        <field name="model">chatroom.kpi.snapshot</field>
+        <field name="arch" type="xml">
+            <graph string="Evolución de KPIs de Chatroom" type="line">
+                <field name="snapshot_date" interval="day"/>
+                <field name="value" type="measure"/>
+                <field name="kpi_id"/>
+            </graph>
+        </field>
+    </record>
+    <record id="action_chatroom_kpi_snapshot" model="ir.actions.act_window">
+        <field name="name">Históricos de KPIs de Chatroom</field>
+        <field name="res_model">chatroom.kpi.snapshot</field>
+        <field name="view_mode">graph,list</field>
+    </record>
+    <menuitem id="menu_chatroom_config_kpi_snapshots" name="Históricos de KPIs"
+              parent="menu_chatroom_config" action="action_chatroom_kpi_snapshot"
+              sequence="15" groups="chatroom_whatsapp.group_chatroom_manager"/>
+</odoo>

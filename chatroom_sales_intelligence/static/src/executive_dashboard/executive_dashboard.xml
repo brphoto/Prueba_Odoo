@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="chatroom_sales_intelligence.ExecutiveDashboard">
+        <div class="o_executive_dashboard">
+            <div class="o_executive_header">
+                <div>
+                    <h2><i class="fa fa-line-chart"/> Tablero ejecutivo</h2>
+                    <p class="text-muted">Atención, conversaciones, ventas y segmentación RFM en una sola vista.</p>
+                </div>
+                <div class="o_executive_actions">
+                    <label>Período
+                        <select t-on-change="changePeriod">
+                            <option value="30" t-att-selected="state.period === '30'">Últimos 30 días</option>
+                            <option value="90" t-att-selected="state.period === '90'">Últimos 90 días</option>
+                            <option value="365" t-att-selected="state.period === '365'">Últimos 12 meses</option>
+                            <option value="all" t-att-selected="state.period === 'all'">Todo el historial</option>
+                        </select>
+                    </label>
+                    <button class="btn btn-secondary" t-on-click="openChatroom"><i class="fa fa-comments"/> Chatroom</button>
+                    <button class="btn btn-primary" t-on-click="openRfm"><i class="fa fa-users"/> Inteligencia comercial</button>
+                </div>
+            </div>
+            <t t-if="state.loading"><div class="o_chatroom_loading"><i class="fa fa-spin fa-circle-o-notch"/></div></t>
+            <t t-elif="state.chat and state.rfm">
+                <div class="o_executive_kpis">
+                    <div class="o_executive_card"><span>Conversaciones activas</span><strong t-esc="state.chat.custom_kpis[0] ? state.chat.custom_kpis[0].display_value : '-'"/></div>
+                    <div class="o_executive_card"><span>Mensajes sin leer</span><strong t-esc="state.chat.unread_total"/></div>
+                    <div class="o_executive_card"><span>Cumplimiento SLA</span><strong t-esc="state.chat.sla_compliance_rate === null ? '-' : state.chat.sla_compliance_rate + '%'"/></div>
+                    <div class="o_executive_card"><span>Ventas del período</span><strong t-esc="state.rfm.total_sales"/></div>
+                    <div class="o_executive_card"><span>Ticket promedio</span><strong t-esc="state.rfm.average_ticket"/></div>
+                    <div class="o_executive_card o_executive_danger"><span>Clientes en riesgo</span><strong t-esc="state.rfm.at_risk_count"/></div>
+                </div>
+                <div class="o_executive_columns">
+                    <section class="o_executive_panel">
+                        <h4>Conversaciones por etapa</h4>
+                        <t t-foreach="state.chat.stage_breakdown" t-as="stage" t-key="stage.id || 'none'">
+                            <div class="o_executive_row"><span t-esc="stage.name"/><div class="o_executive_bar"><i t-attf-style="width: {{ barWidth(stage.count, state.chat.stage_breakdown, 'count') }}%"/></div><b t-esc="stage.count"/></div>
+                        </t>
+                    </section>
+                    <section class="o_executive_panel">
+                        <h4>Distribución RFM</h4>
+                        <t t-foreach="state.rfm.distribution" t-as="row" t-key="row.category">
+                            <div class="o_executive_row"><span t-esc="row.label"/><div class="o_executive_bar"><i t-attf-style="width: {{ barWidth(row.count, state.rfm.distribution, 'count') }}%"/></div><b t-esc="row.count"/></div>
+                        </t>
+                    </section>
+                    <section class="o_executive_panel">
+                        <h4>KPIs personalizados</h4>
+                        <t t-foreach="(state.chat.custom_kpis || []).concat(state.rfm.custom_kpis || [])" t-as="kpi" t-key="kpi.model + '-' + kpi.id">
+                            <div class="o_executive_kpi_row"><span t-esc="kpi.name"/><b t-esc="kpi.display_value"/></div>
+                        </t>
+                    </section>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

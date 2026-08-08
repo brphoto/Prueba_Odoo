@@ -63,7 +63,7 @@ agrega la capa visual que los muestra dentro del chat.
     'license': 'LGPL-3',
 
     'category': 'Sales/CRM',
-    'version': '19.0.1.0.3',
+    'version': '19.0.1.0.6',
 
     'depends': ['chatroom_whatsapp', 'crm_customer_intelligence'],
 
@@ -72,6 +72,7 @@ agrega la capa visual que los muestra dentro del chat.
         'data/ir_cron_data.xml',
         'views/chatroom_channel_views.xml',
         'views/chatroom_campaign_views.xml',
+        'views/management_report_subscription_views.xml',
         'views/chatroom_menus.xml',
     ],
 
@@ -87,6 +88,9 @@ agrega la capa visual que los muestra dentro del chat.
             'chatroom_sales_intelligence/static/src/my_followups/my_followups_dashboard.js',
             'chatroom_sales_intelligence/static/src/my_followups/my_followups_dashboard.xml',
             'chatroom_sales_intelligence/static/src/my_followups/my_followups_dashboard.scss',
+            'chatroom_sales_intelligence/static/src/executive_dashboard/executive_dashboard.js',
+            'chatroom_sales_intelligence/static/src/executive_dashboard/executive_dashboard.xml',
+            'chatroom_sales_intelligence/static/src/executive_dashboard/executive_dashboard.scss',
         ],
         'web.assets_web_dark': [
             'chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence.dark.scss',

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datetime import timedelta
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
@@ -159,6 +161,116 @@ class ResPartner(models.Model):
             'res_id': mailing_list.id,
             'view_mode': 'form',
             'target': 'current',
+        }
+
+    @api.model
+    def get_rfm_dashboard_data(self, period='90', category='all'):
+        """Return configurable RFM and commercial KPIs for the dashboard."""
+        today = fields.Date.context_today(self)
+        date_from = False
+        if period in ('30', '90', '365'):
+            date_from = today - timedelta(days=int(period))
+
+        partner_domain = []
+        if category and category != 'all':
+            partner_domain.append(('rfm_category', '=', category))
+        partners = self.search(partner_domain)
+        partner_ids = partners.ids
+
+        invoice_domain = [
+            ('move_type', '=', 'out_invoice'),
+            ('state', '=', 'posted'),
+            ('partner_id', 'in', partner_ids or [0]),
+        ]
+        if date_from:
+            invoice_domain.append(('invoice_date', '>=', date_from))
+        grouped = self.env['account.move']._read_group(
+            invoice_domain,
+            groupby=['partner_id'],
+            aggregates=['amount_total_signed:sum', '__count'],
+        )
+
+        customer_rows = []
+        for partner, total, count in grouped:
+            if not partner:
+                continue
+            customer_rows.append({
+                'id': partner.id,
+                'name': partner.display_name,
+                'total': round(total or 0.0, 2),
+                'invoice_count': count,
+                'category': partner.rfm_category or 'none',
+                'score': partner.rfm_score or 0,
+            })
+        customer_rows.sort(key=lambda row: row['total'], reverse=True)
+
+        total_sales = round(sum(row['total'] for row in customer_rows), 2)
+        invoice_count = sum(row['invoice_count'] for row in customer_rows)
+        scored_partners = [partner for partner in partners if partner.rfm_score]
+        average_score = round(
+            sum(partner.rfm_score for partner in scored_partners) / len(scored_partners), 1
+        ) if scored_partners else 0.0
+
+        category_counts = {}
+        category_sales = {}
+        for row in customer_rows:
+            category_counts[row['category']] = category_counts.get(row['category'], 0) + 1
+            category_sales[row['category']] = round(
+                category_sales.get(row['category'], 0.0) + row['total'], 2)
+
+        line_domain = [
+            ('move_id.move_type', '=', 'out_invoice'),
+            ('move_id.state', '=', 'posted'),
+            ('move_id.partner_id', 'in', partner_ids or [0]),
+            ('product_id', '!=', False),
+            ('display_type', '=', 'product'),
+        ]
+        if date_from:
+            line_domain.append(('move_id.invoice_date', '>=', date_from))
+        product_grouped = self.env['account.move.line']._read_group(
+            line_domain,
+            groupby=['product_id'],
+            aggregates=['price_subtotal:sum', '__count'],
+        )
+        top_products = sorted(
+            [
+                {
+                    'id': product.id,
+                    'name': product.display_name,
+                    'total': round(total or 0.0, 2),
+                    'line_count': count,
+                }
+                for product, total, count in product_grouped if product
+            ],
+            key=lambda row: row['total'], reverse=True,
+        )[:8]
+
+        all_categories = ('a', 'b', 'c', 'none')
+        distribution = [
+            {
+                'category': value,
+                'label': dict(RFM_CATEGORIES).get(value, value),
+                'count': category_counts.get(value, 0),
+                'sales': category_sales.get(value, 0.0),
+            }
+            for value in all_categories
+        ]
+        return {
+            'period': period,
+            'date_from': date_from.isoformat() if date_from else False,
+            'date_to': today.isoformat(),
+            'category': category or 'all',
+            'customer_count': len(partners),
+            'active_customer_count': len(customer_rows),
+            'total_sales': total_sales,
+            'invoice_count': invoice_count,
+            'average_ticket': round(total_sales / invoice_count, 2) if invoice_count else 0.0,
+            'average_score': average_score,
+            'at_risk_count': category_counts.get('c', 0),
+            'distribution': distribution,
+            'top_customers': customer_rows[:10],
+            'top_products': top_products,
+            'custom_kpis': self.env['crm.kpi.definition'].get_dashboard_values(period, category),
         }
 
     @api.model

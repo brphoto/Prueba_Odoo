@@ -11,15 +11,59 @@
     color: #e9edef;
 }
 
+.o_chatroom_intel_panel,
+.o_chatroom_intel_panel_embedded,
+.o_chatroom_intel_section,
+.o_chatroom_intel_panel_header,
+.o_chatroom_contact_intelligence {
+    background-color: #111b21;
+    border-color: #2a3942;
+}
+
 .o_chatroom_intel_panel_embedded,
 .o_chatroom_intel_section_title,
 .o_chatroom_intel_row {
     color: #e9edef;
 }
 
+.o_chatroom_intel_tabs {
+    border-bottom-color: #2a3942;
+}
+
+.o_chatroom_intel_tabs button {
+    color: #aebac1;
+
+    &:hover,
+    &.o_active {
+        color: #e9edef;
+    }
+
+    &.o_active {
+        border-bottom-color: #d18bc5;
+    }
+}
+
+.o_chatroom_intel_record_link {
+    color: #d18bc5;
+}
+
+.o_chatroom_intel_chip.o_chatroom_intel_record_link {
+    background-color: #202c33;
+    color: #e9edef;
+}
+
 .o_chatroom_intel_panel_embedded .text-muted,
 .o_chatroom_intel_history_item .text-muted {
     color: #aebac1 !important;
+}
+
+.o_chatroom_intel_history_item {
+    border-bottom-color: #2a3942;
+}
+
+.o_chatroom_intel_panel_embedded .o_chatroom_alert_badge,
+.o_chatroom_intel_panel_embedded .o_chatroom_rfm_badge {
+    color: #e9edef;
 }
 
 .o_chatroom_rfm_badge_a {

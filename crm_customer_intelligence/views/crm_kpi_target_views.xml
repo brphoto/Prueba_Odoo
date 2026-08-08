@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_kpi_target_list" model="ir.ui.view">
+        <field name="name">crm.kpi.target.list</field>
+        <field name="model">crm.kpi.target</field>
+        <field name="arch" type="xml">
+            <list><field name="kpi_id"/><field name="scope_type"/><field name="company_id"/>
+                <field name="user_id"/><field name="team_id"/><field name="target_value"/>
+                <field name="goal_direction"/><field name="active"/></list>
+        </field>
+    </record>
+    <record id="view_crm_kpi_target_form" model="ir.ui.view">
+        <field name="name">crm.kpi.target.form</field>
+        <field name="model">crm.kpi.target</field>
+        <field name="arch" type="xml">
+            <form string="Objetivo comercial"><sheet><group>
+                <field name="kpi_id"/><field name="scope_type"/><field name="company_id"/>
+                <field name="user_id" invisible="scope_type != 'salesperson'"/>
+                <field name="team_id" invisible="scope_type != 'team'"/>
+                <field name="target_value"/><field name="goal_direction"/><field name="active"/>
+            </group></sheet></form>
+        </field>
+    </record>
+    <record id="action_crm_kpi_target" model="ir.actions.act_window">
+        <field name="name">Objetivos por vendedor y equipo</field>
+        <field name="res_model">crm.kpi.target</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <menuitem id="menu_crm_kpi_target" name="Objetivos por vendedor y equipo"
+              parent="crm.crm_menu_root" action="action_crm_kpi_target" sequence="39"/>
+</odoo>

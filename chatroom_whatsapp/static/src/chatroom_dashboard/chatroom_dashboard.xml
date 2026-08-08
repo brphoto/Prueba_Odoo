@@ -5,6 +5,26 @@
         <div class="o_chatroom_dashboard">
             <div class="o_chatroom_dashboard_header">
                 <h3><i class="fa fa-whatsapp"/> Dashboard de Chatroom</h3>
+                <div class="o_chatroom_dashboard_actions">
+                    <label class="o_chatroom_period_selector">Período
+                        <select t-on-change="changePeriod">
+                            <option value="7" t-att-selected="state.periodDays === 7">Últimos 7 días</option>
+                            <option value="30" t-att-selected="state.periodDays === 30">Últimos 30 días</option>
+                            <option value="90" t-att-selected="state.periodDays === 90">Últimos 90 días</option>
+                            <option value="365" t-att-selected="state.periodDays === 365">Últimos 12 meses</option>
+                            <option value="0" t-att-selected="state.periodDays === 0">Todo el historial</option>
+                        </select>
+                    </label>
+                    <button type="button" class="btn btn-secondary" t-on-click="openKpiConfigurator">
+                        <i class="fa fa-sliders"/> Configurar KPIs
+                    </button>
+                    <button type="button" class="btn btn-secondary" t-on-click="openWidgetConfigurator">
+                        <i class="fa fa-pie-chart"/> Configurar gráficos
+                    </button>
+                    <button type="button" class="btn btn-primary" t-on-click="openReportWizard">
+                        <i class="fa fa-file-pdf-o"/> Imprimir PDF
+                    </button>
+                </div>
                 <div t-if="!state.loading"
                      t-attf-class="o_chatroom_webhook_health {{ state.lastWebhookOk ? 'o_ok' : 'o_warn' }}"
                      t-on-click="openSettings" title="Ir a Ajustes">
@@ -62,6 +82,77 @@
                 </div>
 
                 <div class="o_chatroom_dashboard_panels">
+                    <t t-foreach="state.dashboardWidgets" t-as="widget" t-key="widget.id">
+                        <div t-attf-class="o_chatroom_dashboard_panel o_chatroom_widget o_chatroom_widget_{{ widget.type }}">
+                            <div class="o_chatroom_widget_header">
+                                <div>
+                                    <h5 t-esc="widget.name"/>
+                                    <small t-if="widget.note" class="text-muted" t-esc="widget.note"/>
+                                </div>
+                                <span t-if="widget.type === 'card'" class="o_chatroom_widget_card_value" t-esc="widget.display_value"/>
+                            </div>
+                            <t t-if="widget.type === 'card'">
+                                <div t-if="widget.target_display" class="o_chatroom_widget_target">
+                                    Objetivo: <t t-esc="widget.target_display"/>
+                                </div>
+                            </t>
+                            <t t-elif="widget.type === 'pie'">
+                                <div class="o_chatroom_widget_pie_wrap">
+                                    <div class="o_chatroom_widget_pie" t-attf-style="{{ widgetPieStyle(widget) }}"/>
+                                    <div class="o_chatroom_widget_legend">
+                                        <t t-foreach="widget.points" t-as="point" t-key="point_index">
+                                            <div><span class="o_chatroom_widget_legend_dot" t-attf-style="background-color: {{ widget.color }}"/>
+                                                <span t-esc="point.label"/><strong t-esc="point.display_value"/></div>
+                                        </t>
+                                    </div>
+                                </div>
+                            </t>
+                            <t t-elif="widget.type === 'line'">
+                                <div class="o_chatroom_widget_line">
+                                    <svg viewBox="0 0 320 110" preserveAspectRatio="none">
+                                        <polyline t-att-points="widgetLinePoints(widget)" t-attf-style="fill:none;stroke:{{ widget.color }};stroke-width:3"/>
+                                    </svg>
+                                    <div class="o_chatroom_widget_line_labels">
+                                        <t t-foreach="widget.points" t-as="point" t-key="point_index"><span t-esc="point.label"/></t>
+                                    </div>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <t t-foreach="widget.points" t-as="point" t-key="point_index">
+                                    <div class="o_chatroom_widget_bar_row">
+                                        <span class="text-truncate" t-esc="point.label"/>
+                                        <div class="o_chatroom_widget_bar_track"><div class="o_chatroom_widget_bar" t-attf-style="width: {{ widgetBarWidth(point.value, widget.points) }}%;background-color: {{ widget.color }}"/></div>
+                                        <strong t-esc="point.display_value"/>
+                                    </div>
+                                </t>
+                            </t>
+                        </div>
+                    </t>
+                    <div class="o_chatroom_dashboard_panel o_chatroom_stage_panel">
+                        <h5>Conversaciones por etapa</h5>
+                        <t t-if="!state.stageBreakdown.length">
+                            <div class="text-muted">No hay etapas configuradas.</div>
+                        </t>
+                        <t t-foreach="state.stageBreakdown" t-as="stage" t-key="stage.id || 'none'">
+                            <button class="o_chatroom_stage_row" t-on-click="() => this.openStage(stage)">
+                                <span class="o_chatroom_stage_dot" t-attf-style="background-color: var(--o-color-{{ stage.color }}, #714B67)"/>
+                                <span class="o_chatroom_rank_label text-truncate" t-esc="stage.name"/>
+                                <span class="o_chatroom_rank_value" t-esc="stage.count"/>
+                                <small t-if="stage.unread_count">(<t t-esc="stage.unread_count"/> sin leer)</small>
+                            </button>
+                        </t>
+                    </div>
+                    <div class="o_chatroom_dashboard_panel" t-if="state.customKpis.length">
+                        <h5>KPIs gerenciales configurados</h5>
+                        <t t-foreach="state.customKpis" t-as="kpi" t-key="kpi.id">
+                            <button t-attf-class="o_chatroom_custom_kpi_row {{ kpi.status === 'success' ? 'o_is_success' : (kpi.status === 'danger' ? 'o_is_danger' : '') }}"
+                                    t-on-click="() => this.openCustomKpi(kpi)">
+                                <span class="text-truncate" t-esc="kpi.name"/>
+                                <strong t-esc="kpi.display_value"/>
+                                <small t-if="kpi.goal_direction !== 'none'">Objetivo: <t t-esc="kpi.target_display"/></small>
+                            </button>
+                        </t>
+                    </div>
                     <div class="o_chatroom_dashboard_panel">
                         <h5>Conversaciones abiertas por agente</h5>
                         <t t-if="!state.byAgent.length">

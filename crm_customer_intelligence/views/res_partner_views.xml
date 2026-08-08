@@ -70,4 +70,15 @@
         <field name="code">action = records.action_create_rfm_marketing_list()</field>
     </record>
 
+    <record id="action_customer_intelligence_dashboard" model="ir.actions.client">
+        <field name="name">Dashboard de Inteligencia Comercial</field>
+        <field name="tag">crm_customer_intelligence.rfm_dashboard</field>
+    </record>
+
+    <menuitem id="menu_customer_intelligence_dashboard"
+              name="Dashboard de Inteligencia Comercial"
+              parent="crm.crm_menu_root"
+              action="action_customer_intelligence_dashboard"
+              sequence="35"/>
+
 </odoo>

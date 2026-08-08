@@ -83,7 +83,7 @@
     </record>
 
     <menuitem id="menu_chatroom_campaign" name="Campañas RFM"
-              parent="chatroom_whatsapp.menu_chatroom_root"
+              parent="chatroom_whatsapp.menu_chatroom_commercial"
               action="action_chatroom_campaign"
               groups="chatroom_whatsapp.group_chatroom_manager"
               sequence="27"/>

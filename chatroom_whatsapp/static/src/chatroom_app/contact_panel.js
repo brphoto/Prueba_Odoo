@@ -34,6 +34,7 @@ export class ContactPanel extends Component {
             loading: true,
             data: false,
             sendingDocKey: false,
+            completingActivityId: false,
             productQuery: "",
             productResults: [],
             sendingProductId: false,
@@ -85,6 +86,68 @@ export class ContactPanel extends Component {
         await this._load(this.props.channelId);
     }
 
+    async openActivity(activity) {
+        if (!activity || !activity.id) {
+            return;
+        }
+        try {
+            const action = await this.orm.call(
+                "chatroom.channel", "action_open_activity_form",
+                [this.props.channelId, activity.id]);
+            this._openDialog(action);
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
+    }
+
+    async scheduleActivity() {
+        try {
+            const action = await this.orm.call(
+                "chatroom.channel", "action_open_activity_schedule",
+                [this.props.channelId]);
+            this._openDialog(action);
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
+    }
+
+    async openCalendarMeeting() {
+        try {
+            const action = await this.orm.call(
+                "chatroom.channel", "action_open_calendar_meeting",
+                [this.props.channelId]);
+            this._openDialog(action);
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
+    }
+
+    async markActivityDone(activity) {
+        if (!activity || !activity.id || this.state.completingActivityId) {
+            return;
+        }
+        this.state.completingActivityId = activity.id;
+        try {
+            await this.orm.call(
+                "chatroom.channel", "action_mark_next_activity_done",
+                [this.props.channelId, activity.id]);
+            this.notification.add("Actividad marcada como hecha.", { type: "success" });
+            await this._reload();
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        } finally {
+            this.state.completingActivityId = false;
+        }
+    }
+
     _getStoredCollapsedState() {
         const defaults = { activities: true, orders: true, invoices: true, cart: false, catalog: false };
         try {
@@ -103,6 +166,13 @@ export class ContactPanel extends Component {
         } catch {
             // Sin localStorage el plegado sigue funcionando, solo no se
             // recuerda entre sesiones.
+        }
+    }
+
+    onSectionHeaderKeydown(ev, key) {
+        if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            this.toggleSection(key);
         }
     }
 

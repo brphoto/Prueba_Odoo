@@ -1,0 +1,35 @@
+.o_rfm_dashboard {
+    .o_rfm_kpi_card,
+    .o_rfm_dashboard_panel {
+        background-color: #111b21;
+        border-color: #2a3942;
+        color: #e9edef;
+    }
+
+    .o_rfm_kpi_card span,
+    .o_rfm_rank_category,
+    .text-muted {
+        color: #aebac1 !important;
+    }
+
+    .o_rfm_bar_track {
+        background-color: #2a3942;
+    }
+
+    .o_rfm_rank_row {
+        border-color: #2a3942;
+        color: #e9edef;
+    }
+
+    .o_rfm_dashboard_filters select {
+        background-color: #202c33;
+        border-color: #2a3942;
+        color: #e9edef;
+    }
+
+    .o_rfm_kpi_config {
+        background-color: #202c33;
+        border-color: #2a3942;
+        color: #e9edef;
+    }
+}

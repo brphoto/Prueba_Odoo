@@ -53,7 +53,7 @@ Requisitos
     'license': 'LGPL-3',
 
     'category': 'Discuss',
-    'version': '19.0.2.0.5',
+    'version': '19.0.2.0.20',
 
     # sale/purchase/crm/account eran opcionales hasta esta versión (el
     # módulo revisaba 'modelo' in self.env por todos lados para no
@@ -71,6 +71,8 @@ Requisitos
         'security/chatroom_security.xml',
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
+        'data/chatroom_channel_stage_data.xml',
+        'data/chatroom_kpi_definition_data.xml',
         'views/chatroom_whatsapp_number_views.xml',
         'views/chatroom_tag_views.xml',
         'views/chatroom_new_conversation_wizard_views.xml',
@@ -86,10 +88,17 @@ Requisitos
         'views/res_partner_views.xml',
         'views/chatroom_onboarding_wizard_views.xml',
         'views/chatroom_menus.xml',
+        'views/chatroom_channel_stage_views.xml',
+        'views/chatroom_kpi_definition_views.xml',
+        'views/chatroom_kpi_snapshot_views.xml',
+        'views/chatroom_kpi_target_views.xml',
+        'views/chatroom_dashboard_widget_views.xml',
+        'views/chatroom_dashboard_report_views.xml',
     ],
 
     'assets': {
         'web.assets_backend': [
+            'chatroom_whatsapp/static/src/views/embedded_record_open.js',
             'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread_core.js',
             'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread_core.xml',
             'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.js',

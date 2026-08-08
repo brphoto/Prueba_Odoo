@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_channel_stage_list" model="ir.ui.view">
+        <field name="name">chatroom.channel.stage.list</field>
+        <field name="model">chatroom.channel.stage</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" decoration-muted="not active">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="technical_state"/>
+                <field name="color" widget="color_picker"/>
+                <field name="default_for_new"/>
+                <field name="is_final"/>
+                <field name="fold"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_channel_stage_form" model="ir.ui.view">
+        <field name="name">chatroom.channel.stage.form</field>
+        <field name="model">chatroom.channel.stage</field>
+        <field name="arch" type="xml">
+            <form string="Etapa de conversación">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1><field name="name" placeholder="Ej. En seguimiento"/></h1>
+                    </div>
+                    <group>
+                        <group string="Flujo">
+                            <field name="sequence"/>
+                            <field name="technical_state"/>
+                            <field name="is_final"/>
+                            <field name="default_for_new"/>
+                        </group>
+                        <group string="Vista">
+                            <field name="color" widget="color_picker"/>
+                            <field name="fold"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description" placeholder="Cuándo debe usarse esta etapa..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_chatroom_channel_stage" model="ir.actions.act_window">
+        <field name="name">Etapas de conversaciones</field>
+        <field name="res_model">chatroom.channel.stage</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p>Organiza las conversaciones en un flujo de trabajo configurable, como en CRM.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_chatroom_config_stages" name="Etapas de conversaciones"
+              parent="menu_chatroom_config" action="action_chatroom_channel_stage"
+              sequence="12" groups="chatroom_whatsapp.group_chatroom_manager"/>
+</odoo>

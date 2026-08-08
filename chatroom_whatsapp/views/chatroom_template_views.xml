@@ -12,9 +12,11 @@
                 <field name="language"/>
                 <field name="category"/>
                 <field name="variable_count" string="Variables"/>
+                <field name="last_synced_at" string="Última sincronización" optional="hide"/>
                 <field name="status" widget="badge"
                        decoration-success="status == 'approved'"
                        decoration-warning="status == 'pending'"
+                       decoration-info="status == 'draft'"
                        decoration-danger="status in ('rejected', 'disabled')"
                        decoration-muted="status == 'paused'"/>
             </list>
@@ -26,25 +28,55 @@
         <field name="model">chatroom.template</field>
         <field name="arch" type="xml">
             <form string="Plantilla de WhatsApp">
+                <header>
+                    <button name="action_submit_to_meta" type="object"
+                            string="Enviar a Meta" class="btn-primary"
+                            invisible="not id or waba_template_id or status != 'draft'"/>
+                    <button name="action_detect_variables" type="object"
+                            string="Detectar variables" class="btn-secondary"
+                            invisible="not body"/>
+                    <field name="status" widget="statusbar"
+                           statusbar_visible="draft,pending,approved,rejected"/>
+                </header>
                 <sheet>
+                    <div class="alert alert-info" invisible="waba_template_id">
+                        Guarda el borrador y pulsa «Enviar a Meta» para solicitar su aprobación.
+                    </div>
+                    <field name="waba_template_id" invisible="1"/>
                     <div class="oe_title">
-                        <h1><field name="name" readonly="1"/></h1>
+                        <h1><field name="name" string="Nombre" readonly="waba_template_id"/></h1>
                     </div>
                     <group>
                         <group>
-                            <field name="language" readonly="1"/>
-                            <field name="category" readonly="1"/>
-                            <field name="status" readonly="1"/>
+                            <field name="language" string="Idioma" readonly="waba_template_id"/>
+                            <field name="category" string="Categoría" readonly="waba_template_id"/>
                         </group>
                         <group>
-                            <field name="header_type" readonly="1"/>
-                            <field name="header_text" readonly="1"/>
-                            <field name="footer_text" readonly="1"/>
-                            <field name="variable_count" readonly="1"/>
+                            <field name="header_type" string="Tipo de encabezado" readonly="waba_template_id"/>
+                            <field name="header_text" string="Texto del encabezado" readonly="waba_template_id"/>
+                            <field name="footer_text" string="Pie del mensaje" readonly="waba_template_id"/>
+                            <field name="variable_count" string="Variables detectadas" readonly="1"/>
+                            <field name="last_synced_at" string="Última sincronización" readonly="1"/>
                         </group>
                     </group>
-                    <group string="Cuerpo">
-                        <field name="body" nolabel="1" readonly="1"/>
+                    <group string="Cuerpo del mensaje">
+                        <field name="body" string="Mensaje" nolabel="1" readonly="waba_template_id"/>
+                    </group>
+                    <group string="Campos de variables" invisible="not variable_count">
+                        <field name="variable_mapping_ids" nolabel="1">
+                            <list editable="bottom">
+                                <field name="sequence"/>
+                                <field name="placeholder" readonly="1"/>
+                                <field name="label"/>
+                                <field name="value_source"/>
+                                <field name="format_type"/>
+                                <field name="static_value" invisible="value_source != 'static'"/>
+                            </list>
+                        </field>
+                        <div class="text-muted">
+                            Detecta las variables después de escribir el cuerpo. Al enviar desde un chat,
+                            Odoo completará estos campos automáticamente.
+                        </div>
                     </group>
                 </sheet>
             </form>
@@ -78,6 +110,8 @@
                     <field name="variables_text"
                            invisible="not variable_count"
                            placeholder="Un valor por línea, en orden"/>
+                    <field name="mapping_preview" string="Campos detectados"
+                           invisible="not variable_count" readonly="1"/>
                 </group>
                 <group string="Vista previa" invisible="not template_id">
                     <field name="preview" nolabel="1" readonly="1"/>

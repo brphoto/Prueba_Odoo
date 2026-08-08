@@ -52,31 +52,31 @@
                 </div>
 
                 <div class="o_chatroom_contact_stats">
-                    <div class="o_chatroom_contact_stat" t-if="state.data.crm_installed" t-on-click="openLeads">
+                    <button type="button" class="o_chatroom_contact_stat" t-if="state.data.crm_installed" t-on-click="openLeads">
                         <i class="fa fa-star"/>
                         <div class="o_chatroom_contact_stat_value" t-esc="state.data.lead_count"/>
                         <div class="o_chatroom_contact_stat_label">Oport.</div>
-                    </div>
-                    <div class="o_chatroom_contact_stat" t-if="state.data.sale_installed" t-on-click="openSaleOrders">
+                    </button>
+                    <button type="button" class="o_chatroom_contact_stat" t-if="state.data.sale_installed" t-on-click="openSaleOrders">
                         <i class="fa fa-file-text-o"/>
                         <div class="o_chatroom_contact_stat_value" t-esc="state.data.sale_order_count"/>
                         <div class="o_chatroom_contact_stat_label">Ventas</div>
-                    </div>
-                    <div class="o_chatroom_contact_stat" t-if="state.data.purchase_installed" t-on-click="openPurchases">
+                    </button>
+                    <button type="button" class="o_chatroom_contact_stat" t-if="state.data.purchase_installed" t-on-click="openPurchases">
                         <i class="fa fa-shopping-cart"/>
                         <div class="o_chatroom_contact_stat_value" t-esc="state.data.purchase_order_count"/>
                         <div class="o_chatroom_contact_stat_label">Compras</div>
-                    </div>
-                    <div class="o_chatroom_contact_stat" t-if="state.data.account_installed" t-on-click="openInvoices">
+                    </button>
+                    <button type="button" class="o_chatroom_contact_stat" t-if="state.data.account_installed" t-on-click="openInvoices">
                         <i class="fa fa-usd"/>
                         <div class="o_chatroom_contact_stat_value" t-esc="state.data.invoice_count"/>
                         <div class="o_chatroom_contact_stat_label">Facturas</div>
-                    </div>
-                    <div class="o_chatroom_contact_stat" t-if="state.data.project_installed" t-on-click="openTasks">
+                    </button>
+                    <button type="button" class="o_chatroom_contact_stat" t-if="state.data.project_installed" t-on-click="openTasks">
                         <i class="fa fa-tasks"/>
                         <div class="o_chatroom_contact_stat_value" t-esc="state.data.task_count"/>
                         <div class="o_chatroom_contact_stat_label">Tareas</div>
-                    </div>
+                    </button>
                 </div>
 
                 <div class="o_chatroom_contact_actions">
@@ -97,25 +97,58 @@
                     </button>
                 </div>
 
-                <div class="o_chatroom_contact_docs o_chatroom_contact_activities" t-if="state.data.activities.length">
-                    <div class="o_chatroom_contact_section_header" t-on-click="() => this.toggleSection('activities')">
-                        <h6 class="mb-0">Actividades pendientes</h6>
-                        <i t-attf-class="fa {{ state.collapsed.activities ? 'fa-chevron-right' : 'fa-chevron-down' }}"/>
+                <div class="o_chatroom_contact_docs o_chatroom_contact_activities" t-if="state.data">
+                    <div class="o_chatroom_contact_section_toolbar">
+                        <div class="o_chatroom_contact_section_header" role="button" tabindex="0"
+                             t-att-aria-expanded="state.collapsed.activities ? 'false' : 'true'"
+                             t-on-click="() => this.toggleSection('activities')"
+                             t-on-keydown="(ev) => this.onSectionHeaderKeydown(ev, 'activities')">
+                            <h6 class="mb-0">Actividades pendientes <span class="o_chatroom_contact_section_count"><t t-esc="state.data.activities.length"/></span></h6>
+                            <i t-attf-class="fa {{ state.collapsed.activities ? 'fa-chevron-right' : 'fa-chevron-down' }}"/>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-link o_chatroom_contact_schedule_activity"
+                                title="Programar actividad en Odoo"
+                                t-on-click.stop="scheduleActivity">
+                            <i class="fa fa-plus"/> Actividad
+                        </button>
+                        <button type="button" class="btn btn-sm btn-link o_chatroom_contact_schedule_activity"
+                                t-if="state.data.calendar_installed"
+                                title="Crear reunión o videollamada en Calendario"
+                                t-on-click.stop="openCalendarMeeting">
+                            <i class="fa fa-video-camera"/> Reunión
+                        </button>
                     </div>
                     <t t-if="!state.collapsed.activities">
+                        <div class="o_chatroom_empty text-muted" t-if="!state.data.activities.length">
+                            No hay actividades pendientes.
+                        </div>
                         <t t-foreach="state.data.activities" t-as="activity" t-key="activity.id">
-                            <div t-attf-class="o_chatroom_contact_doc_row {{ activity.is_overdue ? 'text-danger' : '' }}">
-                                <i class="fa fa-clock-o"/>
-                                <span class="o_chatroom_contact_doc_name text-truncate" t-esc="activity.summary"/>
-                                <span class="o_chatroom_contact_doc_amount" t-esc="activity.date_deadline"/>
+                            <div t-attf-class="o_chatroom_contact_doc_row o_chatroom_contact_activity_row {{ activity.is_overdue ? 'text-danger' : '' }}">
+                                <button type="button" class="o_chatroom_contact_activity_open"
+                                        title="Abrir actividad en Odoo"
+                                        t-on-click="() => this.openActivity(activity)">
+                                    <i class="fa fa-clock-o"/>
+                                    <span class="o_chatroom_contact_doc_name text-truncate" t-esc="activity.summary"/>
+                                    <span class="o_chatroom_contact_doc_amount" t-esc="activity.date_deadline"/>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-link o_chatroom_contact_activity_done"
+                                        title="Marcar actividad como hecha"
+                                        t-att-disabled="state.completingActivityId"
+                                        t-on-click.stop="() => this.markActivityDone(activity)">
+                                    <i t-if="state.completingActivityId === activity.id" class="fa fa-spin fa-circle-o-notch"/>
+                                    <i t-else="" class="fa fa-check"/>
+                                </button>
                             </div>
                         </t>
                     </t>
                 </div>
 
                 <div class="o_chatroom_contact_docs" t-if="state.data.sale_installed and state.data.recent_orders.length">
-                    <div class="o_chatroom_contact_section_header" t-on-click="() => this.toggleSection('orders')">
-                        <h6 class="mb-0">Presupuestos recientes</h6>
+                    <div class="o_chatroom_contact_section_header" role="button" tabindex="0"
+                         t-att-aria-expanded="state.collapsed.orders ? 'false' : 'true'"
+                         t-on-click="() => this.toggleSection('orders')"
+                         t-on-keydown="(ev) => this.onSectionHeaderKeydown(ev, 'orders')">
+                        <h6 class="mb-0">Presupuestos recientes <span class="o_chatroom_contact_section_count"><t t-esc="state.data.recent_orders.length"/></span></h6>
                         <i t-attf-class="fa {{ state.collapsed.orders ? 'fa-chevron-right' : 'fa-chevron-down' }}"/>
                     </div>
                     <t t-if="!state.collapsed.orders">
@@ -140,8 +173,11 @@
                 </div>
 
                 <div class="o_chatroom_contact_docs" t-if="state.data.account_installed and state.data.recent_invoices.length">
-                    <div class="o_chatroom_contact_section_header" t-on-click="() => this.toggleSection('invoices')">
-                        <h6 class="mb-0">Facturas recientes</h6>
+                    <div class="o_chatroom_contact_section_header" role="button" tabindex="0"
+                         t-att-aria-expanded="state.collapsed.invoices ? 'false' : 'true'"
+                         t-on-click="() => this.toggleSection('invoices')"
+                         t-on-keydown="(ev) => this.onSectionHeaderKeydown(ev, 'invoices')">
+                        <h6 class="mb-0">Facturas recientes <span class="o_chatroom_contact_section_count"><t t-esc="state.data.recent_invoices.length"/></span></h6>
                         <i t-attf-class="fa {{ state.collapsed.invoices ? 'fa-chevron-right' : 'fa-chevron-down' }}"/>
                     </div>
                     <t t-if="!state.collapsed.invoices">
@@ -167,7 +203,10 @@
 
                 <div class="o_chatroom_contact_docs o_chatroom_contact_cart"
                      t-if="state.data.sale_installed and state.data.cart_lines.length">
-                    <div class="o_chatroom_contact_section_header" t-on-click="() => this.toggleSection('cart')">
+                    <div class="o_chatroom_contact_section_header" role="button" tabindex="0"
+                         t-att-aria-expanded="state.collapsed.cart ? 'false' : 'true'"
+                         t-on-click="() => this.toggleSection('cart')"
+                         t-on-keydown="(ev) => this.onSectionHeaderKeydown(ev, 'cart')">
                         <h6 class="mb-0">
                             <i class="fa fa-shopping-basket"/> Carrito (armado por IA)
                         </h6>
@@ -201,7 +240,10 @@
                 </div>
 
                 <div class="o_chatroom_contact_docs" t-if="state.data.product_installed">
-                    <div class="o_chatroom_contact_section_header" t-on-click="() => this.toggleSection('catalog')">
+                    <div class="o_chatroom_contact_section_header" role="button" tabindex="0"
+                         t-att-aria-expanded="state.collapsed.catalog ? 'false' : 'true'"
+                         t-on-click="() => this.toggleSection('catalog')"
+                         t-on-keydown="(ev) => this.onSectionHeaderKeydown(ev, 'catalog')">
                         <h6 class="mb-0">Catálogo</h6>
                         <i t-attf-class="fa {{ state.collapsed.catalog ? 'fa-chevron-right' : 'fa-chevron-down' }}"/>
                     </div>

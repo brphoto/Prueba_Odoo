@@ -21,4 +21,14 @@
         <field name="active">True</field>
     </record>
 
+    <record id="ir_cron_snapshot_crm_kpis" model="ir.cron">
+        <field name="name">Inteligencia comercial: guardar históricos de KPIs</field>
+        <field name="model_id" ref="model_crm_kpi_snapshot"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_compute_snapshots()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active">True</field>
+    </record>
+
 </odoo>

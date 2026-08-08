@@ -18,6 +18,7 @@ const CHANNEL_FIELDS = [
     "channel_type",
     "last_message_preview",
     "last_message_date",
+    "manual_urgent",
     "unread_count",
     "state",
     "partner_id",
@@ -86,6 +87,7 @@ export class ChatroomApp extends Component {
         });
 
         this._onBusNotification = this._onBusNotification.bind(this);
+        this._channelsLoadGeneration = 0;
 
         onWillStart(async () => {
             await Promise.all([this._loadChannels(), this._loadNumbers()]);
@@ -98,6 +100,8 @@ export class ChatroomApp extends Component {
 
         onWillUnmount(() => {
             this.busService.removeEventListener("notification", this._onBusNotification);
+            clearTimeout(this._searchTimeout);
+            clearTimeout(this._busReloadTimeout);
         });
     }
 
@@ -136,11 +140,14 @@ export class ChatroomApp extends Component {
     }
 
     _onBusNotification({ detail: notifications }) {
-        for (const { type } of notifications) {
-            if (type === "chatroom.message/new") {
-                this._loadChannels();
-            }
+        if (notifications.some(({ type }) => type === "chatroom.message/new")) {
+            this._scheduleChannelsReload();
         }
+    }
+
+    _scheduleChannelsReload() {
+        clearTimeout(this._busReloadTimeout);
+        this._busReloadTimeout = setTimeout(() => this._loadChannels(), 250);
     }
 
     async _loadNumbers() {
@@ -154,6 +161,14 @@ export class ChatroomApp extends Component {
             domain.push(["unread_count", ">", 0]);
         } else if (this.state.filter === "mine") {
             domain.push(["assigned_user_id", "=", user.userId]);
+        } else if (this.state.filter === "pending") {
+            domain.push(["state", "=", "pending"]);
+        } else if (this.state.filter === "urgent") {
+            // Estos dos indicadores dependen de la hora actual y no son
+            // campos almacenados. No se pueden enviar como dominio SQL;
+            // se filtran en _applyClientOnlyFilters después del searchRead.
+        } else if (this.state.filter === "unassigned") {
+            domain.push(["assigned_user_id", "=", false]);
         }
         if (this.state.numberFilter === "mine") {
             domain.push(["whatsapp_number_id.member_ids", "in", [user.userId]]);
@@ -175,12 +190,23 @@ export class ChatroomApp extends Component {
         return domain;
     }
 
-    async _loadChannels() {
+    _applyClientOnlyFilters(channels) {
+        if (this.state.filter !== "urgent") {
+            return channels;
+        }
+        return channels.filter((channel) =>
+            channel.manual_urgent
+                || channel.next_activity_overdue
+                || channel.first_response_sla_state === "red"
+        );
+    }
+
+    async _loadChannelsLegacy() {
         this.state.loading = true;
         const channels = await this.orm.searchRead(
             "chatroom.channel", this._buildDomain(), CHANNEL_FIELDS,
             { order: "last_message_date desc", limit: 200 });
-        this.state.channels = channels.map((c) => ({
+        this.state.channels = this._applyClientOnlyFilters(channels).map((c) => ({
             ...c,
             dateObj: odooDatetimeToDate(c.last_message_date),
         }));
@@ -190,6 +216,33 @@ export class ChatroomApp extends Component {
             // La conversación abierta ya no entra en el filtro activo (p.ej.
             // se marcó como leída y el filtro es "No leídas"): no la cierro,
             // solo dejo de resaltarla en la lista.
+        }
+    }
+
+    async _loadChannels() {
+        const generation = ++this._channelsLoadGeneration;
+        this.state.loading = true;
+        try {
+            const channels = await this.orm.searchRead(
+                "chatroom.channel", this._buildDomain(), CHANNEL_FIELDS,
+                { order: "last_message_date desc", limit: 200 });
+            if (generation !== this._channelsLoadGeneration) {
+                return;
+            }
+            this.state.channels = this._applyClientOnlyFilters(channels).map((c) => ({
+                ...c,
+                dateObj: odooDatetimeToDate(c.last_message_date),
+            }));
+        } catch (error) {
+            if (generation === this._channelsLoadGeneration) {
+                this.notification.add(error.data ? error.data.message : error.message, {
+                    type: "danger",
+                });
+            }
+        } finally {
+            if (generation === this._channelsLoadGeneration) {
+                this.state.loading = false;
+            }
         }
     }
 
@@ -237,6 +290,23 @@ export class ChatroomApp extends Component {
 
     openTemplates() {
         this._openEmbeddedMenuAction("chatroom_whatsapp.action_chatroom_template");
+    }
+
+    async syncTemplates() {
+        try {
+            const result = await this.orm.call(
+                "chatroom.template", "action_sync_templates", []);
+            const params = result && result.params;
+            this.notification.add(
+                params ? `${params.title}: ${params.message}` : "Plantillas sincronizadas con Meta.",
+                { type: params?.type || "success" }
+            );
+            this.openTemplates();
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
     }
 
     openNumbers() {

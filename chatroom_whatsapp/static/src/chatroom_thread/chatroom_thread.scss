@@ -948,6 +948,33 @@
     padding: 0;
 }
 
+.o_chatroom_urgent_toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    padding: 2px 9px;
+    background: transparent;
+    color: #8696a0;
+    font-size: 0.85em;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+
+    &:hover,
+    &:focus-visible {
+        border-color: #d03b3b;
+        color: #d03b3b;
+        outline: none;
+    }
+
+    &.o_active {
+        background-color: rgba(208, 59, 59, 0.16);
+        color: #d03b3b;
+    }
+}
+
 .o_chatroom_mentions_menu {
     position: absolute;
     bottom: 58px;

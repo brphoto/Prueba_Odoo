@@ -7,18 +7,47 @@
         <field name="arch" type="xml">
             <list decoration-muted="state in ('sent', 'cancelled')"
                   decoration-danger="state == 'failed'">
-                <field name="channel_id"/>
-                <field name="body"/>
-                <field name="scheduled_date"/>
-                <field name="state" widget="badge"
+                <field name="channel_id" string="Conversación"/>
+                <field name="body" string="Mensaje"/>
+                <field name="scheduled_date" string="Fecha programada"/>
+                <field name="state" string="Estado" widget="badge"
                        decoration-success="state == 'sent'"
                        decoration-warning="state == 'pending'"
                        decoration-danger="state == 'failed'"
                        decoration-muted="state == 'cancelled'"/>
-                <field name="error_message" optional="hide"/>
-                <button name="action_cancel" type="object" string="Cancelar"
+                <field name="error_message" string="Mensaje de error" optional="hide"/>
+                <button name="action_cancel" type="object" string="Cancelar envío"
                         icon="fa-ban" invisible="state != 'pending'"/>
             </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_scheduled_message_form" model="ir.ui.view">
+        <field name="name">chatroom.scheduled.message.form</field>
+        <field name="model">chatroom.scheduled.message</field>
+        <field name="arch" type="xml">
+            <form string="Mensaje programado">
+                <header>
+                    <button name="action_cancel" type="object" string="Cancelar envío"
+                            class="btn-secondary" invisible="state != 'pending'"/>
+                    <field name="state" string="Estado" widget="statusbar"
+                           statusbar_visible="pending,sent,failed,cancelled"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="channel_id" string="Conversación" readonly="state != 'pending'"/>
+                        <field name="scheduled_date" string="Fecha y hora de envío"
+                               readonly="state != 'pending'"/>
+                    </group>
+                    <group string="Mensaje">
+                        <field name="body" string="Texto" nolabel="1"
+                               readonly="state != 'pending'"/>
+                    </group>
+                    <group string="Resultado del envío" invisible="not error_message">
+                        <field name="error_message" string="Mensaje de error" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
         </field>
     </record>
 
@@ -40,7 +69,7 @@
     <record id="action_chatroom_scheduled_message" model="ir.actions.act_window">
         <field name="name">Mensajes programados</field>
         <field name="res_model">chatroom.scheduled.message</field>
-        <field name="view_mode">list</field>
+        <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="view_chatroom_scheduled_message_search"/>
         <field name="context">{'search_default_pending': 1}</field>
         <field name="help" type="html">

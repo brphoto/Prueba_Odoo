@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="kpi_confirmed_orders" model="crm.kpi.definition">
+        <field name="name">Pedidos confirmados</field>
+        <field name="sequence">10</field>
+        <field name="model_name">sale.order</field>
+        <field name="aggregation">count</field>
+        <field name="measure_field">id</field>
+        <field name="date_field">date_order</field>
+        <field name="domain_filter">[('state', '=', 'sale')]</field>
+        <field name="format_type">number</field>
+    </record>
+    <record id="kpi_pending_balance" model="crm.kpi.definition">
+        <field name="name">Saldo pendiente</field>
+        <field name="sequence">20</field>
+        <field name="model_name">account.move</field>
+        <field name="aggregation">sum</field>
+        <field name="measure_field">amount_residual</field>
+        <field name="date_field">invoice_date</field>
+        <field name="domain_filter">[('move_type', '=', 'out_invoice'), ('state', '=', 'posted'), ('payment_state', 'in', ('not_paid', 'partial'))]</field>
+        <field name="format_type">money</field>
+    </record>
+    <record id="kpi_won_opportunities" model="crm.kpi.definition">
+        <field name="name">Oportunidades ganadas</field>
+        <field name="sequence">30</field>
+        <field name="model_name">crm.lead</field>
+        <field name="aggregation">count</field>
+        <field name="measure_field">id</field>
+        <field name="date_field">date_last_stage_update</field>
+        <field name="domain_filter">[('stage_id.is_won', '=', True)]</field>
+        <field name="format_type">number</field>
+    </record>
+</odoo>

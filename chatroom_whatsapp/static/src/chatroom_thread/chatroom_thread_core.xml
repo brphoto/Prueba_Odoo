@@ -121,6 +121,13 @@
                     </div>
                 </div>
                 <div class="o_chatroom_subheader_right">
+                    <button type="button"
+                            t-attf-class="o_chatroom_urgent_toggle {{ state.manualUrgent ? 'o_active' : '' }}"
+                            t-att-title="state.manualUrgent ? 'Quitar urgencia manual' : 'Marcar conversación como urgente'"
+                            t-on-click.stop="toggleManualUrgent">
+                        <i class="fa fa-flag"/>
+                        <span>Urgente</span>
+                    </button>
                     <span t-attf-class="o_chatroom_ai_toggle {{ state.aiPaused ? 'o_chatroom_ai_toggle_paused' : 'o_chatroom_ai_toggle_active' }}"
                           t-on-click="toggleAiPaused"
                           t-att-title="state.aiPaused ? 'IA pausada: la está atendiendo un agente. Tocá para reactivarla.' : 'IA activa: puede responder sola. Tocá para pausarla y atender vos.'">

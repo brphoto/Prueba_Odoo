@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_dashboard_report_wizard" model="ir.ui.view">
+        <field name="name">chatroom.dashboard.report.wizard.form</field>
+        <field name="model">chatroom.dashboard.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reporte gerencial de Chatroom">
+                <group>
+                    <field name="period_days"/>
+                    <field name="company_id"/>
+                    <field name="include_details"/>
+                </group>
+                <footer>
+                    <button name="action_print_pdf" type="object" string="Generar PDF" class="btn-primary"/>
+                    <button name="action_export_xlsx" type="object" string="Exportar Excel" class="btn-secondary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_chatroom_dashboard_report_wizard" model="ir.actions.act_window">
+        <field name="name">Reporte gerencial de Chatroom</field>
+        <field name="res_model">chatroom.dashboard.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_chatroom_dashboard_report_wizard"/>
+        <field name="target">new</field>
+    </record>
+
+    <record id="action_report_chatroom_dashboard" model="ir.actions.report">
+        <field name="name">Reporte gerencial de Chatroom</field>
+        <field name="model">chatroom.dashboard.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">chatroom_whatsapp.chatroom_dashboard_report</field>
+        <field name="report_file">chatroom_whatsapp.chatroom_dashboard_report</field>
+        <field name="binding_model_id" ref="model_chatroom_dashboard_report_wizard"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <menuitem id="menu_chatroom_config_dashboard_report" name="Reporte gerencial"
+              parent="menu_chatroom_config" action="action_chatroom_dashboard_report_wizard"
+              sequence="14" groups="chatroom_whatsapp.group_chatroom_manager"/>
+
+    <template id="chatroom_dashboard_report">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h2>Reporte gerencial de Chatroom</h2>
+                    <p class="text-muted">
+                        <strong>Período:</strong> <span t-esc="dashboard.get('period_label')"/>
+                        <br/>
+                        <strong>Generado:</strong> <span t-esc="generated_at"/>
+                    </p>
+
+                    <table class="table table-sm table-bordered">
+                        <thead><tr><th>Indicador</th><th class="text-end">Resultado</th></tr></thead>
+                        <tbody>
+                            <tr><td>Conversaciones de hoy</td><td class="text-end"><span t-esc="dashboard.get('today_count', 0)"/></td></tr>
+                            <tr><td>Conversaciones pendientes</td><td class="text-end"><span t-esc="dashboard.get('pending_count', 0)"/></td></tr>
+                            <tr><td>Mensajes sin leer</td><td class="text-end"><span t-esc="dashboard.get('unread_total', 0)"/></td></tr>
+                            <tr><td>Mensajes de hoy</td><td class="text-end"><span t-esc="dashboard.get('messages_today', 0)"/></td></tr>
+                            <tr><td>Primera respuesta promedio</td><td class="text-end"><span t-esc="dashboard.get('avg_first_response_minutes', 0)"/> min</td></tr>
+                            <tr><td>Cumplimiento de SLA</td><td class="text-end"><span t-esc="dashboard.get('sla_compliance_rate') or '-'"/>%</td></tr>
+                            <tr><td>Satisfacción promedio</td><td class="text-end"><span t-esc="dashboard.get('avg_csat_score', 0)"/> / 5</td></tr>
+                        </tbody>
+                    </table>
+
+                    <t t-if="dashboard.get('custom_kpis')">
+                        <h3>KPIs gerenciales configurados</h3>
+                        <table class="table table-sm table-bordered">
+                            <thead><tr><th>KPI</th><th class="text-end">Resultado</th><th class="text-end">Objetivo</th></tr></thead>
+                            <tbody>
+                                <t t-foreach="dashboard.get('custom_kpis')" t-as="kpi">
+                                    <tr>
+                                        <td><span t-esc="kpi.get('name')"/></td>
+                                        <td class="text-end"><span t-esc="kpi.get('display_value')"/></td>
+                                        <td class="text-end"><span t-esc="kpi.get('target_display') if kpi.get('goal_direction') != 'none' else '-'"/></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </t>
+
+                    <t t-if="wizard.include_details">
+                        <h3>Conversaciones por etapa</h3>
+                        <table class="table table-sm table-bordered">
+                            <thead><tr><th>Etapa</th><th class="text-end">Conversaciones</th><th class="text-end">Sin leer</th></tr></thead>
+                            <tbody>
+                                <t t-foreach="dashboard.get('stage_breakdown', [])" t-as="stage">
+                                    <tr><td><span t-esc="stage.get('name')"/></td><td class="text-end"><span t-esc="stage.get('count')"/></td><td class="text-end"><span t-esc="stage.get('unread_count')"/></td></tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <h3>Carga por agente</h3>
+                        <table class="table table-sm table-bordered">
+                            <thead><tr><th>Agente</th><th class="text-end">Conversaciones activas</th><th class="text-end">Primera respuesta promedio</th></tr></thead>
+                            <tbody>
+                                <t t-foreach="dashboard.get('by_agent', [])" t-as="agent">
+                                    <tr><td><span t-esc="agent.get('name')"/></td><td class="text-end"><span t-esc="agent.get('count')"/></td><td class="text-end">-</td></tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </t>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>
