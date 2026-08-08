@@ -4,7 +4,7 @@ from io import BytesIO
 
 import xlsxwriter
 
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class RfmDashboardReportWizard(models.TransientModel):
@@ -22,6 +22,24 @@ class RfmDashboardReportWizard(models.TransientModel):
     company_id = fields.Many2one(
         'res.company', string='Compañía', required=True,
         default=lambda self: self.env.company)
+
+    # El reporte conserva compatibilidad con A/B/C y acepta nuevas
+    # categorÃ­as creadas en el catÃ¡logo de Inteligencia comercial.
+    category = fields.Selection(
+        selection='_selection_rfm_category_filter', string='CategorÃ­a RFM',
+        default='all', required=True)
+
+    @api.model
+    def _selection_rfm_category_filter(self):
+        options = [('all', 'Todas')]
+        try:
+            options += self.env['res.partner']._selection_rfm_category()
+        except Exception:
+            options += [
+                ('a', 'A - Alto valor'), ('b', 'B - Valor medio'),
+                ('c', 'C - Bajo valor'), ('none', 'Sin historial'),
+            ]
+        return options
 
     def action_print_pdf(self):
         self.ensure_one()

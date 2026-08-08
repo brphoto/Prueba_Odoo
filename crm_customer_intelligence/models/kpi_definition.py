@@ -9,6 +9,7 @@ from odoo.tools.safe_eval import safe_eval
 class CrmKpiDefinition(models.Model):
     _name = 'crm.kpi.definition'
     _description = 'KPI configurable de inteligencia comercial'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'sequence, name'
 
     name = fields.Char(string='Nombre del KPI', required=True)
@@ -66,6 +67,22 @@ class CrmKpiDefinition(models.Model):
         'crm.lead': {'id', 'expected_revenue', 'probability', 'create_date', 'date_last_stage_update'},
         'mail.activity': {'id', 'date_deadline'},
     }
+
+    # El filtro también usa el catálogo configurable de categorías RFM.
+    rfm_category = fields.Selection(
+        selection='_selection_rfm_category_filter', string='Segmento RFM', default='all')
+
+    @api.model
+    def _selection_rfm_category_filter(self):
+        options = [('all', 'Todas')]
+        try:
+            options += self.env['res.partner']._selection_rfm_category()
+        except Exception:
+            options += [
+                ('a', 'A - Alto valor'), ('b', 'B - Valor medio'),
+                ('c', 'C - Bajo valor'), ('none', 'Sin historial'),
+            ]
+        return options
 
     @api.onchange('model_name', 'aggregation')
     def _onchange_model_configuration(self):
@@ -149,6 +166,11 @@ class CrmKpiDefinition(models.Model):
             lambda item: item.active and item.is_current_period() and item.scope_type == 'global')[:1]
         target_value = target.target_value if target else self.target_value
         goal_direction = target.goal_direction if target else self.goal_direction
+        progress = False
+        if goal_direction == 'higher' and target_value:
+            progress = round(value / target_value * 100, 1)
+        elif goal_direction == 'lower' and target_value:
+            progress = round(target_value / value * 100, 1) if value else 100.0
         return {
             'id': self.id, 'name': self.name, 'value': value,
             'display_value': display, 'model': self.model_name,
@@ -166,6 +188,7 @@ class CrmKpiDefinition(models.Model):
                 f'{target_value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
             ),
             'goal_direction': goal_direction,
+            'progress': progress,
             'status': (
                 'success' if (
                     goal_direction == 'higher' and value >= target_value) or

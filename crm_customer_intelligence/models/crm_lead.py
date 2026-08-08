@@ -19,6 +19,15 @@ class CrmLead(models.Model):
              "rojo; evita mandarle el mismo aviso todos los días. Se "
              "reinicia solo en cuanto vuelve a haber gestión real.")
 
+    @api.model
+    def get_management_alert_counts(self):
+        leads = self.search([('active', '=', True), ('stage_id.is_won', '=', False)])
+        counts = {'red': 0, 'yellow': 0}
+        for lead in leads:
+            if lead.management_alert_state in counts:
+                counts[lead.management_alert_state] += 1
+        return counts
+
     def _get_last_management_date(self):
         """Última fecha de 'gestión' real de la oportunidad: la más
         reciente entre el cambio de etapa (date_last_stage_update, nativo

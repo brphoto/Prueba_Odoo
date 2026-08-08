@@ -38,8 +38,8 @@
     </record>
 
     <menuitem id="menu_crm_rfm_dashboard_report" name="Reporte gerencial RFM"
-              parent="crm.crm_menu_root" action="action_crm_rfm_dashboard_report_wizard"
-              sequence="37"/>
+              parent="menu_crm_intelligence_reports" action="action_crm_rfm_dashboard_report_wizard"
+              sequence="20"/>
 
     <template id="rfm_dashboard_report">
         <t t-call="web.html_container">

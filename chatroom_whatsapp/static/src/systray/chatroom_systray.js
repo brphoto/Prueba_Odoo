@@ -38,7 +38,7 @@ export class ChatroomSystrayIcon extends Component {
         this.action = useService("action");
         this.busService = useService("bus_service");
 
-        this.state = useState({ visible: false, count: 0 });
+        this.state = useState({ visible: false, count: 0, urgent: 0, crmRed: 0 });
         this._onBusNotification = this._onBusNotification.bind(this);
 
         onWillStart(async () => {
@@ -99,7 +99,18 @@ export class ChatroomSystrayIcon extends Component {
     }
 
     async _loadCount() {
-        this.state.count = await this.orm.searchCount("chatroom.channel", [["state", "=", "pending"]]);
+        const values = await Promise.all([
+            this.orm.searchCount("chatroom.channel", [["state", "=", "pending"]]),
+            this.orm.searchCount("chatroom.channel", [["manual_urgent", "=", true]]),
+        ]);
+        this.state.count = values[0];
+        this.state.urgent = values[1];
+        try {
+            const alerts = await this.orm.call("crm.lead", "get_management_alert_counts", []);
+            this.state.crmRed = alerts.red || 0;
+        } catch {
+            this.state.crmRed = 0;
+        }
     }
 
     openChatroom() {

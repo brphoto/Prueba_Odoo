@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="rfm_segment_high_value" model="crm.rfm.segment">
+        <field name="name">Clientes de alto valor</field>
+        <field name="sequence">10</field><field name="category">a</field>
+        <field name="description">Clientes prioritarios para fidelización y venta cruzada.</field>
+    </record>
+    <record id="rfm_segment_at_risk" model="crm.rfm.segment">
+        <field name="name">Clientes en riesgo</field>
+        <field name="sequence">20</field><field name="category">c</field>
+        <field name="description">Contactos de bajo valor relativo para campañas de recuperación.</field>
+    </record>
+    <record id="rfm_segment_no_history" model="crm.rfm.segment">
+        <field name="name">Clientes sin historial</field>
+        <field name="sequence">30</field><field name="category">none</field>
+        <field name="description">Contactos que aún no tienen facturación registrada.</field>
+    </record>
+</odoo>

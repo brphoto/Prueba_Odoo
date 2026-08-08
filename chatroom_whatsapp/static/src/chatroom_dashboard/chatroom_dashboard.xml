@@ -158,6 +158,7 @@
                                 <span class="text-truncate" t-esc="kpi.name"/>
                                 <strong t-esc="kpi.display_value"/>
                                 <small t-if="kpi.goal_direction !== 'none'">Objetivo: <t t-esc="kpi.target_display"/></small>
+                                <small t-if="kpi.progress !== false">Avance: <t t-esc="kpi.progress"/>%</small>
                             </button>
                         </t>
                     </div>

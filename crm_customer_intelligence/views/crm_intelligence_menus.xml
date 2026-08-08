@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_crm_intelligence_root" name="Inteligencia comercial"
+              parent="crm.crm_menu_root" sequence="36"/>
+    <menuitem id="menu_crm_intelligence_reports" name="Reportes"
+              parent="menu_crm_intelligence_root" sequence="20"/>
+    <menuitem id="menu_crm_intelligence_config" name="Configuración"
+              parent="menu_crm_intelligence_root" sequence="30"/>
+</odoo>

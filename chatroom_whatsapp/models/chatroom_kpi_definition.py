@@ -9,6 +9,7 @@ from odoo.tools.safe_eval import safe_eval
 class ChatroomKpiDefinition(models.Model):
     _name = 'chatroom.kpi.definition'
     _description = 'KPI configurable de Chatroom'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'sequence, name'
 
     name = fields.Char(string='Nombre del KPI', required=True)
@@ -173,6 +174,11 @@ class ChatroomKpiDefinition(models.Model):
             status = 'success'
         elif goal_direction != 'none':
             status = 'danger'
+        progress = False
+        if goal_direction == 'higher' and target_value:
+            progress = round(value / target_value * 100, 1)
+        elif goal_direction == 'lower' and target_value:
+            progress = round(target_value / value * 100, 1) if value else 100.0
         return {
             'id': self.id,
             'name': self.name,
@@ -189,6 +195,7 @@ class ChatroomKpiDefinition(models.Model):
             'target_display': self._format_value(target_value),
             'goal_direction': goal_direction,
             'status': status,
+            'progress': progress,
         }
 
     @api.model

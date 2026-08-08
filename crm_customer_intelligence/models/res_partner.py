@@ -34,14 +34,52 @@ class ResPartner(models.Model):
         string="Producto más comprado", compute='_compute_commercial_metrics')
 
     rfm_score = fields.Integer(
-        string="Score RFM", default=0, copy=False,
+        string="Score RFM", default=0, copy=False, index=True,
         help="1 a 100. Se recalcula todos los días con el resto de la "
              "cartera de clientes (cron), no es un valor absoluto: es un "
              "percentil relativo de Recencia + Frecuencia + Monto.")
     rfm_category = fields.Selection(
-        RFM_CATEGORIES, string="Categoría RFM (ABC)", default='none', copy=False,
+        selection='_selection_rfm_category',
+        string="Categoría RFM", default='none', copy=False, index=True,
         help="Clasificación simplificada A/B/C de valor del cliente, "
-             "calculada por el mismo cron que el score RFM.")
+        "calculada por el mismo cron que el score RFM.")
+
+    @api.model
+    def _selection_rfm_category(self):
+        """CategorÃ­as configurables, conservando A/B/C como respaldo."""
+        options = list(RFM_CATEGORIES)
+        try:
+            configured = self.env['crm.rfm.category'].search([], order='sequence, id')
+            configured_options = [(category.code, category.name) for category in configured]
+            known_codes = {code for code, _label in configured_options}
+            options = configured_options + [item for item in options if item[0] not in known_codes]
+        except Exception:  # puede no existir durante la carga inicial del registro
+            pass
+        return options
+
+    def action_schedule_rfm_followup(self):
+        """Acción masiva: crea una actividad nativa para los contactos seleccionados."""
+        activity_type = self.env['mail.activity.type'].search(
+            [('category', '=', 'default')], order='sequence, id', limit=1)
+        if not activity_type:
+            raise UserError(_('No hay tipos de actividad configurados en Odoo.'))
+        model_id = self.env['ir.model']._get_id('res.partner')
+        deadline = fields.Date.add(fields.Date.context_today(self), days=3)
+        self.env['mail.activity'].create([{
+            'activity_type_id': activity_type.id,
+            'summary': _('Seguimiento RFM'),
+            'note': _('Revisar el segmento comercial y contactar al cliente.'),
+            'date_deadline': deadline,
+            'user_id': self.env.user.id,
+            'res_model_id': model_id,
+            'res_id': partner.id,
+        } for partner in self])
+        return {
+            'type': 'ir.actions.client', 'tag': 'display_notification',
+            'params': {'title': _('Actividades creadas'),
+                       'message': _('%s seguimientos fueron programados.') % len(self),
+                       'type': 'success'},
+        }
 
     def _compute_commercial_metrics(self):
         Move = self.env['account.move']
@@ -138,7 +176,9 @@ class ResPartner(models.Model):
         categories = set(partners_with_email.mapped('rfm_category'))
         today = fields.Date.context_today(self)
         if len(categories) == 1:
-            label = dict(self._fields['rfm_category'].selection).get(categories.pop())
+            code = categories.pop()
+            category = self.env['crm.rfm.category'].search([('code', '=', code)], limit=1)
+            label = category.name if category else dict(RFM_CATEGORIES).get(code, code)
             list_name = _("RFM - Categoría %(label)s - %(date)s") % {'label': label, 'date': today}
         else:
             list_name = _("RFM - Selección de contactos - %s") % today
@@ -206,6 +246,26 @@ class ResPartner(models.Model):
 
         total_sales = round(sum(row['total'] for row in customer_rows), 2)
         invoice_count = sum(row['invoice_count'] for row in customer_rows)
+        previous_total = 0.0
+        previous_invoice_count = 0
+        if date_from:
+            previous_from = date_from - timedelta(days=int(period))
+            previous_domain = [
+                ('move_type', '=', 'out_invoice'),
+                ('state', '=', 'posted'),
+                ('partner_id', 'in', partner_ids or [0]),
+                ('invoice_date', '>=', previous_from),
+                ('invoice_date', '<', date_from),
+            ]
+            previous_group = self.env['account.move']._read_group(
+                previous_domain, groupby=[],
+                aggregates=['amount_total_signed:sum', '__count'])
+            if previous_group:
+                previous_total = round(previous_group[0][0] or 0.0, 2)
+                previous_invoice_count = previous_group[0][1] or 0
+        sales_variation = round(
+            ((total_sales - previous_total) / previous_total) * 100, 1
+        ) if previous_total else False
         scored_partners = [partner for partner in partners if partner.rfm_score]
         average_score = round(
             sum(partner.rfm_score for partner in scored_partners) / len(scored_partners), 1
@@ -245,11 +305,16 @@ class ResPartner(models.Model):
             key=lambda row: row['total'], reverse=True,
         )[:8]
 
-        all_categories = ('a', 'b', 'c', 'none')
+        configured_categories = self.env['crm.rfm.category'].get_dashboard_options()
+        all_categories = [item['code'] for item in configured_categories]
+        if 'none' not in all_categories:
+            all_categories.append('none')
+        labels = {item['code']: item['label'] for item in configured_categories}
+        labels.setdefault('none', 'Sin historial')
         distribution = [
             {
                 'category': value,
-                'label': dict(RFM_CATEGORIES).get(value, value),
+                'label': labels.get(value, value),
                 'count': category_counts.get(value, 0),
                 'sales': category_sales.get(value, 0.0),
             }
@@ -265,8 +330,16 @@ class ResPartner(models.Model):
             'total_sales': total_sales,
             'invoice_count': invoice_count,
             'average_ticket': round(total_sales / invoice_count, 2) if invoice_count else 0.0,
+            'comparison': {
+                'previous_sales': previous_total,
+                'previous_invoice_count': previous_invoice_count,
+                'sales_variation': sales_variation,
+            },
             'average_score': average_score,
-            'at_risk_count': category_counts.get('c', 0),
+            'at_risk_count': sum(
+                category_counts.get(item['code'], 0) for item in configured_categories
+                if item['is_at_risk']),
+            'category_options': configured_categories,
             'distribution': distribution,
             'top_customers': customer_rows[:10],
             'top_products': top_products,
@@ -314,7 +387,10 @@ class ResPartner(models.Model):
             frequency_score = _percentile_rank(counts, row['count'], higher_is_better=True)
             recency_score = _percentile_rank(recencies, row['recency_days'], higher_is_better=False)
             score = round((monetary_score * 0.5) + (frequency_score * 0.3) + (recency_score * 0.2))
-            if score >= 70:
+            category_record = self.env['crm.rfm.category'].category_for_score(score)
+            if category_record:
+                category = category_record.code
+            elif score >= 70:
                 category = 'a'
             elif score >= 40:
                 category = 'b'

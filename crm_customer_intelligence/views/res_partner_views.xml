@@ -70,15 +70,24 @@
         <field name="code">action = records.action_create_rfm_marketing_list()</field>
     </record>
 
+    <record id="action_schedule_rfm_followup" model="ir.actions.server">
+        <field name="name">Programar seguimiento RFM</field>
+        <field name="model_id" ref="base.model_res_partner"/>
+        <field name="binding_model_id" ref="base.model_res_partner"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_schedule_rfm_followup()</field>
+    </record>
+
     <record id="action_customer_intelligence_dashboard" model="ir.actions.client">
         <field name="name">Dashboard de Inteligencia Comercial</field>
         <field name="tag">crm_customer_intelligence.rfm_dashboard</field>
     </record>
 
     <menuitem id="menu_customer_intelligence_dashboard"
-              name="Dashboard de Inteligencia Comercial"
-              parent="crm.crm_menu_root"
+              name="Dashboard"
+              parent="menu_crm_intelligence_root"
               action="action_customer_intelligence_dashboard"
-              sequence="35"/>
+              sequence="10"/>
 
 </odoo>

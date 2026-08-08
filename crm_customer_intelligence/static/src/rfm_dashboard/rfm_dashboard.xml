@@ -27,9 +27,9 @@
                     <label>Categoría
                         <select t-on-change="changeCategory">
                             <option value="all" t-att-selected="state.category === 'all'">Todas</option>
-                            <option value="a" t-att-selected="state.category === 'a'">A - Alto valor</option>
-                            <option value="b" t-att-selected="state.category === 'b'">B - Valor medio</option>
-                            <option value="c" t-att-selected="state.category === 'c'">C - Bajo valor</option>
+                            <option t-foreach="(state.data && state.data.category_options) || []" t-as="option" t-key="option.code"
+                                    t-att-value="option.code" t-att-selected="state.category === option.code"
+                                    t-esc="option.label"/>
                         </select>
                     </label>
                     <div class="o_rfm_kpi_config" t-if="state.kpiConfigOpen">
@@ -44,6 +44,13 @@
                                 t-on-click="resetKpis">Restablecer</button>
                     </div>
                 </div>
+            </div>
+
+            <div class="o_rfm_comparison" t-if="state.data && state.data.comparison">
+                <i class="fa fa-line-chart"/> Ventas: <strong t-esc="formatMoney(state.data.total_sales)"/>
+                <span t-attf-class="{{ state.data.comparison.sales_variation !== false ? (state.data.comparison.sales_variation >= 0 ? 'o_rfm_variation_up' : 'o_rfm_variation_down') : '' }}">
+                    <t t-esc="formatVariation(state.data.comparison.sales_variation)"/>
+                </span>
             </div>
 
             <t t-if="state.loading">
@@ -66,7 +73,7 @@
                     </div>
                     <button t-if="state.visibleKpis.at_risk_count"
                             class="o_rfm_kpi_card o_rfm_kpi_danger"
-                            t-on-click="() => this.openPartners('c')">
+                            t-on-click="openAtRisk">
                         <span>Clientes en riesgo</span><strong t-esc="state.data.at_risk_count"/>
                     </button>
                     <div t-if="state.visibleKpis.active_customer_count" class="o_rfm_kpi_card">
@@ -80,6 +87,7 @@
                                 t-on-click="() => this.openCustomKpi(kpi)">
                             <span t-esc="kpi.name"/><strong t-esc="kpi.display_value"/>
                             <small t-if="kpi.goal_direction !== 'none'">Objetivo: <t t-esc="kpi.target_display"/></small>
+                            <small t-if="kpi.progress !== false">Avance: <t t-esc="kpi.progress"/>%</small>
                         </button>
                     </t>
                 </div>

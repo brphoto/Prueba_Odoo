@@ -1,4 +1,4 @@
-.o_rfm_dashboard {
+.o_rfm_dashboard { 
     padding: 24px;
     max-width: 1440px;
     margin: 0 auto;
@@ -14,6 +14,21 @@
     h2 { margin: 0; font-weight: 600; }
     p { margin: 5px 0 0; }
 }
+
+.o_rfm_comparison {
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 8px;
+    padding: 9px 13px;
+    margin-bottom: 18px;
+    color: #667781;
+    background: var(--o-view-background-color, #fff);
+
+    strong { color: inherit; }
+    span { margin-left: 12px; font-weight: 600; }
+}
+
+.o_rfm_variation_up { color: #15803d; }
+.o_rfm_variation_down { color: #dc2626; }
 
 .o_rfm_dashboard_filters {
     display: flex;

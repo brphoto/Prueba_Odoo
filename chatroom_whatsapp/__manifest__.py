@@ -96,6 +96,7 @@ Requisitos
         'views/chatroom_kpi_target_views.xml',
         'views/chatroom_dashboard_widget_views.xml',
         'views/chatroom_dashboard_profile_views.xml',
+        'views/chatroom_audit_log_views.xml',
         'views/chatroom_dashboard_report_views.xml',
     ],
 

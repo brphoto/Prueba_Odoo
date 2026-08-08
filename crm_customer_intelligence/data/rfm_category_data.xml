@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="rfm_category_a" model="crm.rfm.category">
+        <field name="name">A - Alto valor</field><field name="code">a</field>
+        <field name="sequence">10</field><field name="score_min">70</field><field name="score_max">100</field><field name="color">10</field>
+    </record>
+    <record id="rfm_category_b" model="crm.rfm.category">
+        <field name="name">B - Valor medio</field><field name="code">b</field>
+        <field name="sequence">20</field><field name="score_min">40</field><field name="score_max">69</field><field name="color">3</field>
+    </record>
+    <record id="rfm_category_c" model="crm.rfm.category">
+        <field name="name">C - Bajo valor</field><field name="code">c</field>
+        <field name="sequence">30</field><field name="score_min">0</field><field name="score_max">39</field><field name="color">1</field><field name="is_at_risk">True</field>
+    </record>
+    <record id="rfm_category_none" model="crm.rfm.category">
+        <field name="name">Sin historial</field><field name="code">none</field>
+        <field name="sequence">99</field><field name="score_min">0</field><field name="score_max">0</field><field name="color">0</field>
+    </record>
+</odoo>

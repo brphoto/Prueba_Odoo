@@ -685,6 +685,14 @@ class ChatroomChannel(models.Model):
 
     def write(self, vals):
         vals = dict(vals)
+        audit_fields = ('stage_id', 'state', 'assigned_user_id', 'whatsapp_number_id', 'manual_urgent')
+        old_audit = {
+            rec.id: {
+                field: (rec[field].display_name if rec._fields[field].type == 'many2one'
+                        else str(rec[field]))
+                for field in audit_fields if field in vals
+            } for rec in self
+        }
         # Mover una tarjeta en el kanban o elegir una etapa desde el formulario
         # es la fuente de verdad del flujo; el estado técnico se mantiene para
         # las automatizaciones antiguas y para los filtros existentes.
@@ -753,6 +761,23 @@ class ChatroomChannel(models.Model):
                     next_agent = rec.whatsapp_number_id._get_next_assignee()
                     if next_agent:
                         rec.assigned_user_id = next_agent.id
+        audit_map = {
+            'stage_id': 'stage', 'state': 'state',
+            'assigned_user_id': 'assigned_user',
+            'whatsapp_number_id': 'line', 'manual_urgent': 'urgent',
+        }
+        for rec in self:
+            for field, change_type in audit_map.items():
+                if field not in vals:
+                    continue
+                old_value = old_audit.get(rec.id, {}).get(field, '')
+                new_value = rec[field].display_name if rec._fields[field].type == 'many2one' else str(rec[field])
+                if old_value != new_value:
+                    self.env['chatroom.audit.log'].sudo().create({
+                        'channel_id': rec.id, 'user_id': self.env.user.id,
+                        'change_type': change_type, 'old_value': old_value,
+                        'new_value': new_value,
+                    })
         return res
 
     # ------------------------------------------------------------------

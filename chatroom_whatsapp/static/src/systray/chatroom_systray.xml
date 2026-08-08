@@ -3,10 +3,10 @@
 
     <t t-name="chatroom_whatsapp.SystrayIcon">
         <div class="o_chatroom_systray" t-if="state.visible">
-            <button class="btn o_chatroom_systray_btn" title="Chatroom WhatsApp" t-on-click="openChatroom">
+            <button class="btn o_chatroom_systray_btn" t-att-title="`Chatroom: ${state.count} pendientes, ${state.urgent} urgentes, ${state.crmRed} oportunidades en rojo`" t-on-click="openChatroom">
                 <i class="fa fa-whatsapp fa-lg"/>
-                <span t-if="state.count" class="o_chatroom_systray_badge badge rounded-pill">
-                    <t t-esc="state.count"/>
+                <span t-if="state.count + state.urgent + state.crmRed" class="o_chatroom_systray_badge badge rounded-pill">
+                    <t t-esc="state.count + state.urgent + state.crmRed"/>
                 </span>
             </button>
         </div>

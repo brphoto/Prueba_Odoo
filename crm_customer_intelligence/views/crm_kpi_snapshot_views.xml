@@ -32,5 +32,5 @@
         <field name="view_mode">graph,list</field>
     </record>
     <menuitem id="menu_crm_kpi_snapshot" name="Históricos de KPIs"
-              parent="crm.crm_menu_root" action="action_crm_kpi_snapshot" sequence="38"/>
+              parent="menu_crm_intelligence_reports" action="action_crm_kpi_snapshot" sequence="10"/>
 </odoo>

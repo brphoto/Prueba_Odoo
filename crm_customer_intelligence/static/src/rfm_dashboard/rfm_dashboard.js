@@ -102,7 +102,14 @@ export class RfmDashboard extends Component {
         });
     }
 
+    formatVariation(value) {
+        if (value === false || value === null || value === undefined) return "Sin período anterior";
+        return `${value >= 0 ? "▲" : "▼"} ${Math.abs(value)}% frente al período anterior`;
+    }
+
     categoryLabel(category) {
+        const dynamic = (this.state.data?.category_options || []).find((item) => item.code === category);
+        if (dynamic) return dynamic.label;
         return {
             a: "A - Alto valor",
             b: "B - Valor medio",
@@ -136,6 +143,17 @@ export class RfmDashboard extends Component {
             res_model: "res.partner",
             views: [[false, "list"], [false, "form"]],
             domain,
+            target: "current",
+        });
+    }
+
+    openAtRisk() {
+        const categories = (this.state.data?.category_options || [])
+            .filter((item) => item.is_at_risk).map((item) => item.code);
+        this.action.doAction({
+            type: "ir.actions.act_window", name: "Clientes en riesgo",
+            res_model: "res.partner", views: [[false, "list"], [false, "form"]],
+            domain: categories.length ? [["rfm_category", "in", categories]] : [["rfm_category", "=", "c"]],
             target: "current",
         });
     }

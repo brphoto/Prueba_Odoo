@@ -56,6 +56,6 @@
         <field name="res_model">crm.kpi.definition</field>
         <field name="view_mode">list,form</field>
     </record>
-    <menuitem id="menu_crm_kpi_definition" name="Configurar KPIs"
-              parent="crm.crm_menu_root" action="action_crm_kpi_definition" sequence="36"/>
+    <menuitem id="menu_crm_kpi_definition" name="KPIs configurables"
+              parent="menu_crm_intelligence_config" action="action_crm_kpi_definition" sequence="10"/>
 </odoo>

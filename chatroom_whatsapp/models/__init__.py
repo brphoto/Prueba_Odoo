@@ -12,6 +12,7 @@ from . import chatroom_kpi_snapshot
 from . import chatroom_kpi_target
 from . import chatroom_dashboard_widget
 from . import chatroom_dashboard_profile
+from . import chatroom_audit_log
 from . import chatroom_dashboard_report
 from . import chatroom_message
 from . import chatroom_scheduled_message

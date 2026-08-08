@@ -59,10 +59,10 @@ class ChatroomDashboardReportWizard(models.TransientModel):
             stage_sheet.write_row(row, 0, [stage['name'], stage['count'], stage['unread_count']])
         stage_sheet.set_column('A:A', 28); stage_sheet.set_column('B:C', 16)
         kpi_sheet = workbook.add_worksheet('KPIs gerenciales')
-        kpi_sheet.write_row('A1', ['KPI', 'Resultado', 'Objetivo', 'Estado'], header)
+        kpi_sheet.write_row('A1', ['KPI', 'Resultado', 'Objetivo', 'Avance %', 'Estado'], header)
         for row, kpi in enumerate(data.get('custom_kpis', []), 1):
-            kpi_sheet.write_row(row, 0, [kpi['name'], kpi['display_value'], kpi['target_display'], kpi['status']])
-        kpi_sheet.set_column('A:A', 40); kpi_sheet.set_column('B:D', 20)
+            kpi_sheet.write_row(row, 0, [kpi['name'], kpi['display_value'], kpi['target_display'], kpi.get('progress', False), kpi['status']])
+        kpi_sheet.set_column('A:A', 40); kpi_sheet.set_column('B:E', 20)
         workbook.close()
         attachment = self.env['ir.attachment'].create({
             'name': 'reporte_chatroom.xlsx', 'type': 'binary',

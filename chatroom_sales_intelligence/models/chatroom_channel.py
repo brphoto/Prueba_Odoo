@@ -48,12 +48,16 @@ class ChatroomChannel(models.Model):
         lead = self._get_relevant_lead()
         currency = partner.currency_id
 
+        category = self.env['crm.rfm.category'].search([
+            ('code', '=', partner.rfm_category or 'none'),
+        ], limit=1)
+        category_label = category.name or partner.rfm_category or 'Sin historial'
+
         return {
             'has_partner': True,
             'partner_name': partner.name,
             'rfm_category': partner.rfm_category,
-            'rfm_category_label': dict(
-                partner._fields['rfm_category'].selection).get(partner.rfm_category),
+            'rfm_category_label': category_label,
             'rfm_score': partner.rfm_score,
             'lead_id': lead.id if lead else False,
             'lead_name': lead.name if lead else False,
