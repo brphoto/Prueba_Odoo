@@ -48,6 +48,10 @@
                         <field name="domain_filter" placeholder="[('state', '=', 'pending')]" nolabel="1"/>
                         <div class="text-muted">Ejemplos: [('state', '=', 'pending')] o [('csat_score', '&gt;', 0)].</div>
                     </group>
+                    <group string="KPI avanzado">
+                        <field name="formula" placeholder="value * 100 / 500"/>
+                        <div class="text-muted">La fórmula recibe value, record_count y period_days.</div>
+                    </group>
                 </sheet>
             </form>
         </field>

@@ -45,6 +45,10 @@ class CrmKpiDefinition(models.Model):
     domain_filter = fields.Text(
         string='Dominio adicional', default='[]',
         help="Dominio Odoo seguro, por ejemplo: [('state', '=', 'sale')]")
+    formula = fields.Char(
+        string='Fórmula opcional',
+        help="Expresión numérica sobre value y record_count. Ejemplo: value * 100 / 500")
+    compare_previous = fields.Boolean(string='Comparar con período anterior', default=True)
     rfm_category = fields.Selection([
         ('all', 'Todas'), ('a', 'A - Alto valor'),
         ('b', 'B - Valor medio'), ('c', 'C - Bajo valor'),
@@ -116,6 +120,17 @@ class CrmKpiDefinition(models.Model):
             if not isinstance(domain, list):
                 raise ValidationError(_("El dominio adicional debe ser una lista."))
 
+    @api.constrains('formula')
+    def _check_formula(self):
+        for record in self.filtered('formula'):
+            try:
+                result = safe_eval(record.formula, {
+                    'value': 1.0, 'record_count': 1, 'period': '90', 'category': 'all',
+                })
+                float(result)
+            except Exception as exc:
+                raise ValidationError(_("La fórmula debe devolver un número: %s") % exc)
+
     def _get_domain(self, period='90', category='all'):
         self.ensure_one()
         try:
@@ -147,6 +162,14 @@ class CrmKpiDefinition(models.Model):
         else:
             values = [float(record[self.measure_field] or 0) for record in records]
             value = sum(values) if self.aggregation == 'sum' else (sum(values) / len(values) if values else 0)
+        if self.formula:
+            try:
+                value = float(safe_eval(self.formula, {
+                    'value': value, 'record_count': len(records),
+                    'period': period, 'category': category,
+                }))
+            except Exception as exc:
+                raise ValidationError(_("No se pudo calcular la fórmula del KPI %s: %s") % (self.name, exc))
         if self.format_type == 'money':
             display = f'{self.env.company.currency_id.symbol} {value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
         elif self.format_type == 'percent':

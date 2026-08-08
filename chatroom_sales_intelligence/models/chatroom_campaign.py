@@ -33,6 +33,10 @@ class ChatroomCampaign(models.Model):
     target_rfm_a = fields.Boolean(string="Categoría A (mejores clientes)", default=True)
     target_rfm_b = fields.Boolean(string="Categoría B (intermedios)")
     target_rfm_c = fields.Boolean(string="Categoría C (en riesgo/inactivos)")
+    segment_id = fields.Many2one(
+        'crm.rfm.segment', string='Segmento guardado',
+        domain=[('active', '=', True)],
+        help='Usa las reglas visuales del segmento para seleccionar destinatarios.')
     batch_size = fields.Integer(
         default=20, required=True, string="Tamaño de lote",
         help="Cuántos mensajes manda cada corrida del cron (cada 5 "
@@ -80,6 +84,9 @@ class ChatroomCampaign(models.Model):
         action_create_rfm_marketing_list en res.partner, para no mandar
         mensajes a nadie que no se pueda o no corresponda contactar."""
         self.ensure_one()
+        if self.segment_id:
+            partners = self.segment_id.get_matching_partners()
+            return partners.filtered(lambda partner: partner.phone and not partner.whatsapp_opt_out)
         categories = self._target_categories()
         if not categories:
             return self.env['res.partner']

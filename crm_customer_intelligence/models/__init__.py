@@ -7,3 +7,6 @@ from . import crm_kpi_snapshot
 from . import crm_kpi_target
 from . import rfm_segment
 from . import rfm_category
+from . import rfm_segment_rule
+from . import rfm_segment_action
+from . import management_alert

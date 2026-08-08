@@ -5,7 +5,7 @@
         <field name="model">management.report.subscription</field>
         <field name="arch" type="xml">
             <list decoration-muted="not active">
-                <field name="name"/><field name="report_type"/><field name="frequency"/>
+                <field name="name"/><field name="report_type"/><field name="report_format"/><field name="frequency"/>
                 <field name="period"/><field name="recipient_ids" widget="many2many_tags"/>
                 <field name="next_run_at"/><field name="last_sent_at"/>
                 <field name="active" widget="boolean_toggle"/>
@@ -24,7 +24,7 @@
                 <sheet>
                     <div class="oe_title"><h1><field name="name" placeholder="Reporte semanal de gerencia"/></h1></div>
                     <group>
-                        <group string="Contenido"><field name="report_type"/><field name="period"/></group>
+                        <group string="Contenido"><field name="report_type"/><field name="report_format"/><field name="period"/><field name="rfm_category" invisible="report_type != 'rfm'"/></group>
                         <group string="Programación"><field name="frequency"/><field name="next_run_at"/><field name="company_id"/></group>
                     </group>
                     <group string="Destinatarios"><field name="recipient_ids" widget="many2many_tags"/></group>

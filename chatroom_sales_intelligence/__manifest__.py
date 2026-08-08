@@ -72,6 +72,7 @@ agrega la capa visual que los muestra dentro del chat.
         'data/ir_cron_data.xml',
         'views/chatroom_channel_views.xml',
         'views/chatroom_campaign_views.xml',
+        'views/crm_segment_whatsapp_views.xml',
         'views/management_report_subscription_views.xml',
         'views/chatroom_menus.xml',
     ],

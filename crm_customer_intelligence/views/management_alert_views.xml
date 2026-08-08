@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_management_alert_list" model="ir.ui.view">
+        <field name="name">crm.management.alert.list</field>
+        <field name="model">crm.management.alert</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="severity == 'danger'" decoration-warning="severity == 'warning'"
+                  decoration-muted="state == 'closed'">
+                <field name="alert_date"/><field name="name"/><field name="alert_type"/>
+                <field name="severity" widget="badge"/><field name="state" widget="badge"/>
+                <field name="partner_id"/><field name="user_id"/>
+                <button name="action_open_source" type="object" string="Abrir" icon="fa-external-link"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_crm_management_alert_form" model="ir.ui.view">
+        <field name="name">crm.management.alert.form</field>
+        <field name="model">crm.management.alert</field>
+        <field name="arch" type="xml">
+            <form string="Alerta gerencial">
+                <header>
+                    <button name="action_mark_read" type="object" string="Marcar revisada"
+                            class="btn-primary" invisible="state != 'unread'"/>
+                    <button name="action_close" type="object" string="Cerrar"
+                            class="btn-secondary" invisible="state == 'closed'"/>
+                    <button name="action_open_source" type="object" string="Abrir origen" class="btn-secondary"/>
+                    <field name="state" widget="statusbar" statusbar_visible="unread,read,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group><field name="alert_type"/><field name="severity"/><field name="alert_date"/></group>
+                        <group><field name="partner_id"/><field name="lead_id"/><field name="user_id"/></group>
+                    </group>
+                    <field name="detail" nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_crm_management_alert" model="ir.actions.act_window">
+        <field name="name">Alertas gerenciales</field><field name="res_model">crm.management.alert</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <menuitem id="menu_crm_management_alert" name="Alertas gerenciales"
+              parent="menu_crm_intelligence_reports" action="action_crm_management_alert" sequence="5"/>
+</odoo>

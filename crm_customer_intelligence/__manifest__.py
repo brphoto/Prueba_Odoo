@@ -62,7 +62,9 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
         'views/crm_kpi_snapshot_views.xml',
         'views/crm_kpi_target_views.xml',
         'views/rfm_segment_views.xml',
+        'views/rfm_segment_automation_views.xml',
         'views/rfm_category_views.xml',
+        'views/management_alert_views.xml',
         'views/res_partner_views.xml',
     ],
 

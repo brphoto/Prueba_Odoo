@@ -35,6 +35,9 @@
                     <button name="action_detect_variables" type="object"
                             string="Detectar variables" class="btn-secondary"
                             invisible="not body"/>
+                    <button name="action_validate_template" type="object"
+                            string="Validar plantilla" class="btn-secondary"
+                            invisible="not body"/>
                     <field name="status" widget="statusbar"
                            statusbar_visible="draft,pending,approved,rejected"/>
                 </header>
@@ -77,6 +80,10 @@
                             Detecta las variables después de escribir el cuerpo. Al enviar desde un chat,
                             Odoo completará estos campos automáticamente.
                         </div>
+                    </group>
+                    <group string="Prueba rápida">
+                        <field name="example_values" placeholder="Un valor por línea, en el mismo orden de {{1}}, {{2}}..."/>
+                        <field name="preview_body" readonly="1" nolabel="1"/>
                     </group>
                 </sheet>
             </form>

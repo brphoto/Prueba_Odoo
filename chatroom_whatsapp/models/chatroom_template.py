@@ -58,6 +58,10 @@ class ChatroomTemplate(models.Model):
              "en formato {{1}}, {{2}}, ...")
     footer_text = fields.Char()
     variable_count = fields.Integer(compute='_compute_variable_count')
+    example_values = fields.Text(
+        string='Valores de ejemplo',
+        help='Escribe un valor por línea para revisar cómo quedará el mensaje.')
+    preview_body = fields.Text(string='Vista previa', compute='_compute_preview_body')
     variable_mapping_ids = fields.One2many(
         'chatroom.template.variable', 'template_id', string='Campos de variables',
         copy=True)
@@ -72,6 +76,30 @@ class ChatroomTemplate(models.Model):
         for rec in self:
             numbers = [int(value) for value in VARIABLE_RE.findall(rec.body or '')]
             rec.variable_count = max(numbers, default=0)
+
+    @api.depends('body', 'example_values')
+    def _compute_preview_body(self):
+        for record in self:
+            values = (record.example_values or '').splitlines()
+            def replace(match):
+                number = int(match.group(1))
+                return values[number - 1].strip() if number <= len(values) else match.group(0)
+            record.preview_body = VARIABLE_RE.sub(replace, record.body or '')
+
+    def action_validate_template(self):
+        for record in self:
+            numbers = sorted({int(value) for value in VARIABLE_RE.findall(record.body or '')})
+            expected = list(range(1, max(numbers, default=0) + 1))
+            if numbers != expected:
+                raise UserError(_(
+                    'Las variables deben ser consecutivas desde {{1}}. Detectadas: %s') % numbers)
+            if record.variable_count and len(record.variable_mapping_ids) < record.variable_count:
+                raise UserError(_('Detecta y configura todos los campos de variables antes de enviar.'))
+        return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
+            'title': _('Plantilla válida'),
+            'message': _('La estructura y las variables están listas para revisión o envío.'),
+            'type': 'success',
+        }}
 
     def action_detect_variables(self):
         for record in self:

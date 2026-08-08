@@ -41,4 +41,18 @@
         <field name="active">True</field>
     </record>
 
+    <record id="ir_cron_apply_rfm_segment_actions" model="ir.cron">
+        <field name="name">Inteligencia comercial: automatizaciones de segmentos</field>
+        <field name="model_id" ref="model_crm_rfm_segment"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_apply_segment_actions()</field>
+        <field name="interval_number">1</field><field name="interval_type">days</field><field name="active">True</field>
+    </record>
+    <record id="ir_cron_generate_management_alerts" model="ir.cron">
+        <field name="name">Inteligencia comercial: generar alertas gerenciales</field>
+        <field name="model_id" ref="model_crm_management_alert"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_generate_alerts()</field>
+        <field name="interval_number">1</field><field name="interval_type">hours</field><field name="active">True</field>
+    </record>
 </odoo>

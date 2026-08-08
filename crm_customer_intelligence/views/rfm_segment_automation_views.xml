@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_rfm_segment_list_automation" model="ir.ui.view">
+        <field name="name">crm.rfm.segment.list.automation</field>
+        <field name="model">crm.rfm.segment</field>
+        <field name="inherit_id" ref="crm_customer_intelligence.view_crm_rfm_segment_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list/field[@name='category']" position="after">
+                <field name="preview_count" string="Coincidentes"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_crm_rfm_segment_form_automation" model="ir.ui.view">
+        <field name="name">crm.rfm.segment.form.automation</field>
+        <field name="model">crm.rfm.segment</field>
+        <field name="inherit_id" ref="crm_customer_intelligence.view_crm_rfm_segment_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header" position="inside">
+                <button name="action_preview_contacts" type="object" string="Previsualizar contactos" class="btn-primary"/>
+                <button name="action_apply_automations" type="object" string="Ejecutar automatizaciones"
+                        class="btn-secondary" invisible="not action_ids"/>
+            </xpath>
+            <xpath expr="//form/sheet" position="inside">
+                <group string="Constructor visual">
+                    <field name="rule_logic"/>
+                    <field name="preview_count" readonly="1"/>
+                </group>
+                <notebook>
+                    <page string="Reglas visuales">
+                        <field name="rule_ids">
+                            <list editable="bottom">
+                                <field name="sequence" widget="handle"/><field name="field_key"/>
+                                <field name="operator"/><field name="value"/><field name="active"/>
+                            </list>
+                        </field>
+                        <div class="text-muted">Combina reglas con “todas” o “al menos una” y revisa el contador.</div>
+                    </page>
+                    <page string="Acciones automáticas">
+                        <field name="action_ids">
+                            <list editable="bottom">
+                                <field name="sequence" widget="handle"/><field name="action_type"/>
+                                <field name="summary"/><field name="deadline_days"/><field name="active"/>
+                            </list>
+                        </field>
+                    </page>
+                </notebook>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_crm_rfm_segment_rule_form" model="ir.ui.view">
+        <field name="name">crm.rfm.segment.rule.form</field><field name="model">crm.rfm.segment.rule</field>
+        <field name="arch" type="xml"><form string="Regla de segmento"><sheet><group>
+            <field name="segment_id"/><field name="field_key"/><field name="operator"/><field name="value"/><field name="active"/>
+        </group></sheet></form></field>
+    </record>
+    <record id="view_crm_rfm_segment_action_form" model="ir.ui.view">
+        <field name="name">crm.rfm.segment.action.form</field><field name="model">crm.rfm.segment.action</field>
+        <field name="arch" type="xml"><form string="Acción automática"><sheet><group>
+            <field name="segment_id"/><field name="action_type"/><field name="summary"/><field name="note"/>
+            <field name="deadline_days"/><field name="activity_type_id"/><field name="tag_id"/>
+            <field name="user_id"/><field name="stage_id"/><field name="active"/>
+        </group></sheet></form></field>
+    </record>
+</odoo>

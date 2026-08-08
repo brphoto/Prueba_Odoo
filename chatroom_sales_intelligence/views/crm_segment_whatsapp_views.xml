@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_rfm_segment_action_form_whatsapp" model="ir.ui.view">
+        <field name="name">crm.rfm.segment.action.form.whatsapp</field>
+        <field name="model">crm.rfm.segment.action</field>
+        <field name="inherit_id" ref="crm_customer_intelligence.view_crm_rfm_segment_action_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='stage_id']" position="after">
+                <field name="template_id" invisible="action_type != 'whatsapp_template'"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_crm_rfm_segment_form_whatsapp" model="ir.ui.view">
+        <field name="name">crm.rfm.segment.form.whatsapp</field>
+        <field name="model">crm.rfm.segment</field>
+        <field name="inherit_id" ref="crm_customer_intelligence.view_crm_rfm_segment_form_automation"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='action_ids']/list/field[@name='action_type']" position="after">
+                <field name="template_id" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_chatroom_campaign_form_segment" model="ir.ui.view">
+        <field name="name">chatroom.campaign.form.segment</field>
+        <field name="model">chatroom.campaign</field>
+        <field name="inherit_id" ref="chatroom_sales_intelligence.view_chatroom_campaign_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='target_rfm_a']" position="before">
+                <field name="segment_id" readonly="state != 'draft'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

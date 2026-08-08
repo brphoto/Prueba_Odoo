@@ -44,6 +44,9 @@ class ChatroomKpiDefinition(models.Model):
     domain_filter = fields.Text(
         string='Dominio adicional', default='[]',
         help="Dominio Odoo seguro, por ejemplo: [('state', '=', 'pending')]")
+    formula = fields.Char(
+        string='Fórmula opcional',
+        help='Expresión numérica sobre value y record_count. Ejemplo: value * 100 / 500')
     format_type = fields.Selection([
         ('number', 'Número'), ('money', 'Moneda'), ('percent', 'Porcentaje'),
         ('minutes', 'Tiempo'),
@@ -67,6 +70,16 @@ class ChatroomKpiDefinition(models.Model):
         'chatroom.message': {'id', 'date', 'create_date'},
         'mail.activity': {'id', 'date_deadline', 'create_date'},
     }
+
+    @api.constrains('formula')
+    def _check_formula(self):
+        for record in self.filtered('formula'):
+            try:
+                float(safe_eval(record.formula, {
+                    'value': 1.0, 'record_count': 1, 'period_days': 30,
+                }))
+            except Exception as exc:
+                raise ValidationError(_('La fórmula debe devolver un número: %s') % exc)
 
     @api.onchange('model_name', 'aggregation')
     def _onchange_model_configuration(self):
@@ -166,6 +179,14 @@ class ChatroomKpiDefinition(models.Model):
             values = [float(record[self.measure_field] or 0) for record in records]
             value = sum(values) if self.aggregation == 'sum' else (
                 sum(values) / len(values) if values else 0.0)
+        if self.formula:
+            try:
+                value = float(safe_eval(self.formula, {
+                    'value': value, 'record_count': len(records),
+                    'period_days': period_days,
+                }))
+            except Exception as exc:
+                raise ValidationError(_('No se pudo calcular la fórmula del KPI %s: %s') % (self.name, exc))
         target_value, goal_direction = self._get_effective_target()
         status = 'neutral'
         if goal_direction == 'higher' and value >= target_value:

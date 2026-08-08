@@ -47,6 +47,11 @@
                         <field name="domain_filter" placeholder="[('state', '=', 'sale')]" nolabel="1"/>
                         <div class="text-muted">Ejemplo: [('state', '=', 'sale')] para pedidos confirmados.</div>
                     </group>
+                    <group string="KPI avanzado">
+                        <field name="formula" placeholder="value * 100 / 500"/>
+                        <field name="compare_previous"/>
+                        <div class="text-muted">La fórmula recibe value y record_count. Ejemplo: value / record_count para un promedio personalizado.</div>
+                    </group>
                 </sheet>
             </form>
         </field>

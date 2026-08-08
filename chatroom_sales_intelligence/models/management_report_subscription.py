@@ -16,6 +16,11 @@ class ManagementReportSubscription(models.Model):
         ('chatroom', 'Dashboard de Chatroom'),
         ('rfm', 'Inteligencia Comercial / RFM'),
     ], string='Reporte', required=True, default='chatroom')
+    report_format = fields.Selection([
+        ('pdf', 'PDF'), ('xlsx', 'Excel'),
+    ], string='Formato', default='pdf', required=True)
+    rfm_category = fields.Selection(
+        selection='_selection_rfm_category_filter', string='CategorÃ­a RFM', default='all')
     period = fields.Selection([
         ('7', 'Últimos 7 días'), ('30', 'Últimos 30 días'),
         ('90', 'Últimos 90 días'), ('365', 'Últimos 12 meses'),
@@ -35,6 +40,16 @@ class ManagementReportSubscription(models.Model):
     last_sent_at = fields.Datetime(readonly=True)
     last_error = fields.Text(readonly=True)
 
+    @api.model
+    def _selection_rfm_category_filter(self):
+        options = [('all', 'Todas')]
+        try:
+            options += self.env['res.partner']._selection_rfm_category()
+        except Exception:
+            options += [('a', 'A - Alto valor'), ('b', 'B - Valor medio'),
+                        ('c', 'C - Bajo valor'), ('none', 'Sin historial')]
+        return options
+
     @api.constrains('recipient_ids')
     def _check_recipients(self):
         for record in self:
@@ -53,12 +68,17 @@ class ManagementReportSubscription(models.Model):
         else:
             wizard = self.env['crm.rfm.dashboard.report.wizard'].create({
                 'period': self.period if self.period in ('30', '90', '365', 'all') else '30',
-                'category': 'all', 'company_id': self.company_id.id,
+                'category': self.rfm_category, 'company_id': self.company_id.id,
             })
             xmlid = 'crm_customer_intelligence.action_report_rfm_dashboard'
             filename = 'reporte_rfm.pdf'
-        pdf, _report_type = self.env['ir.actions.report']._render_qweb_pdf(xmlid, wizard.ids)
-        return filename, pdf
+        if self.report_format == 'xlsx':
+            action = wizard.action_export_xlsx()
+            attachment_id = int(action['url'].split('/web/content/')[1].split('?')[0])
+            attachment = self.env['ir.attachment'].browse(attachment_id)
+            return filename.replace('.pdf', '.xlsx'), base64.b64decode(attachment.datas)
+        content, _report_type = self.env['ir.actions.report']._render_qweb_pdf(xmlid, wizard.ids)
+        return filename, content
 
     def action_send_now(self):
         self.ensure_one()
@@ -106,4 +126,3 @@ class ManagementReportSubscription(models.Model):
                     'last_error': str(exc),
                     'next_run_at': fields.Datetime.add(now, hours=1),
                 })
-

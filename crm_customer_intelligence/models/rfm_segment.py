@@ -27,6 +27,15 @@ class RfmSegment(models.Model):
         selection='_selection_rfm_category_filter', string='CategorÃ­a RFM',
         default='all', required=True)
 
+    rule_logic = fields.Selection([
+        ('all', 'Cumplir todas las reglas'), ('any', 'Cumplir al menos una regla'),
+    ], string='LÃ³gica de reglas', default='all', required=True)
+    rule_ids = fields.One2many(
+        'crm.rfm.segment.rule', 'segment_id', string='Reglas visuales', copy=True)
+    action_ids = fields.One2many(
+        'crm.rfm.segment.action', 'segment_id', string='Acciones automÃ¡ticas', copy=True)
+    preview_count = fields.Integer(compute='_compute_preview_count', string='Contactos coincidentes')
+
     @api.model
     def _selection_rfm_category_filter(self):
         options = [('all', 'Todos')]
@@ -61,15 +70,49 @@ class RfmSegment(models.Model):
             domain.append(('rfm_score', '<=', self.score_max))
         return domain
 
-    def action_open_contacts(self):
+    def get_matching_partners(self):
         self.ensure_one()
-        domain = self.get_domain()
+        partners = self.env['res.partner'].search(self.get_domain())
+        rules = self.rule_ids.filtered('active')
+        if rules:
+            if self.rule_logic == 'any':
+                partners = partners.filtered(lambda partner: any(rule.matches(partner) for rule in rules))
+            else:
+                partners = partners.filtered(lambda partner: all(rule.matches(partner) for rule in rules))
         if self.max_days_since_sale:
             cutoff = fields.Date.subtract(fields.Date.context_today(self), days=self.max_days_since_sale)
-            partners = self.env['res.partner'].search(domain).filtered(
+            partners = partners.filtered(
                 lambda partner: partner.commercial_last_sale_date and
                 partner.commercial_last_sale_date >= cutoff)
-            domain = [('id', 'in', partners.ids)]
+        return partners
+
+    @api.depends('category', 'category_id', 'score_min', 'score_max',
+                 'max_days_since_sale', 'rule_logic', 'rule_ids.active',
+                 'rule_ids.field_key', 'rule_ids.operator', 'rule_ids.value')
+    def _compute_preview_count(self):
+        for record in self:
+            record.preview_count = len(record.get_matching_partners())
+
+    def action_preview_contacts(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window', 'name': _('Contactos: %s') % self.name,
+            'res_model': 'res.partner', 'view_mode': 'list,form',
+            'domain': [('id', 'in', self.get_matching_partners().ids)], 'target': 'current',
+        }
+
+    def action_apply_automations(self):
+        actions = self.mapped('action_ids').filtered('active')
+        return actions.action_apply()
+
+    @api.model
+    def _cron_apply_segment_actions(self):
+        for segment in self.search([('active', '=', True)]):
+            segment.action_apply_automations()
+
+    def action_open_contacts(self):
+        self.ensure_one()
+        domain = [('id', 'in', self.get_matching_partners().ids)]
         return {
             'type': 'ir.actions.act_window', 'name': self.name,
             'res_model': 'res.partner', 'view_mode': 'list,form',
