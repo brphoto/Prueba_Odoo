@@ -96,6 +96,7 @@ agrega la capa visual que los muestra dentro del chat.
         'web.assets_web_dark': [
             'chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence.dark.scss',
             'chatroom_sales_intelligence/static/src/my_followups/my_followups_dashboard.dark.scss',
+            'chatroom_sales_intelligence/static/src/executive_dashboard/executive_dashboard.dark.scss',
         ],
     },
 

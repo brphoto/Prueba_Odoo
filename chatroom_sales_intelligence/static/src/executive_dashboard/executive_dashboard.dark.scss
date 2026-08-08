@@ -1,0 +1,62 @@
+.o_executive_dashboard {
+    color: #e9edef;
+    background: #1b1e29;
+}
+
+.o_executive_header h2,
+.o_executive_panel h4 {
+    color: #f1f3f5;
+}
+
+.o_executive_header h2 i {
+    color: #d18bc5;
+}
+
+.o_executive_header p,
+.o_executive_actions label,
+.o_executive_card span {
+    color: #aebac1;
+}
+
+.o_executive_actions select {
+    color: #e9edef;
+    background: #202c33;
+    border-color: #2a3942;
+}
+
+.o_executive_card,
+.o_executive_panel {
+    color: #e9edef;
+    background: #111b21;
+    border-color: #2a3942;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .16);
+}
+
+.o_executive_card strong,
+.o_executive_row b,
+.o_executive_kpi_row b,
+.o_executive_widget_title b {
+    color: #f1f3f5;
+}
+
+.o_executive_row,
+.o_executive_kpi_row {
+    color: #e9edef;
+}
+
+.o_executive_row:hover,
+.o_executive_kpi_row:hover {
+    background: #202c33;
+}
+
+.o_executive_bar {
+    background: #2a3942;
+}
+
+.o_executive_bar i {
+    background: #d18bc5;
+}
+
+.o_executive_danger strong {
+    color: #ff6b78;
+}

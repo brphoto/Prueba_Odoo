@@ -27,7 +27,7 @@
                     <label>Categoría
                         <select t-on-change="changeCategory">
                             <option value="all" t-att-selected="state.category === 'all'">Todas</option>
-                            <option t-foreach="(state.data && state.data.category_options) || []" t-as="option" t-key="option.code"
+                            <option t-foreach="(state.data &amp;&amp; state.data.category_options) || []" t-as="option" t-key="option.code"
                                     t-att-value="option.code" t-att-selected="state.category === option.code"
                                     t-esc="option.label"/>
                         </select>
@@ -46,7 +46,7 @@
                 </div>
             </div>
 
-            <div class="o_rfm_comparison" t-if="state.data && state.data.comparison">
+            <div class="o_rfm_comparison" t-if="state.data &amp;&amp; state.data.comparison">
                 <i class="fa fa-line-chart"/> Ventas: <strong t-esc="formatMoney(state.data.total_sales)"/>
                 <span t-attf-class="{{ state.data.comparison.sales_variation !== false ? (state.data.comparison.sales_variation >= 0 ? 'o_rfm_variation_up' : 'o_rfm_variation_down') : '' }}">
                     <t t-esc="formatVariation(state.data.comparison.sales_variation)"/>

@@ -49,7 +49,7 @@
                             <button class="o_executive_kpi_row" t-on-click="() => this.openCustomKpi(kpi)"><span t-esc="kpi.name"/><b t-esc="kpi.display_value"/></button>
                         </t>
                     </section>
-                    <section class="o_executive_panel" t-if="state.chat.dashboard_widgets && state.chat.dashboard_widgets.length">
+                    <section class="o_executive_panel" t-if="state.chat.dashboard_widgets &amp;&amp; state.chat.dashboard_widgets.length">
                         <h4>Widgets de atención</h4>
                         <t t-foreach="state.chat.dashboard_widgets" t-as="widget" t-key="widget.id">
                             <div class="o_executive_widget_title"><span t-esc="widget.name"/><b t-if="widget.display_value" t-esc="widget.display_value"/></div>
