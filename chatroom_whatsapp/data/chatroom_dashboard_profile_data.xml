@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="chatroom_profile_supervision" model="chatroom.dashboard.profile">
+        <field name="name">Supervisión de atención</field>
+        <field name="dashboard_type">chatroom</field>
+        <field name="period_days">30</field>
+        <field name="is_default">True</field>
+        <field name="widget_ids" eval="[(6, 0, [ref('chatroom_widget_stages'), ref('chatroom_widget_agents'), ref('chatroom_widget_response_history'), ref('chatroom_widget_csat')])]"/>
+    </record>
+</odoo>

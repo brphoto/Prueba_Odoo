@@ -1635,7 +1635,7 @@ class ChatroomChannel(models.Model):
     # Dashboard
     # ------------------------------------------------------------------
     @api.model
-    def get_dashboard_data(self, period_days=30, agent_limit=8, include_widgets=True):
+    def get_dashboard_data(self, period_days=30, agent_limit=8, include_widgets=True, widget_ids=None):
         """Datos agregados para el dashboard de Chatroom: se calculan acá
         (con read_group, no trayendo registros al cliente) para que la
         pantalla cargue con pocas consultas livianas."""
@@ -1761,7 +1761,7 @@ class ChatroomChannel(models.Model):
             'period_label': period_label,
         'custom_kpis': custom_kpis,
         'dashboard_widgets': self.env['chatroom.dashboard.widget'].get_dashboard_values(
-            period_days) if include_widgets else [],
+            period_days, widget_ids=widget_ids) if include_widgets else [],
         }
 
     # ------------------------------------------------------------------

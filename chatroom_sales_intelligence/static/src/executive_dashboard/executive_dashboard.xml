@@ -34,19 +34,28 @@
                     <section class="o_executive_panel">
                         <h4>Conversaciones por etapa</h4>
                         <t t-foreach="state.chat.stage_breakdown" t-as="stage" t-key="stage.id || 'none'">
-                            <div class="o_executive_row"><span t-esc="stage.name"/><div class="o_executive_bar"><i t-attf-style="width: {{ barWidth(stage.count, state.chat.stage_breakdown, 'count') }}%"/></div><b t-esc="stage.count"/></div>
+                            <button class="o_executive_row" t-on-click="() => this.openStage(stage)"><span t-esc="stage.name"/><div class="o_executive_bar"><i t-attf-style="width: {{ barWidth(stage.count, state.chat.stage_breakdown, 'count') }}%"/></div><b t-esc="stage.count"/></button>
                         </t>
                     </section>
                     <section class="o_executive_panel">
                         <h4>Distribución RFM</h4>
                         <t t-foreach="state.rfm.distribution" t-as="row" t-key="row.category">
-                            <div class="o_executive_row"><span t-esc="row.label"/><div class="o_executive_bar"><i t-attf-style="width: {{ barWidth(row.count, state.rfm.distribution, 'count') }}%"/></div><b t-esc="row.count"/></div>
+                            <button class="o_executive_row" t-on-click="() => this.openRfmCategory(row)"><span t-esc="row.label"/><div class="o_executive_bar"><i t-attf-style="width: {{ barWidth(row.count, state.rfm.distribution, 'count') }}%"/></div><b t-esc="row.count"/></button>
                         </t>
                     </section>
                     <section class="o_executive_panel">
                         <h4>KPIs personalizados</h4>
                         <t t-foreach="(state.chat.custom_kpis || []).concat(state.rfm.custom_kpis || [])" t-as="kpi" t-key="kpi.model + '-' + kpi.id">
-                            <div class="o_executive_kpi_row"><span t-esc="kpi.name"/><b t-esc="kpi.display_value"/></div>
+                            <button class="o_executive_kpi_row" t-on-click="() => this.openCustomKpi(kpi)"><span t-esc="kpi.name"/><b t-esc="kpi.display_value"/></button>
+                        </t>
+                    </section>
+                    <section class="o_executive_panel" t-if="state.chat.dashboard_widgets && state.chat.dashboard_widgets.length">
+                        <h4>Widgets de atención</h4>
+                        <t t-foreach="state.chat.dashboard_widgets" t-as="widget" t-key="widget.id">
+                            <div class="o_executive_widget_title"><span t-esc="widget.name"/><b t-if="widget.display_value" t-esc="widget.display_value"/></div>
+                            <t t-foreach="widget.points || []" t-as="point" t-key="point_index">
+                                <div class="o_executive_row"><span t-esc="point.label"/><div class="o_executive_bar"><i t-attf-style="width: {{ barWidth(point.value, widget.points, 'value') }}%;background-color: {{ widget.color }}"/></div><b t-esc="point.display_value"/></div>
+                            </t>
                         </t>
                     </section>
                 </div>

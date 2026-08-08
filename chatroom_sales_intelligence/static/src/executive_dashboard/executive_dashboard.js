@@ -44,6 +44,34 @@ export class ExecutiveDashboard extends Component {
     openRfm() {
         this.action.doAction("crm_customer_intelligence.action_customer_intelligence_dashboard");
     }
+
+    openStage(stage) {
+        this.action.doAction({
+            type: "ir.actions.act_window", name: stage.name,
+            res_model: "chatroom.channel",
+            views: [[false, "kanban"], [false, "list"], [false, "form"]],
+            domain: [["stage_id", "=", stage.id]], target: "current",
+        });
+    }
+
+    openRfmCategory(row) {
+        const category = row.category === "none" ? false : row.category;
+        this.action.doAction({
+            type: "ir.actions.act_window", name: row.label,
+            res_model: "res.partner", views: [[false, "list"], [false, "form"]],
+            domain: category ? [["rfm_category", "=", category]] : [["rfm_category", "=", "none"]],
+            target: "current",
+        });
+    }
+
+    openCustomKpi(kpi) {
+        if (!kpi || !kpi.model) return;
+        this.action.doAction({
+            type: "ir.actions.act_window", name: kpi.name,
+            res_model: kpi.model, views: [[false, "list"], [false, "form"]],
+            domain: kpi.domain || [], target: "current",
+        });
+    }
 }
 
 registry.category("actions").add(

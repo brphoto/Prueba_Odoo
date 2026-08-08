@@ -7,7 +7,7 @@
             <list>
                 <field name="kpi_id"/><field name="scope_type"/><field name="company_id"/>
                 <field name="user_id"/><field name="whatsapp_number_id"/>
-                <field name="target_value"/><field name="goal_direction"/><field name="active"/>
+                <field name="target_value"/><field name="goal_direction"/><field name="period_type"/><field name="date_from" optional="hide"/><field name="date_to" optional="hide"/><field name="active"/>
             </list>
         </field>
     </record>
@@ -21,7 +21,7 @@
                     <field name="company_id"/>
                     <field name="user_id" invisible="scope_type != 'agent'"/>
                     <field name="whatsapp_number_id" invisible="scope_type != 'line'"/>
-                    <field name="target_value"/><field name="goal_direction"/><field name="active"/>
+                    <field name="target_value"/><field name="goal_direction"/><field name="period_type"/><field name="date_from" invisible="period_type != 'custom'"/><field name="date_to" invisible="period_type != 'custom'"/><field name="active"/>
                 </group></sheet>
             </form>
         </field>

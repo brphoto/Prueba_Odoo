@@ -13,7 +13,9 @@
 .o_executive_columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 16px; }
 .o_executive_panel { border: 1px solid var(--border-color, #dee2e6); border-radius: 10px; padding: 16px; background: var(--o-view-background-color, #fff); }
 .o_executive_panel h4 { margin-top: 0; }
-.o_executive_row, .o_executive_kpi_row { display: flex; gap: 10px; align-items: center; padding: 8px 0; }
+.o_executive_row, .o_executive_kpi_row { display: flex; width: 100%; border: 0; background: transparent; color: inherit; text-align: left; gap: 10px; align-items: center; padding: 8px 0; }
+.o_executive_row:hover, .o_executive_kpi_row:hover { background: rgba(113, 75, 103, .08); }
+.o_executive_widget_title { display: flex; justify-content: space-between; margin: 12px 0 4px; font-weight: 600; }
 .o_executive_row span, .o_executive_kpi_row span { min-width: 120px; flex: 0 0 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .o_executive_bar { flex: 1; height: 10px; border-radius: 5px; background: #edf1f3; overflow: hidden; }
 .o_executive_bar i { display: block; height: 100%; background: var(--o-brand-primary, #714B67); border-radius: 5px; }

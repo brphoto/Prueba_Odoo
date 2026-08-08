@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_dashboard_profile_list" model="ir.ui.view">
+        <field name="name">chatroom.dashboard.profile.list</field>
+        <field name="model">chatroom.dashboard.profile</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/><field name="dashboard_type"/><field name="user_id"/>
+                <field name="period_days"/><field name="widget_ids" widget="many2many_tags"/>
+                <field name="is_default"/><field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chatroom_dashboard_profile_form" model="ir.ui.view">
+        <field name="name">chatroom.dashboard.profile.form</field>
+        <field name="model">chatroom.dashboard.profile</field>
+        <field name="arch" type="xml">
+            <form string="Perfil guardado del dashboard"><sheet><group>
+                <field name="name"/><field name="dashboard_type"/><field name="user_id"/>
+                <field name="company_id"/><field name="period_days"/><field name="is_default"/>
+                <field name="widget_ids" widget="many2many_tags"/>
+                <field name="active"/>
+            </group></sheet></form>
+        </field>
+    </record>
+    <record id="action_chatroom_dashboard_profile" model="ir.actions.act_window">
+        <field name="name">Perfiles guardados</field>
+        <field name="res_model">chatroom.dashboard.profile</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <menuitem id="menu_chatroom_config_dashboard_profiles" name="Perfiles guardados"
+              parent="menu_chatroom_config" action="action_chatroom_dashboard_profile"
+              sequence="15" groups="chatroom_whatsapp.group_chatroom_manager"/>
+</odoo>

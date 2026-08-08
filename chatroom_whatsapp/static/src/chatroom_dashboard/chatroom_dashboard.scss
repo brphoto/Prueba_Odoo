@@ -202,9 +202,123 @@
 .o_chatroom_custom_kpi_row.o_is_success strong { color: #15803d; }
 .o_chatroom_custom_kpi_row.o_is_danger strong { color: #dc2626; }
 
+.o_chatroom_widget {
+    min-height: 150px;
+}
+
+.o_chatroom_widget_header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+
+    h5 { margin-bottom: 3px; }
+    small { display: block; }
+}
+
+.o_chatroom_widget_card_value {
+    color: var(--o-brand-primary, #714B67);
+    font-size: 1.65em;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.o_chatroom_widget_target {
+    margin-top: 18px;
+    color: #667781;
+    font-size: 0.9em;
+}
+
+.o_chatroom_widget_bar_row {
+    display: grid;
+    grid-template-columns: minmax(90px, 1fr) minmax(80px, 2fr) auto;
+    align-items: center;
+    gap: 8px;
+    margin: 9px 0;
+    font-size: 0.86em;
+}
+
+.o_chatroom_widget_bar_track {
+    height: 10px;
+    border-radius: 5px;
+    background: #e8ecef;
+    overflow: hidden;
+}
+
+.o_chatroom_widget_bar {
+    height: 100%;
+    min-width: 4px;
+    border-radius: 5px;
+    transition: width 0.25s ease;
+}
+
+.o_chatroom_widget_pie_wrap {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-top: 12px;
+}
+
+.o_chatroom_widget_pie {
+    width: 118px;
+    height: 118px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+
+.o_chatroom_widget_legend {
+    flex: 1 1 auto;
+    font-size: 0.8em;
+
+    div {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 5px 0;
+    }
+
+    strong { margin-left: auto; }
+}
+
+.o_chatroom_widget_legend_dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+
+.o_chatroom_widget_line {
+    margin-top: 14px;
+
+    svg {
+        display: block;
+        width: 100%;
+        height: 110px;
+        overflow: visible;
+    }
+}
+
+.o_chatroom_widget_line_labels {
+    display: flex;
+    justify-content: space-between;
+    gap: 5px;
+    color: #667781;
+    font-size: 0.7em;
+
+    span {
+        max-width: 70px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
 @media (max-width: 700px) {
     .o_chatroom_dashboard_actions {
         width: 100%;
         justify-content: flex-start;
     }
+
+    .o_chatroom_widget_pie_wrap { gap: 10px; }
+    .o_chatroom_widget_pie { width: 90px; height: 90px; }
 }

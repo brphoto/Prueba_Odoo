@@ -73,6 +73,8 @@ Requisitos
         'data/ir_cron_data.xml',
         'data/chatroom_channel_stage_data.xml',
         'data/chatroom_kpi_definition_data.xml',
+        'data/chatroom_dashboard_widget_data.xml',
+        'data/chatroom_dashboard_profile_data.xml',
         'views/chatroom_whatsapp_number_views.xml',
         'views/chatroom_tag_views.xml',
         'views/chatroom_new_conversation_wizard_views.xml',
@@ -93,6 +95,7 @@ Requisitos
         'views/chatroom_kpi_snapshot_views.xml',
         'views/chatroom_kpi_target_views.xml',
         'views/chatroom_dashboard_widget_views.xml',
+        'views/chatroom_dashboard_profile_views.xml',
         'views/chatroom_dashboard_report_views.xml',
     ],
 

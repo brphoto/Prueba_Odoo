@@ -6,7 +6,7 @@
         <field name="arch" type="xml">
             <list><field name="kpi_id"/><field name="scope_type"/><field name="company_id"/>
                 <field name="user_id"/><field name="team_id"/><field name="target_value"/>
-                <field name="goal_direction"/><field name="active"/></list>
+                <field name="goal_direction"/><field name="period_type"/><field name="date_from" optional="hide"/><field name="date_to" optional="hide"/><field name="active"/></list>
         </field>
     </record>
     <record id="view_crm_kpi_target_form" model="ir.ui.view">
@@ -17,7 +17,7 @@
                 <field name="kpi_id"/><field name="scope_type"/><field name="company_id"/>
                 <field name="user_id" invisible="scope_type != 'salesperson'"/>
                 <field name="team_id" invisible="scope_type != 'team'"/>
-                <field name="target_value"/><field name="goal_direction"/><field name="active"/>
+                <field name="target_value"/><field name="goal_direction"/><field name="period_type"/><field name="date_from" invisible="period_type != 'custom'"/><field name="date_to" invisible="period_type != 'custom'"/><field name="active"/>
             </group></sheet></form>
         </field>
     </record>

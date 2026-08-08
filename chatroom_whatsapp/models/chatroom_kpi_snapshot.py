@@ -46,3 +46,32 @@ class ChatroomKpiSnapshot(models.Model):
                     'snapshot_date': today, 'kpi_id': kpi.id,
                     'company_id': env.company.id, 'period_days': 30, **vals,
                 })
+
+    @api.model
+    def _cron_notify_red_kpis(self):
+        activity_type = self.env['mail.activity.type'].search(
+            [('category', '=', 'default')], order='sequence, id', limit=1)
+        manager_group = self.env.ref('chatroom_whatsapp.group_chatroom_manager', raise_if_not_found=False)
+        managers = manager_group and self.env['res.users'].search([('group_ids', 'in', manager_group.id)]) or self.env.user
+        model_id = self.env['ir.model']._get_id('chatroom.kpi.definition')
+        for kpi in self.env['chatroom.kpi.definition'].search([('active', '=', True)]):
+            result = kpi._compute_value(30)
+            if result['status'] != 'danger' or not activity_type:
+                continue
+            summary = _('KPI en riesgo: %s') % kpi.name
+            exists = self.env['mail.activity'].search([
+                ('res_model_id', '=', model_id), ('res_id', '=', kpi.id),
+                ('summary', '=', summary), ('user_id', 'in', managers.ids),
+            ], limit=1)
+            if exists:
+                continue
+            self.env['mail.activity'].create([{
+                'activity_type_id': activity_type.id,
+                'summary': summary,
+                'note': _('El KPI está fuera de su objetivo. Resultado actual: %s. Objetivo: %s.') % (
+                    result['display_value'], result['target_display']),
+                'date_deadline': fields.Date.context_today(self),
+                'user_id': user.id,
+                'res_model_id': model_id,
+                'res_id': kpi.id,
+            } for user in managers])

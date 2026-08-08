@@ -37,15 +37,21 @@ export class ChatroomDashboard extends Component {
             customKpis: [],
             stageBreakdown: [],
             dashboardWidgets: [],
+            profiles: [],
+            profileId: false,
+            profileWidgetIds: false,
         });
 
-        onWillStart(() => this._loadData());
+        onWillStart(async () => {
+            await this.loadProfiles();
+            await this._loadData();
+        });
     }
 
     async _loadData() {
         this.state.loading = true;
         const data = await this.orm.call("chatroom.channel", "get_dashboard_data", [
-            this.state.periodDays,
+            this.state.periodDays, 8, true, this.state.profileWidgetIds || false,
         ]);
         this.state.periodLabel = data.period_label;
         this.state.pendingCount = data.pending_count;
@@ -69,6 +75,24 @@ export class ChatroomDashboard extends Component {
 
     async changePeriod(ev) {
         this.state.periodDays = Number(ev.target.value);
+        await this._loadData();
+    }
+
+    async loadProfiles() {
+        this.state.profiles = await this.orm.call(
+            "chatroom.dashboard.profile", "get_available_profiles", ["chatroom"]);
+    }
+
+    async changeProfile(ev) {
+        const profile = this.state.profiles.find((item) => item.id === Number(ev.target.value));
+        if (!profile) {
+            this.state.profileId = false;
+            this.state.profileWidgetIds = false;
+            return this._loadData();
+        }
+        this.state.profileId = profile.id;
+        this.state.periodDays = profile.period_days;
+        this.state.profileWidgetIds = profile.widget_ids;
         await this._loadData();
     }
 

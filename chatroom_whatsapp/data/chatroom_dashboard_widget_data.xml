@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="chatroom_widget_stages" model="chatroom.dashboard.widget">
+        <field name="name">Conversaciones por etapa</field>
+        <field name="sequence">10</field>
+        <field name="widget_type">bar</field>
+        <field name="source_type">stage</field>
+        <field name="limit">8</field>
+        <field name="color">#714B67</field>
+        <field name="note">Distribución del trabajo actual</field>
+    </record>
+    <record id="chatroom_widget_agents" model="chatroom.dashboard.widget">
+        <field name="name">Conversaciones por agente</field>
+        <field name="sequence">20</field>
+        <field name="widget_type">bar</field>
+        <field name="source_type">agent</field>
+        <field name="limit">8</field>
+        <field name="color">#00A09D</field>
+        <field name="note">Ranking de conversaciones abiertas</field>
+    </record>
+    <record id="chatroom_widget_response_history" model="chatroom.dashboard.widget">
+        <field name="name">Evolución de primera respuesta</field>
+        <field name="sequence">30</field>
+        <field name="widget_type">line</field>
+        <field name="source_type">kpi</field>
+        <field name="kpi_id" ref="chatroom_kpi_first_response"/>
+        <field name="limit">12</field>
+        <field name="color">#1baf7a</field>
+        <field name="note">Histórico diario del tiempo promedio</field>
+    </record>
+    <record id="chatroom_widget_csat" model="chatroom.dashboard.widget">
+        <field name="name">Satisfacción del cliente</field>
+        <field name="sequence">40</field>
+        <field name="widget_type">card</field>
+        <field name="source_type">kpi</field>
+        <field name="kpi_id" ref="chatroom_kpi_csat"/>
+        <field name="color">#F0A429</field>
+        <field name="note">Promedio CSAT del período seleccionado</field>
+    </record>
+</odoo>

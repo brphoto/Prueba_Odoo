@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_dashboard_widget_list" model="ir.ui.view">
+        <field name="name">chatroom.dashboard.widget.list</field>
+        <field name="model">chatroom.dashboard.widget</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="not active">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="widget_type"/>
+                <field name="source_type"/>
+                <field name="kpi_id"/>
+                <field name="limit"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_dashboard_widget_form" model="ir.ui.view">
+        <field name="name">chatroom.dashboard.widget.form</field>
+        <field name="model">chatroom.dashboard.widget</field>
+        <field name="arch" type="xml">
+            <form string="Widget del dashboard">
+                <header>
+                    <field name="active" widget="boolean_button"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Ej. Ventas por ejecutivo"/></h1>
+                    </div>
+                    <group>
+                        <group string="Diseño">
+                            <field name="widget_type"/>
+                            <field name="color" placeholder="#714B67"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group string="Datos">
+                            <field name="source_type"/>
+                            <field name="kpi_id" invisible="source_type != 'kpi'" required="source_type == 'kpi'"/>
+                            <field name="limit" invisible="widget_type == 'card'"/>
+                        </group>
+                    </group>
+                    <field name="note" placeholder="Qué quiere mostrar este gráfico..."/>
+                    <div class="text-muted mt-2">
+                        El período se toma del selector activo del dashboard. Los gráficos de líneas usan los históricos diarios de KPIs.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_chatroom_dashboard_widget" model="ir.actions.act_window">
+        <field name="name">Widgets del dashboard</field>
+        <field name="res_model">chatroom.dashboard.widget</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_chatroom_config_dashboard_widgets" name="Widgets del dashboard"
+              parent="menu_chatroom_config" action="action_chatroom_dashboard_widget"
+              sequence="14" groups="chatroom_whatsapp.group_chatroom_manager"/>
+</odoo>

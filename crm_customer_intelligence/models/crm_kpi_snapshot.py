@@ -44,3 +44,32 @@ class CrmKpiSnapshot(models.Model):
                     'snapshot_date': today, 'kpi_id': kpi.id,
                     'company_id': env.company.id, 'period': '90', **vals,
                 })
+
+    @api.model
+    def _cron_notify_red_kpis(self):
+        activity_type = self.env['mail.activity.type'].search(
+            [('category', '=', 'default')], order='sequence, id', limit=1)
+        managers = self.env['res.users'].search([
+            ('share', '=', False), ('active', '=', True)])
+        model_id = self.env['ir.model']._get_id('crm.kpi.definition')
+        for kpi in self.env['crm.kpi.definition'].search([('active', '=', True)]):
+            result = kpi._compute_value('90', 'all')
+            if result['status'] != 'danger' or not activity_type:
+                continue
+            summary = _('KPI comercial en riesgo: %s') % kpi.name
+            exists = self.env['mail.activity'].search([
+                ('res_model_id', '=', model_id), ('res_id', '=', kpi.id),
+                ('summary', '=', summary), ('user_id', 'in', managers.ids),
+            ], limit=1)
+            if exists:
+                continue
+            self.env['mail.activity'].create([{
+                'activity_type_id': activity_type.id,
+                'summary': summary,
+                'note': _('Resultado actual: %s. Objetivo: %s.') % (
+                    result['display_value'], result['target_display']),
+                'date_deadline': fields.Date.context_today(self),
+                'user_id': user.id,
+                'res_model_id': model_id,
+                'res_id': kpi.id,
+            } for user in managers])

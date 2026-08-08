@@ -149,10 +149,10 @@ class ChatroomKpiDefinition(models.Model):
     def _get_effective_target(self):
         self.ensure_one()
         target = self.target_ids.filtered(
-            lambda item: item.active and item.scope_type == 'company' and
+            lambda item: item.active and item.is_current_period() and item.scope_type == 'company' and
             item.company_id == self.env.company)[:1]
         target = target or self.target_ids.filtered(
-            lambda item: item.active and item.scope_type == 'global')[:1]
+            lambda item: item.active and item.is_current_period() and item.scope_type == 'global')[:1]
         return (target.target_value, target.goal_direction) if target else (
             self.target_value, self.goal_direction)
 

@@ -227,6 +227,8 @@
                         domain="[('whatsapp_number_id.member_ids', 'in', uid)]"/>
                 <filter name="unread" string="No leídos"
                         domain="[('unread_count', '&gt;', 0)]"/>
+                <filter name="urgent" string="Urgentes"
+                        domain="[('manual_urgent', '=', True)]"/>
                 <separator/>
                 <field name="stage_id" string="Etapa"/>
                 <filter name="open" string="Abiertas" domain="[('state', '=', 'open')]"/>

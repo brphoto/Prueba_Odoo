@@ -6,6 +6,14 @@
             <div class="o_chatroom_dashboard_header">
                 <h3><i class="fa fa-whatsapp"/> Dashboard de Chatroom</h3>
                 <div class="o_chatroom_dashboard_actions">
+                    <label class="o_chatroom_period_selector">Perfil
+                        <select t-on-change="changeProfile">
+                            <option value="">Predeterminado</option>
+                            <option t-foreach="state.profiles" t-as="profile" t-key="profile.id"
+                                    t-att-value="profile.id" t-att-selected="state.profileId === profile.id"
+                                    t-esc="profile.name"/>
+                        </select>
+                    </label>
                     <label class="o_chatroom_period_selector">Período
                         <select t-on-change="changePeriod">
                             <option value="7" t-att-selected="state.periodDays === 7">Últimos 7 días</option>

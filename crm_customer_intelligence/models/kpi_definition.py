@@ -143,10 +143,10 @@ class CrmKpiDefinition(models.Model):
             f'{self.target_value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
         )
         target = self.target_ids.filtered(
-            lambda item: item.active and item.scope_type == 'company' and
+            lambda item: item.active and item.is_current_period() and item.scope_type == 'company' and
             item.company_id == self.env.company)[:1]
         target = target or self.target_ids.filtered(
-            lambda item: item.active and item.scope_type == 'global')[:1]
+            lambda item: item.active and item.is_current_period() and item.scope_type == 'global')[:1]
         target_value = target.target_value if target else self.target_value
         goal_direction = target.goal_direction if target else self.goal_direction
         return {

@@ -34,3 +34,5 @@ access_chatroom_kpi_target_user,chatroom.kpi.target.user,model_chatroom_kpi_targ
 access_chatroom_kpi_target_manager,chatroom.kpi.target.manager,model_chatroom_kpi_target,group_chatroom_manager,1,1,1,1
 access_chatroom_dashboard_widget_user,chatroom.dashboard.widget.user,model_chatroom_dashboard_widget,group_chatroom_user,1,0,0,0
 access_chatroom_dashboard_widget_manager,chatroom.dashboard.widget.manager,model_chatroom_dashboard_widget,group_chatroom_manager,1,1,1,1
+access_chatroom_dashboard_profile_user,chatroom.dashboard.profile.user,model_chatroom_dashboard_profile,group_chatroom_user,1,0,0,0
+access_chatroom_dashboard_profile_manager,chatroom.dashboard.profile.manager,model_chatroom_dashboard_profile,group_chatroom_manager,1,1,1,1

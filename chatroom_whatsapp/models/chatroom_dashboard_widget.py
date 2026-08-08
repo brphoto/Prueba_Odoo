@@ -103,7 +103,9 @@ class ChatroomDashboardWidget(models.Model):
         ]}
 
     @api.model
-    def get_dashboard_values(self, period_days=30):
+    def get_dashboard_values(self, period_days=30, widget_ids=None):
+        widgets = self.browse(widget_ids).exists() if widget_ids else self.search(
+            [('active', '=', True)], order='sequence, name')
         return [{
             'id': widget.id,
             'name': widget.name,
@@ -112,5 +114,4 @@ class ChatroomDashboardWidget(models.Model):
             'source_type': widget.source_type,
             'color': widget.color or '#714B67',
             **widget._series_for_source(period_days),
-        } for widget in self.search([('active', '=', True)],
-                                    order='sequence, name')]
+        } for widget in widgets.filtered('active')]
