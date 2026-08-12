@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.crm.customer.intelligence</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Inteligencia de Clientes" string="Inteligencia de Clientes"
+                     name="crm_customer_intelligence">
+                    <block title="Pesos del score RFM">
+                        <setting id="rfm_weights_setting"
+                                 help="No hace falta que sumen exactamente 1: se normalizan solos entre los tres al calcular el score. Se aplican en el próximo cálculo (cron diario, o ejecutándolo a mano desde Ajustes técnicos)">
+                            <div class="content-group">
+                                <div class="mt8">
+                                    <label for="rfm_weight_monetary" string="Monto"/>
+                                    <field name="rfm_weight_monetary"/>
+                                </div>
+                                <div class="mt8">
+                                    <label for="rfm_weight_frequency" string="Frecuencia"/>
+                                    <field name="rfm_weight_frequency"/>
+                                </div>
+                                <div class="mt8">
+                                    <label for="rfm_weight_recency" string="Recencia"/>
+                                    <field name="rfm_weight_recency"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <menuitem id="menu_crm_intelligence_config_settings" name="Ajustes"
+              parent="menu_crm_intelligence_config"
+              action="base_setup.action_general_configuration" sequence="1"/>
+
+</odoo>

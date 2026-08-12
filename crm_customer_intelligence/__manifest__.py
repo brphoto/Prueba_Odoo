@@ -19,9 +19,10 @@ necesitar, sin importar por qué canal habla con el cliente:
 
 * **Clasificación RFM/ABC**: cron diario que calcula, para toda la
   cartera con al menos una factura, un score 1-100 (percentiles de
-  Recencia 20% + Frecuencia 30% + Monto 50%) y lo traduce a categoría
-  A/B/C. Al vivir en ``res.partner``, sirve tal cual para segmentar
-  campañas de Email/SMS Marketing por ``rfm_category``/``rfm_score``.
+  Recencia + Frecuencia + Monto, pesos configurables desde Ajustes —
+  20%/30%/50% por defecto) y lo traduce a categoría A/B/C. Al vivir en
+  ``res.partner``, sirve tal cual para segmentar campañas de Email/SMS
+  Marketing por ``rfm_category``/``rfm_score``.
 * **Oportunidades estancadas**: sobre ``crm.lead``, un semáforo
   verde/amarillo/rojo según los días desde la última gestión real
   (cambio de etapa, nota/comentario humano o actividad).
@@ -46,7 +47,7 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
     'license': 'LGPL-3',
 
     'category': 'Sales/CRM',
-    'version': '19.0.1.0.4',
+    'version': '19.0.1.0.5',
 
     'depends': ['crm', 'sale', 'account'],
 
@@ -66,6 +67,7 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
         'views/rfm_category_views.xml',
         'views/management_alert_views.xml',
         'views/res_partner_views.xml',
+        'views/res_config_settings_views.xml',
     ],
 
     'assets': {

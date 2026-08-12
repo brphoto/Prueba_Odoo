@@ -24,12 +24,24 @@ el panel lateral del chat, pero la fuente de verdad vive acá.
 
 Cron diario (`_cron_compute_rfm_scores`) que calcula, para toda la
 cartera de clientes con al menos una factura publicada, un score 1-100
-combinando percentiles de Recencia (20%), Frecuencia (30%) y Monto
-(50%), traducido a categoría **A** (≥70), **B** (≥40) o **C**. Al vivir
-en `res.partner`, los campos `rfm_category`/`rfm_score` quedan
-disponibles para **filtrar listas de destinatarios de Email/SMS
-Marketing** o cualquier otra vista de contactos — no hace falta ni
-tocar este módulo para usarlos ahí, son campos normales.
+combinando percentiles de Recencia, Frecuencia y Monto, traducido a
+categoría **A** (≥70), **B** (≥40) o **C**. Al vivir en `res.partner`,
+los campos `rfm_category`/`rfm_score` quedan disponibles para
+**filtrar listas de destinatarios de Email/SMS Marketing** o cualquier
+otra vista de contactos — no hace falta ni tocar este módulo para
+usarlos ahí, son campos normales.
+
+**Pesos configurables** (Ajustes > Inteligencia de Clientes > Ajustes):
+por defecto Monto 50% + Frecuencia 30% + Recencia 20%, pero se pueden
+ajustar a lo que tenga sentido para el negocio — por ejemplo, los pesos
+"clásicos" del análisis RFM original de Sears Roebuck son Recencia 50%
++ Frecuencia 35% + Monto 15%, más útiles para un negocio muy
+estacional donde importa más "¿nos compró hace poco?" que "¿cuánto
+gastó en total?". No hace falta que los tres sumen exactamente 1: se
+normalizan solos dividiendo cada uno por la suma de los tres. Los
+cambios se aplican en el próximo cálculo del cron (una vez por día; se
+puede forzar antes desde Ajustes técnicos > Automatización > Acciones
+Programadas).
 
 ### Oportunidades estancadas (`crm.lead`)
 
@@ -55,3 +67,11 @@ necesite ese análisis (como `chatroom_sales_intelligence`).
   todos, no solo del nuevo.
 - El análisis Pareto usa `account.move.line` de facturas publicadas
   (`out_invoice`); no incluye presupuestos ni pedidos sin facturar.
+- **Los pesos configurables son nuevos en esta iteración**: validado
+  con `py_compile` y parseo de XML, sin correr el cron de verdad contra
+  una base real todavía. Los cortes de categoría A/B/C siguen siendo
+  umbrales fijos de score (70/40/0, no percentil de la cartera) — se
+  evaluó cambiarlos a un corte por percentil real (20%/30%/50%, más
+  fiel al Pareto clásico) pero se dejó como está a pedido explícito,
+  para no mover la clasificación de clientes que ya pueda estar en uso
+  para campañas.

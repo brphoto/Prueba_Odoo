@@ -346,6 +346,23 @@ class ResPartner(models.Model):
             'custom_kpis': self.env['crm.kpi.definition'].get_dashboard_values(period, category),
         }
 
+    def _get_rfm_weights(self):
+        """Pesos configurables (Ajustes > Inteligencia de Clientes) del
+        score RFM compuesto. Se normalizan dividiendo cada uno por la
+        suma de los tres, así que no hace falta que el usuario los
+        cargue sumando exactamente 1 -y si los tres quedaran en 0 (caso
+        límite, ej. instalación recién hecha con el parámetro borrado a
+        mano), se cae a los pesos por defecto de siempre para no dividir
+        por cero."""
+        icp = self.env['ir.config_parameter'].sudo()
+        monetary = float(icp.get_param('crm_customer_intelligence.rfm_weight_monetary', 0.5) or 0.0)
+        frequency = float(icp.get_param('crm_customer_intelligence.rfm_weight_frequency', 0.3) or 0.0)
+        recency = float(icp.get_param('crm_customer_intelligence.rfm_weight_recency', 0.2) or 0.0)
+        total = monetary + frequency + recency
+        if total <= 0:
+            return 0.5, 0.3, 0.2
+        return monetary / total, frequency / total, recency / total
+
     @api.model
     def _cron_compute_rfm_scores(self):
         """Clasificación RFM (Recencia / Frecuencia / Monto): se calcula en
@@ -353,6 +370,7 @@ class ResPartner(models.Model):
         entre clientes, no un umbral absoluto por contacto. Solo se
         clasifican contactos con al menos una factura publicada."""
         today = fields.Date.context_today(self)
+        weight_monetary, weight_frequency, weight_recency = self._get_rfm_weights()
         grouped = self.env['account.move']._read_group(
             [
                 ('move_type', '=', 'out_invoice'),
@@ -386,7 +404,11 @@ class ResPartner(models.Model):
             monetary_score = _percentile_rank(totals, row['total'], higher_is_better=True)
             frequency_score = _percentile_rank(counts, row['count'], higher_is_better=True)
             recency_score = _percentile_rank(recencies, row['recency_days'], higher_is_better=False)
-            score = round((monetary_score * 0.5) + (frequency_score * 0.3) + (recency_score * 0.2))
+            score = round(
+                (monetary_score * weight_monetary)
+                + (frequency_score * weight_frequency)
+                + (recency_score * weight_recency)
+            )
             category_record = self.env['crm.rfm.category'].category_for_score(score)
             if category_record:
                 category = category_record.code
