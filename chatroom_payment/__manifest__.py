@@ -7,6 +7,7 @@
     'summary': 'Payment-link actions from Chatroom',
     'depends': ['chatroom_whatsapp', 'payment', 'sale', 'account'],
     'data': [
+        'security/chatroom_payment_security.xml',
         'security/ir.model.access.csv',
         'views/chatroom_payment_link_wizard_views.xml',
         'views/chatroom_payment_link_views.xml',
