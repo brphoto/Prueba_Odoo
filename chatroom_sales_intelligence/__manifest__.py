@@ -93,7 +93,7 @@ agrega la capa visual que los muestra dentro del chat.
         'web.assets_backend': [
             'chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.js',
             'chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml',
-            'chatroom_sales_intelligence/views/chatroom_active_opportunities.xml',
+            'chatroom_sales_intelligence/static/src/chatroom_app/chatroom_active_opportunities.xml',
             'chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_thread_core_patch.js',
             'chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_thread_core_patch.xml',
             'chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence.scss',

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-inherit="chatroom_whatsapp.ContactPanel" t-inherit-mode="extension">
         <xpath expr="//div[hasclass('o_chatroom_contact_stats')]" position="after">
@@ -14,7 +14,8 @@
                         <span class="o_chatroom_contact_doc_name text-truncate"
                               t-on-click="() => this.openRecord('crm.lead', lead.id)"
                               title="Abrir oportunidad" t-esc="lead.name"/>
-                        <span class="badge" t-attf-style="background-color: var(--o-color-{{ lead.stage_color || 0 }})"
+                        <span class="badge"
+                              t-attf-style="background-color: var(--o-color-{{ lead.stage_color || 0 }})"
                               t-esc="lead.stage_name"/>
                         <small class="text-muted"><t t-esc="lead.probability"/>%</small>
                     </div>
