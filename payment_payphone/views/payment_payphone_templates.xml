@@ -20,7 +20,7 @@
                                 window.location.href = '/payment/status';
                             }
                         });
-                    }, 2000);
+                    }, 3000);
                 }());
             </script>
         </div>

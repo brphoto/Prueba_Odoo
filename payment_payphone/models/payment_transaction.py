@@ -70,7 +70,6 @@ class PaymentTransaction(models.Model):
         transaction_id = str(
             notification_data.get('id')
             or notification_data.get('transactionId')
-            or self.provider_reference
             or ''
         )
         response = self.provider_id._payphone_get_sale_status(

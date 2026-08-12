@@ -3,6 +3,7 @@ import logging
 from odoo import http
 from odoo.exceptions import ValidationError
 from odoo.http import request
+from odoo.addons.payment.controllers.post_processing import PaymentPostProcessing
 
 _logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ class PayPhoneController(http.Controller):
         ], limit=1)
         if not tx:
             return request.redirect('/payment/status')
+        PaymentPostProcessing.monitor_transaction(tx)
         return request.render('payment_payphone.wait', {'tx': tx})
 
     @http.route(_status_url, type='http', auth='public', methods=['GET'])
@@ -40,4 +42,12 @@ class PayPhoneController(http.Controller):
             ('reference', '=', reference),
             ('provider_code', '=', 'payphone'),
         ], limit=1)
+        if tx and tx.state in ('draft', 'pending'):
+            try:
+                tx._handle_notification_data('payphone', {
+                    'clientTransactionId': reference,
+                })
+            except ValidationError:
+                _logger.exception('Unable to poll PayPhone transaction status.')
+                tx.invalidate_recordset()
         return request.make_json_response({'state': tx.state if tx else 'error'})
