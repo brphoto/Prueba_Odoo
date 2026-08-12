@@ -19,8 +19,10 @@ class PayPhoneController(http.Controller):
         """Receive PayPhone's responseUrl notification and verify it server-side."""
         _logger.info('PayPhone notification received: %s', data)
         try:
-            request.env['payment.transaction'].sudo()._handle_notification_data('payphone', data)
-        except ValidationError:
+            tx = request.env['payment.transaction'].sudo()._process('payphone', data)
+            if not tx:
+                raise ValidationError('PayPhone: no transaction matches the response.')
+        except Exception:
             # The transaction is confirmed server-side before redirecting back to Odoo.
             _logger.exception('Unable to process PayPhone notification.')
         return request.redirect('/payment/status')
@@ -34,8 +36,10 @@ class PayPhoneController(http.Controller):
             data = request.httprequest.get_json(silent=True) or {}
         _logger.info('PayPhone external notification received: %s', data)
         try:
-            request.env['payment.transaction'].sudo()._handle_notification_data('payphone', data)
-        except ValidationError:
+            tx = request.env['payment.transaction'].sudo()._process('payphone', data)
+            if not tx:
+                raise ValidationError('PayPhone: no transaction matches the notification.')
+        except Exception:
             _logger.exception('Unable to process PayPhone external notification.')
             return request.make_json_response({'Response': False, 'ErrorCode': '222'})
         return request.make_json_response({'Response': True, 'ErrorCode': '000'})

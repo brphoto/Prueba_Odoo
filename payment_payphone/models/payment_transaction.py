@@ -78,12 +78,9 @@ class PaymentTransaction(models.Model):
             })
         return values
 
-    def _get_tx_from_notification_data(self, provider_code, notification_data):
-        tx = super()._get_tx_from_notification_data(provider_code, notification_data)
-        if provider_code != 'payphone' or len(tx) == 1:
-            return tx
-
-        client_reference = (
+    def _payphone_notification_reference(self, notification_data):
+        """Return the Odoo reference sent back by PayPhone."""
+        return (
             notification_data.get('clientTransactionId')
             or notification_data.get('clientTransactionID')
             or notification_data.get('ClientTransactionId')
@@ -91,44 +88,35 @@ class PaymentTransaction(models.Model):
             or notification_data.get('reference')
             or notification_data.get('Reference')
         )
-        transaction_id = str(
+
+    def _payphone_notification_transaction_id(self, notification_data):
+        return str(
             notification_data.get('id')
             or notification_data.get('transactionId')
             or notification_data.get('TransactionId')
             or ''
         )
-        if client_reference:
-            tx = self.search([
-                ('reference', '=', client_reference),
-                ('provider_code', '=', 'payphone'),
-            ], limit=1)
-        elif transaction_id:
-            tx = self.search([
-                ('provider_reference', '=', transaction_id),
-                ('provider_code', '=', 'payphone'),
-            ], limit=1)
-        if not tx:
-            raise ValidationError(_('PayPhone: no transaction matches the notification.'))
-        return tx
 
-    def _process_notification_data(self, notification_data):
-        super()._process_notification_data(notification_data)
+    # Odoo 19 notification API.
+    @api.model
+    def _extract_reference(self, provider_code, payment_data):
+        if provider_code != 'payphone':
+            return super()._extract_reference(provider_code, payment_data)
+        return self._payphone_notification_reference(payment_data)
+
+    def _extract_amount_data(self, payment_data):
+        if self.provider_code == 'payphone':
+            # The responseUrl only contains id and clientTransactionId. The
+            # amount is obtained from PayPhone's confirm endpoint below.
+            return None
+        return super()._extract_amount_data(payment_data)
+
+    def _apply_updates(self, payment_data):
         if self.provider_code != 'payphone':
-            return
+            return super()._apply_updates(payment_data)
 
-        transaction_id = str(
-            notification_data.get('id')
-            or notification_data.get('transactionId')
-            or notification_data.get('TransactionId')
-            or ''
-        )
-        client_transaction_id = (
-            notification_data.get('clientTransactionId')
-            or notification_data.get('clientTransactionID')
-            or notification_data.get('ClientTransactionId')
-            or notification_data.get('ClientTransactionID')
-            or self.reference
-        )
+        transaction_id = self._payphone_notification_transaction_id(payment_data)
+        client_transaction_id = self._payphone_notification_reference(payment_data) or self.reference
         if self.provider_id.payphone_flow == 'box':
             response = self.provider_id._payphone_confirm_box(
                 transaction_id, client_transaction_id, reference=self.reference,
