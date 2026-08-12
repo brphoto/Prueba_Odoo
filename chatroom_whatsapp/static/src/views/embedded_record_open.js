@@ -23,8 +23,47 @@ function modelDisplayName(model) {
 }
 
 function isEmbeddedDialog(controller, options = {}) {
-    return controller.props.display?.mode === "inDialog"
+    // In Odoo 19 the reliable marker is the child environment created by
+    // ActionDialog. `props.display` is not consistently present on every
+    // list/kanban controller, so checking it alone silently falls back to the
+    // standard action navigation.
+    return (controller.env.inDialog || controller.props.display?.mode === "inDialog")
         && !options.newWindow;
+}
+
+function getEmbeddedReturnAction(controller) {
+    const searchModel = controller.env.searchModel;
+    const entries = controller.env.config.viewSwitcherEntries || [];
+    const currentType = controller.props.type || "list";
+    const viewTypes = [
+        currentType,
+        ...entries
+            .filter((entry) => entry.multiRecord)
+            .map((entry) => entry.type),
+    ].filter((type, index, values) => values.indexOf(type) === index);
+    const context = searchModel?.context || controller.props.context || {};
+    const domain = searchModel?.domain || controller.props.domain || [];
+    return {
+        type: "ir.actions.act_window",
+        name: controller.env.config.actionName || modelDisplayName(controller.props.resModel),
+        res_model: controller.props.resModel,
+        views: viewTypes.map((type) => [false, type]),
+        view_mode: viewTypes.join(","),
+        domain,
+        context,
+        target: "new",
+    };
+}
+
+function restoreEmbeddedView(controller) {
+    const action = getEmbeddedReturnAction(controller);
+    if (!action.res_model) {
+        return;
+    }
+    // The form close callback runs while Odoo is still removing the form
+    // dialog. Queue the list action for the next task so it replaces the
+    // closed dialog cleanly instead of being removed with it.
+    setTimeout(() => controller.actionService.doAction(action), 0);
 }
 
 async function openEmbeddedForm(controller, record) {
@@ -37,10 +76,11 @@ async function openEmbeddedForm(controller, record) {
             res_id: record.resId,
             views: [[false, "form"]],
             context: record.context || controller.props.context || {},
+            view_mode: "form",
             target: "new",
         },
         {
-            onClose: () => controller.model.root.load(),
+            onClose: () => restoreEmbeddedView(controller),
         }
     );
 }
@@ -54,17 +94,28 @@ async function createEmbeddedForm(controller) {
             res_model: model,
             views: [[false, "form"]],
             context: controller.props.context || {},
+            view_mode: "form",
             target: "new",
         },
         {
-            onClose: () => controller.model.root.load(),
+            onClose: () => restoreEmbeddedView(controller),
         }
     );
 }
 
 patch(ListController.prototype, {
+    setup() {
+        super.setup(...arguments);
+        // Keep a native Odoo affordance visible in embedded lists. It is
+        // useful on touch devices and remains available if a user does not
+        // know that a row is clickable.
+        if (this.env.inDialog) {
+            this.hasOpenFormViewButton = true;
+        }
+    },
+
     async createRecord() {
-        if (this.props.display?.mode === "inDialog") {
+        if (this.env.inDialog) {
             await createEmbeddedForm(this);
             return;
         }
@@ -86,7 +137,7 @@ patch(ListController.prototype, {
 
 patch(KanbanController.prototype, {
     async createRecord() {
-        if (this.props.display?.mode === "inDialog") {
+        if (this.env.inDialog) {
             await createEmbeddedForm(this);
             return;
         }

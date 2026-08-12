@@ -72,6 +72,10 @@ class ChatroomChannel(models.Model):
             'name': _('Enviar Link de Pago'),
             'res_model': 'chatroom.payment.link.wizard',
             'view_mode': 'form',
+            # Las acciones devueltas por orm.call no pasan por
+            # clean_action(); por eso Odoo necesita recibir views de forma
+            # explícita antes de ejecutar actionService.doAction().
+            'views': [(False, 'form')],
             'target': 'new',
             'context': {'default_channel_id': self.id},
         }

@@ -8,7 +8,10 @@ patch(ChatroomThreadCore.prototype, {
         try {
             const action = await this.orm.call(
                 "chatroom.channel", "action_open_payment_wizard", [this.channelId]);
-            this.action.doAction({ ...action, target: "new" }, {
+            const views = action.views?.length
+                ? action.views
+                : [[false, (action.view_mode || "form").split(",")[0]]];
+            this.action.doAction({ ...action, views, target: "new" }, {
                 onClose: () => this._loadMessages(),
             });
         } catch (error) {

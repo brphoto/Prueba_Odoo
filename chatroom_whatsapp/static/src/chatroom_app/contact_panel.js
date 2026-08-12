@@ -233,10 +233,15 @@ export class ContactPanel extends Component {
     }
 
     _openDialog(action) {
-        this.action.doAction(
-            { ...action, target: "new" },
-            { onClose: () => this._reload() }
+        const viewTypes = [
+            ...(action.views || []).map((view) => view[1]),
+            ...(action.view_mode || "").split(","),
+        ];
+        const isMultiRecordAction = viewTypes.some((viewType) =>
+            ["list", "kanban", "pivot", "graph", "calendar", "activity"].includes(viewType)
         );
+        const options = isMultiRecordAction ? {} : { onClose: () => this._reload() };
+        this.action.doAction({ ...action, target: "new" }, options);
     }
 
     // Odoo no deja cambiar de vista (lista -> form) DENTRO de un diálogo
