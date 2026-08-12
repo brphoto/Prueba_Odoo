@@ -3,12 +3,20 @@
 import publicWidget from '@web/legacy/js/public/public_widget';
 
 publicWidget.registry.PaymentForm.include({
-    /** Keep checkout open while PayPhone is displayed in a separate tab. */
     _submitForm(ev) {
         const checkedRadio = this.el.querySelector('input[name="o_payment_radio"]:checked');
         if (checkedRadio && this._getProviderCode(checkedRadio) === 'payphone') {
-            // Open the tab directly from the click event to avoid popup blockers after the RPC.
-            this.payphonePaymentWindow = window.open('', 'payphone_payment');
+            // Open the payment window from the user click to avoid popup blockers.
+            this.payphonePaymentWindowName = 'payphone_payment_' + Date.now();
+            this.payphonePaymentWindow = window.open(
+                '',
+                this.payphonePaymentWindowName,
+                'popup=yes,width=560,height=760,resizable=yes,scrollbars=yes'
+            );
+            if (this.payphonePaymentWindow) {
+                this.payphonePaymentWindow.document.title = 'PayPhone';
+                this.payphonePaymentWindow.focus();
+            }
         }
         return this._super(...arguments);
     },
@@ -29,7 +37,8 @@ publicWidget.registry.PaymentForm.include({
         const reference = referenceInput && referenceInput.value;
         const popup = this.payphonePaymentWindow;
         if (popup && !popup.closed) {
-            redirectForm.setAttribute('target', 'payphone_payment');
+            redirectForm.setAttribute('target', this.payphonePaymentWindowName);
+            popup.focus();
         } else {
             redirectForm.setAttribute('target', '_blank');
         }
@@ -39,17 +48,28 @@ publicWidget.registry.PaymentForm.include({
 
         if (reference) {
             const pollUrl = '/payment/payphone/status?reference=' + encodeURIComponent(reference);
+            const checkPayment = () => fetch(pollUrl, {credentials: 'same-origin'})
+                .then(response => response.json())
+                .then(data => {
+                    if (['done', 'cancel', 'error'].includes(data.state)) {
+                        window.clearInterval(poll);
+                        window.location.href = '/payment/status';
+                    }
+                })
+                .catch(() => {});
             const poll = window.setInterval(() => {
-                fetch(pollUrl, {credentials: 'same-origin'})
-                    .then(response => response.json())
-                    .then(data => {
-                        if (['done', 'cancel', 'error'].includes(data.state)) {
-                            window.clearInterval(poll);
-                            window.location.href = '/payment/status';
-                        }
-                    })
-                    .catch(() => {});
-            }, 3000);
+                // Closing the window does not approve the payment. The server
+                // must confirm the transaction before Odoo changes its state.
+                checkPayment();
+            }, 2000);
+            if (popup) {
+                const closeWatcher = window.setInterval(() => {
+                    if (popup.closed) {
+                        window.clearInterval(closeWatcher);
+                        checkPayment();
+                    }
+                }, 500);
+            }
         }
     },
 });

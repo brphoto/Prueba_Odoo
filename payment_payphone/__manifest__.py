@@ -1,6 +1,6 @@
 {
     'name': 'Payment Provider: PayPhone',
-    'version': '19.0.1.0.8',
+    'version': '19.0.1.0.10',
     'category': 'Accounting/Payment Providers',
     'sequence': 120,
     'summary': 'PayPhone payments for Odoo',
