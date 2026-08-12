@@ -2,19 +2,15 @@
 
 function initChatroomPreview() {
     const preview = document.querySelector(".o_chatroom_ui_preview");
-    if (!preview || preview.dataset.ready === "1") {
+    if (!preview) {
         return;
     }
-    preview.dataset.ready = "1";
-    const names = {
-        primary: "chatroom_ui_primary_color",
-        secondary: "chatroom_ui_secondary_color",
-        accent: "chatroom_ui_accent_color",
-    };
-    const update = () => Object.entries(names).forEach(([variable, fieldName]) => {
-        const input = document.querySelector(`input[name="${fieldName}"]`);
+    const colors = ["primary", "secondary", "accent"];
+    const update = () => colors.forEach((variable, index) => {
+        const row = document.querySelectorAll(".o_chatroom_ui_color_row")[index];
+        const input = row?.querySelector("input[type='color'], input[type='text']");
         if (input?.value) {
-            preview.style.setProperty(`--preview-${variable}`, input.value);
+            preview.style.setProperty(`--preview-${variable}`, input.value.trim());
         }
     });
     preview._chatroomPreviewUpdate = update;
@@ -22,13 +18,13 @@ function initChatroomPreview() {
 }
 
 document.addEventListener("input", (event) => {
-    if (event.target?.name?.startsWith("chatroom_ui_")) {
+    if (event.target?.closest?.(".o_chatroom_ui_color_row")) {
         initChatroomPreview();
         document.querySelector(".o_chatroom_ui_preview")?._chatroomPreviewUpdate?.();
     }
 });
 document.addEventListener("change", (event) => {
-    if (event.target?.name?.startsWith("chatroom_ui_")) {
+    if (event.target?.closest?.(".o_chatroom_ui_color_row")) {
         initChatroomPreview();
         document.querySelector(".o_chatroom_ui_preview")?._chatroomPreviewUpdate?.();
     }

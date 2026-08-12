@@ -33,7 +33,12 @@
                             </div>
                             <div class="o_chatroom_ui_preview" role="img" aria-label="Vista previa de Chatroom">
                                 <div class="o_chatroom_ui_preview_sidebar">
-                                    <div class="o_chatroom_ui_preview_header">&#9679; Chatroom <span>+</span></div>
+                                    <div class="o_chatroom_ui_preview_header">
+                                        <img src="/chatroom_whatsapp/static/description/icon.png"
+                                             alt="Icono de Chatroom"/>
+                                        <span>Chatroom</span>
+                                        <b>+</b>
+                                    </div>
                                     <div class="o_chatroom_ui_preview_toolbar">Siguiente - Dashboard - Plantillas</div>
                                     <div class="o_chatroom_ui_preview_search">Buscar conversación...</div>
                                     <div class="o_chatroom_ui_preview_item"><b>Bryan Cando</b><small>Documento enviado</small></div>

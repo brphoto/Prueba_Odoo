@@ -46,6 +46,23 @@
         }
     }
 
+    .o_chatroom_filters_toggle,
+    .o_chatroom_filter_select,
+    .o_chatroom_bulk_stage_select {
+        border-color: var(--chatroom-ui-border-dark);
+        background: var(--chatroom-ui-surface-dark-2);
+        color: var(--chatroom-ui-text-dark);
+
+        option {
+            color: var(--chatroom-ui-text-dark);
+            background: var(--chatroom-ui-surface-dark);
+        }
+    }
+
+    .o_chatroom_filter_tools {
+        color: var(--chatroom-ui-muted-dark);
+    }
+
     .o_chatroom_app_list_item {
         border-bottom-color: #222d34;
 

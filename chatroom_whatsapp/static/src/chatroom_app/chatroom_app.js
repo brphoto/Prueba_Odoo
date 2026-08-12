@@ -14,6 +14,7 @@ const GLOBAL_BUS_CHANNEL = "chatroom_whatsapp_global";
 const PINNED_NUMBER_STORAGE_KEY = "chatroom_whatsapp.pinned_number_id";
 const SOUND_STORAGE_KEY = "chatroom_whatsapp.notification_sound";
 const INBOX_FILTERS_STORAGE_KEY = "chatroom_whatsapp.inbox_filters";
+const FILTERS_OPEN_STORAGE_KEY = "chatroom_whatsapp.filters_open";
 
 const CHANNEL_FIELDS = [
     "display_name",
@@ -89,6 +90,7 @@ export class ChatroomApp extends Component {
             stageFilter: this._getStoredInboxFilter("stage", "all"),
             channelTypeFilter: this._getStoredInboxFilter("channel", "all"),
             stages: [],
+            filtersOpen: this._getStoredFiltersOpen(),
             // En móvil el chat ocupa toda la pantalla y la ficha se abre
             // bajo demanda con el botón de contacto; en escritorio sí se
             // conserva la preferencia del usuario.
@@ -97,6 +99,9 @@ export class ChatroomApp extends Component {
             soundEnabled: this._getStoredSoundEnabled(),
             desktopNotifications: this._getStoredDesktopNotifications(),
             companyLogoUrl: false,
+            // El lanzador de Apps de Odoo prioriza este icon.png; usarlo
+            // aqui mantiene exactamente la misma identidad visual.
+            appLogoUrl: "/chatroom_whatsapp/static/description/icon.png",
             selectedChannelIds: [],
         });
 
@@ -163,6 +168,26 @@ export class ChatroomApp extends Component {
             }));
         } catch {
             // El filtro sigue funcionando durante la sesión.
+        }
+    }
+
+    _getStoredFiltersOpen() {
+        try {
+            return localStorage.getItem(FILTERS_OPEN_STORAGE_KEY) === "1";
+        } catch {
+            return false;
+        }
+    }
+
+    toggleFilters() {
+        this.state.filtersOpen = !this.state.filtersOpen;
+        try {
+            localStorage.setItem(
+                FILTERS_OPEN_STORAGE_KEY,
+                this.state.filtersOpen ? "1" : "0",
+            );
+        } catch {
+            // El plegado sigue funcionando durante la sesión.
         }
     }
 
@@ -274,6 +299,16 @@ export class ChatroomApp extends Component {
             || this.state.stageFilter !== "all"
             || this.state.channelTypeFilter !== "all"
             || Boolean(this.state.searchText.trim());
+    }
+
+    activeFilterCount() {
+        return [
+            this.state.filter !== "all",
+            this.state.numberFilter !== "all",
+            this.state.stageFilter !== "all",
+            this.state.channelTypeFilter !== "all",
+            Boolean(this.state.searchText.trim()),
+        ].filter(Boolean).length;
     }
 
     toggleChannelSelection(channelId) {

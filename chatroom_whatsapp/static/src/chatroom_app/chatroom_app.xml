@@ -6,9 +6,8 @@
             <div class="o_chatroom_app_sidebar">
                 <div class="o_chatroom_app_sidebar_header">
                     <h4>
-                        <img t-if="state.companyLogoUrl" class="o_chatroom_company_logo"
-                             t-att-src="state.companyLogoUrl" alt="Logo de la empresa"/>
-                        <i t-else="" class="fa fa-whatsapp"/>
+                        <img class="o_chatroom_company_logo o_chatroom_app_logo"
+                             t-att-src="state.appLogoUrl" alt="Icono de Chatroom"/>
                         Chatroom
                     </h4>
                     <div class="o_chatroom_app_header_actions">
@@ -100,6 +99,17 @@
                     <i class="fa fa-search"/>
                     <input type="text" placeholder="Buscar conversación..." t-on-input="onSearchInput"/>
                 </div>
+                <button type="button"
+                        t-attf-class="btn btn-link o_chatroom_filters_toggle {{ state.filtersOpen ? 'o_is_open' : '' }}"
+                        t-on-click="toggleFilters"
+                        t-att-aria-expanded="state.filtersOpen ? 'true' : 'false'">
+                    <span><i class="fa fa-filter"/> Filtros</span>
+                    <span class="o_chatroom_filters_toggle_meta">
+                        <t t-if="this.activeFilterCount()"><t t-esc="this.activeFilterCount()"/> activos</t>
+                        <i t-attf-class="fa {{ state.filtersOpen ? 'fa-chevron-up' : 'fa-chevron-down' }}"/>
+                    </span>
+                </button>
+                <div class="o_chatroom_filters_panel" t-if="state.filtersOpen">
                 <div class="o_chatroom_secondary_filters">
                     <select class="form-select form-select-sm o_chatroom_filter_select"
                             title="Filtrar por canal"
@@ -144,6 +154,7 @@
                             t-on-click="() => this.setFilter('favorites')">Favoritas</button>
                     <button t-attf-class="btn btn-sm {{ state.filter === 'unassigned' ? 'btn-primary' : 'btn-light' }}"
                             t-on-click="() => this.setFilter('unassigned')">Sin asignar</button>
+                </div>
                 </div>
                 <div class="o_chatroom_app_list">
                     <t t-if="state.loading">

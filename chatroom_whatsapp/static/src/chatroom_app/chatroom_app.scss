@@ -169,6 +169,38 @@
     }
 }
 
+.o_chatroom_filters_toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: calc(100% - 28px);
+    margin: 0 14px 6px;
+    padding: 5px 8px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 8px;
+    color: #8696a0;
+    font-size: 0.78em;
+    text-decoration: none;
+
+    &:hover,
+    &.o_is_open {
+        color: var(--o-brand-primary, #714b67);
+        background-color: rgba(128, 128, 128, 0.08);
+    }
+}
+
+.o_chatroom_filters_toggle_meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--chatroom-ui-accent, #00a884);
+    font-size: 0.9em;
+}
+
+.o_chatroom_filters_panel {
+    overflow: hidden;
+}
+
 .o_chatroom_filter_tools {
     display: flex;
     align-items: center;

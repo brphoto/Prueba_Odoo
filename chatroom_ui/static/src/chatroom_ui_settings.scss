@@ -63,7 +63,21 @@
     font-weight: 700;
 }
 
-.o_chatroom_ui_preview_header span {
+.o_chatroom_ui_preview_header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.o_chatroom_ui_preview_header img {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    border-radius: 5px;
+}
+
+.o_chatroom_ui_preview_header b {
+    margin-left: auto;
     float: right;
     display: inline-flex;
     width: 20px;
@@ -72,6 +86,7 @@
     justify-content: center;
     border: 1px solid rgba(255, 255, 255, 0.35);
     border-radius: 50%;
+    font-weight: 400;
 }
 
 .o_chatroom_ui_preview_toolbar,

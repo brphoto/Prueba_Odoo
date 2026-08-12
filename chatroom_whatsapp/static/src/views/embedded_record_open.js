@@ -23,8 +23,7 @@ function modelDisplayName(model) {
 
 function isEmbeddedDialog(controller, options = {}) {
     return controller.props.display?.mode === "inDialog"
-        && !options.newWindow
-        && !controller.props.allowOpenAction;
+        && !options.newWindow;
 }
 
 async function openEmbeddedForm(controller, record) {

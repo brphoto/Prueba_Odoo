@@ -51,7 +51,7 @@ Requisitos
     'author': "Bryan Cando",
     'website': "https://github.com/brphoto/Prueba_Odoo",
     'license': 'LGPL-3',
-    'icon': '/chatroom_whatsapp/static/description/icon.svg',
+    'icon': '/chatroom_whatsapp/static/description/icon.png',
 
     'category': 'Discuss',
     'version': '19.0.2.1.1',

@@ -83,6 +83,9 @@ export class ContactPanel extends Component {
     }
 
     async _reload() {
+        if (this.__owl__?.status === "destroyed") {
+            return;
+        }
         await this._load(this.props.channelId);
     }
 
