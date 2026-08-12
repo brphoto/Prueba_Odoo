@@ -60,6 +60,13 @@ class PaymentProvider(models.Model):
             return default_codes
         return const.DEFAULT_PAYMENT_METHOD_CODES
 
+    def _get_redirect_form_view(self, is_validation=False):
+        """Always return this module's redirect form for PayPhone."""
+        self.ensure_one()
+        if self.code == 'payphone':
+            return self.env.ref('payment_payphone.redirect_form')
+        return super()._get_redirect_form_view(is_validation=is_validation)
+
     def _payphone_make_request(self, endpoint, method='GET', payload=None, reference=None):
         """Call PayPhone using the configured bearer token."""
         self.ensure_one()
