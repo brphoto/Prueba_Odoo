@@ -33,6 +33,8 @@ class RfmSegmentRule(models.Model):
     ], string='Operador', required=True, default='>=')
     value = fields.Char(string='Valor', required=True)
 
+    _COMPARISON_OPERATORS = ('=', '!=', '>=', '<=', '>', '<')
+
     @api.constrains('field_key', 'operator', 'value')
     def _check_value(self):
         numeric_fields = {
@@ -40,9 +42,11 @@ class RfmSegmentRule(models.Model):
             'commercial_invoice_count', 'commercial_avg_ticket',
         }
         for rule in self:
-            if rule.field_key in numeric_fields and rule.operator not in ('=', '!=', '>=', '<=', '>', '<'):
+            if rule.field_key in numeric_fields and rule.operator not in self._COMPARISON_OPERATORS:
                 raise ValidationError(_('Los campos numéricos solo admiten comparaciones.'))
             if rule.field_key == 'commercial_last_sale_date':
+                if rule.operator not in self._COMPARISON_OPERATORS:
+                    raise ValidationError(_('Los campos de fecha solo admiten comparaciones.'))
                 try:
                     fields.Date.from_string(rule.value)
                 except (TypeError, ValueError):

@@ -11,20 +11,22 @@ class RfmSegment(models.Model):
     name = fields.Char(string='Nombre del segmento', required=True)
     active = fields.Boolean(default=True)
     sequence = fields.Integer(default=10)
-    category = fields.Selection([
-        ('all', 'Todos'), ('a', 'A - Alto valor'), ('b', 'B - Valor medio'),
-        ('c', 'C - Bajo valor'), ('none', 'Sin historial'),
-    ], string='Categoría RFM', default='all', required=True)
     category_id = fields.Many2one('crm.rfm.category', string='Categoría configurable')
+    use_score_filter = fields.Boolean(
+        string='Filtrar por score', default=False,
+        help="score_min y score_max son enteros normales: 0 es un valor válido, no "
+             "'sin filtro'. Sin este interruptor no hay forma de distinguir un score "
+             "mínimo/máximo de 0 configurado a propósito de los campos simplemente sin "
+             "tocar, así que el filtro de score solo se aplica cuando está activado.")
     score_min = fields.Integer(string='Score mínimo')
     score_max = fields.Integer(string='Score máximo')
     max_days_since_sale = fields.Integer(string='Máximo días desde última venta')
     description = fields.Char(string='Descripción')
 
-    # TambiÃ©n conserva el selector simple, pero lo alimenta con el catÃ¡logo
+    # También conserva el selector simple, pero lo alimenta con el catálogo
     # configurable. category_id permite seleccionar el registro directamente.
     category = fields.Selection(
-        selection='_selection_rfm_category_filter', string='CategorÃ­a RFM',
+        selection='_selection_rfm_category_filter', string='Categoría RFM',
         default='all', required=True)
 
     rule_logic = fields.Selection([
@@ -48,12 +50,12 @@ class RfmSegment(models.Model):
             ]
         return options
 
-    @api.constrains('score_min', 'score_max')
+    @api.constrains('score_min', 'score_max', 'use_score_filter')
     def _check_score(self):
-        for record in self:
+        for record in self.filtered('use_score_filter'):
             if not 0 <= record.score_min <= 100 or not 0 <= record.score_max <= 100:
                 raise ValidationError(_('El score debe estar entre 0 y 100.'))
-            if record.score_min and record.score_max and record.score_min > record.score_max:
+            if record.score_min > record.score_max:
                 raise ValidationError(_('El score mínimo no puede superar al máximo.'))
 
     def get_domain(self):
@@ -64,9 +66,8 @@ class RfmSegment(models.Model):
         if self.category_id:
             domain = [item for item in domain if item[0] != 'rfm_category']
             domain.append(('rfm_category', '=', self.category_id.code))
-        if self.score_min:
+        if self.use_score_filter:
             domain.append(('rfm_score', '>=', self.score_min))
-        if self.score_max:
             domain.append(('rfm_score', '<=', self.score_max))
         return domain
 
@@ -86,7 +87,7 @@ class RfmSegment(models.Model):
                 partner.commercial_last_sale_date >= cutoff)
         return partners
 
-    @api.depends('category', 'category_id', 'score_min', 'score_max',
+    @api.depends('category', 'category_id', 'use_score_filter', 'score_min', 'score_max',
                  'max_days_since_sale', 'rule_logic', 'rule_ids.active',
                  'rule_ids.field_key', 'rule_ids.operator', 'rule_ids.value')
     def _compute_preview_count(self):

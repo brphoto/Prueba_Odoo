@@ -99,18 +99,18 @@ export class ChatroomSystrayIcon extends Component {
     }
 
     async _loadCount() {
+        // state.crmRed no se toca acá: chatroom_whatsapp no depende de
+        // crm_customer_intelligence y no sabe si "crm.lead" tiene
+        // get_management_alert_counts. Ese contador lo agrega
+        // crm_customer_intelligence con un patch() de este componente
+        // (mismo criterio que chatroom_calendar usa para ContactPanel),
+        // solo cuando el módulo está instalado.
         const values = await Promise.all([
             this.orm.searchCount("chatroom.channel", [["state", "=", "pending"]]),
             this.orm.searchCount("chatroom.channel", [["manual_urgent", "=", true]]),
         ]);
         this.state.count = values[0];
         this.state.urgent = values[1];
-        try {
-            const alerts = await this.orm.call("crm.lead", "get_management_alert_counts", []);
-            this.state.crmRed = alerts.red || 0;
-        } catch {
-            this.state.crmRed = 0;
-        }
     }
 
     openChatroom() {

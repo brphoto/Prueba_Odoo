@@ -20,7 +20,7 @@ class ManagementReportSubscription(models.Model):
         ('pdf', 'PDF'), ('xlsx', 'Excel'),
     ], string='Formato', default='pdf', required=True)
     rfm_category = fields.Selection(
-        selection='_selection_rfm_category_filter', string='CategorÃ­a RFM', default='all')
+        selection='_selection_rfm_category_filter', string='Categoría RFM', default='all')
     period = fields.Selection([
         ('7', 'Últimos 7 días'), ('30', 'Últimos 30 días'),
         ('90', 'Últimos 90 días'), ('365', 'Últimos 12 meses'),
@@ -105,7 +105,9 @@ class ManagementReportSubscription(models.Model):
             'email_from': self.company_id.email or self.env.user.email or 'noreply@localhost',
             'email_to': ','.join(emails), 'attachment_ids': [(4, attachment.id)],
         })
-        mail.send()
+        mail.send(raise_exception=False)
+        if mail.state != 'sent':
+            raise UserError(_('El correo no se pudo enviar: %s') % (mail.failure_reason or mail.state))
         self.write({'last_sent_at': fields.Datetime.now(), 'last_error': False})
         return True
 

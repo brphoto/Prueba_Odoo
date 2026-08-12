@@ -49,10 +49,6 @@ class CrmKpiDefinition(models.Model):
         string='Fórmula opcional',
         help="Expresión numérica sobre value y record_count. Ejemplo: value * 100 / 500")
     compare_previous = fields.Boolean(string='Comparar con período anterior', default=True)
-    rfm_category = fields.Selection([
-        ('all', 'Todas'), ('a', 'A - Alto valor'),
-        ('b', 'B - Valor medio'), ('c', 'C - Bajo valor'),
-    ], string='Segmento RFM', default='all')
     format_type = fields.Selection([
         ('number', 'Número'), ('money', 'Moneda'), ('percent', 'Porcentaje'),
     ], string='Formato mostrado', default='number', required=True)
@@ -153,6 +149,19 @@ class CrmKpiDefinition(models.Model):
                 domain.append((self.date_field, '>=', date_from))
         return domain
 
+    def _format_kpi_value(self, value):
+        """Formatea un número según format_type: evita repetir el mismo
+        reemplazo de separadores de miles/decimales varias veces por
+        cada llamada a _compute_value (antes se repetía 4 veces, dos de
+        ellas sobre un valor que ni siquiera se terminaba usando)."""
+        self.ensure_one()
+        if self.format_type == 'money':
+            return f'{self.env.company.currency_id.symbol} {value:,.2f}'.replace(
+                ',', 'X').replace('.', ',').replace('X', '.')
+        if self.format_type == 'percent':
+            return f'{value:.1f}%'
+        return f'{value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+
     def _compute_value(self, period='90', category='all'):
         self.ensure_one()
         domain = self._get_domain(period, category)
@@ -170,18 +179,7 @@ class CrmKpiDefinition(models.Model):
                 }))
             except Exception as exc:
                 raise ValidationError(_("No se pudo calcular la fórmula del KPI %s: %s") % (self.name, exc))
-        if self.format_type == 'money':
-            display = f'{self.env.company.currency_id.symbol} {value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
-        elif self.format_type == 'percent':
-            display = f'{value:.1f}%'
-        else:
-            display = f'{value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
-        target_display = (
-            f'{self.env.company.currency_id.symbol} {self.target_value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
-            if self.format_type == 'money' else
-            f'{self.target_value:.1f}%' if self.format_type == 'percent' else
-            f'{self.target_value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
-        )
+        display = self._format_kpi_value(value)
         target = self.target_ids.filtered(
             lambda item: item.active and item.is_current_period() and item.scope_type == 'company' and
             item.company_id == self.env.company)[:1]

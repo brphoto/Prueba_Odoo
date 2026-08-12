@@ -6,7 +6,7 @@
         <field name="arch" type="xml">
             <list decoration-muted="not active">
                 <field name="sequence" widget="handle"/><field name="name"/>
-                <field name="category"/><field name="score_min"/><field name="score_max"/>
+                <field name="category"/><field name="use_score_filter" optional="show"/>
                 <field name="max_days_since_sale"/><field name="active" widget="boolean_toggle"/>
             </list>
         </field>
@@ -20,7 +20,12 @@
                 <field name="active" widget="boolean_button"/>
             </header><sheet><div class="oe_title"><h1><field name="name"/></h1></div>
                     <group><group><field name="category_id"/><field name="category"/><field name="description"/></group>
-                    <group><field name="score_min"/><field name="score_max"/><field name="max_days_since_sale"/><field name="sequence"/></group>
+                    <group>
+                        <field name="use_score_filter"/>
+                        <field name="score_min" invisible="not use_score_filter"/>
+                        <field name="score_max" invisible="not use_score_filter"/>
+                        <field name="max_days_since_sale"/><field name="sequence"/>
+                    </group>
                 </group>
             </sheet></form>
         </field>

@@ -108,4 +108,9 @@ class ChatroomWhatsappOnboardingWizard(models.TransientModel):
         return self._reopen()
 
     def action_finish(self):
+        self.ensure_one()
+        if not self.connection_ok:
+            raise UserError(_(
+                "Todavía no probaste la conexión con éxito. Usa \"Probar conexión\" "
+                "antes de terminar el asistente."))
         return {'type': 'ir.actions.act_window_close'}

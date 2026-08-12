@@ -19,3 +19,8 @@ class ChatroomCampaignRecipient(models.Model):
         [('pending', "Pendiente"), ('sent', "Enviado"), ('failed', "Falló")],
         default='pending', required=True)
     error_message = fields.Char()
+
+    _campaign_partner_unique = models.Constraint(
+        'unique(campaign_id, partner_id)',
+        'Este contacto ya está en la lista de destinatarios de la campaña.',
+    )

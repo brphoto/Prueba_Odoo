@@ -94,6 +94,7 @@ agrega la capa visual que los muestra dentro del chat.
             'chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence.scss',
             'chatroom_sales_intelligence/static/src/chatroom_app/chatroom_app_patch.js',
             'chatroom_sales_intelligence/static/src/chatroom_app/chatroom_app_patch.xml',
+            'chatroom_sales_intelligence/static/src/chatroom_app/chatroom_systray_patch.js',
             'chatroom_sales_intelligence/static/src/my_followups/my_followups_dashboard.js',
             'chatroom_sales_intelligence/static/src/my_followups/my_followups_dashboard.xml',
             'chatroom_sales_intelligence/static/src/my_followups/my_followups_dashboard.scss',

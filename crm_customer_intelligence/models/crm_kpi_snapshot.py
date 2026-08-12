@@ -49,8 +49,7 @@ class CrmKpiSnapshot(models.Model):
     def _cron_notify_red_kpis(self):
         activity_type = self.env['mail.activity.type'].search(
             [('category', '=', 'default')], order='sequence, id', limit=1)
-        managers = self.env['res.users'].search([
-            ('share', '=', False), ('active', '=', True)])
+        managers = self.env.ref('sales_team.group_sale_manager').users.filtered('active')
         model_id = self.env['ir.model']._get_id('crm.kpi.definition')
         for kpi in self.env['crm.kpi.definition'].search([('active', '=', True)]):
             result = kpi._compute_value('90', 'all')

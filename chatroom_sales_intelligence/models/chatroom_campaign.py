@@ -98,9 +98,18 @@ class ChatroomCampaign(models.Model):
 
     def action_send(self):
         """Toma la foto de destinatarios y encola la campaña: el envío
-        real lo hace _cron_process_campaigns en lotes, no este método."""
+        real lo hace _cron_process_campaigns en lotes, no este método.
+
+        El chequeo de estado se hace con SELECT ... FOR UPDATE: dos clics
+        (o dos requests) casi simultáneos en el mismo registro ya no pueden
+        pasar los dos el "if state != draft" antes de que ninguno escriba,
+        porque el segundo se bloquea en el lock hasta que el primero
+        confirma su commit y cambia el estado."""
         self.ensure_one()
-        if self.state != 'draft':
+        self.env.cr.execute(
+            "SELECT id FROM chatroom_campaign WHERE id = %s AND state = 'draft' FOR UPDATE",
+            (self.id,))
+        if not self.env.cr.fetchone():
             raise UserError(_("Esta campaña ya se encoló o se mandó."))
         partners = self._get_target_partners()
         if not partners:
@@ -141,7 +150,7 @@ class ChatroomCampaign(models.Model):
                 try:
                     channel_id = Channel.action_start_conversation(partner.id, phone=partner.phone)
                     channel = Channel.browse(channel_id)
-                    values = [partner.name] if campaign.template_id.variable_count else []
+                    values = campaign.template_id.get_variable_values(channel)
                     channel.action_send_template(
                         campaign.template_id.name, campaign.template_id.language, values)
                     recipient.state = 'sent'
