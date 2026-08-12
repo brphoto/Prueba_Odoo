@@ -17,7 +17,7 @@
     'license': 'LGPL-3',
     'assets': {
         'web.assets_frontend': [
-            'payment_payphone/static/src/js/payment_form.js',
+            'payment_payphone/static/src/interactions/payment_form.js',
         ],
     },
     'installable': True,

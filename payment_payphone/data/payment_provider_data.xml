@@ -4,7 +4,6 @@
         <field name="name">PayPhone Tarjeta</field>
         <field name="code">payphone_link</field>
         <field name="sequence">20</field>
-        <field name="active">True</field>
         <field name="image" type="base64" file="payment_payphone/static/img/payphone.svg"/>
         <field name="support_tokenization">False</field>
         <field name="support_express_checkout">False</field>
@@ -14,7 +13,6 @@
         <field name="name">PayPhone App</field>
         <field name="code">payphone_sale</field>
         <field name="sequence">21</field>
-        <field name="active">True</field>
         <field name="image" type="base64" file="payment_payphone/static/img/payphone.svg"/>
         <field name="support_tokenization">False</field>
         <field name="support_express_checkout">False</field>
@@ -24,7 +22,6 @@
         <field name="name">PayPhone Cajita</field>
         <field name="code">payphone_box</field>
         <field name="sequence">22</field>
-        <field name="active">True</field>
         <field name="image" type="base64" file="payment_payphone/static/img/payphone.svg"/>
         <field name="support_tokenization">False</field>
         <field name="support_express_checkout">False</field>
