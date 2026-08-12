@@ -38,3 +38,4 @@ access_chatroom_dashboard_profile_user,chatroom.dashboard.profile.user,model_cha
 access_chatroom_dashboard_profile_manager,chatroom.dashboard.profile.manager,model_chatroom_dashboard_profile,group_chatroom_manager,1,1,1,1
 access_chatroom_audit_log_user,chatroom.audit.log.user,model_chatroom_audit_log,group_chatroom_user,1,0,0,0
 access_chatroom_audit_log_manager,chatroom.audit.log.manager,model_chatroom_audit_log,group_chatroom_manager,1,1,1,1
+access_chatroom_bulk_whatsapp_wizard_user,chatroom.bulk.whatsapp.wizard.user,model_chatroom_bulk_whatsapp_wizard,group_chatroom_user,1,1,1,1

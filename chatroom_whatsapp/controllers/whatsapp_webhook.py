@@ -231,4 +231,11 @@ class WhatsAppWebhookController(http.Controller):
             interactive = msg.get('interactive', {})
             reply = interactive.get('button_reply') or interactive.get('list_reply') or {}
             return reply.get('title'), False
+        if msg_type == 'location':
+            location = msg.get('location', {})
+            lat, lng = location.get('latitude'), location.get('longitude')
+            lines = [line for line in (location.get('name'), location.get('address')) if line]
+            if lat is not None and lng is not None:
+                lines.append(f"https://www.google.com/maps?q={lat},{lng}")
+            return "\n".join(lines) or None, False
         return None, False

@@ -49,6 +49,30 @@
                         </setting>
                     </block>
 
+                    <block title="Ubicación del negocio">
+                        <setting id="chatroom_business_location_setting"
+                                 help="Para el botón 'Enviar ubicación' del composer del chat">
+                            <div class="content-group">
+                                <div class="mt8">
+                                    <label for="chatroom_business_location_name" string="Nombre"/>
+                                    <field name="chatroom_business_location_name"/>
+                                </div>
+                                <div class="mt8">
+                                    <label for="chatroom_business_location_address" string="Dirección"/>
+                                    <field name="chatroom_business_location_address"/>
+                                </div>
+                                <div class="mt8">
+                                    <label for="chatroom_business_location_lat" string="Latitud"/>
+                                    <field name="chatroom_business_location_lat"/>
+                                </div>
+                                <div class="mt8">
+                                    <label for="chatroom_business_location_lng" string="Longitud"/>
+                                    <field name="chatroom_business_location_lng"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+
                     <block title="SLA y reasignación automática">
                         <setting id="chatroom_sla_enabled_setting"
                                  help="Muestra el contador de primera respuesta y permite liberar conversaciones vencidas">
@@ -162,6 +186,17 @@
                         <setting id="chatroom_ai_auto_order_reply_setting"
                                  help="Arma un carrito charlando con el cliente y crea una Cotización real en borrador cuando confirma; nunca la confirma sola">
                             <field name="chatroom_ai_auto_order_reply"/>
+                        </setting>
+                    </block>
+
+                    <block title="Notificaciones automáticas por WhatsApp">
+                        <setting id="chatroom_notify_order_confirmed_setting"
+                                 help="Se manda sola al confirmar un presupuesto, solo a contactos que ya tienen una conversación de WhatsApp">
+                            <field name="chatroom_notify_order_confirmed_template_id"/>
+                        </setting>
+                        <setting id="chatroom_notify_invoice_posted_setting"
+                                 help="Se manda sola al publicar una factura de cliente, mismo criterio">
+                            <field name="chatroom_notify_invoice_posted_template_id"/>
                         </setting>
                     </block>
 

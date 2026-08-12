@@ -214,7 +214,10 @@
                                     </t>
                                 </t>
                             </t>
-                            <div class="o_chatroom_bubble_body" t-if="message.body" t-esc="message.body"/>
+                            <div class="o_chatroom_bubble_body" t-if="message.body">
+                                <i t-if="message.message_type === 'location'" class="fa fa-map-marker me-1"/>
+                                <t t-esc="message.body"/>
+                            </div>
                             <div class="o_chatroom_bubble_translation" t-if="message.translatedBody">
                                 <i class="fa fa-language"/>
                                 <span t-esc="message.translatedBody"/>
@@ -386,6 +389,11 @@
                                 t-attf-class="btn btn-link o_chatroom_attach_btn {{ state.scheduleOpen ? 'text-primary' : '' }}"
                                 title="Programar envío" t-on-click="toggleSchedule">
                             <i class="fa fa-clock-o"/>
+                        </button>
+                        <button t-if="!state.noteMode and state.channelType === 'whatsapp'"
+                                class="btn btn-link o_chatroom_attach_btn"
+                                title="Enviar ubicación del local" t-on-click="sendLocation">
+                            <i class="fa fa-map-marker"/>
                         </button>
                         <textarea
                             class="o_chatroom_composer_textarea"

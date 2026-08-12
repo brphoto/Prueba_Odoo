@@ -186,6 +186,40 @@ class ResConfigSettings(models.TransientModel):
              "cuanto un agente humano manda un mensaje real (o se puede "
              "pausar/reactivar a mano desde el encabezado del chat).")
 
+    # -- Notificaciones automáticas por eventos de Odoo (plantilla, no
+    # texto libre: una notificación disparada por un evento del sistema
+    # casi siempre le llega a alguien fuera de la ventana de 24h) --
+    chatroom_notify_order_confirmed_template_id = fields.Many2one(
+        'chatroom.template', string="Plantilla: pedido confirmado",
+        config_parameter='chatroom_whatsapp.notify_order_confirmed_template_id',
+        domain=[('status', '=', 'approved')],
+        help="Si se define, se manda sola por WhatsApp al confirmar un "
+             "presupuesto (pasa a Pedido de venta) — solo a contactos "
+             "que ya tienen una conversación de WhatsApp, no le crea "
+             "una nueva a nadie.")
+    chatroom_notify_invoice_posted_template_id = fields.Many2one(
+        'chatroom.template', string="Plantilla: factura publicada",
+        config_parameter='chatroom_whatsapp.notify_invoice_posted_template_id',
+        domain=[('status', '=', 'approved')],
+        help="Si se define, se manda sola por WhatsApp al publicar "
+             "(confirmar) una factura de cliente — mismo criterio: "
+             "solo a quien ya tiene una conversación de WhatsApp.")
+
+    # -- Ubicación del negocio (para mandarla por WhatsApp desde el chat) --
+    chatroom_business_location_name = fields.Char(
+        string="Nombre del local", config_parameter='chatroom_whatsapp.business_location_name')
+    chatroom_business_location_address = fields.Char(
+        string="Dirección", config_parameter='chatroom_whatsapp.business_location_address')
+    chatroom_business_location_lat = fields.Float(
+        string="Latitud", config_parameter='chatroom_whatsapp.business_location_lat',
+        digits=(10, 7))
+    chatroom_business_location_lng = fields.Float(
+        string="Longitud", config_parameter='chatroom_whatsapp.business_location_lng',
+        digits=(10, 7),
+        help="Latitud/longitud del local, para el botón 'Enviar ubicación' "
+             "del composer. Sacalas de Google Maps: clic derecho sobre el "
+             "punto exacto y copiá las coordenadas.")
+
     def _compute_whatsapp_webhook_url(self):
         base_url = self.env['ir.config_parameter'].sudo().get_param(
             'web.base.url', default='')

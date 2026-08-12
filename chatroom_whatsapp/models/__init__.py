@@ -20,8 +20,11 @@ from . import chatroom_template
 from . import chatroom_template_variable
 from . import chatroom_send_template_wizard
 from . import chatroom_send_catalog_wizard
+from . import chatroom_bulk_whatsapp_wizard
 from . import chatroom_new_conversation_wizard
 from . import chatroom_reassign_wizard
 from . import chatroom_assignment_log
 from . import chatroom_canned_response
 from . import chatroom_onboarding_wizard
+from . import sale_order
+from . import account_move

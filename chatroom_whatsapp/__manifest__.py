@@ -53,7 +53,7 @@ Requisitos
     'license': 'LGPL-3',
 
     'category': 'Discuss',
-    'version': '19.0.2.0.21',
+    'version': '19.0.2.1.0',
 
     # sale/purchase/crm/account eran opcionales hasta esta versión (el
     # módulo revisaba 'modelo' in self.env por todos lados para no
@@ -81,6 +81,7 @@ Requisitos
         'views/chatroom_reassign_wizard_views.xml',
         'views/chatroom_template_views.xml',
         'views/chatroom_send_catalog_wizard_views.xml',
+        'views/chatroom_bulk_whatsapp_wizard_views.xml',
         'views/chatroom_channel_views.xml',
         'views/chatroom_metrics_views.xml',
         'views/chatroom_message_views.xml',

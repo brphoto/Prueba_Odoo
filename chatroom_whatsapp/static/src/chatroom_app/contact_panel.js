@@ -308,6 +308,33 @@ export class ContactPanel extends Component {
         }
     }
 
+    async sendOrderPaymentLink(order) {
+        await this._sendPaymentLink(`order-pay-${order.id}`, "sale.order", order.id);
+    }
+
+    async sendInvoicePaymentLink(invoice) {
+        await this._sendPaymentLink(`invoice-pay-${invoice.id}`, "account.move", invoice.id);
+    }
+
+    async _sendPaymentLink(key, resModel, resId) {
+        if (this.state.sendingDocKey) {
+            return;
+        }
+        this.state.sendingDocKey = key;
+        try {
+            await this.orm.call(
+                "chatroom.channel", "action_send_payment_link",
+                [this.props.channelId, resModel, resId]);
+            this.notification.add("Link de pago enviado por WhatsApp.", { type: "success" });
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        } finally {
+            this.state.sendingDocKey = false;
+        }
+    }
+
     // ------------------------------------------------------------------
     // Catálogo de productos
     // ------------------------------------------------------------------

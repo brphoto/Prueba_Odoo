@@ -30,6 +30,7 @@ class ChatroomMessage(models.Model):
          ('video', "Video"),
          ('template', "Plantilla"),
          ('interactive', "Botones/lista"),
+         ('location', "Ubicación"),
          ('other', "Otro")],
         default='text', required=True)
     body = fields.Text()

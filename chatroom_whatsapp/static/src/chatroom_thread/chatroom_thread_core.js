@@ -644,6 +644,24 @@ export class ChatroomThreadCore extends Component {
         this.state.scheduleOpen = !this.state.scheduleOpen;
     }
 
+    async sendLocation() {
+        if (!this.channelId || this.state.sending) {
+            return;
+        }
+        this.state.sending = true;
+        try {
+            await this.orm.call("chatroom.channel", "action_send_location", [this.channelId]);
+            await this._loadMessages();
+            await this._loadChannel();
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        } finally {
+            this.state.sending = false;
+        }
+    }
+
     _localDatetimeToOdoo(localValue) {
         // El input datetime-local no trae zona horaria (se interpreta en
         // hora local del navegador); Date lo toma como tal, y toISOString

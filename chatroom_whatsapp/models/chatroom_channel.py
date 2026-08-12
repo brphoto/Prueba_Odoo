@@ -1446,6 +1446,92 @@ class ChatroomChannel(models.Model):
         self._notify_thread_update()
         return message
 
+    def action_send_location(self):
+        """Manda la ubicación del negocio configurada en Ajustes
+        (nombre, dirección, latitud/longitud) como mensaje de ubicación
+        nativo de WhatsApp -no un link de texto, el cliente lo ve con
+        el mapa embebido y el botón "Cómo llegar" propio de WhatsApp."""
+        self.ensure_one()
+        self._check_can_send()
+        if self.channel_type != 'whatsapp':
+            raise UserError(_("El envío directo aún solo está implementado "
+                               "para WhatsApp en este módulo base."))
+        icp = self.env['ir.config_parameter'].sudo()
+        lat = icp.get_param('chatroom_whatsapp.business_location_lat')
+        lng = icp.get_param('chatroom_whatsapp.business_location_lng')
+        if not lat or not lng:
+            raise UserError(_(
+                "Configura la latitud y longitud del local en Ajustes > "
+                "Chatroom WhatsApp > Ubicación del negocio."))
+        name = icp.get_param('chatroom_whatsapp.business_location_name') or self.env.company.name
+        address = icp.get_param('chatroom_whatsapp.business_location_address') or ''
+
+        token, phone_number_id, api_version = self._get_meta_credentials()
+        url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": self.external_id,
+            "type": "location",
+            "location": {
+                "latitude": float(lat),
+                "longitude": float(lng),
+                "name": name,
+                "address": address,
+            },
+        }
+        headers = {"Authorization": f"Bearer {token}"}
+
+        message = self.env['chatroom.message'].create({
+            'channel_id': self.id,
+            'direction': 'outbound',
+            'message_type': 'location',
+            'body': "\n".join(line for line in (name, address) if line),
+            'state': 'sent',
+            'date': fields.Datetime.now(),
+            'sender_user_id': self.env.user.id,
+        })
+        try:
+            response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)
+            response.raise_for_status()
+            wa_message_id = response.json().get('messages', [{}])[0].get('id')
+            message.write({'wa_message_id': wa_message_id})
+        except requests.RequestException as exc:
+            _logger.error("Error enviando ubicación de WhatsApp: %s", exc)
+            message.write({'state': 'failed'})
+            raise UserError(_("No se pudo enviar la ubicación: %s") % exc)
+
+        self.write({'last_message_date': fields.Datetime.now(), 'state': 'open'})
+        self._notify_thread_update()
+        return message
+
+    def action_send_payment_link(self, res_model, res_id):
+        """Genera un link de pago con el asistente nativo de Odoo
+        (mismo que usa el botón "Enviar link de pago" de Ventas/
+        Facturación) y lo manda como texto por WhatsApp. No inventa
+        nada propio: si no hay un método de pago en línea configurado
+        (Stripe, Mercado Pago, etc.) el link sale vacío y se avisa."""
+        self.ensure_one()
+        if 'payment.link.wizard' not in self.env:
+            raise UserError(_(
+                "No se pudo generar el link de pago: el módulo de Pagos "
+                "no está instalado."))
+        record = self.env[res_model].browse(res_id)
+        if not record.exists():
+            raise UserError(_("El documento ya no existe."))
+        try:
+            wizard = self.env['payment.link.wizard'].with_context(
+                active_model=res_model, active_id=res_id).create({})
+        except AttributeError:
+            raise UserError(_(
+                "Este tipo de documento (%s) no soporta generar un link "
+                "de pago en esta instalación de Odoo.") % res_model)
+        if not wizard.link:
+            raise UserError(_(
+                "No se pudo generar el link de pago: revisá que haya un "
+                "método de pago en línea configurado (ej. Stripe, "
+                "Mercado Pago) y que el documento tenga saldo pendiente."))
+        return self.action_send_text(_("Podés pagar acá: %s") % wizard.link)
+
     def _send_interactive_list(self, body, button_label, rows, message_type_body):
         """Base común para mensajes interactivos tipo 'lista' (hasta 10
         filas, a diferencia de los botones que solo permiten 3): la

@@ -359,6 +359,73 @@ nombre, `Phone Number ID` propio y, opcionalmente, agentes asignados
   > la misma línea real; con líneas de verdad distintas, usalo sabiendo
   > esto.
 
+## Envío masivo de WhatsApp desde cualquier lista
+
+Desde el menú de **Acciones** (⚙) de la lista de **Contactos**,
+**Oportunidades**, **Presupuestos/Pedidos** o **Facturas**: seleccioná
+varias filas y elegí **Enviar WhatsApp masivo**. El asistente:
+
+- Resuelve un contacto por cada fila seleccionada (directo si es la
+  lista de Contactos; por `partner_id` en los demás casos) y
+  **deduplica por número de WhatsApp** — si dos filas seleccionadas
+  son del mismo contacto (ej. dos facturas de la misma persona), le
+  llega una sola vez.
+- Solo deja elegir **plantillas aprobadas por Meta** (nunca texto
+  libre): un envío masivo casi siempre le llega a alguien fuera de la
+  ventana de 24h, y Meta rechaza texto libre en ese caso.
+- Las variables de la plantilla se completan solas por contacto
+  usando el mismo motor de `chatroom.template.variable_mapping_ids`
+  que ya usa el envío individual (ej. `invoice_total`, tomado de la
+  factura más reciente de cada contacto) — no hay que tipear nada por
+  persona.
+- Si el contacto no tiene todavía una conversación de WhatsApp, se le
+  crea una (`action_start_conversation`, la misma lógica que "Nueva
+  conversación"); los dados de baja se omiten solos.
+
+## Notificaciones automáticas por eventos de Odoo
+
+En **Ajustes > Chatroom WhatsApp > Notificaciones automáticas**: elegí
+una plantilla aprobada para **"pedido confirmado"** y/o **"factura
+publicada"**, y se manda sola por WhatsApp cuando pasa ese evento —
+sin que un agente tenga que acordarse. Dos decisiones de diseño a
+propósito:
+
+- Usa **plantillas**, no texto libre: un evento de Odoo (confirmar un
+  pedido, publicar una factura) casi siempre pasa fuera de la ventana
+  de 24h de la última vez que ese cliente escribió, y Meta rechaza
+  texto libre en ese caso.
+- **Solo se manda a contactos que ya tienen una conversación de
+  WhatsApp** — no le crea una conversación nueva a nadie. Mandarle una
+  plantilla a cualquier cliente con teléfono cargado, así nunca haya
+  usado WhatsApp con el negocio, es justo el ruido que se quiere
+  evitar. Si más adelante hace falta notificar también por
+  entregas/despachos (`stock.picking`), habría que sumar `stock` como
+  dependencia — no está implementado en esta versión para no ampliar
+  las dependencias obligatorias del módulo sin que haga falta.
+
+## Ubicación: recibir y enviar por WhatsApp
+
+- **Recibir**: si un cliente comparte su ubicación por WhatsApp (por
+  ejemplo, para indicar dónde entregar), llega como un mensaje más en
+  el hilo con el nombre/dirección (si el cliente los cargó) y un link
+  de Google Maps con las coordenadas.
+- **Enviar**: ícono de pin en el composer (📍) manda la ubicación del
+  local configurada en **Ajustes > Chatroom WhatsApp > Ubicación del
+  negocio** (nombre, dirección, latitud/longitud) como mensaje de
+  ubicación nativo de WhatsApp — el cliente lo ve con el mapa embebido
+  y el botón "Cómo llegar" propio de WhatsApp, no un link de texto.
+
+## Link de pago en Facturas y Presupuestos
+
+En el panel de contacto, junto al botón de enviar el PDF de cada
+presupuesto/factura reciente, hay un segundo botón ($) que genera un
+**link de pago** con el mismo asistente nativo de Odoo que usan los
+botones "Enviar link de pago" de Ventas/Facturación
+(`payment.link.wizard`) y lo manda por WhatsApp como texto. No inventa
+ningún mecanismo de cobro propio: si no hay un método de pago en línea
+configurado (Stripe, Mercado Pago, etc.) o el módulo de Pagos no está
+instalado, avisa con un error claro en vez de mandar un link roto.
+
 ## Dashboard
 
 **Chatroom > Dashboard** muestra un resumen de un vistazo: conversaciones
@@ -823,3 +890,19 @@ Pensado para tráfico real, no solo para la demo:
   actividad de un contacto solo mira `res.partner` y `crm.lead`, no
   otros documentos (ej. actividades puestas directo en una factura o un
   presupuesto no van a aparecer en esa lista).
+- **Envío masivo desde listas, notificaciones automáticas por eventos,
+  ubicación y link de pago son nuevos en esta iteración**: validado
+  con `py_compile` y parseo de XML de todo el módulo, sin instalar el
+  módulo de verdad en una base real todavía (surgieron comparando este
+  módulo contra varios conectores de WhatsApp de terceros del Odoo
+  Apps Store — casi todos de pago y con API no oficial, algo que este
+  módulo evita a propósito desde el inicio). Puntos concretos a
+  revisar antes de confiar en producción: (1) el envío masivo y las
+  notificaciones automáticas dependen de que ya haya plantillas
+  aprobadas por Meta configuradas con sus variables mapeadas — sin eso
+  no hay nada para elegir; (2) las notificaciones de "pedido
+  confirmado"/"factura publicada" no cubren entregas/despachos
+  (necesitaría `stock` como dependencia nueva, no se agregó); (3) el
+  link de pago depende de tener un proveedor de pago en línea
+  configurado en Odoo — sin eso, avisa con un error en vez de mandar
+  un link que no sirve, pero no configura ningún proveedor por vos.
