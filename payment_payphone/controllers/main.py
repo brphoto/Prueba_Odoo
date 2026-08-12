@@ -21,10 +21,9 @@ class PayPhoneController(http.Controller):
         try:
             request.env['payment.transaction'].sudo()._handle_notification_data('payphone', data)
         except ValidationError:
-            # Acknowledge the notification while logging invalid data. The transaction is never
-            # marked as paid from the callback alone; it is queried from PayPhone first.
+            # The transaction is confirmed server-side before redirecting back to Odoo.
             _logger.exception('Unable to process PayPhone notification.')
-        return request.make_json_response({'ok': True})
+        return request.redirect('/payment/status')
 
     @http.route([_notification_url, '/payment/payphone/notification'], type='http', auth='public', methods=['POST'], csrf=False)
     def payphone_external_notification(self, **kwargs):
@@ -67,10 +66,7 @@ class PayPhoneController(http.Controller):
             tx.state == 'error' and tx.provider_reference
         )):
             try:
-                notification_data = {'clientTransactionId': reference}
-                if tx.provider_reference:
-                    notification_data['id'] = tx.provider_reference
-                tx._handle_notification_data('payphone', notification_data)
+                tx._payphone_query_status()
             except Exception:
                 _logger.exception('Unable to poll PayPhone transaction status.')
                 tx.invalidate_recordset()

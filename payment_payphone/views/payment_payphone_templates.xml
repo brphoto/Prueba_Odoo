@@ -6,6 +6,17 @@
         </form>
     </template>
 
+    <template id="inline_form" name="PayPhone payment box">
+        <div class="o_payphone_box_wrapper mt-3" data-payphone-box="1">
+            <link rel="stylesheet" href="https://cdn.payphonetodoesposible.com/box/v2.0/payphone-payment-box.css"/>
+            <div class="o_payphone_box" aria-live="polite">
+                <div class="alert alert-info mb-0">
+                    Completa el pago con tarjeta o saldo PayPhone en la cajita de pago.
+                </div>
+            </div>
+        </div>
+    </template>
+
     <template id="wait" name="PayPhone payment pending">
         <div class="container py-5 text-center">
             <h3>Esperando confirmación de PayPhone</h3>

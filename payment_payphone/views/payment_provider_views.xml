@@ -15,6 +15,9 @@
                            required="code == 'payphone' and state != 'disabled'"/>
                     <field name="payphone_flow"
                            required="code == 'payphone' and state != 'disabled'"/>
+                    <div class="alert alert-info mt-2" invisible="payphone_flow != 'box'">
+                        La Cajita requiere una aplicación PayPhone de tipo WEB y el dominio actual registrado en PayPhone Developer.
+                    </div>
                 </group>
             </group>
         </field>

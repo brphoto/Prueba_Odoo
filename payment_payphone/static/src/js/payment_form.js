@@ -3,16 +3,107 @@
 import publicWidget from '@web/legacy/js/public/public_widget';
 
 publicWidget.registry.PaymentForm.include({
+    _isPayphoneBox(paymentMethodCode) {
+        if (paymentMethodCode === 'payphone_box') {
+            return true;
+        }
+        const selected = this.el.querySelector('input[name="o_payment_radio"]:checked');
+        return (selected && selected.dataset.paymentMethodCode === 'payphone_box')
+            || Boolean(this.el.querySelector('[data-payphone-box="1"]'));
+    },
+
+    _loadPayphoneBoxSdk() {
+        if (window.PPaymentButtonBox) {
+            return Promise.resolve();
+        }
+        if (window.__payphoneBoxSdkPromise) {
+            return window.__payphoneBoxSdkPromise;
+        }
+        window.__payphoneBoxSdkPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.type = 'module';
+            script.src = 'https://cdn.payphonetodoesposible.com/box/v2.0/payphone-payment-box.js';
+            document.head.appendChild(script);
+            const startedAt = Date.now();
+            const waitForSdk = () => {
+                if (window.PPaymentButtonBox) {
+                    resolve();
+                } else if (Date.now() - startedAt > 10000) {
+                    reject(new Error('No se pudo cargar la Cajita de Pagos PayPhone.'));
+                } else {
+                    window.setTimeout(waitForSdk, 100);
+                }
+            };
+            waitForSdk();
+        });
+        return window.__payphoneBoxSdkPromise;
+    },
+
+    async _prepareInlineForm(providerId, providerCode, paymentOptionId, paymentMethodCode, flow) {
+        if (providerCode !== 'payphone' || !this._isPayphoneBox(paymentMethodCode)) {
+            return this._super(...arguments);
+        }
+        if (flow === 'token') {
+            return;
+        }
+        this._setPaymentFlow('direct');
+    },
+
+    async _processDirectFlow(providerCode, paymentOptionId, paymentMethodCode, processingValues) {
+        if (providerCode !== 'payphone' || !processingValues.payphone_box) {
+            return this._super(...arguments);
+        }
+        const wrapper = this.el.querySelector('[data-payphone-box="1"]');
+        const container = wrapper && wrapper.querySelector('.o_payphone_box');
+        if (!container) {
+            throw new Error('No se encontró el contenedor de la Cajita PayPhone.');
+        }
+        try {
+            await this._loadPayphoneBoxSdk();
+            const targetId = 'payphone-box-' + String(processingValues.reference).replace(/[^a-zA-Z0-9_-]/g, '-');
+            container.id = targetId;
+            container.innerHTML = '';
+            new window.PPaymentButtonBox({
+                token: processingValues.payphone_box_token,
+                storeId: processingValues.payphone_box_store_id,
+                clientTransactionId: processingValues.payphone_box_reference,
+                amount: processingValues.payphone_box_amount,
+                amountWithoutTax: processingValues.payphone_box_amount,
+                amountWithTax: 0,
+                tax: 0,
+                service: 0,
+                tip: 0,
+                currency: processingValues.payphone_box_currency,
+                reference: processingValues.payphone_box_reference,
+                lang: 'es',
+                timeZone: -5,
+            }).render(targetId);
+            window.setTimeout(() => {
+                const payButton = [...container.querySelectorAll('button')]
+                    .find(button => /pagar/i.test(button.textContent || ''));
+                if (payButton) {
+                    payButton.click();
+                }
+            }, 300);
+        } catch (error) {
+            if (this._displayErrorDialog) {
+                this._displayErrorDialog('Pago PayPhone', error.message || String(error));
+            }
+            if (this._enableButton) {
+                this._enableButton();
+            }
+        }
+    },
+
     _submitForm(ev) {
         const checkedRadio = this.el.querySelector('input[name="o_payment_radio"]:checked');
-        if (checkedRadio && this._getProviderCode(checkedRadio) === 'payphone') {
+        if (checkedRadio && this._getProviderCode(checkedRadio) === 'payphone'
+            && checkedRadio.dataset.paymentMethodCode !== 'payphone_box') {
             // Open the payment window from the user click to avoid popup blockers.
             this.payphonePaymentWindowName = 'payphone_payment_' + Date.now();
-            this.payphonePaymentWindow = window.open(
-                '',
-                this.payphonePaymentWindowName,
-                'popup=yes,width=560,height=760,resizable=yes,scrollbars=yes'
-            );
+            // Without window features Chrome opens a real browser tab instead
+            // of a separate popup window.
+            this.payphonePaymentWindow = window.open('', this.payphonePaymentWindowName);
             if (this.payphonePaymentWindow) {
                 this.payphonePaymentWindow.document.title = 'PayPhone';
                 this.payphonePaymentWindow.focus();

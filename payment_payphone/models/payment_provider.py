@@ -37,6 +37,7 @@ class PaymentProvider(models.Model):
         selection=[
             ('sale', 'API Sale (PayPhone app)'),
             ('link', 'API Link (payment URL)'),
+            ('box', 'Cajita de Pagos (inline Web)'),
         ], string='PayPhone flow', default='sale', required=True,
     )
 
@@ -59,12 +60,16 @@ class PaymentProvider(models.Model):
         default_codes = super()._get_default_payment_method_codes()
         if self.code != 'payphone':
             return default_codes
-        return {'payphone_link' if self.payphone_flow == 'link' else 'payphone_sale'}
+        return {
+            'payphone_link' if self.payphone_flow == 'link'
+            else 'payphone_box' if self.payphone_flow == 'box'
+            else 'payphone_sale'
+        }
 
     def _get_redirect_form_view(self, is_validation=False):
         """Always return this module's redirect form for PayPhone."""
         self.ensure_one()
-        if self.code == 'payphone':
+        if self.code == 'payphone' and self.payphone_flow != 'box':
             return self.env.ref('payment_payphone.redirect_form')
         return super()._get_redirect_form_view(is_validation=is_validation)
 
@@ -104,6 +109,38 @@ class PaymentProvider(models.Model):
             return response.json()
         except (ValueError, json.JSONDecodeError):
             return response.text.strip()
+
+    def _payphone_confirm_box(self, transaction_id, client_transaction_id, reference=None):
+        """Confirm a Cajita payment immediately after PayPhone redirects back."""
+        self.ensure_one()
+        if not transaction_id or not client_transaction_id:
+            raise ValidationError(_('PayPhone: the Cajita response is missing its transaction identifiers.'))
+        url = urls.url_join(const.BOX_API_BASE_URL + '/', 'confirm')
+        try:
+            response = requests.post(
+                url,
+                headers={
+                    'Authorization': 'Bearer %s' % self.payphone_token,
+                    'Content-Type': 'application/json',
+                    'Accept-Language': 'es',
+                },
+                json={'id': int(transaction_id), 'clientTxId': client_transaction_id},
+                timeout=15,
+            )
+            response.raise_for_status()
+            return response.json()
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as error:
+            _logger.exception('Could not confirm PayPhone Cajita transaction %s.', reference or self.id)
+            raise ValidationError(_('PayPhone: could not confirm the Cajita payment.')) from error
+        except requests.exceptions.HTTPError as error:
+            _logger.error('PayPhone Cajita confirmation error for %s: %s', reference or self.id, response.text)
+            try:
+                detail = response.json().get('message', response.text)
+            except (ValueError, TypeError):
+                detail = response.text
+            raise ValidationError(_('PayPhone rejected the Cajita confirmation: %s', detail)) from error
+        except (ValueError, TypeError, json.JSONDecodeError) as error:
+            raise ValidationError(_('PayPhone returned an invalid Cajita confirmation.')) from error
 
     def _payphone_to_cents(self, amount):
         return int(round(amount * 100))

@@ -2,7 +2,7 @@ import logging
 
 from werkzeug import urls
 
-from odoo import _, models
+from odoo import _, api, models
 from odoo.exceptions import ValidationError
 
 from odoo.addons.payment_payphone.controllers.main import PayPhoneController
@@ -12,6 +12,26 @@ _logger = logging.getLogger(__name__)
 
 class PaymentTransaction(models.Model):
     _inherit = 'payment.transaction'
+
+    @api.model
+    def _cron_check_pending_payphone_transactions(self):
+        """Query pending API Sale transactions in the background.
+
+        PayPhone allows querying API Sale by transactionId. API Link is not
+        included here because PayPhone documents that it has no system return;
+        API Link is finalized through the external notification webhook.
+        Keep the batch below PayPhone's documented 30 GET/minute limit.
+        """
+        transactions = self.search([
+            ('provider_code', '=', 'payphone'),
+            ('state', 'in', ('draft', 'pending', 'error')),
+            ('provider_reference', '!=', False),
+        ], order='id asc', limit=20)
+        for tx in transactions:
+            try:
+                tx._payphone_query_status()
+            except Exception:
+                _logger.exception('Unable to query PayPhone transaction %s.', tx.reference)
 
     def _get_specific_rendering_values(self, processing_values):
         values = super()._get_specific_rendering_values(processing_values)
@@ -43,6 +63,20 @@ class PaymentTransaction(models.Model):
             self._payphone_update_from_response(response)
         wait_url = urls.url_join(self.provider_id.get_base_url(), PayPhoneController._wait_url)
         return {'api_url': wait_url, 'reference': self.reference}
+
+    def _get_specific_processing_values(self, processing_values):
+        values = super()._get_specific_processing_values(processing_values)
+        if self.provider_code == 'payphone' and self.provider_id.payphone_flow == 'box':
+            self._set_pending()
+            values.update({
+                'payphone_box': True,
+                'payphone_box_token': self.provider_id.payphone_token,
+                'payphone_box_store_id': self.provider_id.payphone_store_id,
+                'payphone_box_amount': self.provider_id._payphone_to_cents(self.amount),
+                'payphone_box_reference': self.reference,
+                'payphone_box_currency': self.currency_id.name,
+            })
+        return values
 
     def _get_tx_from_notification_data(self, provider_code, notification_data):
         tx = super()._get_tx_from_notification_data(provider_code, notification_data)
@@ -95,9 +129,27 @@ class PaymentTransaction(models.Model):
             or notification_data.get('ClientTransactionID')
             or self.reference
         )
+        if self.provider_id.payphone_flow == 'box':
+            response = self.provider_id._payphone_confirm_box(
+                transaction_id, client_transaction_id, reference=self.reference,
+            )
+        else:
+            response = self.provider_id._payphone_get_sale_status(
+                transaction_id=transaction_id or None,
+                client_transaction_id=client_transaction_id if not transaction_id else None,
+            )
+        if not isinstance(response, dict):
+            raise ValidationError(_('PayPhone returned an invalid transaction status.'))
+        self._payphone_update_from_response(response)
+
+    def _payphone_query_status(self):
+        """Query a PayPhone transaction without manufacturing a notification."""
+        self.ensure_one()
+        if self.provider_id.payphone_flow in ('link', 'box') and not self.provider_reference:
+            return
         response = self.provider_id._payphone_get_sale_status(
-            transaction_id=transaction_id or None,
-            client_transaction_id=client_transaction_id if not transaction_id else None,
+            transaction_id=self.provider_reference or None,
+            client_transaction_id=None if self.provider_reference else self.reference,
         )
         if not isinstance(response, dict):
             raise ValidationError(_('PayPhone returned an invalid transaction status.'))
