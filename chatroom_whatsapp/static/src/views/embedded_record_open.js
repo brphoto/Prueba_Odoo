@@ -40,7 +40,7 @@ function getEmbeddedReturnAction(controller) {
         ...entries
             .filter((entry) => entry.multiRecord)
             .map((entry) => entry.type),
-    ].filter((type, index, values) => values.indexOf(type) === index);
+    ].filter(Boolean).filter((type, index, values) => values.indexOf(type) === index);
     const context = searchModel?.context || controller.props.context || {};
     const domain = searchModel?.domain || controller.props.domain || [];
     return {
@@ -63,7 +63,11 @@ function restoreEmbeddedView(controller) {
     // The form close callback runs while Odoo is still removing the form
     // dialog. Queue the list action for the next task so it replaces the
     // closed dialog cleanly instead of being removed with it.
-    setTimeout(() => controller.actionService.doAction(action), 0);
+    setTimeout(() => {
+        controller.actionService.doAction(action).catch((error) => {
+            console.error("No se pudo restaurar la vista embebida", error);
+        });
+    }, 0);
 }
 
 async function openEmbeddedForm(controller, record) {
