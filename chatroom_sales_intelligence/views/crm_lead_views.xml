@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_crm_lead_form_chatroom_intelligence" model="ir.ui.view">
+        <field name="name">crm.lead.form.chatroom.sales.intelligence</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_view_chatroom_channels" type="object"
+                        class="oe_stat_button" icon="fa-whatsapp"
+                        invisible="not chatroom_channel_count">
+                    <field name="chatroom_channel_count" widget="statinfo" string="WhatsApp"/>
+                </button>
+            </div>
+            <!-- Se inserta antes del notebook (no adentro de group
+                 "lead_partner"/"opportunity_partner": esos dos son
+                 mutuamente excluyentes según type=lead/opportunity, y
+                 esta info tiene que verse en los dos casos). -->
+            <xpath expr="//notebook" position="before">
+                <div class="alert alert-info d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2"
+                     role="alert" invisible="not chatroom_channel_count">
+                    <span>
+                        <i class="fa fa-whatsapp text-success"/>
+                        <b>Último WhatsApp:</b>
+                        <field name="chatroom_last_message_preview" nolabel="1" readonly="1" class="d-inline ms-1"/>
+                    </span>
+                    <button name="action_view_chatroom_channels" type="object"
+                            class="btn btn-sm btn-success" string="Abrir conversación"/>
+                </div>
+                <group invisible="not rfm_category or rfm_category == 'none'">
+                    <group string="Clasificación del cliente (RFM/ABC)">
+                        <field name="rfm_category" widget="badge"
+                               decoration-success="rfm_category == 'a'"
+                               decoration-warning="rfm_category == 'b'"
+                               decoration-muted="rfm_category in ('c', 'none')"/>
+                        <field name="rfm_score"/>
+                    </group>
+                    <group string="Histórico de compras">
+                        <field name="commercial_total_sales"/>
+                        <field name="commercial_last_sale_date"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

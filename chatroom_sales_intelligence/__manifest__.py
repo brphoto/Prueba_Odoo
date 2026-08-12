@@ -38,6 +38,11 @@ una conversación sin salir del chat:
 * **Campañas de WhatsApp por categoría RFM**: mandar una plantilla
   aprobada a todos los contactos de una o más categorías (A/B/C) de un
   solo clic, respetando la baja de WhatsApp de cada contacto.
+* **Ficha de Oportunidad (CRM)**: botón inteligente "WhatsApp" con la
+  cantidad de conversaciones del contacto, categoría/score RFM e
+  histórico de compras a la vista, y un banner con el último mensaje
+  de WhatsApp con acceso directo para abrir la conversación real y
+  responder sin salir del CRM.
 
 Diseño modular
 ----------------
@@ -63,7 +68,7 @@ agrega la capa visual que los muestra dentro del chat.
     'license': 'LGPL-3',
 
     'category': 'Sales/CRM',
-    'version': '19.0.1.0.6',
+    'version': '19.0.1.0.7',
 
     'depends': ['chatroom_whatsapp', 'crm_customer_intelligence'],
 
@@ -71,6 +76,7 @@ agrega la capa visual que los muestra dentro del chat.
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
         'views/chatroom_channel_views.xml',
+        'views/crm_lead_views.xml',
         'views/chatroom_campaign_views.xml',
         'views/crm_segment_whatsapp_views.xml',
         'views/management_report_subscription_views.xml',

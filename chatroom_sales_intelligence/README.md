@@ -84,6 +84,37 @@ Los datos completos se traen con una sola llamada
 el panel, no en cada carga del chat — los micro-indicadores del punto 5
 sí se cargan siempre, pero son solo 2-3 campos livianos.
 
+### 7. Ficha de Oportunidad (CRM): conversaciones y RFM a la vista
+
+Hasta ahora toda la integración iba en un solo sentido (datos de CRM
+mostrados dentro del chat). Este punto es el sentido inverso: llevar el
+chat *adentro* del formulario de Oportunidad, para un vendedor que vive
+más en el pipeline de CRM que en el chatroom.
+
+- **Botón inteligente "WhatsApp"** (arriba a la derecha, junto a los
+  demás stat buttons) con la cantidad de conversaciones del contacto.
+  Con una sola conversación, la abre directo como diálogo con el
+  formulario real del chat (composer funcional: se puede leer y
+  responder ahí mismo, sin salir de la oportunidad). Con varias, navega
+  a la lista clásica — un diálogo con lista **no** deja entrar a un
+  registro puntual (limitación real del framework de Odoo con diálogos
+  multi-vista, no un botón roto: el propio `chatroom_whatsapp` la
+  documenta y la resuelve del mismo modo del lado de la app de chat).
+- **Banner "Último WhatsApp"** arriba de las pestañas, con el preview
+  del mensaje más reciente y un acceso directo a abrir la conversación
+  — para no tener que adivinar si hace falta entrar al chat o no.
+- **Clasificación RFM/ABC e histórico de compras** del contacto,
+  mismos campos y mismo estilo visual que ya se ve en la ficha del
+  contacto (`res.partner`) vía `crm_customer_intelligence` — se oculta
+  solo si el contacto todavía no tiene historial de compras (prospecto
+  nuevo).
+
+Los tres puntos son campos `related`/`compute` nuevos en `crm.lead`
+(`chatroom_channel_count`, `chatroom_last_message_preview`,
+`rfm_score`, `rfm_category`, etc.) y una vista heredada de
+`crm.crm_lead_view_form` — de nuevo, sin tocar ni `chatroom_whatsapp`
+ni `crm_customer_intelligence`.
+
 ## Instalación
 
 1. Instalar `chatroom_whatsapp` (si no está instalado).
@@ -106,3 +137,11 @@ sí se cargan siempre, pero son solo 2-3 campos livianos.
   desktop se usa el manijero visible del borde derecho del chat.
 - El análisis Pareto usa `account.move.line` de facturas publicadas
   (`out_invoice`); no incluye presupuestos ni pedidos sin facturar.
+- **El punto 7 (ficha de Oportunidad) es nuevo en esta iteración**:
+  validado con `py_compile` y parseo de XML, sin instalar de verdad el
+  módulo en una base real todavía. El campo `currency_field` de los
+  Monetary nuevos (`commercial_total_sales`, etc.) se verificó contra
+  el código fuente real de `crm.lead` (usa `company_currency`, no
+  `currency_id` como la mayoría de los modelos) para no repetir el
+  mismo tipo de error que ya se encontró antes en este proyecto con un
+  campo mal tipado.
