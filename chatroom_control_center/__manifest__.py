@@ -1,0 +1,16 @@
+{
+    'name': 'Chatroom Control Center',
+    'version': '19.0.1.0.0',
+    'category': 'Productivity/Discuss',
+    'summary': 'Centro de control para las integraciones de Chatroom',
+    'depends': ['chatroom_whatsapp'],
+    'data': [
+        'security/ir.model.access.csv',
+        'views/chatroom_control_center_views.xml',
+    ],
+    'license': 'LGPL-3',
+    'icon': '/chatroom_control_center/static/description/icon.svg',
+    'installable': True,
+    'application': False,
+    'auto_install': True,
+}
