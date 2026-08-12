@@ -25,3 +25,17 @@ class ResConfigSettings(models.TransientModel):
         default=0.2,
         help="Cuánto pesa qué tan reciente fue la última compra en el "
              "score RFM compuesto.")
+
+    rfm_category_method = fields.Selection(
+        [('threshold', "Umbral fijo (Categorías RFM)"),
+         ('percentile', "Percentil de la cartera (20% / 30% / 50%)")],
+        string="Método de corte A/B/C", default='threshold',
+        config_parameter='crm_customer_intelligence.rfm_category_method',
+        help="'Umbral fijo': compara el score de cada cliente contra los "
+             "rangos configurados en Configuración > Categorías RFM "
+             "(editables ahí, sin código). 'Percentil de la cartera': "
+             "ordena a todos los clientes por score y asigna A al 20% "
+             "superior, B al 30% siguiente y C al 50% restante -las "
+             "proporciones se mantienen estables aunque la cartera "
+             "entera mejore o empeore, siguiendo la metodología RFM/"
+             "Pareto clásica (ignora los rangos de Categorías RFM).")

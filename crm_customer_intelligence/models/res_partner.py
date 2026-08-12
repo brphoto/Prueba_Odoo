@@ -363,6 +363,45 @@ class ResPartner(models.Model):
             return 0.5, 0.3, 0.2
         return monetary / total, frequency / total, recency / total
 
+    def _get_rfm_category_method(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        return icp.get_param('crm_customer_intelligence.rfm_category_method', 'threshold')
+
+    def _assign_percentile_categories(self, rows):
+        """Corta la cartera ya puntuada en A (20% superior), B (30%
+        siguiente) y C (50% restante) -las proporciones de Pareto de la
+        metodología RFM clásica, en vez de comparar cada score contra
+        un umbral fijo. Con carteras muy chicas el 20%/30% exacto no
+        siempre da un número entero de clientes; se redondea
+        garantizando al menos 1 en A y 1 en B si hay margen, para no
+        dejar esas categorías vacías por puro redondeo."""
+        ordered = sorted(rows, key=lambda r: r['score'], reverse=True)
+        total = len(ordered)
+        a_cutoff = max(1, round(total * 0.2))
+        b_cutoff = min(total, a_cutoff + max(1, round(total * 0.3)))
+        for index, row in enumerate(ordered):
+            if index < a_cutoff:
+                row['category'] = 'a'
+            elif index < b_cutoff:
+                row['category'] = 'b'
+            else:
+                row['category'] = 'c'
+
+    def _assign_threshold_categories(self, rows):
+        """Compara cada score contra los umbrales configurados en
+        Categorías RFM (score_min/score_max, editables a mano); si
+        ninguno coincide, cae a los umbrales de siempre (70/40/0)."""
+        for row in rows:
+            category_record = self.env['crm.rfm.category'].category_for_score(row['score'])
+            if category_record:
+                row['category'] = category_record.code
+            elif row['score'] >= 70:
+                row['category'] = 'a'
+            elif row['score'] >= 40:
+                row['category'] = 'b'
+            else:
+                row['category'] = 'c'
+
     @api.model
     def _cron_compute_rfm_scores(self):
         """Clasificación RFM (Recencia / Frecuencia / Monto): se calcula en
@@ -404,18 +443,16 @@ class ResPartner(models.Model):
             monetary_score = _percentile_rank(totals, row['total'], higher_is_better=True)
             frequency_score = _percentile_rank(counts, row['count'], higher_is_better=True)
             recency_score = _percentile_rank(recencies, row['recency_days'], higher_is_better=False)
-            score = round(
+            row['score'] = round(
                 (monetary_score * weight_monetary)
                 + (frequency_score * weight_frequency)
                 + (recency_score * weight_recency)
             )
-            category_record = self.env['crm.rfm.category'].category_for_score(score)
-            if category_record:
-                category = category_record.code
-            elif score >= 70:
-                category = 'a'
-            elif score >= 40:
-                category = 'b'
-            else:
-                category = 'c'
-            row['partner'].write({'rfm_score': score, 'rfm_category': category})
+
+        if self._get_rfm_category_method() == 'percentile':
+            self._assign_percentile_categories(rows)
+        else:
+            self._assign_threshold_categories(rows)
+
+        for row in rows:
+            row['partner'].write({'rfm_score': row['score'], 'rfm_category': row['category']})

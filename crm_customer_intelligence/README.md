@@ -43,6 +43,25 @@ cambios se aplican en el próximo cálculo del cron (una vez por día; se
 puede forzar antes desde Ajustes técnicos > Automatización > Acciones
 Programadas).
 
+**Método de corte A/B/C configurable** (mismo lugar en Ajustes), dos
+formas de decidir la categoría a partir del score:
+
+- **Umbral fijo** (por defecto, el comportamiento de siempre): compara
+  el score contra los rangos de **Configuración > Categorías RFM**
+  (`score_min`/`score_max`, editables ahí sin tocar código — por
+  defecto A ≥70, B ≥40, C el resto).
+- **Percentil de la cartera**: ordena a todos los clientes por score y
+  asigna A al 20% superior, B al siguiente 30% y C al 50% restante —
+  la proporción de Pareto clásica de la metodología RFM, que se
+  mantiene estable aunque la cartera entera mejore o empeore (con
+  umbral fijo, si todos los clientes mejoran, "A" podría terminar
+  siendo el 60% de la cartera en vez del 20% que se busca). En este
+  modo los rangos de Categorías RFM se ignoran para la asignación.
+
+Cambiar el método (o los pesos) no reclasifica nada hasta el próximo
+cálculo del cron — la clasificación actual de los clientes no se
+mueve sola al tocar el ajuste.
+
 ### Oportunidades estancadas (`crm.lead`)
 
 `days_since_last_management` y `management_alert_state`
@@ -67,11 +86,11 @@ necesite ese análisis (como `chatroom_sales_intelligence`).
   todos, no solo del nuevo.
 - El análisis Pareto usa `account.move.line` de facturas publicadas
   (`out_invoice`); no incluye presupuestos ni pedidos sin facturar.
-- **Los pesos configurables son nuevos en esta iteración**: validado
-  con `py_compile` y parseo de XML, sin correr el cron de verdad contra
-  una base real todavía. Los cortes de categoría A/B/C siguen siendo
-  umbrales fijos de score (70/40/0, no percentil de la cartera) — se
-  evaluó cambiarlos a un corte por percentil real (20%/30%/50%, más
-  fiel al Pareto clásico) pero se dejó como está a pedido explícito,
-  para no mover la clasificación de clientes que ya pueda estar en uso
-  para campañas.
+- **Los pesos configurables y el switch de método A/B/C son nuevos en
+  esta iteración**: validado con `py_compile` y parseo de XML, sin
+  correr el cron de verdad contra una base real todavía. Por defecto
+  el método sigue siendo "Umbral fijo" (el comportamiento de siempre,
+  cero cambios si no se toca el ajuste); pasar a "Percentil de la
+  cartera" sí puede reclasificar clientes existentes de categoría en
+  el próximo cálculo del cron — conviene revisar el resultado antes de
+  usarlo para disparar una campaña.

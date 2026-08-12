@@ -47,7 +47,7 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
     'license': 'LGPL-3',
 
     'category': 'Sales/CRM',
-    'version': '19.0.1.0.5',
+    'version': '19.0.1.0.6',
 
     'depends': ['crm', 'sale', 'account'],
 
