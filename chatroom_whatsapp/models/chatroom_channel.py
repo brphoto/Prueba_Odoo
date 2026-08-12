@@ -705,6 +705,14 @@ class ChatroomChannel(models.Model):
         previous_assignees = {rec.id: rec.assigned_user_id for rec in self} if 'assigned_user_id' in vals else {}
         previous_numbers = {rec.id: rec.whatsapp_number_id for rec in self} if 'whatsapp_number_id' in vals else {}
         res = super().write(vals)
+        if 'assigned_user_id' in vals and not self.env.context.get('skip_lead_assignment_sync'):
+            for rec in self:
+                if rec.pinned_lead_id and 'crm.lead' in self.env:
+                    lead = self.env['crm.lead'].browse(rec.pinned_lead_id).exists()
+                    if lead:
+                        lead.with_context(skip_chatroom_assignment_sync=True).write({
+                            'user_id': rec.assigned_user_id.id or False,
+                        })
         # Varias rutas históricas del conector escriben state directamente
         # (respuesta enviada, cierre por inactividad, etc.). En ese caso
         # reflejamos el cambio en una etapa del mismo tipo sin romper las
@@ -1546,34 +1554,6 @@ class ChatroomChannel(models.Model):
         reclamo, o para mandarle al cliente un resumen de lo hablado."""
         self.ensure_one()
         return self.env.ref('chatroom_whatsapp.action_report_chatroom_channel').report_action(self)
-
-    def action_send_payment_link(self, res_model, res_id):
-        """Genera un link de pago con el asistente nativo de Odoo
-        (mismo que usa el botón "Enviar link de pago" de Ventas/
-        Facturación) y lo manda como texto por WhatsApp. No inventa
-        nada propio: si no hay un método de pago en línea configurado
-        (Stripe, Mercado Pago, etc.) el link sale vacío y se avisa."""
-        self.ensure_one()
-        if 'payment.link.wizard' not in self.env:
-            raise UserError(_(
-                "No se pudo generar el link de pago: el módulo de Pagos "
-                "no está instalado."))
-        record = self.env[res_model].browse(res_id)
-        if not record.exists():
-            raise UserError(_("El documento ya no existe."))
-        try:
-            wizard = self.env['payment.link.wizard'].with_context(
-                active_model=res_model, active_id=res_id).create({})
-        except AttributeError:
-            raise UserError(_(
-                "Este tipo de documento (%s) no soporta generar un link "
-                "de pago en esta instalación de Odoo.") % res_model)
-        if not wizard.link:
-            raise UserError(_(
-                "No se pudo generar el link de pago: revisá que haya un "
-                "método de pago en línea configurado (ej. Stripe, "
-                "Mercado Pago) y que el documento tenga saldo pendiente."))
-        return self.action_send_text(_("Podés pagar acá: %s") % wizard.link)
 
     def _send_interactive_list(self, body, button_label, rows, message_type_body):
         """Base común para mensajes interactivos tipo 'lista' (hasta 10

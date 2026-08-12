@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="chatroom_whatsapp.ContactPanel" t-inherit-mode="extension">
+        <xpath expr="//button[@t-on-click='() =&gt; this.sendOrderPdf(order)']" position="before">
+            <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
+                    t-att-disabled="state.sendingDocKey"
+                    title="Enviar link de pago por WhatsApp"
+                    t-on-click="() =&gt; this.sendOrderPaymentLink(order)">
+                <i t-if="state.sendingDocKey === 'order-pay-' + order.id" class="fa fa-spin fa-circle-o-notch"/>
+                <i t-else="" class="fa fa-usd"/>
+            </button>
+        </xpath>
+        <xpath expr="//button[@t-on-click='() =&gt; this.sendInvoicePdf(invoice)']" position="before">
+            <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
+                    t-att-disabled="state.sendingDocKey"
+                    title="Enviar link de pago por WhatsApp"
+                    t-on-click="() =&gt; this.sendInvoicePaymentLink(invoice)">
+                <i t-if="state.sendingDocKey === 'invoice-pay-' + invoice.id" class="fa fa-spin fa-circle-o-notch"/>
+                <i t-else="" class="fa fa-usd"/>
+            </button>
+        </xpath>
+    </t>
+</templates>

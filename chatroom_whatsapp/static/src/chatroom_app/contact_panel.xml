@@ -162,13 +162,6 @@
                                       t-esc="formatMoney(order.amount_total, order.currency_symbol)"/>
                                 <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
                                         t-att-disabled="state.sendingDocKey"
-                                        title="Enviar link de pago por WhatsApp"
-                                        t-on-click="() => this.sendOrderPaymentLink(order)">
-                                    <i t-if="state.sendingDocKey === 'order-pay-' + order.id" class="fa fa-spin fa-circle-o-notch"/>
-                                    <i t-else="" class="fa fa-usd"/>
-                                </button>
-                                <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
-                                        t-att-disabled="state.sendingDocKey"
                                         title="Enviar PDF por WhatsApp"
                                         t-on-click="() => this.sendOrderPdf(order)">
                                     <i t-if="state.sendingDocKey === 'order-' + order.id" class="fa fa-spin fa-circle-o-notch"/>
@@ -196,13 +189,6 @@
                                       t-esc="invoice.name"/>
                                 <span class="o_chatroom_contact_doc_amount"
                                       t-esc="formatMoney(invoice.amount_total, invoice.currency_symbol)"/>
-                                <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
-                                        t-att-disabled="state.sendingDocKey"
-                                        title="Enviar link de pago por WhatsApp"
-                                        t-on-click="() => this.sendInvoicePaymentLink(invoice)">
-                                    <i t-if="state.sendingDocKey === 'invoice-pay-' + invoice.id" class="fa fa-spin fa-circle-o-notch"/>
-                                    <i t-else="" class="fa fa-usd"/>
-                                </button>
                                 <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
                                         t-att-disabled="state.sendingDocKey"
                                         title="Enviar PDF por WhatsApp"

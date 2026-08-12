@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="chatroom_whatsapp.ChatroomThreadCore" t-inherit-mode="extension">
+        <xpath expr="//button[@t-on-click='sendLocation']" position="before">
+            <button t-if="!state.noteMode"
+                    class="btn btn-link o_chatroom_attach_btn"
+                    title="Enviar Link de Pago" t-on-click="openPaymentWizard">
+                <i class="fa fa-money"/>
+            </button>
+        </xpath>
+    </t>
+</templates>

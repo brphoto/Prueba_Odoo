@@ -52,6 +52,14 @@ class CrmLead(models.Model):
         if 'user_id' in vals:
             vals.setdefault('assignment_pool_status', 'assigned' if vals['user_id'] else 'pool')
         result = super().write(vals)
+        if 'user_id' in vals and not self.env.context.get('skip_chatroom_assignment_sync'):
+            channels = self.env['chatroom.channel'].search([
+                ('pinned_lead_id', 'in', self.ids),
+            ])
+            if channels:
+                channels.with_context(skip_lead_assignment_sync=True).write({
+                    'assigned_user_id': vals['user_id'] or False,
+                })
         if 'stage_id' in vals:
             self.env['chat.automation.rule']._run_for_leads(self, 'stage_change')
         if 'tag_ids' in vals:
