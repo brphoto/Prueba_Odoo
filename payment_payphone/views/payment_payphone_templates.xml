@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="redirect_form">
+        <form t-att-action="api_url" method="get">
+            <input t-if="reference" type="hidden" name="reference" t-att-value="reference"/>
+        </form>
+    </template>
+
+    <template id="wait" name="PayPhone payment pending">
+        <div class="container py-5 text-center">
+            <h3>Esperando confirmación de PayPhone</h3>
+            <p>Confirma el pago en la aplicación PayPhone. Esta página se actualizará automáticamente.</p>
+            <script type="text/javascript">
+                (function () {
+                    const url = '/payment/payphone/status?reference=' + encodeURIComponent('<t t-esc="tx.reference"/>');
+                    const timer = window.setInterval(function () {
+                        fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+                            if (data.state !== 'pending' &amp;&amp; data.state !== 'draft') {
+                                window.clearInterval(timer);
+                                window.location.href = '/payment/status';
+                            }
+                        });
+                    }, 2000);
+                }());
+            </script>
+        </div>
+    </template>
+</odoo>

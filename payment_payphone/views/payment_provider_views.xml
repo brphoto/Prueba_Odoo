@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="payment_provider_form" model="ir.ui.view">
+        <field name="name">PayPhone Provider Form</field>
+        <field name="model">payment.provider</field>
+        <field name="inherit_id" ref="payment.payment_provider_form"/>
+        <field name="arch" type="xml">
+            <group name="provider_credentials" position="inside">
+                <group name="payphone_credentials" invisible="code != 'payphone'">
+                    <field name="payphone_token" password="True"
+                           required="code == 'payphone' and state != 'disabled'"/>
+                    <field name="payphone_store_id"
+                           required="code == 'payphone' and state != 'disabled'"/>
+                    <field name="payphone_country_code"
+                           required="code == 'payphone' and state != 'disabled'"/>
+                    <field name="payphone_flow"
+                           required="code == 'payphone' and state != 'disabled'"/>
+                </group>
+            </group>
+        </field>
+    </record>
+</odoo>
