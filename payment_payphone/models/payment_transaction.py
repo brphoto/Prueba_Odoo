@@ -21,7 +21,9 @@ class PaymentTransaction(models.Model):
         if self.provider_id.payphone_flow == 'link':
             api_url = self.provider_id._payphone_create_link(self)
             self._set_pending()
-            return {'api_url': api_url}
+            # API Link has no browser callback. Keep the Odoo reference in the
+            # redirect form so the checkout tab can poll the transaction.
+            return {'api_url': api_url, 'reference': self.reference}
 
         if self.provider_reference and self.state in ('pending', 'done'):
             wait_url = urls.url_join(self.provider_id.get_base_url(), PayPhoneController._wait_url)
@@ -42,10 +44,15 @@ class PaymentTransaction(models.Model):
         client_reference = (
             notification_data.get('clientTransactionId')
             or notification_data.get('clientTransactionID')
+            or notification_data.get('ClientTransactionId')
+            or notification_data.get('ClientTransactionID')
+            or notification_data.get('reference')
+            or notification_data.get('Reference')
         )
         transaction_id = str(
             notification_data.get('id')
             or notification_data.get('transactionId')
+            or notification_data.get('TransactionId')
             or ''
         )
         if client_reference:
@@ -70,17 +77,30 @@ class PaymentTransaction(models.Model):
         transaction_id = str(
             notification_data.get('id')
             or notification_data.get('transactionId')
+            or notification_data.get('TransactionId')
             or ''
+        )
+        client_transaction_id = (
+            notification_data.get('clientTransactionId')
+            or notification_data.get('clientTransactionID')
+            or notification_data.get('ClientTransactionId')
+            or notification_data.get('ClientTransactionID')
+            or self.reference
         )
         response = self.provider_id._payphone_get_sale_status(
             transaction_id=transaction_id or None,
-            client_transaction_id=self.reference if not transaction_id else None,
+            client_transaction_id=client_transaction_id if not transaction_id else None,
         )
         if not isinstance(response, dict):
             raise ValidationError(_('PayPhone returned an invalid transaction status.'))
         self._payphone_update_from_response(response)
 
     def _payphone_update_from_response(self, response):
+        # External notifications use PascalCase while API responses use camelCase.
+        response = {
+            (key[:1].lower() + key[1:] if key else key): value
+            for key, value in response.items()
+        }
         transaction_id = response.get('transactionId') or response.get('id')
         if transaction_id:
             self.provider_reference = str(transaction_id)

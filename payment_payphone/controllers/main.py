@@ -10,6 +10,7 @@ _logger = logging.getLogger(__name__)
 
 class PayPhoneController(http.Controller):
     _response_url = '/payment/payphone/response'
+    _notification_url = '/payment/payphone/NotificacionPago'
     _wait_url = '/payment/payphone/wait'
     _status_url = '/payment/payphone/status'
 
@@ -24,6 +25,21 @@ class PayPhoneController(http.Controller):
             # marked as paid from the callback alone; it is queried from PayPhone first.
             _logger.exception('Unable to process PayPhone notification.')
         return request.make_json_response({'ok': True})
+
+    @http.route([_notification_url, '/payment/payphone/notification'], type='http', auth='public', methods=['POST'], csrf=False)
+    def payphone_external_notification(self, **kwargs):
+        """Receive PayPhone's approved-payment notification for API Link."""
+        try:
+            data = request.get_json_data() or {}
+        except Exception:
+            data = request.httprequest.get_json(silent=True) or {}
+        _logger.info('PayPhone external notification received: %s', data)
+        try:
+            request.env['payment.transaction'].sudo()._handle_notification_data('payphone', data)
+        except ValidationError:
+            _logger.exception('Unable to process PayPhone external notification.')
+            return request.make_json_response({'Response': False, 'ErrorCode': '222'})
+        return request.make_json_response({'Response': True, 'ErrorCode': '000'})
 
     @http.route(_wait_url, type='http', auth='public', methods=['GET'])
     def payphone_wait(self, reference=None, **kwargs):
@@ -42,6 +58,8 @@ class PayPhoneController(http.Controller):
             ('reference', '=', reference),
             ('provider_code', '=', 'payphone'),
         ], limit=1)
+        if tx:
+            PaymentPostProcessing.monitor_transaction(tx)
         if tx and tx.state in ('draft', 'pending'):
             try:
                 tx._handle_notification_data('payphone', {

@@ -2,6 +2,7 @@ import json
 import logging
 import pprint
 import re
+from urllib.parse import urlencode
 
 import requests
 from werkzeug import urls
@@ -58,7 +59,7 @@ class PaymentProvider(models.Model):
         default_codes = super()._get_default_payment_method_codes()
         if self.code != 'payphone':
             return default_codes
-        return const.DEFAULT_PAYMENT_METHOD_CODES
+        return {'payphone_link' if self.payphone_flow == 'link' else 'payphone_sale'}
 
     def _get_redirect_form_view(self, is_validation=False):
         """Always return this module's redirect form for PayPhone."""
@@ -137,7 +138,10 @@ class PaymentProvider(models.Model):
         payload.update({
             'phoneNumber': phone,
             'countryCode': self.payphone_country_code,
-            'responseUrl': urls.url_join(self.get_base_url(), PayPhoneController._response_url),
+            'responseUrl': '%s?%s' % (
+                urls.url_join(self.get_base_url(), PayPhoneController._response_url),
+                urlencode({'reference': tx.reference}),
+            ),
             'timeZone': -5,
         })
         return self._payphone_make_request('Sale', method='POST', payload=payload, reference=tx.reference)

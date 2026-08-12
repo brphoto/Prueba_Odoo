@@ -1,9 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="payment_method_payphone_link" model="payment.method">
+        <field name="name">PayPhone Tarjeta</field>
+        <field name="code">payphone_link</field>
+        <field name="sequence">20</field>
+        <field name="active">True</field>
+        <field name="image" type="base64" file="payment_payphone/static/img/payphone.svg"/>
+        <field name="support_tokenization">False</field>
+        <field name="support_express_checkout">False</field>
+        <field name="support_refund">none</field>
+    </record>
+    <record id="payment_method_payphone_sale" model="payment.method">
+        <field name="name">PayPhone App</field>
+        <field name="code">payphone_sale</field>
+        <field name="sequence">21</field>
+        <field name="active">True</field>
+        <field name="image" type="base64" file="payment_payphone/static/img/payphone.svg"/>
+        <field name="support_tokenization">False</field>
+        <field name="support_express_checkout">False</field>
+        <field name="support_refund">none</field>
+    </record>
     <record id="payment_provider_payphone" model="payment.provider">
-        <field name="name">PayPhone</field>
+        <field name="name">PayPhone Tarjeta</field>
         <field name="code">payphone</field>
+        <field name="payphone_flow">link</field>
         <field name="redirect_form_view_id" ref="redirect_form"/>
-        <field name="payment_method_ids" eval="[Command.set([ref('payment.payment_method_card')])]"/>
+        <field name="payment_method_ids" eval="[Command.set([ref('payment_payphone.payment_method_payphone_link')])]"/>
+    </record>
+    <record id="payment_provider_payphone_sale" model="payment.provider">
+        <field name="name">PayPhone App</field>
+        <field name="code">payphone</field>
+        <field name="payphone_flow">sale</field>
+        <field name="redirect_form_view_id" ref="redirect_form"/>
+        <field name="payment_method_ids" eval="[Command.set([ref('payment_payphone.payment_method_payphone_sale')])]"/>
     </record>
 </odoo>
