@@ -32,7 +32,15 @@ class PaymentTransaction(models.Model):
         response = self.provider_id._payphone_create_sale(self)
         if not isinstance(response, dict):
             raise ValidationError(_('PayPhone returned an invalid API Sale response.'))
-        self._payphone_update_from_response(response)
+        # API Sale initially returns only transactionId. The final status is
+        # obtained by a later GET request.
+        if response.get('transactionId') and not (
+            response.get('statusCode') or response.get('transactionStatus')
+        ):
+            self.provider_reference = str(response['transactionId'])
+            self._set_pending()
+        else:
+            self._payphone_update_from_response(response)
         wait_url = urls.url_join(self.provider_id.get_base_url(), PayPhoneController._wait_url)
         return {'api_url': wait_url, 'reference': self.reference}
 

@@ -60,12 +60,18 @@ class PayPhoneController(http.Controller):
         ], limit=1)
         if tx:
             PaymentPostProcessing.monitor_transaction(tx)
-        if tx and tx.state in ('draft', 'pending'):
+        # Also retry an old error transaction when it already has PayPhone's
+        # transaction id. Earlier module versions could mark the initial
+        # transactionId-only response as an error.
+        if tx and (tx.state in ('draft', 'pending') or (
+            tx.state == 'error' and tx.provider_reference
+        )):
             try:
-                tx._handle_notification_data('payphone', {
-                    'clientTransactionId': reference,
-                })
-            except ValidationError:
+                notification_data = {'clientTransactionId': reference}
+                if tx.provider_reference:
+                    notification_data['id'] = tx.provider_reference
+                tx._handle_notification_data('payphone', notification_data)
+            except Exception:
                 _logger.exception('Unable to poll PayPhone transaction status.')
                 tx.invalidate_recordset()
         return request.make_json_response({'state': tx.state if tx else 'error'})
