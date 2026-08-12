@@ -3,6 +3,7 @@
 import { patch } from "@web/core/utils/patch";
 import { ListController } from "@web/views/list/list_controller";
 import { KanbanController } from "@web/views/kanban/kanban_controller";
+import { ControlPanel } from "@web/search/control_panel/control_panel";
 
 const MODEL_NAMES = {
     "account.move": "Factura",
@@ -98,5 +99,36 @@ patch(KanbanController.prototype, {
             return;
         }
         return super.openRecord(record, options);
+    },
+});
+
+patch(ControlPanel.prototype, {
+    async switchView(viewType, newWindow) {
+        if (!this.env.inDialog) {
+            return super.switchView(viewType, newWindow);
+        }
+        const searchModel = this.env.searchModel;
+        const entries = this.env.config.viewSwitcherEntries || [];
+        if (!searchModel || !entries.some((entry) => entry.type === viewType)) {
+            return;
+        }
+        // actionService.switchView intentionally ignores requests while a
+        // dialog is open. Recreate only the selected native view as a new
+        // Odoo dialog, preserving the current domain and search context.
+        const action = {
+            type: "ir.actions.act_window",
+            name: this.env.config.actionName,
+            res_model: searchModel.resModel,
+            views: [...new Set([
+                viewType,
+                ...entries.filter((entry) => entry.multiRecord).map((entry) => entry.type),
+            ])].map((type) => [false, type]),
+            domain: searchModel.domain,
+            context: searchModel.context,
+            target: "new",
+        };
+        this.dialogService.closeAll();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        return this.actionService.doAction(action);
     },
 });

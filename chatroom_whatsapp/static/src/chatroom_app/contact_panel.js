@@ -251,15 +251,10 @@ export class ContactPanel extends Component {
     async _openChannelAction(methodName) {
         const result = await this.orm.call(
             "chatroom.channel", methodName, [this.props.channelId]);
-        // Las acciones con lista + kanban + formulario necesitan vivir en
-        // el lienzo principal de Odoo. Dentro de un modal `target: new`, el
-        // framework bloquea el cambio de vista y las filas no navegan al
-        // formulario. Las acciones de registro individual siguen usando
-        // _openDialog() y conservan el chat visible.
-        await this.action.doAction(
-            { ...result, target: "current" },
-            { onClose: () => this._reload() },
-        );
+        // Mantener las acciones multi-vista como popup nativo. El parche de
+        // embedded_record_open.js permite cambiar lista/kanban y abrir el
+        // formulario sin salir de este popup.
+        this._openDialog(result);
     }
 
     openLeads() {
