@@ -439,6 +439,14 @@ un panel lateral con:
   siempre — respeta la ventana de 24h, el opt-out, etc. Abrir uno
   puntual desde la lista de recientes (clic en el nombre) sí es un
   diálogo, como las creaciones — es un único registro, no una lista.
+  **"Presupuestos recientes" solo muestra los que están en borrador o
+  enviados** (`draft`/`sent`): uno cancelado es ruido que nadie va a
+  retomar, y uno ya confirmado dejó de ser un "presupuesto" — pasó a
+  pedido, y si se facturó ya aparece solo en "Facturas recientes" (el
+  contador "Ventas" de arriba sí sigue mostrando el total sin filtrar).
+  **"Facturas recientes" excluye las canceladas** por el mismo motivo,
+  pero conserva los borradores (ej. el que arma "+Factura": es trabajo
+  en curso del agente, no algo terminado que ya no importe).
 - **Catálogo de productos**: buscador para encontrar un producto
   vendible (`sale_ok`) y mandarlo por WhatsApp con un clic — la foto del
   producto como imagen y "Nombre - Precio" como pie de foto (si no tiene

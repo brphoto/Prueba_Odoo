@@ -2290,8 +2290,16 @@ class ChatroomChannel(models.Model):
         recent_orders = []
         recent_invoices = []
         if self.sale_installed and partner:
+            # "Presupuestos recientes" = presupuestos de verdad
+            # pendientes de decisión (draft/sent). Uno cancelado es
+            # ruido (nadie lo va a retomar); uno ya confirmado
+            # ('sale') dejó de ser un presupuesto -pasó a pedido, y si
+            # se facturó ya va a aparecer solo en "Facturas
+            # recientes". El contador "Ventas" de más arriba sigue
+            # mostrando el total sin este filtro.
             orders = self.env['sale.order'].search(
-                [('partner_id', '=', partner.id)], order='create_date desc', limit=5)
+                [('partner_id', '=', partner.id), ('state', 'in', ('draft', 'sent'))],
+                order='create_date desc', limit=5)
             recent_orders = [{
                 'id': o.id,
                 'name': o.name,
@@ -2300,9 +2308,13 @@ class ChatroomChannel(models.Model):
                 'currency_symbol': o.currency_id.symbol,
             } for o in orders]
         if self.account_installed and partner:
+            # Facturas canceladas también son ruido; los borradores sí
+            # se dejan (por ej. el que arma el botón "+Factura": es
+            # trabajo en curso del agente, no algo terminado).
             invoices = self.env['account.move'].search([
                 ('partner_id', '=', partner.id),
                 ('move_type', 'in', ('out_invoice', 'out_refund')),
+                ('state', '!=', 'cancel'),
             ], order='create_date desc', limit=5)
             recent_invoices = [{
                 'id': i.id,
