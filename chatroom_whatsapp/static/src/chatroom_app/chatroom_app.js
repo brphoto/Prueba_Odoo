@@ -12,13 +12,20 @@ const CONTACT_PANEL_STORAGE_KEY = "chatroom_whatsapp.contact_panel_open";
 
 const GLOBAL_BUS_CHANNEL = "chatroom_whatsapp_global";
 const PINNED_NUMBER_STORAGE_KEY = "chatroom_whatsapp.pinned_number_id";
+const SOUND_STORAGE_KEY = "chatroom_whatsapp.notification_sound";
+const INBOX_FILTERS_STORAGE_KEY = "chatroom_whatsapp.inbox_filters";
 
 const CHANNEL_FIELDS = [
     "display_name",
     "channel_type",
+    "stage_id",
+    "stage_name",
+    "stage_color",
     "last_message_preview",
     "last_message_date",
     "manual_urgent",
+    "is_pinned",
+    "is_favorite",
     "unread_count",
     "state",
     "partner_id",
@@ -79,27 +86,37 @@ export class ChatroomApp extends Component {
             searchText: "",
             filter: "all",
             numberFilter: this._getStoredNumberFilter(),
+            stageFilter: this._getStoredInboxFilter("stage", "all"),
+            channelTypeFilter: this._getStoredInboxFilter("channel", "all"),
+            stages: [],
             // En móvil el chat ocupa toda la pantalla y la ficha se abre
             // bajo demanda con el botón de contacto; en escritorio sí se
             // conserva la preferencia del usuario.
             contactPanelOpen: !this._isMobileViewport() && this._getStoredContactPanelOpen(),
             mobileSidebarOpen: false,
+            soundEnabled: this._getStoredSoundEnabled(),
+            desktopNotifications: this._getStoredDesktopNotifications(),
+            companyLogoUrl: false,
+            selectedChannelIds: [],
         });
 
         this._onBusNotification = this._onBusNotification.bind(this);
+        this._onKeydown = this._onKeydown.bind(this);
         this._channelsLoadGeneration = 0;
 
         onWillStart(async () => {
-            await Promise.all([this._loadChannels(), this._loadNumbers()]);
+            await Promise.all([this._loadChannels(), this._loadNumbers(), this._loadStages()]);
         });
 
         onMounted(() => {
             this.busService.addChannel(GLOBAL_BUS_CHANNEL);
             this.busService.addEventListener("notification", this._onBusNotification);
+            window.addEventListener("keydown", this._onKeydown);
         });
 
         onWillUnmount(() => {
             this.busService.removeEventListener("notification", this._onBusNotification);
+            window.removeEventListener("keydown", this._onKeydown);
             clearTimeout(this._searchTimeout);
             clearTimeout(this._busReloadTimeout);
         });
@@ -110,6 +127,93 @@ export class ChatroomApp extends Component {
             return localStorage.getItem(PINNED_NUMBER_STORAGE_KEY) || "all";
         } catch {
             return "all";
+        }
+    }
+
+    _getStoredSoundEnabled() {
+        try {
+            return localStorage.getItem(SOUND_STORAGE_KEY) === "1";
+        } catch {
+            return false;
+        }
+    }
+
+    _getStoredDesktopNotifications() {
+        try {
+            return localStorage.getItem("chatroom_whatsapp.desktop_notifications") === "1";
+        } catch {
+            return false;
+        }
+    }
+
+    _getStoredInboxFilter(name, fallback) {
+        try {
+            const filters = JSON.parse(localStorage.getItem(INBOX_FILTERS_STORAGE_KEY) || "{}");
+            return filters[name] || fallback;
+        } catch {
+            return fallback;
+        }
+    }
+
+    _storeInboxFilters() {
+        try {
+            localStorage.setItem(INBOX_FILTERS_STORAGE_KEY, JSON.stringify({
+                stage: this.state.stageFilter,
+                channel: this.state.channelTypeFilter,
+            }));
+        } catch {
+            // El filtro sigue funcionando durante la sesión.
+        }
+    }
+
+    async toggleDesktopNotifications() {
+        if (!window.Notification) {
+            this.notification.add("Este navegador no admite notificaciones de escritorio.", { type: "warning" });
+            return;
+        }
+        if (Notification.permission !== "granted") {
+            await Notification.requestPermission();
+        }
+        this.state.desktopNotifications = Notification.permission === "granted";
+        try {
+            localStorage.setItem(
+                "chatroom_whatsapp.desktop_notifications",
+                this.state.desktopNotifications ? "1" : "0");
+        } catch {
+            // Preferencia válida durante la sesión.
+        }
+    }
+
+    toggleNotificationSound() {
+        this.state.soundEnabled = !this.state.soundEnabled;
+        try {
+            localStorage.setItem(SOUND_STORAGE_KEY, this.state.soundEnabled ? "1" : "0");
+        } catch {
+            // El ajuste sigue funcionando durante la sesión.
+        }
+        if (this.state.soundEnabled) {
+            this._playNotificationSound();
+        }
+    }
+
+    _playNotificationSound() {
+        if (!this.state.soundEnabled || !window.AudioContext && !window.webkitAudioContext) {
+            return;
+        }
+        try {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            const context = new AudioContextClass();
+            const oscillator = context.createOscillator();
+            const gain = context.createGain();
+            oscillator.frequency.value = 740;
+            gain.gain.setValueAtTime(0.04, context.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.18);
+            oscillator.connect(gain);
+            gain.connect(context.destination);
+            oscillator.start();
+            oscillator.stop(context.currentTime + 0.18);
+        } catch {
+            // El navegador puede bloquear audio hasta que exista interacción.
         }
     }
 
@@ -126,7 +230,132 @@ export class ChatroomApp extends Component {
 
     setFilter(value) {
         this.state.filter = value;
+        this.state.selectedChannelIds = [];
         this._loadChannels();
+    }
+
+    setStageFilter(value) {
+        this.state.stageFilter = value;
+        this._storeInboxFilters();
+        this.state.selectedChannelIds = [];
+        this._loadChannels();
+    }
+
+    setChannelTypeFilter(value) {
+        this.state.channelTypeFilter = value;
+        this._storeInboxFilters();
+        this.state.selectedChannelIds = [];
+        this._loadChannels();
+    }
+
+    clearInboxFilters() {
+        this.state.filter = "all";
+        this.state.numberFilter = "all";
+        this.state.stageFilter = "all";
+        this.state.channelTypeFilter = "all";
+        this.state.searchText = "";
+        this.state.selectedChannelIds = [];
+        const searchInput = this.el?.querySelector(".o_chatroom_app_search input");
+        if (searchInput) {
+            searchInput.value = "";
+        }
+        this._storeInboxFilters();
+        try {
+            localStorage.removeItem(PINNED_NUMBER_STORAGE_KEY);
+        } catch {
+            // La limpieza sigue funcionando durante la sesión.
+        }
+        this._loadChannels();
+    }
+
+    hasActiveFilters() {
+        return this.state.filter !== "all"
+            || this.state.numberFilter !== "all"
+            || this.state.stageFilter !== "all"
+            || this.state.channelTypeFilter !== "all"
+            || Boolean(this.state.searchText.trim());
+    }
+
+    toggleChannelSelection(channelId) {
+        const selected = new Set(this.state.selectedChannelIds);
+        if (selected.has(channelId)) {
+            selected.delete(channelId);
+        } else {
+            selected.add(channelId);
+        }
+        this.state.selectedChannelIds = [...selected];
+    }
+
+    allVisibleSelected() {
+        return Boolean(this.state.channels.length)
+            && this.state.channels.every((channel) =>
+                this.state.selectedChannelIds.includes(channel.id));
+    }
+
+    toggleSelectAllVisible() {
+        this.state.selectedChannelIds = this.allVisibleSelected()
+            ? []
+            : this.state.channels.map((channel) => channel.id);
+    }
+
+    async runBulkAction(methodName) {
+        const ids = this.state.selectedChannelIds;
+        if (!ids.length) {
+            return;
+        }
+        try {
+            await this.orm.call("chatroom.channel", methodName, [ids]);
+            this.state.selectedChannelIds = [];
+            await this._loadChannels();
+            this.notification.add("Acción aplicada a las conversaciones seleccionadas.", {
+                type: "success",
+            });
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
+    }
+
+    async runBulkUrgency(urgent) {
+        const ids = this.state.selectedChannelIds;
+        if (!ids.length) {
+            return;
+        }
+        try {
+            await this.orm.call(
+                "chatroom.channel", "action_bulk_set_manual_urgent", [ids, urgent]);
+            this.state.selectedChannelIds = [];
+            await this._loadChannels();
+            this.notification.add(
+                urgent ? "Conversaciones marcadas como urgentes." : "Urgencia retirada de las conversaciones.",
+                { type: "success" },
+            );
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
+    }
+
+    async runBulkStage(stageId) {
+        const ids = this.state.selectedChannelIds;
+        if (!ids.length || !stageId) {
+            return;
+        }
+        try {
+            await this.orm.call(
+                "chatroom.channel", "action_bulk_set_stage", [ids, Number(stageId)]);
+            this.state.selectedChannelIds = [];
+            await this._loadChannels();
+            this.notification.add("Etapa actualizada para las conversaciones seleccionadas.", {
+                type: "success",
+            });
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
     }
 
     onSearchInput(ev) {
@@ -141,6 +370,14 @@ export class ChatroomApp extends Component {
 
     _onBusNotification({ detail: notifications }) {
         if (notifications.some(({ type }) => type === "chatroom.message/new")) {
+            this._playNotificationSound();
+            if (this.state.desktopNotifications && window.Notification
+                    && Notification.permission === "granted") {
+                new Notification("Nuevo mensaje en Chatroom", {
+                    body: "Tienes una conversación pendiente de revisar.",
+                    icon: "/chatroom_whatsapp/static/description/icon.svg",
+                });
+            }
             this._scheduleChannelsReload();
         }
     }
@@ -155,6 +392,12 @@ export class ChatroomApp extends Component {
             "chatroom.whatsapp.number", [["active", "=", true]], ["name"], { order: "name" });
     }
 
+    async _loadStages() {
+        this.state.stages = await this.orm.searchRead(
+            "chatroom.channel.stage", [["active", "=", true]], ["name", "sequence"],
+            { order: "sequence, id" });
+    }
+
     _buildDomain() {
         const domain = [];
         if (this.state.filter === "unread") {
@@ -167,8 +410,20 @@ export class ChatroomApp extends Component {
             // Estos dos indicadores dependen de la hora actual y no son
             // campos almacenados. No se pueden enviar como dominio SQL;
             // se filtran en _applyClientOnlyFilters después del searchRead.
+        } else if (this.state.filter === "sla") {
+            // El estado SLA se calcula en vivo y se filtra en el cliente.
         } else if (this.state.filter === "unassigned") {
             domain.push(["assigned_user_id", "=", false]);
+        } else if (this.state.filter === "pinned") {
+            domain.push(["is_pinned", "=", true]);
+        } else if (this.state.filter === "favorites") {
+            domain.push(["is_favorite", "=", true]);
+        }
+        if (this.state.stageFilter !== "all") {
+            domain.push(["stage_id", "=", parseInt(this.state.stageFilter, 10)]);
+        }
+        if (this.state.channelTypeFilter !== "all") {
+            domain.push(["channel_type", "=", this.state.channelTypeFilter]);
         }
         if (this.state.numberFilter === "mine") {
             domain.push(["whatsapp_number_id.member_ids", "in", [user.userId]]);
@@ -191,6 +446,12 @@ export class ChatroomApp extends Component {
     }
 
     _applyClientOnlyFilters(channels) {
+        if (this.state.filter === "sla") {
+            return channels.filter((channel) =>
+                channel.first_response_sla_state === "yellow"
+                || channel.first_response_sla_state === "red"
+            );
+        }
         if (this.state.filter !== "urgent") {
             return channels;
         }
@@ -249,6 +510,43 @@ export class ChatroomApp extends Component {
     selectChannel(channelId) {
         this.state.selectedChannelId = channelId;
         this.state.mobileSidebarOpen = false;
+    }
+
+    async toggleChannelFlag(channel, flag) {
+        try {
+            const value = await this.orm.call(
+                "chatroom.channel", "action_toggle_flag", [channel.id, flag]);
+            channel[flag] = value;
+            this.state.channels = [...this.state.channels];
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
+    }
+
+    async toggleUrgent(channel) {
+        try {
+            const value = await this.orm.call(
+                "chatroom.channel", "action_toggle_manual_urgent", [[channel.id]]);
+            channel.manual_urgent = value;
+            this.state.channels = [...this.state.channels];
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
+    }
+
+    _onKeydown(ev) {
+        if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "k") {
+            ev.preventDefault();
+            this.el?.querySelector(".o_chatroom_app_search input")?.focus();
+            return;
+        }
+        if (ev.key === "Escape" && this.state.contactPanelOpen) {
+            this.toggleContactPanel();
+        }
     }
 
     _getStoredContactPanelOpen() {
@@ -365,6 +663,11 @@ export class ChatroomApp extends Component {
 
     channelIcon(channelType) {
         return CHANNEL_ICONS[channelType] || "fa-comment";
+    }
+
+    stageColorClass(value) {
+        const color = Math.max(0, Math.min(11, Number(value) || 0));
+        return `o_chatroom_stage_color_${color}`;
     }
 
     formatListTime(dateObj) {

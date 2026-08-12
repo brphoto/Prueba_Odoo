@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_payment_link_list" model="ir.ui.view">
+        <field name="name">chatroom.payment.link.list</field>
+        <field name="model">chatroom.payment.link</field>
+        <field name="arch" type="xml">
+            <list string="Enlaces de pago" create="false">
+                <field name="create_date" string="Fecha"/>
+                <field name="document_name" string="Documento"/>
+                <field name="partner_id"/>
+                <field name="provider_id"/>
+                <field name="amount"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="state" widget="badge"
+                       decoration-success="state in ('sent', 'paid')"
+                       decoration-warning="state in ('generated', 'expired')"
+                       decoration-danger="state == 'error'"/>
+                <field name="link" widget="url" string="Enlace"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_payment_link_form" model="ir.ui.view">
+        <field name="name">chatroom.payment.link.form</field>
+        <field name="model">chatroom.payment.link</field>
+        <field name="arch" type="xml">
+            <form string="Enlace de pago" create="false" edit="false">
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="channel_id"/>
+                            <field name="partner_id"/>
+                            <field name="document_name"/>
+                            <field name="provider_id"/>
+                            <field name="transaction_id"/>
+                        </group>
+                        <group>
+                            <field name="state" widget="badge"/>
+                            <field name="create_date"/>
+                            <field name="sent_at"/>
+                            <field name="amount"/>
+                            <field name="currency_id"/>
+                        </group>
+                    </group>
+                    <field name="link" widget="url"/>
+                    <field name="error_message" invisible="not error_message"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_chatroom_payment_link" model="ir.actions.act_window">
+        <field name="name">Enlaces de pago</field>
+        <field name="res_model">chatroom.payment.link</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aun no hay enlaces de pago enviados.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_chatroom_payment_link" name="Enlaces de pago"
+              parent="chatroom_whatsapp.menu_chatroom_operation"
+              action="action_chatroom_payment_link" sequence="35"
+              groups="chatroom_whatsapp.group_chatroom_user"/>
+</odoo>

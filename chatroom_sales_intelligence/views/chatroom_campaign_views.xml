@@ -43,6 +43,7 @@
                             <field name="batch_size" readonly="state != 'draft'"/>
                         </group>
                         <group string="Segmentación RFM">
+                            <field name="target_category_ids" widget="many2many_tags" readonly="state != 'draft'"/>
                             <field name="target_rfm_a" readonly="state != 'draft'"/>
                             <field name="target_rfm_b" readonly="state != 'draft'"/>
                             <field name="target_rfm_c" readonly="state != 'draft'"/>

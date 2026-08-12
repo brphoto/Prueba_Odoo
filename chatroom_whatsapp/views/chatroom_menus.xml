@@ -22,7 +22,8 @@
          cada actualización para evitar que Odoo intente reemplazar el
          adjunto del filestore durante el upgrade. -->
     <menuitem id="menu_chatroom_root" name="Chatroom" sequence="30"
-              action="action_chatroom_app"/>
+              action="action_chatroom_app"
+              web_icon="chatroom_whatsapp,static/description/icon.svg"/>
 
     <menuitem id="menu_chatroom_operation" name="Operación"
               parent="menu_chatroom_root" sequence="5"/>

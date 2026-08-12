@@ -1,11 +1,15 @@
 {
     'name': 'Chatroom Payment Links',
+    'author': 'Bryan Cando',
+    'website': 'https://github.com/brphoto/Prueba_Odoo',
     'version': '19.0.1.0.0',
     'category': 'Sales/Payment',
     'summary': 'Payment-link actions from Chatroom',
     'depends': ['chatroom_whatsapp', 'payment', 'sale', 'account'],
     'data': [
+        'security/ir.model.access.csv',
         'views/chatroom_payment_link_wizard_views.xml',
+        'views/chatroom_payment_link_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

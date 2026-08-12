@@ -1,5 +1,7 @@
 {
     'name': 'Payment Provider: PayPhone',
+    'author': 'Bryan Cando',
+    'website': 'https://github.com/brphoto/Prueba_Odoo',
     'version': '19.0.1.0.16',
     'category': 'Accounting/Payment Providers',
     'sequence': 120,

@@ -149,7 +149,15 @@ export class ContactPanel extends Component {
     }
 
     _getStoredCollapsedState() {
-        const defaults = { activities: true, orders: true, invoices: true, cart: false, catalog: false };
+        const defaults = {
+            activities: true,
+            opportunities: true,
+            orders: true,
+            invoices: true,
+            cart: false,
+            catalog: false,
+            payments: true,
+        };
         try {
             const raw = localStorage.getItem(COLLAPSED_SECTIONS_STORAGE_KEY);
             return raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
@@ -320,6 +328,18 @@ export class ContactPanel extends Component {
     async _searchProducts() {
         this.state.productResults = await this.orm.call(
             "chatroom.channel", "search_products", [this.state.productQuery]);
+    }
+
+    async copyPaymentLink(link) {
+        if (!link) {
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(link);
+            this.notification.add("Enlace copiado al portapapeles.", { type: "success" });
+        } catch {
+            this.notification.add("No se pudo copiar el enlace.", { type: "warning" });
+        }
     }
 
     productImageUrl(product) {

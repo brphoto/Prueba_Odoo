@@ -40,6 +40,16 @@ class ChatroomControlCenter(models.TransientModel):
     status_summary = fields.Char(
         compute='_compute_status', string='Resumen', readonly=True,
     )
+    open_conversation_count = fields.Integer(
+        compute='_compute_status', string='Conversaciones activas', readonly=True)
+    sla_attention_count = fields.Integer(
+        compute='_compute_status', string='Conversaciones con SLA', readonly=True)
+    pending_payment_count = fields.Integer(
+        compute='_compute_status', string='Pagos pendientes', readonly=True)
+    rfm_rule_count = fields.Integer(
+        compute='_compute_status', string='Reglas RFM activas', readonly=True)
+    rfm_reactivation_count = fields.Integer(
+        compute='_compute_status', string='Clientes para reactivar', readonly=True)
 
     @api.model
     def action_open_center(self):
@@ -98,6 +108,37 @@ class ChatroomControlCenter(models.TransientModel):
                 else 'not_installed'
             )
 
+            record.open_conversation_count = 0
+            record.sla_attention_count = 0
+            if 'chatroom.channel' in self.env:
+                channels = self.env['chatroom.channel'].sudo().search_read(
+                    [('state', 'in', ('open', 'pending'))],
+                    ['first_response_sla_state'])
+                record.open_conversation_count = len(channels)
+                record.sla_attention_count = sum(
+                    row.get('first_response_sla_state') in ('yellow', 'red')
+                    for row in channels
+                )
+
+            record.pending_payment_count = 0
+            if 'payment.transaction' in self.env:
+                record.pending_payment_count = self.env['payment.transaction'].sudo().search_count([
+                    ('state', '=', 'pending'),
+                ])
+
+            record.rfm_rule_count = 0
+            record.rfm_reactivation_count = 0
+            if 'rfm.reactivation.rule' in self.env:
+                rules = self.env['rfm.reactivation.rule'].sudo().search([
+                    ('active', '=', True),
+                ])
+                record.rfm_rule_count = len(rules)
+                categories = rules.mapped('category_code')
+                if categories and 'res.partner' in self.env:
+                    record.rfm_reactivation_count = self.env['res.partner'].sudo().search_count([
+                        ('rfm_category', 'in', categories),
+                    ])
+
             attention_count = sum(
                 status == 'attention' for status in (
                     record.whatsapp_status, record.payphone_status,
@@ -107,6 +148,9 @@ class ChatroomControlCenter(models.TransientModel):
                 _('Hay %s integración(es) que requieren configuración.') % attention_count
                 if attention_count else _('Las integraciones principales están listas.')
             )
+
+    def action_refresh(self):
+        return self.action_open_center()
 
     def _notification(self, message):
         return {
@@ -141,3 +185,9 @@ class ChatroomControlCenter(models.TransientModel):
             'res_model': 'calendar.event',
             'view_mode': 'calendar,list,form',
         }
+
+    def action_open_rfm_dashboard(self):
+        if 'crm.rfm.category' not in self.env:
+            return self._notification(_('Instala Inteligencia Comercial para abrir el dashboard RFM.'))
+        return self.env.ref(
+            'crm_customer_intelligence.action_customer_intelligence_dashboard').read()[0]

@@ -41,6 +41,11 @@ class ResCompany(models.Model):
         string='Escala de iconos', default=1.0,
         help='1.0 es el tamaño normal. Usa valores entre 0.8 y 1.3.',
     )
+    chatroom_ui_font_scale = fields.Float(string='Escala de texto', default=1.0)
+    chatroom_ui_shadow_level = fields.Selection(
+        [('low', 'Sutil'), ('medium', 'Equilibrada'), ('high', 'Destacada')],
+        string='Nivel de sombras', default='medium', required=True,
+    )
     chatroom_ui_bubble_radius = fields.Integer(
         string='Redondeado de mensajes (px)', default=14,
     )
@@ -82,6 +87,12 @@ class ResCompany(models.Model):
         for company in self:
             if not 0.8 <= company.chatroom_ui_icon_scale <= 1.3:
                 raise ValidationError(_('La escala de iconos debe estar entre 0.8 y 1.3.'))
+
+    @api.constrains('chatroom_ui_font_scale')
+    def _check_chatroom_ui_font_scale(self):
+        for company in self:
+            if not 0.85 <= company.chatroom_ui_font_scale <= 1.2:
+                raise ValidationError(_('La escala de texto debe estar entre 0.85 y 1.2.'))
 
     @api.constrains('chatroom_ui_bubble_radius')
     def _check_chatroom_ui_bubble_radius(self):

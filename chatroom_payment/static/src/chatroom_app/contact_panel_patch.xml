@@ -19,5 +19,40 @@
                 <i t-else="" class="fa fa-usd"/>
             </button>
         </xpath>
+        <xpath expr="//div[contains(@class, 'o_chatroom_contact_actions')]" position="after">
+            <div class="o_chatroom_contact_docs o_chatroom_payment_history"
+                 t-if="state.data.payment_links and state.data.payment_links.length">
+                <div class="o_chatroom_contact_section_header" role="button" tabindex="0"
+                     t-att-aria-expanded="state.collapsed.payments ? 'false' : 'true'"
+                     t-on-click="() => this.toggleSection('payments')"
+                     t-on-keydown="(ev) => this.onSectionHeaderKeydown(ev, 'payments')">
+                    <h6 class="mb-0"><i class="fa fa-credit-card"/> Enlaces de pago
+                        <span class="o_chatroom_contact_section_count"><t t-esc="state.data.payment_links.length"/></span>
+                    </h6>
+                    <i t-attf-class="fa {{ state.collapsed.payments ? 'fa-chevron-right' : 'fa-chevron-down' }}"/>
+                </div>
+                <t t-if="!state.collapsed.payments">
+                    <t t-foreach="state.data.payment_links" t-as="paymentLink" t-key="paymentLink.id">
+                        <div class="o_chatroom_contact_doc_row">
+                            <a class="o_chatroom_contact_doc_name text-truncate o_chatroom_contact_doc_link"
+                               t-att-href="paymentLink.link" target="_blank" rel="noopener"
+                               t-att-title="paymentLink.link">
+                                <i class="fa fa-link"/> <t t-esc="paymentLink.name"/>
+                            </a>
+                            <span class="o_chatroom_contact_doc_amount"
+                                  t-esc="formatMoney(paymentLink.amount, paymentLink.currency_symbol)"/>
+                            <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
+                                    title="Copiar enlace de pago"
+                                    t-on-click="() => this.copyPaymentLink(paymentLink.link)">
+                                <i class="fa fa-copy"/>
+                            </button>
+                        </div>
+                        <small class="text-muted o_chatroom_payment_meta">
+                            <t t-esc="paymentLink.provider_name"/> - <t t-esc="paymentLink.state"/>
+                        </small>
+                    </t>
+                </t>
+            </div>
+        </xpath>
     </t>
 </templates>

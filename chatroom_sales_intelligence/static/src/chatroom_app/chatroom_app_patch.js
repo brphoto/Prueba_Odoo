@@ -23,9 +23,17 @@ patch(ChatroomApp.prototype, {
         const extra = await this.orm.read(
             "chatroom.channel", ids, ["rfm_category", "management_alert_state"]);
         const byId = Object.fromEntries(extra.map((e) => [e.id, e]));
+        const codes = [...new Set(extra.map((e) => e.rfm_category).filter((code) => code && code !== "none"))];
+        const categories = codes.length
+            ? await this.orm.searchRead(
+                "crm.rfm.category", [["code", "in", codes]], ["code", "name", "color"])
+            : [];
+        const categoryByCode = Object.fromEntries(categories.map((category) => [category.code, category]));
         this.state.channels = this.state.channels.map((c) => ({
             ...c,
             rfm_category: byId[c.id] ? byId[c.id].rfm_category : false,
+            rfm_category_label: categoryByCode[c.rfm_category]?.name || c.rfm_category?.toUpperCase(),
+            rfm_category_color: categoryByCode[c.rfm_category]?.color || 0,
             management_alert_state: byId[c.id] ? byId[c.id].management_alert_state : "green",
         }));
     },

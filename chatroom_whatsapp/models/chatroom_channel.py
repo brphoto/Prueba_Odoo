@@ -47,7 +47,7 @@ class ChatroomChannel(models.Model):
     # también en Calendario. Ningún código propio necesario más allá del
     # mixin: el chatter ya sabe pintar el botón "Programar actividad".
     _inherit = ['mail.thread', 'mail.activity.mixin', 'chatroom.meta.mixin']
-    _order = 'last_message_date desc'
+    _order = 'is_pinned desc, is_favorite desc, last_message_date desc'
     _rec_name = 'display_name'
 
     display_name = fields.Char(compute='_compute_display_name', store=True)
@@ -82,6 +82,12 @@ class ChatroomChannel(models.Model):
     stage_fold = fields.Boolean(related='stage_id.fold', string='Etapa plegada', store=True)
     manual_urgent = fields.Boolean(
         string="Marcada como urgente", default=False, copy=False, tracking=True)
+    is_pinned = fields.Boolean(
+        string="Conversacion fijada", default=False, copy=False, tracking=True,
+        help="Mantiene esta conversacion al inicio de la bandeja.")
+    is_favorite = fields.Boolean(
+        string="Conversacion favorita", default=False, copy=False, tracking=True,
+        help="Marca esta conversacion para encontrarla rapidamente.")
     assigned_user_id = fields.Many2one(
         'res.users', string="Agente asignado", tracking=True,
         default=lambda self: self.env.user)
@@ -687,7 +693,9 @@ class ChatroomChannel(models.Model):
 
     def write(self, vals):
         vals = dict(vals)
-        audit_fields = ('stage_id', 'state', 'assigned_user_id', 'whatsapp_number_id', 'manual_urgent')
+        audit_fields = (
+            'stage_id', 'state', 'assigned_user_id', 'whatsapp_number_id',
+            'manual_urgent', 'is_pinned', 'is_favorite')
         old_audit = {
             rec.id: {
                 field: (rec[field].display_name if rec._fields[field].type == 'many2one'
@@ -775,6 +783,7 @@ class ChatroomChannel(models.Model):
             'stage_id': 'stage', 'state': 'state',
             'assigned_user_id': 'assigned_user',
             'whatsapp_number_id': 'line', 'manual_urgent': 'urgent',
+            'is_pinned': 'pinned', 'is_favorite': 'favorite',
         }
         for rec in self:
             for field, change_type in audit_map.items():
@@ -828,6 +837,15 @@ class ChatroomChannel(models.Model):
         self.ensure_one()
         self.manual_urgent = not self.manual_urgent
         return self.manual_urgent
+
+    def action_toggle_flag(self, flag):
+        """Toggle one of the personal inbox flags from the Chatroom app."""
+        self.ensure_one()
+        if flag not in ('is_pinned', 'is_favorite'):
+            raise UserError(_('Indicador de bandeja no valido.'))
+        value = not getattr(self, flag)
+        self.write({flag: value})
+        return value
 
     def action_toggle_ai_paused(self):
         self.ensure_one()
@@ -2804,6 +2822,28 @@ class ChatroomChannel(models.Model):
             raise UserError(_("La factura ya no existe."))
         return self._send_report_as_message(
             'account.account_invoices', invoice.id, f"{invoice.name or invoice.id}.pdf")
+
+    def action_bulk_mark_read(self):
+        for channel in self:
+            channel.action_mark_read()
+        return True
+
+    def action_bulk_set_manual_urgent(self, urgent=True):
+        """Set the manual urgency flag for a group of inbox conversations."""
+        self.write({'manual_urgent': bool(urgent)})
+        return True
+
+    def action_bulk_set_stage(self, stage_id):
+        """Move selected conversations to one active configurable stage."""
+        try:
+            stage_id = int(stage_id)
+        except (TypeError, ValueError):
+            stage_id = 0
+        stage = self.env['chatroom.channel.stage'].browse(stage_id).exists()
+        if not stage or not stage.active:
+            raise UserError(_('La etapa seleccionada no está disponible.'))
+        self.write({'stage_id': stage.id})
+        return True
 
     def action_close(self):
         self.write({'state': 'closed'})

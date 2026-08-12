@@ -60,4 +60,4 @@ class PaymentProvider(models.Model):
         transaction._log_sent_message()
         payment_link = self._payphone_create_link(transaction)
         transaction._set_pending()
-        return payment_link
+        return {'link': payment_link, 'transaction': transaction}

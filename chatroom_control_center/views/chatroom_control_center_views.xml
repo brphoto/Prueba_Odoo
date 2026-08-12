@@ -5,6 +5,9 @@
         <field name="model">chatroom.control.center</field>
         <field name="arch" type="xml">
             <form string="Centro de control" create="false" edit="false" delete="false" class="o_chatroom_control_center">
+                <header>
+                    <button name="action_refresh" type="object" string="Actualizar" class="btn-secondary" icon="fa-refresh"/>
+                </header>
                 <sheet>
                     <div class="oe_title">
                         <h1>Centro de control</h1>
@@ -13,6 +16,14 @@
                     <div class="alert alert-info" role="alert">
                         <field name="status_summary" nolabel="1" class="fw-bold"/>
                     </div>
+                    <separator string="Indicadores operativos"/>
+                    <group col="4" class="o_chatroom_control_metrics">
+                        <field name="open_conversation_count"/>
+                        <field name="sla_attention_count"/>
+                        <field name="pending_payment_count"/>
+                        <field name="rfm_rule_count"/>
+                        <field name="rfm_reactivation_count"/>
+                    </group>
                     <group col="2">
                         <group string="Canales y operación">
                             <field name="whatsapp_status" widget="badge"
@@ -42,6 +53,7 @@
                         <button name="action_open_settings" type="object" string="Ajustes generales" class="btn-secondary" icon="fa-sliders"/>
                         <button name="action_open_payments" type="object" string="Configurar PayPhone" class="btn-secondary" icon="fa-credit-card"/>
                         <button name="action_open_calendar" type="object" string="Abrir calendario" class="btn-secondary" icon="fa-calendar"/>
+                        <button name="action_open_rfm_dashboard" type="object" string="Dashboard RFM" class="btn-secondary" icon="fa-line-chart"/>
                     </div>
                 </sheet>
             </form>

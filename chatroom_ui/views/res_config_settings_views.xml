@@ -15,17 +15,33 @@
                         <setting id="chatroom_ui_colors_setting"
                                  help="Personaliza los colores de la bandeja sin tocar código. Se aplican a toda la compañía seleccionada.">
                             <div class="content-group">
-                                <div class="mt8">
+                                <div class="mt8 o_chatroom_ui_color_row">
                                     <label for="chatroom_ui_primary_color" string="Color principal"/>
-                                    <field name="chatroom_ui_primary_color" placeholder="#714B67"/>
+                                    <field name="chatroom_ui_primary_color" widget="color" nolabel="1"/>
+                                    <field name="chatroom_ui_primary_color" class="o_chatroom_ui_hex_input" nolabel="1" placeholder="#714B67"/>
                                 </div>
-                                <div class="mt8">
+                                <div class="mt8 o_chatroom_ui_color_row">
                                     <label for="chatroom_ui_secondary_color" string="Color secundario"/>
-                                    <field name="chatroom_ui_secondary_color" placeholder="#4F3449"/>
+                                    <field name="chatroom_ui_secondary_color" widget="color" nolabel="1"/>
+                                    <field name="chatroom_ui_secondary_color" class="o_chatroom_ui_hex_input" nolabel="1" placeholder="#4F3449"/>
                                 </div>
-                                <div class="mt8">
+                                <div class="mt8 o_chatroom_ui_color_row">
                                     <label for="chatroom_ui_accent_color" string="Color de acento"/>
-                                    <field name="chatroom_ui_accent_color" placeholder="#00A884"/>
+                                    <field name="chatroom_ui_accent_color" widget="color" nolabel="1"/>
+                                    <field name="chatroom_ui_accent_color" class="o_chatroom_ui_hex_input" nolabel="1" placeholder="#00A884"/>
+                                </div>
+                            </div>
+                            <div class="o_chatroom_ui_preview" role="img" aria-label="Vista previa de Chatroom">
+                                <div class="o_chatroom_ui_preview_sidebar">
+                                    <div class="o_chatroom_ui_preview_header">&#9679; Chatroom <span>+</span></div>
+                                    <div class="o_chatroom_ui_preview_toolbar">Siguiente - Dashboard - Plantillas</div>
+                                    <div class="o_chatroom_ui_preview_search">Buscar conversación...</div>
+                                    <div class="o_chatroom_ui_preview_item"><b>Bryan Cando</b><small>Documento enviado</small></div>
+                                    <div class="o_chatroom_ui_preview_item"><b>Cynthia Molina</b><small>Gracias por tu ayuda</small></div>
+                                </div>
+                                <div class="o_chatroom_ui_preview_thread">
+                                    <div class="o_chatroom_ui_preview_thread_header">Conversación de ejemplo</div>
+                                    <div class="o_chatroom_ui_preview_bubble">Así se verá tu Chatroom</div>
                                 </div>
                             </div>
                         </setting>
@@ -44,6 +60,14 @@
                         <setting id="chatroom_ui_icon_scale_setting"
                                  help="Aumenta o reduce los botones e iconos del compositor. Rango recomendado: 0.9 a 1.2.">
                             <field name="chatroom_ui_icon_scale"/>
+                        </setting>
+                        <setting id="chatroom_ui_font_scale_setting"
+                                 help="Ajusta el tamaño general del texto de Chatroom.">
+                            <field name="chatroom_ui_font_scale"/>
+                        </setting>
+                        <setting id="chatroom_ui_shadow_level_setting"
+                                 help="Controla la profundidad visual de tarjetas y paneles.">
+                            <field name="chatroom_ui_shadow_level" widget="radio"/>
                         </setting>
                         <setting id="chatroom_ui_bubble_radius_setting"
                                  help="Define qué tan redondeadas se ven las burbujas de mensajes.">

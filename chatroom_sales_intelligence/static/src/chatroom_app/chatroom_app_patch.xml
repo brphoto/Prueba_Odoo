@@ -5,7 +5,7 @@
         <xpath expr="//span[hasclass('o_chatroom_app_list_name')]" position="after">
             <span t-if="channel.rfm_category and channel.rfm_category !== 'none'"
                   t-attf-class="badge o_chatroom_rfm_badge o_chatroom_rfm_badge_{{ channel.rfm_category }}"
-                  t-esc="channel.rfm_category.toUpperCase()"
+                  t-esc="channel.rfm_category_label || channel.rfm_category.toUpperCase()"
                   title="Categoría RFM"/>
             <i t-if="channel.management_alert_state === 'red'"
                class="fa fa-circle o_chatroom_alert_dot o_chatroom_alert_dot_red"

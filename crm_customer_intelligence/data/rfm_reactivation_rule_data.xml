@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="rfm_reactivation_rule_a" model="rfm.reactivation.rule">
+        <field name="name">Reactivar clientes A</field>
+        <field name="sequence">10</field>
+        <field name="category_code">a</field>
+        <field name="days_allowed">30</field>
+        <field name="lead_description">Cliente de alto valor sin comprar. Contactar con una oferta personalizada.</field>
+    </record>
+    <record id="rfm_reactivation_rule_b" model="rfm.reactivation.rule">
+        <field name="name">Reactivar clientes B</field>
+        <field name="sequence">20</field>
+        <field name="category_code">b</field>
+        <field name="days_allowed">60</field>
+        <field name="lead_description">Cliente de valor medio sin comprar. Contactar con una oferta relevante.</field>
+    </record>
+    <record id="rfm_reactivation_rule_c" model="rfm.reactivation.rule">
+        <field name="name">Reactivar clientes C</field>
+        <field name="sequence">30</field>
+        <field name="category_code">c</field>
+        <field name="days_allowed">90</field>
+        <field name="lead_description">Cliente en riesgo sin comprar. Contactar con una campaña de recuperación.</field>
+    </record>
+</odoo>

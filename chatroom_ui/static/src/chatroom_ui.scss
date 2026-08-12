@@ -13,13 +13,14 @@
     background: #f2f4f7;
     color: #1f2937;
     font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: var(--chatroom-ui-font-scale, 1);
 
     .o_chatroom_app_sidebar {
         width: var(--chatroom-ui-sidebar-width, 360px);
         min-width: 320px;
         border-right: 1px solid var(--chatroom-ui-border);
         background: var(--chatroom-ui-surface);
-        box-shadow: 8px 0 24px rgba(15, 23, 42, 0.035);
+        box-shadow: var(--chatroom-ui-shadow, 8px 0 24px rgba(15, 23, 42, 0.035));
     }
 
     .o_chatroom_app_sidebar_header {
@@ -68,19 +69,49 @@
         }
     }
 
+    .o_chatroom_company_logo {
+        width: 28px;
+        height: 28px;
+        object-fit: contain;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.16);
+    }
+
+    .o_chatroom_sound_btn {
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        border-radius: 50%;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.9);
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.16);
+            color: #fff;
+        }
+    }
+
     .o_chatroom_app_toolbar {
-        justify-content: flex-start;
-        gap: 2px;
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        justify-content: stretch;
+        gap: 4px;
         padding: 8px 12px;
+        overflow: hidden;
         border-bottom-color: var(--chatroom-ui-border);
         background: var(--chatroom-ui-surface-muted);
 
         .btn {
-            min-width: 52px;
-            padding: 6px 7px;
+            min-width: 0;
+            width: 100%;
+            padding: 6px 3px;
             border-radius: 8px;
             color: var(--chatroom-ui-text-muted);
             font-size: 0.7rem;
+            line-height: 1.15;
+            white-space: normal;
+            overflow-wrap: anywhere;
             transition: color 160ms ease, background 160ms ease;
 
             &:hover {
@@ -108,14 +139,21 @@
     }
 
     .o_chatroom_app_filters {
-        gap: 5px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
         padding: 4px 16px 12px;
 
         .btn {
+            min-width: 0;
+            min-height: 36px;
+            padding: 5px 4px;
             border: 1px solid var(--chatroom-ui-border);
             border-radius: 999px;
             font-size: 0.73rem;
             font-weight: 600;
+            line-height: 1.1;
+            white-space: normal;
             transition: transform 160ms ease, box-shadow 160ms ease;
 
             &:hover {
@@ -236,7 +274,9 @@
     }
 
     .o_chatroom_bubble {
-        max-width: min(72%, 620px);
+        // Interpolación para que Sass entregue min() al navegador sin
+        // intentar calcular unidades incompatibles durante la compilación.
+        max-width: #{'min(72%, 620px)'};
         padding: var(--chatroom-ui-bubble-padding, 9px 12px);
         border-radius: var(--chatroom-ui-bubble-radius, 14px);
         box-shadow: 0 2px 5px rgba(15, 23, 42, 0.08);
@@ -392,7 +432,8 @@
 @media (max-width: 1100px) {
     .o_chatroom_app {
         .o_chatroom_app_sidebar {
-            width: min(var(--chatroom-ui-sidebar-width, 320px), 40vw);
+            width: var(--chatroom-ui-sidebar-width, 320px);
+            max-width: 40vw;
             min-width: 290px;
         }
 

@@ -2,6 +2,7 @@
 import logging
 
 from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
@@ -33,6 +34,15 @@ class ChatroomCampaign(models.Model):
     target_rfm_a = fields.Boolean(string="Categoría A (mejores clientes)", default=True)
     target_rfm_b = fields.Boolean(string="Categoría B (intermedios)")
     target_rfm_c = fields.Boolean(string="Categoría C (en riesgo/inactivos)")
+    target_category_ids = fields.Many2many(
+        'crm.rfm.category', 'chatroom_campaign_rfm_category_rel',
+        'campaign_id', 'category_id', string='Categorías RFM',
+        default=lambda self: self.env['crm.rfm.category'].search(
+            [('code', '=', 'a'), ('active', '=', True)], limit=1),
+        domain=[('active', '=', True)],
+        help='Selecciona cualquier categoría del catálogo RFM, incluidas las personalizadas. '
+             'Las casillas A/B/C se conservan para compatibilidad con campañas antiguas.',
+    )
     segment_id = fields.Many2one(
         'crm.rfm.segment', string='Segmento guardado',
         domain=[('active', '=', True)],
@@ -55,7 +65,13 @@ class ChatroomCampaign(models.Model):
     queued_date = fields.Datetime(readonly=True, copy=False)
     sent_date = fields.Datetime(readonly=True, copy=False)
 
-    @api.depends('target_rfm_a', 'target_rfm_b', 'target_rfm_c',
+    @api.constrains('batch_size')
+    def _check_batch_size(self):
+        for campaign in self:
+            if campaign.batch_size < 1:
+                raise ValidationError(_('El tamaño de lote debe ser mayor que cero.'))
+
+    @api.depends('target_rfm_a', 'target_rfm_b', 'target_rfm_c', 'target_category_ids',
                  'recipient_ids.state', 'state')
     def _compute_recipient_stats(self):
         for rec in self:
@@ -69,6 +85,8 @@ class ChatroomCampaign(models.Model):
 
     def _target_categories(self):
         self.ensure_one()
+        if self.target_category_ids:
+            return self.target_category_ids.mapped('code')
         categories = []
         if self.target_rfm_a:
             categories.append('a')

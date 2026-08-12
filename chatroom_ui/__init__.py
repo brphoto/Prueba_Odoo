@@ -1,1 +1,2 @@
-# Presentation-only module: assets are declared in __manifest__.py.
+# Carga los modelos que guardan la configuración visual por compañía.
+from . import models

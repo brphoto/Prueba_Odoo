@@ -60,6 +60,7 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
         'data/kpi_definition_data.xml',
         'data/rfm_segment_data.xml',
         'data/rfm_category_data.xml',
+        'data/rfm_reactivation_rule_data.xml',
         'views/crm_intelligence_menus.xml',
         'views/kpi_definition_views.xml',
         'views/rfm_dashboard_report_views.xml',

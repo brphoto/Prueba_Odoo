@@ -2,6 +2,7 @@
 from datetime import timedelta
 
 from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class RfmReactivationRule(models.Model):
@@ -20,6 +21,12 @@ class RfmReactivationRule(models.Model):
     team_id = fields.Many2one('crm.team', string='Equipo de ventas')
     lead_description = fields.Text(default='Contactar con oferta especial.')
     last_run = fields.Datetime(readonly=True, copy=False)
+
+    @api.constrains('days_allowed')
+    def _check_days_allowed(self):
+        for rule in self:
+            if rule.days_allowed < 1:
+                raise ValidationError(_('Los días sin comprar deben ser mayores que cero.'))
 
     @api.model
     def _selection_rfm_category(self):

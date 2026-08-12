@@ -15,6 +15,13 @@ class ChatroomChannel(models.Model):
                 ('company_id', '=', record.company_id.id if 'company_id' in record else self.env.company.id),
             ], order='sequence, id', limit=1)
             if provider:
-                payment_link = provider._chatroom_create_payment_link(record)
-                return self.action_send_text(_('Podés pagar acá: %s') % payment_link)
+                result = provider._chatroom_create_payment_link(record)
+                if isinstance(result, dict):
+                    payment_link = result['link']
+                    transaction = result.get('transaction')
+                else:
+                    payment_link = result
+                    transaction = False
+                return self._send_logged_payment_link(
+                    payment_link, res_model, res_id, provider, transaction)
         return super().action_send_payment_link(res_model, res_id)
