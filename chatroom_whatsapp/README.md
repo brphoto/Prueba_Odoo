@@ -426,6 +426,34 @@ ningún mecanismo de cobro propio: si no hay un método de pago en línea
 configurado (Stripe, Mercado Pago, etc.) o el módulo de Pagos no está
 instalado, avisa con un error claro en vez de mandar un link roto.
 
+## Alerta de calidad de las líneas de WhatsApp
+
+La calidad de un número (verde/amarillo/rojo, la calcula Meta según
+bloqueos y reportes de spam de los destinatarios) es el activo más
+caro de todo este sistema: si baja, Meta puede restringir o directamente
+banear el número, cortando toda la operación. Un cron diario
+(`_cron_check_quality_ratings`) revisa la calidad de cada línea activa
+contra la Graph API y, si empeoró desde el último chequeo (ej.
+verde→amarillo), les avisa a los administradores (`message_post` en la
+ficha de la línea — requiere el grupo *Chatroom / Administrador*, y
+queda un historial ahí mismo, visible en el chatter de la línea). No
+avisa en el primer chequeo (no hay "antes" con qué comparar) ni cuando
+la calidad mejora o se mantiene igual — solo ante un empeoramiento
+real. El botón manual "Probar conexión" (en Ajustes y en cada línea)
+también actualiza el valor conocido, así que probarlo a mano no
+desincroniza el chequeo automático.
+
+## Exportar una conversación a PDF
+
+Botón **Exportar PDF** en el encabezado del chat (ícono de documento,
+junto al selector de línea) y en el formulario clásico de la
+conversación: genera un PDF con el historial completo — fecha,
+dirección (cliente/nosotros), qué agente mandó cada mensaje saliente y
+el texto — para guardar como respaldo ante un reclamo, o para mandarle
+al cliente un resumen de lo hablado. Los mensajes sin texto (fotos,
+audios, ubicaciones sin descripción) se listan con el tipo entre
+corchetes en vez de dejar la fila vacía.
+
 ## Dashboard
 
 **Chatroom > Dashboard** muestra un resumen de un vistazo: conversaciones
@@ -906,3 +934,15 @@ Pensado para tráfico real, no solo para la demo:
   link de pago depende de tener un proveedor de pago en línea
   configurado en Odoo — sin eso, avisa con un error en vez de mandar
   un link que no sirve, pero no configura ningún proveedor por vos.
+- **Alerta de calidad de línea y exportar conversación a PDF son
+  nuevos en esta iteración**: validado con `py_compile` y parseo de
+  XML, sin correr el cron ni generar un PDF de verdad contra un Odoo
+  corriendo todavía. Dos puntos a tener en cuenta: (1) la alerta de
+  calidad solo compara contra el último valor CONOCIDO por este
+  módulo — si nunca se probó la conexión de una línea nueva, el primer
+  chequeo automático no tiene "antes" con qué comparar, así que no
+  avisa nada hasta el segundo chequeo (al día siguiente) como muy
+  pronto; (2) el PDF de la conversación no incluye las imágenes/
+  adjuntos en sí, solo el nombre del tipo de mensaje entre corchetes
+  cuando no hay texto — no es un respaldo completo con las fotos
+  incrustadas, solo el texto de la conversación.

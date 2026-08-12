@@ -21,7 +21,12 @@ class ChatroomWhatsappNumber(models.Model):
     _name = 'chatroom.whatsapp.number'
     _description = "Línea de WhatsApp Business"
     _order = 'sequence, name'
-    _inherit = ['chatroom.meta.mixin']
+    # mail.thread solo para poder avisarle a los administradores cuando
+    # baja la calidad de la línea (message_post con partner_ids), sin
+    # infraestructura de notificaciones aparte; no se agregó <chatter/>
+    # a la vista porque no hace falta un historial completo, solo el
+    # aviso puntual.
+    _inherit = ['chatroom.meta.mixin', 'mail.thread']
 
     name = fields.Char(required=True, help="Nombre interno, ej. 'Ventas', 'Soporte Ecuador'.")
     sequence = fields.Integer(default=10)
@@ -54,6 +59,11 @@ class ChatroomWhatsappNumber(models.Model):
              "reparten solo entre ellos.")
 
     channel_count = fields.Integer(compute='_compute_channel_count')
+    last_quality_rating = fields.Char(
+        string="Última calidad conocida", copy=False, readonly=True,
+        help="GREEN/YELLOW/RED/UNKNOWN, tal como lo devuelve la Graph "
+             "API. Se actualiza al probar la conexión (a mano) o solo, "
+             "una vez por día, con el chequeo automático de calidad.")
 
     _phone_number_id_uniq = models.Constraint(
         'unique(phone_number_id)',
@@ -92,9 +102,11 @@ class ChatroomWhatsappNumber(models.Model):
                 "línea '%s'.") % self.name)
         return token, self.phone_number_id, api_version
 
-    def action_test_connection(self):
-        """Igual que el botón general de Ajustes pero con las
-        credenciales propias de esta línea (si las tiene)."""
+    def _fetch_phone_info(self):
+        """Consulta la Graph API por nombre verificado, número y calidad
+        de esta línea. Compartido entre el botón manual "Probar
+        conexión" y el chequeo automático de calidad, para no tener el
+        mismo llamado a Meta escrito dos veces."""
         self.ensure_one()
         token, phone_number_id, api_version = self._get_credentials()
         url = f"https://graph.facebook.com/{api_version}/{phone_number_id}"
@@ -110,9 +122,18 @@ class ChatroomWhatsappNumber(models.Model):
                 error = data.get('error', {}).get('message', str(data))
                 raise UserError(_("Meta respondió con un error: %s") % error)
         except requests.RequestException as exc:
-            _logger.error("Error probando la conexión de la línea %s: %s", self.name, exc)
+            _logger.error("Error consultando la línea %s: %s", self.name, exc)
             raise UserError(_("No se pudo conectar con Meta: %s") % exc)
+        return data
 
+    def action_test_connection(self):
+        """Igual que el botón general de Ajustes pero con las
+        credenciales propias de esta línea (si las tiene)."""
+        self.ensure_one()
+        data = self._fetch_phone_info()
+        new_rating = (data.get('quality_rating') or '').upper() or False
+        if new_rating:
+            self.last_quality_rating = new_rating
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
@@ -120,12 +141,65 @@ class ChatroomWhatsappNumber(models.Model):
                 'title': _("Conexión OK"),
                 'message': _("Número verificado: %(name)s (%(phone)s). Calidad: %(quality)s.") % {
                     'name': data.get('verified_name') or '?',
-                    'phone': data.get('display_phone_number') or phone_number_id,
+                    'phone': data.get('display_phone_number') or self.phone_number_id,
                     'quality': data.get('quality_rating') or '?',
                 },
                 'type': 'success',
             },
         }
+
+    # ------------------------------------------------------------------
+    # Chequeo automático de calidad: la calidad de un número es el
+    # activo más caro de todo este sistema -si Meta la baja a amarillo o
+    # rojo puede terminar restringiendo o baneando el número, cortando
+    # toda la operación. El botón "Probar conexión" ya mostraba la
+    # calidad, pero solo si alguien se acordaba de mirarlo a mano.
+    # ------------------------------------------------------------------
+    _QUALITY_RANK = {'RED': 0, 'YELLOW': 1, 'GREEN': 2}
+
+    def _check_quality_rating(self):
+        """Compara la calidad actual contra la última conocida; si
+        empeoró, avisa a los administradores. Nunca hace ruido en el
+        primer chequeo (no hay "antes" con qué comparar) ni cuando la
+        calidad mejora o se mantiene igual."""
+        self.ensure_one()
+        try:
+            data = self._fetch_phone_info()
+        except UserError as exc:
+            _logger.info(
+                "No se pudo revisar la calidad de la línea %s: %s", self.name, exc)
+            return
+        new_rating = (data.get('quality_rating') or '').upper()
+        old_rating = self.last_quality_rating
+        old_rank = self._QUALITY_RANK.get(old_rating)
+        new_rank = self._QUALITY_RANK.get(new_rating)
+        if old_rank is not None and new_rank is not None and new_rank < old_rank:
+            self._notify_quality_drop(old_rating, new_rating)
+        if new_rating:
+            self.last_quality_rating = new_rating
+
+    def _notify_quality_drop(self, old_rating, new_rating):
+        self.ensure_one()
+        managers = self.env.ref(
+            'chatroom_whatsapp.group_chatroom_manager', raise_if_not_found=False)
+        partner_ids = managers.user_ids.mapped('partner_id').ids if managers else []
+        if not partner_ids:
+            return
+        self.message_post(
+            body=_(
+                "⚠️ La calidad de la línea de WhatsApp \"%(name)s\" bajó de "
+                "%(old)s a %(new)s. Meta puede restringir o banear números "
+                "con calidad baja: conviene revisar las plantillas y los "
+                "mensajes recientes, y el feedback/bloqueos de clientes."
+            ) % {'name': self.name, 'old': old_rating, 'new': new_rating},
+            partner_ids=partner_ids,
+            subtype_xmlid='mail.mt_comment',
+        )
+
+    @api.model
+    def _cron_check_quality_ratings(self):
+        for number in self.search([('active', '=', True)]):
+            number._check_quality_rating()
 
     def _get_next_assignee(self):
         """Reparte entre los agentes de esta línea si tiene (member_ids);

@@ -143,6 +143,10 @@
                             </option>
                         </t>
                     </select>
+                    <button type="button" class="o_chatroom_export_pdf_btn"
+                            title="Exportar historial a PDF" t-on-click="exportPdf">
+                        <i class="fa fa-file-pdf-o"/>
+                    </button>
                 </div>
             </div>
 

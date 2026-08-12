@@ -348,6 +348,24 @@
     cursor: pointer;
 }
 
+.o_chatroom_export_pdf_btn {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 50%;
+    background-color: #fff;
+    color: #667781;
+    cursor: pointer;
+
+    &:hover {
+        color: var(--o-brand-primary, #714B67);
+    }
+}
+
 .o_chatroom_scheduled_list {
     margin-bottom: 6px;
 }

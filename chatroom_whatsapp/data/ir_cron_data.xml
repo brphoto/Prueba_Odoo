@@ -71,4 +71,14 @@
         <field name="active">True</field>
     </record>
 
+    <record id="ir_cron_check_whatsapp_quality" model="ir.cron">
+        <field name="name">Chatroom: revisar calidad de las líneas de WhatsApp</field>
+        <field name="model_id" ref="model_chatroom_whatsapp_number"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_check_quality_ratings()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active">True</field>
+    </record>
+
 </odoo>

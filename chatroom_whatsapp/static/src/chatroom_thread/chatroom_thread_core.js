@@ -662,6 +662,21 @@ export class ChatroomThreadCore extends Component {
         }
     }
 
+    async exportPdf() {
+        if (!this.channelId) {
+            return;
+        }
+        try {
+            const action = await this.orm.call(
+                "chatroom.channel", "action_export_pdf", [this.channelId]);
+            await this.action.doAction(action);
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
+    }
+
     _localDatetimeToOdoo(localValue) {
         // El input datetime-local no trae zona horaria (se interpreta en
         // hora local del navegador); Date lo toma como tal, y toISOString

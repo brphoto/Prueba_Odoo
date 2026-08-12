@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_chatroom_channel" model="ir.actions.report">
+        <field name="name">Historial de conversación</field>
+        <field name="model">chatroom.channel</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">chatroom_whatsapp.chatroom_channel_transcript_report</field>
+        <field name="report_file">chatroom_whatsapp.chatroom_channel_transcript_report</field>
+        <field name="binding_model_id" ref="model_chatroom_channel"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="chatroom_channel_transcript_report">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="channel">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Historial de conversación</h2>
+                        <p>
+                            <strong>Contacto:</strong> <span t-esc="channel.display_name"/><br/>
+                            <strong>Canal:</strong>
+                            <span t-esc="dict(channel._fields['channel_type'].selection).get(channel.channel_type)"/><br/>
+                            <strong>Estado:</strong>
+                            <span t-esc="dict(channel._fields['state'].selection).get(channel.state)"/><br/>
+                            <strong>Agente asignado:</strong>
+                            <span t-esc="channel.assigned_user_id.name or '-'"/>
+                        </p>
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Dirección</th>
+                                    <th>Agente</th>
+                                    <th>Mensaje</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="channel.get_transcript_lines()" t-as="line">
+                                    <tr>
+                                        <td t-esc="line['date']"/>
+                                        <td t-esc="line['direction']"/>
+                                        <td t-esc="line['sender']"/>
+                                        <td style="white-space: pre-wrap;" t-esc="line['body']"/>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

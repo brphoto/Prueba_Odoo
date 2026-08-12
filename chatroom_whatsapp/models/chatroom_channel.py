@@ -1504,6 +1504,32 @@ class ChatroomChannel(models.Model):
         self._notify_thread_update()
         return message
 
+    def get_transcript_lines(self):
+        """Historial de mensajes ya formateado para mostrar (usado por
+        el reporte PDF): se arma acá en vez de en el template QWeb para
+        no depender de qué helpers de formato de fecha estén
+        disponibles en el contexto de render de reportes."""
+        self.ensure_one()
+        message_type_labels = dict(self.env['chatroom.message']._fields['message_type'].selection)
+        lines = []
+        for message in self.message_ids.sorted('date'):
+            body = message.body or _("[%s]") % message_type_labels.get(
+                message.message_type, message.message_type)
+            lines.append({
+                'date': message.date.strftime('%d/%m/%Y %H:%M') if message.date else '',
+                'direction': _("Cliente") if message.direction == 'inbound' else _("Nosotros"),
+                'sender': message.sender_user_id.name or '',
+                'body': body,
+            })
+        return lines
+
+    def action_export_pdf(self):
+        """Exporta el historial completo de esta conversación a PDF
+        (mensajes, fechas, quién atendió) — para respaldo ante un
+        reclamo, o para mandarle al cliente un resumen de lo hablado."""
+        self.ensure_one()
+        return self.env.ref('chatroom_whatsapp.action_report_chatroom_channel').report_action(self)
+
     def action_send_payment_link(self, res_model, res_id):
         """Genera un link de pago con el asistente nativo de Odoo
         (mismo que usa el botón "Enviar link de pago" de Ventas/

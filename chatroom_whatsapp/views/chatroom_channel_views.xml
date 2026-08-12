@@ -126,6 +126,9 @@
                     <button name="action_send_csat_survey" type="object"
                             string="Enviar encuesta de satisfacción" class="btn-secondary"
                             invisible="not id or channel_type != 'whatsapp' or csat_requested"/>
+                    <button name="action_export_pdf" type="object"
+                            string="Exportar PDF" class="btn-secondary"
+                            invisible="not id"/>
                     <field name="stage_id" string="Etapa"/>
                 </header>
                 <sheet>

@@ -40,6 +40,11 @@
                             <field name="phone_number_id"/>
                             <field name="display_phone_number"/>
                             <field name="business_account_id"/>
+                            <field name="last_quality_rating" widget="badge"
+                                   decoration-success="last_quality_rating == 'GREEN'"
+                                   decoration-warning="last_quality_rating == 'YELLOW'"
+                                   decoration-danger="last_quality_rating == 'RED'"
+                                   invisible="not last_quality_rating"/>
                         </group>
                         <group>
                             <field name="access_token" password="True"/>
@@ -50,6 +55,7 @@
                         <field name="member_ids" nolabel="1" widget="many2many_tags"/>
                     </group>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>
