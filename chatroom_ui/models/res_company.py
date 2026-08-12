@@ -10,6 +10,16 @@ HEX_COLOR_RE = re.compile(r'^#[0-9a-fA-F]{6}$')
 class ResCompany(models.Model):
     _inherit = 'res.company'
 
+    chatroom_ui_theme_preset = fields.Selection(
+        selection=[
+            ('professional', 'Profesional'),
+            ('ocean', 'Océano'),
+            ('whatsapp', 'WhatsApp'),
+            ('executive', 'Ejecutivo oscuro'),
+            ('custom', 'Personalizado'),
+        ], string='Tema de Chatroom', default='professional', required=True,
+        help='Usa un tema listo para aplicar o selecciona Personalizado para controlar cada valor manualmente.',
+    )
     chatroom_ui_primary_color = fields.Char(
         string='Color principal de Chatroom', default='#714B67', required=True,
     )

@@ -1,8 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2563eb"/><stop offset="1" stop-color="#4f46e5"/></linearGradient></defs>
-  <rect x="8" y="8" width="240" height="240" rx="54" fill="url(#g)"/>
-  <rect x="45" y="57" width="166" height="139" rx="18" fill="#fff"/>
-  <path d="M45 91h166" stroke="#dbeafe" stroke-width="12"/><path d="M82 43v30M174 43v30" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
-  <circle cx="112" cy="143" r="31" fill="#00a884"/><path d="m103 143 7 7 14-16" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M162 127v32l25-16-25-16z" fill="#714b67"/>
+  <defs>
+    <linearGradient id="bg" x1="18" y1="18" x2="238" y2="240" gradientUnits="userSpaceOnUse"><stop stop-color="#0F766E"/><stop offset="1" stop-color="#155E75"/></linearGradient>
+    <linearGradient id="sheet" x1="53" y1="55" x2="205" y2="205" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#ECFEFF"/></linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="54" fill="url(#bg)"/>
+  <rect x="48" y="55" width="160" height="151" rx="21" fill="url(#sheet)"/>
+  <path d="M48 91h160" stroke="#99F6E4" stroke-width="12"/>
+  <path d="M82 43v29M174 43v29" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="87" cy="124" r="10" fill="#0F766E"/><circle cx="128" cy="124" r="10" fill="#0F766E"/><circle cx="169" cy="124" r="10" fill="#0F766E"/>
+  <path d="M75 163h61" stroke="#A5F3FC" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="181" cy="174" r="30" fill="#F59E0B" stroke="#fff" stroke-width="6"/>
+  <path d="M181 158v17l11 7" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

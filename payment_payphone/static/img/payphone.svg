@@ -1,7 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="96" height="60" viewBox="0 0 96 60">
-  <rect width="96" height="60" rx="10" fill="#0b2d5c"/>
-  <circle cx="24" cy="30" r="14" fill="#00b7c7"/>
-  <path d="M18 30h12M24 24v12" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
-  <path d="M45 21h35M45 30h26M45 39h18" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
-  <circle cx="83" cy="12" r="4" fill="#fbbf24"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="88" viewBox="0 0 160 88">
+  <rect width="160" height="88" rx="16" fill="#0B2D5C"/>
+  <circle cx="36" cy="36" r="23" fill="#FF7900"/>
+  <path d="M22 32c5-7 11-10 18-8 6 1 10 4 14 8-6-2-10-1-14 2-4 2-6 6-8 11-1-6-4-11-10-13z" fill="#fff"/>
+  <path d="M36 33c-2 6-2 10-1 15M36 33c3 4 4 7 5 11M36 33c-4-1-8-1-14 0M36 33c5-1 10-1 15 0" fill="none" stroke="#FF7900" stroke-width="3" stroke-linecap="round"/>
+  <text x="69" y="43" fill="#fff" font-family="Arial, sans-serif" font-size="21" font-weight="700" letter-spacing="-.7">payphone</text>
+  <path d="M69 59h56" stroke="#6EE7F2" stroke-width="4" stroke-linecap="round" opacity=".75"/>
 </svg>

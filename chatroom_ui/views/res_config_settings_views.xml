@@ -8,6 +8,10 @@
             <xpath expr="//form" position="inside">
                 <app data-string="Chatroom UI" string="Chatroom UI" name="chatroom_ui">
                     <block title="Identidad visual">
+                        <setting id="chatroom_ui_theme_preset_setting"
+                                 help="Aplica una combinación profesional de colores y proporciones. Luego puedes ajustar cualquier valor y quedará como Personalizado.">
+                            <field name="chatroom_ui_theme_preset"/>
+                        </setting>
                         <setting id="chatroom_ui_colors_setting"
                                  help="Personaliza los colores de la bandeja sin tocar código. Se aplican a toda la compañía seleccionada.">
                             <div class="content-group">

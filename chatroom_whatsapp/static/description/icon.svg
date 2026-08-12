@@ -1,8 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#714b67"/><stop offset="1" stop-color="#4f3449"/></linearGradient></defs>
-  <rect x="8" y="8" width="240" height="240" rx="54" fill="url(#g)"/>
-  <circle cx="205" cy="52" r="20" fill="#25d366"/>
-  <path fill="#fff" d="M54 78c0-18 15-32 33-32h82c18 0 33 14 33 32v57c0 18-15 32-33 32H112l-37 28v-28H87c-18 0-33-14-33-32V78z"/>
-  <circle cx="98" cy="107" r="9" fill="#714b67"/><circle cx="128" cy="107" r="9" fill="#714b67"/><circle cx="158" cy="107" r="9" fill="#714b67"/>
-  <path fill="#25d366" d="M190 43a12 12 0 1 0 0 24 12 12 0 0 0 0-24zm-5 7h10v4h-10zm0 7h7v4h-7z"/>
+  <defs>
+    <linearGradient id="bg" x1="20" y1="12" x2="235" y2="246" gradientUnits="userSpaceOnUse"><stop stop-color="#128C7E"/><stop offset="1" stop-color="#075E54"/></linearGradient>
+    <linearGradient id="bubble" x1="54" y1="48" x2="201" y2="193" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#E9FFFA"/></linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="54" fill="url(#bg)"/>
+  <path d="M30 75C45 38 77 22 119 18" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".14"/>
+  <path d="M53 79c0-18 15-32 34-32h80c19 0 34 14 34 32v56c0 18-15 32-34 32h-43l-40 29v-29h3c-19 0-34-14-34-32V79z" fill="url(#bubble)"/>
+  <path d="m78 173-5 23 22-15" fill="#E9FFFA"/>
+  <circle cx="94" cy="108" r="9" fill="#128C7E"/><circle cx="128" cy="108" r="9" fill="#128C7E"/><circle cx="162" cy="108" r="9" fill="#128C7E"/>
+  <circle cx="204" cy="53" r="27" fill="#25D366" stroke="#075E54" stroke-width="6"/>
+  <path d="M194 42c2-3 6-3 8 0l4 7c1 2 1 4-1 6l-4 3c3 6 8 10 14 13l3-4c2-2 4-2 6-1l7 4c3 2 3 6 1 8-4 5-10 7-16 5-15-5-27-17-32-32-2-6 0-11 4-15z" fill="#fff" transform="translate(-8 -7) scale(.65)"/>
 </svg>
