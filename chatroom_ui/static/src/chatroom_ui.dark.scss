@@ -86,7 +86,10 @@
 
     .o_chatroom_thread_messages {
         background-color: #0b141a;
-        background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+        background-image: var(
+            --chatroom-ui-chat-background,
+            radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px)
+        );
     }
 
     .o_chatroom_bubble_in {

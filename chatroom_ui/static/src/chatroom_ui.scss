@@ -15,7 +15,7 @@
     font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
     .o_chatroom_app_sidebar {
-        width: 360px;
+        width: var(--chatroom-ui-sidebar-width, 360px);
         min-width: 320px;
         border-right: 1px solid var(--chatroom-ui-border);
         background: var(--chatroom-ui-surface);
@@ -224,16 +224,21 @@
 
     .o_chatroom_thread_messages {
         padding: 20px clamp(14px, 3vw, 34px);
-        gap: 8px;
+        gap: var(--chatroom-ui-message-gap, 8px);
         background-color: #eef2f5;
-        background-image: radial-gradient(rgba(71, 85, 105, 0.08) 1px, transparent 1px);
-        background-size: 18px 18px;
+        background-image: var(
+            --chatroom-ui-chat-background,
+            radial-gradient(rgba(71, 85, 105, 0.08) 1px, transparent 1px)
+        );
+        background-size: var(--chatroom-ui-chat-background-size, 18px 18px);
+        background-position: center;
+        background-repeat: var(--chatroom-ui-chat-background-repeat, repeat);
     }
 
     .o_chatroom_bubble {
         max-width: min(72%, 620px);
-        padding: 9px 12px;
-        border-radius: 14px;
+        padding: var(--chatroom-ui-bubble-padding, 9px 12px);
+        border-radius: var(--chatroom-ui-bubble-radius, 14px);
         box-shadow: 0 2px 5px rgba(15, 23, 42, 0.08);
         transition: box-shadow 160ms ease, transform 160ms ease;
 
@@ -249,7 +254,7 @@
 
     .o_chatroom_bubble_out {
         border-top-right-radius: 5px;
-        background: #d8f8e8;
+        background: var(--chatroom-ui-outgoing-bubble, #d8f8e8);
     }
 
     .o_chatroom_bubble_meta {
@@ -276,8 +281,8 @@
     }
 
     .o_chatroom_attach_btn {
-        width: 34px;
-        height: 34px;
+        width: calc(34px * var(--chatroom-ui-icon-scale, 1));
+        height: calc(34px * var(--chatroom-ui-icon-scale, 1));
         padding: 0;
         border-radius: 10px;
         color: #667085;
@@ -292,8 +297,8 @@
     }
 
     .o_chatroom_send_btn {
-        width: 40px;
-        height: 40px;
+        width: calc(40px * var(--chatroom-ui-icon-scale, 1));
+        height: calc(40px * var(--chatroom-ui-icon-scale, 1));
         background: var(--chatroom-ui-primary);
         box-shadow: 0 5px 12px rgba(113, 75, 103, 0.22);
         transition: transform 160ms ease, box-shadow 160ms ease;
@@ -387,7 +392,7 @@
 @media (max-width: 1100px) {
     .o_chatroom_app {
         .o_chatroom_app_sidebar {
-            width: 320px;
+            width: min(var(--chatroom-ui-sidebar-width, 320px), 40vw);
             min-width: 290px;
         }
 

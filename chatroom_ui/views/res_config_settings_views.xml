@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.chatroom.ui</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Chatroom UI" string="Chatroom UI" name="chatroom_ui">
+                    <block title="Identidad visual">
+                        <setting id="chatroom_ui_colors_setting"
+                                 help="Personaliza los colores de la bandeja sin tocar código. Se aplican a toda la compañía seleccionada.">
+                            <div class="content-group">
+                                <div class="mt8">
+                                    <label for="chatroom_ui_primary_color" string="Color principal"/>
+                                    <field name="chatroom_ui_primary_color" placeholder="#714B67"/>
+                                </div>
+                                <div class="mt8">
+                                    <label for="chatroom_ui_secondary_color" string="Color secundario"/>
+                                    <field name="chatroom_ui_secondary_color" placeholder="#4F3449"/>
+                                </div>
+                                <div class="mt8">
+                                    <label for="chatroom_ui_accent_color" string="Color de acento"/>
+                                    <field name="chatroom_ui_accent_color" placeholder="#00A884"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting id="chatroom_ui_background_setting"
+                                 help="Una imagen suave o marca de agua puede reforzar la identidad de la empresa. La imagen se muestra únicamente en el área de mensajes.">
+                            <field name="chatroom_ui_background_image" widget="image"
+                                   options="{'preview_image': 'chatroom_ui_background_image', 'size': [640, 360]}"/>
+                        </setting>
+                    </block>
+                    <block title="Experiencia de uso">
+                        <setting id="chatroom_ui_layout_setting"
+                                 help="Controla el espacio de la bandeja de conversaciones en pantallas grandes.">
+                            <field name="chatroom_ui_sidebar_width"/>
+                            <span class="text-muted"> px</span>
+                        </setting>
+                        <setting id="chatroom_ui_icon_scale_setting"
+                                 help="Aumenta o reduce los botones e iconos del compositor. Rango recomendado: 0.9 a 1.2.">
+                            <field name="chatroom_ui_icon_scale"/>
+                        </setting>
+                        <setting id="chatroom_ui_bubble_radius_setting"
+                                 help="Define qué tan redondeadas se ven las burbujas de mensajes.">
+                            <field name="chatroom_ui_bubble_radius"/>
+                            <span class="text-muted"> px</span>
+                        </setting>
+                        <setting id="chatroom_ui_density_setting"
+                                 help="Compacta muestra más mensajes; espaciosa mejora la lectura en conversaciones largas.">
+                            <field name="chatroom_ui_message_density" widget="radio"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

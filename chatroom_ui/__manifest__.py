@@ -4,10 +4,13 @@
     'category': 'Productivity/Discuss',
     'summary': 'Professional visual layer and responsive UX for Chatroom',
     'depends': ['chatroom_whatsapp'],
-    'data': [],
+    'data': [
+        'views/res_config_settings_views.xml',
+    ],
     'assets': {
         'web.assets_backend': [
             'chatroom_ui/static/src/chatroom_ui.scss',
+            'chatroom_ui/static/src/chatroom_ui_patch.js',
         ],
         'web.assets_web_dark': [
             'chatroom_ui/static/src/chatroom_ui.dark.scss',
