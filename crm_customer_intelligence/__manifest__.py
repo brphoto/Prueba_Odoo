@@ -38,7 +38,9 @@ mostrar esta misma información en el chat de WhatsApp), pero la
 clasificación de clientes es útil para cualquier equipo, no solo para
 quien atiende WhatsApp. Se separó para que se pueda instalar sin
 ninguna dependencia de mensajería: solo requiere ``crm``, ``sale`` y
-``account``, los módulos nativos de Odoo. ``chatroom_sales_intelligence``
+``account``, los módulos nativos de Odoo (más ``kpi_engine``, el mixin
+técnico de "objetivo de KPI" que también usa ``chatroom_whatsapp`` sin
+que ninguno de los dos dependa del otro). ``chatroom_sales_intelligence``
 ahora depende de este módulo (no al revés) para no duplicar la lógica.
     """,
 
@@ -49,7 +51,7 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
     'category': 'Sales/CRM',
     'version': '19.0.1.0.6',
 
-    'depends': ['crm', 'sale', 'account'],
+    'depends': ['crm', 'sale', 'account', 'kpi_engine'],
 
     'data': [
         'security/ir.model.access.csv',

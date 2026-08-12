@@ -65,7 +65,7 @@ Requisitos
     # comprobaciones 'modelo in self.env' se dejaron igual en el código
     # (no estorban estando siempre instalado) por las dudas de que este
     # módulo se reuse en una instalación más liviana en el futuro.
-    'depends': ['base', 'mail', 'bus', 'contacts', 'sale', 'purchase', 'crm', 'account'],
+    'depends': ['base', 'mail', 'bus', 'contacts', 'sale', 'purchase', 'crm', 'account', 'kpi_engine'],
 
     'data': [
         'security/chatroom_security.xml',
