@@ -75,12 +75,14 @@ agrega la capa visual que los muestra dentro del chat.
     'data': [
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
+        # chatroom_menus.xml define menu_chatroom_commercial: tiene que
+        # cargar antes que cualquier vista que lo use como parent.
+        'views/chatroom_menus.xml',
         'views/chatroom_channel_views.xml',
         'views/crm_lead_views.xml',
         'views/chatroom_campaign_views.xml',
         'views/crm_segment_whatsapp_views.xml',
         'views/management_report_subscription_views.xml',
-        'views/chatroom_menus.xml',
     ],
 
     'assets': {

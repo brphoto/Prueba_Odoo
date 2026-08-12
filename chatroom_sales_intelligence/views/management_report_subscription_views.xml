@@ -39,7 +39,7 @@
         <field name="view_mode">list,form</field>
     </record>
     <menuitem id="menu_management_report_subscription" name="Reportes programados"
-              parent="chatroom_whatsapp.menu_chatroom_commercial"
+              parent="menu_chatroom_commercial"
               action="action_management_report_subscription" sequence="35"
               groups="chatroom_whatsapp.group_chatroom_manager"/>
 </odoo>

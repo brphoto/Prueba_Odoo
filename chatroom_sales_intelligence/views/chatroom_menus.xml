@@ -1,18 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <!-- Grupo de menú propio de este módulo (antes vivía como
+         menu_chatroom_commercial en chatroom_whatsapp, solo para
+         alojar estos 3 items: eso hacía que el grupo entero
+         sobreviviera a la desinstalación de este módulo, con
+         "Métricas" -que sí es de la base- como único hijo restante y
+         el nombre "Inteligencia comercial" ya sin sentido. Ahora todo
+         el árbol de este menú es de este módulo, así que desinstalar
+         lo saca completo. -->
+    <menuitem id="menu_chatroom_commercial" name="Inteligencia comercial"
+              parent="chatroom_whatsapp.menu_chatroom_root" sequence="25"/>
+
     <record id="action_my_followups_dashboard" model="ir.actions.client">
         <field name="name">Mis pendientes</field>
         <field name="tag">chatroom_sales_intelligence.my_followups_dashboard</field>
     </record>
 
     <menuitem id="menu_my_followups_dashboard" name="Mis pendientes"
-              parent="chatroom_whatsapp.menu_chatroom_commercial"
+              parent="menu_chatroom_commercial"
               action="action_my_followups_dashboard"
               sequence="6"/>
 
     <menuitem id="menu_rfm_dashboard" name="Dashboard RFM y KPIs"
-              parent="chatroom_whatsapp.menu_chatroom_commercial"
+              parent="menu_chatroom_commercial"
               action="crm_customer_intelligence.action_customer_intelligence_dashboard"
               sequence="7"/>
 
@@ -22,7 +33,7 @@
     </record>
 
     <menuitem id="menu_executive_dashboard" name="Tablero ejecutivo"
-              parent="chatroom_whatsapp.menu_chatroom_commercial"
+              parent="menu_chatroom_commercial"
               action="action_executive_dashboard" sequence="8"/>
 
 </odoo>

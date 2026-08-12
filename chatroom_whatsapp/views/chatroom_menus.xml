@@ -30,9 +30,6 @@
     <menuitem id="menu_chatroom_communication" name="Comunicación"
               parent="menu_chatroom_root" sequence="15"/>
 
-    <menuitem id="menu_chatroom_commercial" name="Inteligencia comercial"
-              parent="menu_chatroom_root" sequence="25"/>
-
     <menuitem id="menu_chatroom_app" name="Chatroom"
               parent="menu_chatroom_operation" action="action_chatroom_app"
               sequence="5"/>
@@ -58,7 +55,7 @@
               sequence="25"/>
 
     <menuitem id="menu_chatroom_metrics" name="Métricas"
-              parent="menu_chatroom_commercial" action="action_chatroom_metrics"
+              parent="menu_chatroom_operation" action="action_chatroom_metrics"
               sequence="30" groups="chatroom_whatsapp.group_chatroom_manager"/>
 
     <menuitem id="menu_chatroom_canned_responses" name="Respuestas rápidas"
