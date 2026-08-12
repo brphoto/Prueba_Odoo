@@ -6,29 +6,37 @@ function initChatroomPreview() {
         return;
     }
     const colors = ["primary", "secondary", "accent"];
-    const update = () => colors.forEach((variable, index) => {
-        const row = document.querySelectorAll(".o_chatroom_ui_color_row")[index];
-        const input = row?.querySelector("input[type='color'], input[type='text']");
-        if (input?.value) {
-            preview.style.setProperty(`--preview-${variable}`, input.value.trim());
+    const update = () => colors.forEach((variable) => {
+        const row = document.querySelector(`.o_chatroom_ui_color_row[data-chatroom-color='${variable}']`);
+        const inputs = [...(row?.querySelectorAll("input") || [])];
+        const input = inputs.find((candidate) => /^#[0-9a-f]{6}$/i.test(candidate.value?.trim()))
+            || inputs[0];
+        const value = input?.value?.trim();
+        if (/^#[0-9a-f]{6}$/i.test(value || "")) {
+            preview.style.setProperty(`--preview-${variable}`, value);
         }
     });
     preview._chatroomPreviewUpdate = update;
     update();
 }
 
-document.addEventListener("input", (event) => {
-    if (event.target?.closest?.(".o_chatroom_ui_color_row")) {
+function refreshPreviewFromEvent(event) {
+    const isColorChange = event.target?.closest?.(".o_chatroom_ui_color_row");
+    const isPresetChange = event.target?.name?.includes?.("chatroom_ui_theme_preset");
+    if (isColorChange || isPresetChange) {
         initChatroomPreview();
-        document.querySelector(".o_chatroom_ui_preview")?._chatroomPreviewUpdate?.();
+        // Onchange updates the other fields on the next Owl render cycle.
+        // Read them again after that cycle so selecting WhatsApp/Océano also
+        // updates the preview, not only manual color edits.
+        setTimeout(() => {
+            initChatroomPreview();
+            document.querySelector(".o_chatroom_ui_preview")?._chatroomPreviewUpdate?.();
+        }, 80);
     }
-});
-document.addEventListener("change", (event) => {
-    if (event.target?.closest?.(".o_chatroom_ui_color_row")) {
-        initChatroomPreview();
-        document.querySelector(".o_chatroom_ui_preview")?._chatroomPreviewUpdate?.();
-    }
-});
+}
+
+document.addEventListener("input", refreshPreviewFromEvent);
+document.addEventListener("change", refreshPreviewFromEvent);
 if (document.body) {
     new MutationObserver(initChatroomPreview).observe(
         document.body, { childList: true, subtree: true });

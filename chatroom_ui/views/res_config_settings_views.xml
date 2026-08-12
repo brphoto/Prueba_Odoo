@@ -15,17 +15,17 @@
                         <setting id="chatroom_ui_colors_setting"
                                  help="Personaliza los colores de la bandeja sin tocar código. Se aplican a toda la compañía seleccionada.">
                             <div class="content-group">
-                                <div class="mt8 o_chatroom_ui_color_row">
+                                <div class="mt8 o_chatroom_ui_color_row" data-chatroom-color="primary">
                                     <label for="chatroom_ui_primary_color" string="Color principal"/>
                                     <field name="chatroom_ui_primary_color" widget="color" nolabel="1"/>
                                     <field name="chatroom_ui_primary_color" class="o_chatroom_ui_hex_input" nolabel="1" placeholder="#714B67"/>
                                 </div>
-                                <div class="mt8 o_chatroom_ui_color_row">
+                                <div class="mt8 o_chatroom_ui_color_row" data-chatroom-color="secondary">
                                     <label for="chatroom_ui_secondary_color" string="Color secundario"/>
                                     <field name="chatroom_ui_secondary_color" widget="color" nolabel="1"/>
                                     <field name="chatroom_ui_secondary_color" class="o_chatroom_ui_hex_input" nolabel="1" placeholder="#4F3449"/>
                                 </div>
-                                <div class="mt8 o_chatroom_ui_color_row">
+                                <div class="mt8 o_chatroom_ui_color_row" data-chatroom-color="accent">
                                     <label for="chatroom_ui_accent_color" string="Color de acento"/>
                                     <field name="chatroom_ui_accent_color" widget="color" nolabel="1"/>
                                     <field name="chatroom_ui_accent_color" class="o_chatroom_ui_hex_input" nolabel="1" placeholder="#00A884"/>

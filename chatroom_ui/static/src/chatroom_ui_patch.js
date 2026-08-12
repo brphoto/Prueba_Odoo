@@ -2,6 +2,7 @@
 
 import { onMounted, onPatched, onWillStart, onWillUnmount } from "@odoo/owl";
 import { patch } from "@web/core/utils/patch";
+import { FormController } from "@web/views/form/form_controller";
 import { ChatroomApp } from "@chatroom_whatsapp/chatroom_app/chatroom_app";
 
 function hexToRgba(hex, alpha) {
@@ -17,18 +18,15 @@ patch(ChatroomApp.prototype, {
     setup() {
         super.setup();
         this.chatroomUiSettings = false;
+        this._chatroomUiRefresh = this._loadChatroomUiSettings.bind(this);
         onWillStart(async () => {
-            try {
-                this.chatroomUiSettings = await this.orm.call(
-                    "chatroom.channel", "get_ui_settings", []);
-                this.state.companyLogoUrl = this.chatroomUiSettings.logo_url || false;
-            } catch (error) {
-                // The visual layer must never block the inbox if its optional
-                // settings cannot be read.
-                console.warn("Chatroom UI settings could not be loaded", error);
-            }
+            await this._loadChatroomUiSettings();
         });
-        onMounted(() => this._applyChatroomUiSettings());
+        onMounted(() => {
+            this._applyChatroomUiSettings();
+            window.addEventListener("chatroom_ui_settings_updated", this._chatroomUiRefresh);
+            window.addEventListener("focus", this._chatroomUiRefresh);
+        });
         // El contenido de la accion puede montar el nodo visual despues del
         // primer ciclo; reaplicar aqui evita que el tema quede solo guardado
         // en Ajustes sin reflejarse en la bandeja.
@@ -36,12 +34,25 @@ patch(ChatroomApp.prototype, {
         onWillUnmount(() => this._clearChatroomUiSettings());
     },
 
+    async _loadChatroomUiSettings() {
+        try {
+            const settings = await this.orm.call(
+                "chatroom.channel", "get_ui_settings", []);
+            this.chatroomUiSettings = settings || {};
+            if (this.state) {
+                this.state.companyLogoUrl = this.chatroomUiSettings.logo_url || false;
+            }
+            this._applyChatroomUiSettings();
+        } catch (error) {
+            // The visual layer must never block the inbox if its optional
+            // settings cannot be read.
+            console.warn("Chatroom UI settings could not be loaded", error);
+        }
+    },
+
     _applyChatroomUiSettings() {
-        const root = this.el?.classList.contains("o_chatroom_app")
-            ? this.el
-            : this.el?.querySelector(".o_chatroom_app");
         const settings = this.chatroomUiSettings;
-        if (!root || !settings) {
+        if (!settings) {
             return;
         }
         const variables = {
@@ -61,7 +72,11 @@ patch(ChatroomApp.prototype, {
             "--chatroom-ui-message-gap": settings.message_gap,
             "--chatroom-ui-bubble-padding": settings.bubble_padding,
         };
-        const targets = [root, document.documentElement].filter(Boolean);
+        const roots = [...document.querySelectorAll(".o_chatroom_app")];
+        if (this.el?.classList.contains("o_chatroom_app") && !roots.includes(this.el)) {
+            roots.push(this.el);
+        }
+        const targets = [...roots, document.documentElement].filter(Boolean);
         targets.forEach((target) => Object.entries(variables).forEach(([name, value]) => {
             if (value !== undefined && value !== null && value !== "") {
                 target.style.setProperty(name, value);
@@ -75,6 +90,12 @@ patch(ChatroomApp.prototype, {
                 );
                 target.style.setProperty("--chatroom-ui-chat-background-size", "cover");
                 target.style.setProperty("--chatroom-ui-chat-background-repeat", "no-repeat");
+            });
+        } else {
+            targets.forEach((target) => {
+                target.style.removeProperty("--chatroom-ui-chat-background");
+                target.style.removeProperty("--chatroom-ui-chat-background-size");
+                target.style.removeProperty("--chatroom-ui-chat-background-repeat");
             });
         }
     },
@@ -101,5 +122,20 @@ patch(ChatroomApp.prototype, {
             "--chatroom-ui-chat-background-repeat",
         ];
         targets.forEach((target) => names.forEach((name) => target.style.removeProperty(name)));
+        window.removeEventListener("chatroom_ui_settings_updated", this._chatroomUiRefresh);
+        window.removeEventListener("focus", this._chatroomUiRefresh);
+    },
+});
+
+// If the administrator changes the theme while Chatroom is still mounted,
+// notify it immediately. When the app is opened later, its onWillStart call
+// still reads the persisted company values, so this is only an acceleration
+// of the normal flow and never the source of truth.
+patch(FormController.prototype, {
+    async onRecordSaved(record, changes) {
+        await super.onRecordSaved(record, changes);
+        if (record.resModel === "res.config.settings") {
+            window.dispatchEvent(new Event("chatroom_ui_settings_updated"));
+        }
     },
 });
