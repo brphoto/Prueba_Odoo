@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from . import chatroom_meta_mixin
 from . import res_config_settings
+from . import res_users
 from . import res_partner
 from . import chatroom_whatsapp_number
 from . import chatroom_tag

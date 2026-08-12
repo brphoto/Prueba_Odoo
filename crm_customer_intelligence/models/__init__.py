@@ -11,3 +11,4 @@ from . import rfm_category
 from . import rfm_segment_rule
 from . import rfm_segment_action
 from . import management_alert
+from . import rfm_reactivation_rule

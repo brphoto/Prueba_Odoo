@@ -50,6 +50,8 @@ módulo deja el chatroom exactamente como estaba antes de instalarlo.
         'web.assets_backend': [
             'chatroom_calendar/static/src/chatroom_app/contact_panel_patch.js',
             'chatroom_calendar/static/src/chatroom_app/contact_panel_patch.xml',
+            'chatroom_calendar/static/src/chatroom_thread/chatroom_thread_patch.js',
+            'chatroom_calendar/static/src/chatroom_thread/chatroom_thread_patch.xml',
         ],
     },
 

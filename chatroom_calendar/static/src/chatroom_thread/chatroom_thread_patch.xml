@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="chatroom_whatsapp.ChatroomThreadCore" t-inherit-mode="extension">
+        <xpath expr="//button[@t-on-click='openCalendarMeeting']" position="after">
+            <button t-if="state.calendarInstalled" t-on-click="createMeetAndSend">
+                <i class="fa fa-video-camera"/> Crear reunión y enviar Meet
+            </button>
+        </xpath>
+    </t>
+</templates>

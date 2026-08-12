@@ -6,6 +6,10 @@
             <button class="btn btn-sm btn-light" t-on-click="scheduleMeeting">
                 <i class="fa fa-calendar"/> Reunión
             </button>
+            <button class="btn btn-sm btn-light" title="Crear y enviar enlace de videollamada"
+                    t-on-click="createMeetAndSend">
+                <i class="fa fa-video-camera"/> Enviar Meet
+            </button>
             <button class="btn btn-sm btn-light" title="Ver reuniones agendadas"
                     t-on-click="viewMeetings">
                 <i class="fa fa-calendar-check-o"/>

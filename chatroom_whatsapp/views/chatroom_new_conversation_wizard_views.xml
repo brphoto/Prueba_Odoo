@@ -6,11 +6,21 @@
         <field name="model">chatroom.new.conversation.wizard</field>
         <field name="arch" type="xml">
             <form string="Nueva conversación">
-                <group>
+                <group string="1. Contacto">
                     <field name="partner_id"
                            placeholder="Buscá un contacto o escribí uno nuevo..."/>
+                    <field name="contact_name" invisible="partner_id"/>
                     <field name="phone"/>
+                    <field name="contact_email"/>
                     <field name="whatsapp_number_id"/>
+                </group>
+                <group string="2. Oportunidad">
+                    <field name="lead_name"/>
+                    <field name="expected_revenue" invisible="not lead_name"/>
+                </group>
+                <group string="3. Presupuesto">
+                    <field name="product_id"/>
+                    <field name="product_qty" invisible="not product_id"/>
                 </group>
                 <footer>
                     <button name="action_confirm" type="object" string="Iniciar conversación"

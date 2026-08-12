@@ -98,6 +98,11 @@
                                  help="Quita el responsable vencido y asigna la conversación al siguiente agente disponible">
                             <field name="chatroom_sla_auto_reassign"/>
                         </setting>
+                        <setting id="chatroom_waiting_response_setting"
+                                 invisible="not chatroom_sla_enabled"
+                                 help="Envía una alerta push y un correo al asesor cuando el cliente espera respuesta.">
+                            <field name="chatroom_waiting_response_minutes"/>
+                        </setting>
                     </block>
 
                     <block title="Messenger / Instagram">

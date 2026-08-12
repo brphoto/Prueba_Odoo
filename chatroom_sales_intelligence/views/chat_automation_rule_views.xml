@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chat_automation_rule_list" model="ir.ui.view">
+        <field name="name">chat.automation.rule.list</field>
+        <field name="model">chat.automation.rule</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="trigger"/>
+                <field name="action"/>
+                <field name="last_run_date" optional="hide"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chat_automation_rule_form" model="ir.ui.view">
+        <field name="name">chat.automation.rule.form</field>
+        <field name="model">chat.automation.rule</field>
+        <field name="arch" type="xml">
+            <form string="Automatización del chat">
+                <sheet>
+                    <group><field name="name"/><field name="active"/><field name="sequence"/></group>
+                    <group string="Si">
+                        <field name="trigger"/>
+                        <field name="stage_id" invisible="trigger != 'stage_change'"/>
+                        <field name="days_without_activity" invisible="trigger != 'no_activity'"/>
+                        <field name="specific_date" invisible="trigger != 'specific_date'"/>
+                        <field name="tag_id" invisible="trigger != 'tag_added'"/>
+                    </group>
+                    <group string="Entonces">
+                        <field name="action"/>
+                        <field name="template_id" invisible="action != 'whatsapp_message'"/>
+                        <field name="message_body" invisible="action != 'whatsapp_message'"/>
+                        <field name="activity_summary" invisible="action != 'create_activity'"/>
+                        <field name="activity_days" invisible="action != 'create_activity'"/>
+                        <field name="user_id" invisible="action != 'change_user'"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chat_automation_rule" model="ir.actions.act_window">
+        <field name="name">Reglas de automatización</field>
+        <field name="res_model">chat.automation.rule</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <menuitem id="menu_chat_automation_rule" name="Automatizaciones del chat"
+              parent="menu_chatroom_commercial" action="action_chat_automation_rule" sequence="20"/>
+</odoo>

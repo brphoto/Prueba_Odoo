@@ -70,6 +70,7 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
         'views/management_alert_views.xml',
         'views/res_partner_views.xml',
         'views/res_config_settings_views.xml',
+        'views/rfm_reactivation_rule_views.xml',
     ],
 
     'assets': {

@@ -71,6 +71,11 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='chatroom_whatsapp.sla_auto_reassign', default=True,
         help="Quita la conversación al agente que no respondió y la entrega "
              "al siguiente agente disponible con menos carga.")
+    chatroom_waiting_response_minutes = fields.Integer(
+        string="Avisar cliente esperando después de (minutos)",
+        config_parameter='chatroom_whatsapp.waiting_response_minutes',
+        default=10,
+        help="Tiempo desde el último mensaje entrante para emitir la alerta al asesor.")
 
     # -- Messenger / Instagram (misma App de Meta, token de Página) --
     chatroom_meta_page_access_token = fields.Char(

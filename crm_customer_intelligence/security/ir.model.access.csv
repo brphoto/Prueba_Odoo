@@ -17,5 +17,7 @@ access_crm_rfm_segment_action_user,crm.rfm.segment.action.user,model_crm_rfm_seg
 access_crm_rfm_segment_action_manager,crm.rfm.segment.action.manager,model_crm_rfm_segment_action,sales_team.group_sale_manager,1,1,1,1
 access_crm_management_alert_user,crm.management.alert.user,model_crm_management_alert,base.group_user,1,1,0,0
 access_crm_management_alert_manager,crm.management.alert.manager,model_crm_management_alert,sales_team.group_sale_manager,1,1,1,1
+access_rfm_reactivation_rule_user,rfm.reactivation.rule.user,model_rfm_reactivation_rule,base.group_user,1,0,0,0
+access_rfm_reactivation_rule_manager,rfm.reactivation.rule.manager,model_rfm_reactivation_rule,sales_team.group_sale_manager,1,1,1,1
 access_crm_rfm_segment_action_log_user,crm.rfm.segment.action.log.user,model_crm_rfm_segment_action_log,base.group_user,1,0,0,0
 access_crm_rfm_segment_action_log_manager,crm.rfm.segment.action.log.manager,model_crm_rfm_segment_action_log,sales_team.group_sale_manager,1,1,1,1

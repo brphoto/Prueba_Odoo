@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_users_form_chatroom_color" model="ir.ui.view">
+        <field name="name">res.users.form.chatroom.color</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//h5[@name='h5_phone']" position="after">
+                <field name="chatroom_color" placeholder="#3b82f6"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

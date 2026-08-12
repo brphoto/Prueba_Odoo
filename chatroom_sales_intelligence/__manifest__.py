@@ -83,12 +83,16 @@ agrega la capa visual que los muestra dentro del chat.
         'views/chatroom_campaign_views.xml',
         'views/crm_segment_whatsapp_views.xml',
         'views/management_report_subscription_views.xml',
+        'views/chat_automation_rule_views.xml',
+        'views/res_config_settings_views.xml',
+        'views/ai_knowledge_base_views.xml',
     ],
 
     'assets': {
         'web.assets_backend': [
             'chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.js',
             'chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence_panel.xml',
+            'chatroom_sales_intelligence/views/chatroom_active_opportunities.xml',
             'chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_thread_core_patch.js',
             'chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_thread_core_patch.xml',
             'chatroom_sales_intelligence/static/src/chatroom_thread/chatroom_intelligence.scss',

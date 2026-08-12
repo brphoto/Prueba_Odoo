@@ -87,6 +87,8 @@ class ChatroomChannel(models.Model):
         default=lambda self: self.env.user)
     assigned_user_initials = fields.Char(compute='_compute_assignment_visual')
     assigned_user_color = fields.Char(compute='_compute_assignment_visual')
+    waiting_response_notified = fields.Boolean(
+        string="Aviso de espera enviado", default=False, copy=False)
     message_ids = fields.One2many(
         'chatroom.message', 'channel_id', string="Mensajes")
     message_count = fields.Integer(compute='_compute_message_stats', store=True)
@@ -155,7 +157,7 @@ class ChatroomChannel(models.Model):
         for rec in self:
             rec.cart_total = sum(line.quantity * line.price_unit for line in rec.cart_line_ids)
 
-    @api.depends('assigned_user_id')
+    @api.depends('assigned_user_id', 'assigned_user_id.chatroom_color')
     def _compute_assignment_visual(self):
         palette = ('#3b82f6', '#16a34a', '#f59e0b', '#8b5cf6', '#ef4444', '#0891b2')
         for rec in self:
@@ -166,7 +168,7 @@ class ChatroomChannel(models.Model):
                 continue
             words = (user.name or '').split()
             rec.assigned_user_initials = ''.join(word[0] for word in words[:2]).upper()
-            rec.assigned_user_color = palette[(user.color or user.id) % len(palette)]
+            rec.assigned_user_color = user.chatroom_color or palette[(user.color or user.id) % len(palette)]
 
     def _sla_settings(self):
         icp = self.env['ir.config_parameter'].sudo()
@@ -591,7 +593,7 @@ class ChatroomChannel(models.Model):
             'id': u.id,
             'name': u.name,
             'initials': ''.join(word[0] for word in (u.name or '').split()[:2]).upper(),
-            'color': palette[(u.color or u.id) % len(palette)],
+            'color': u.chatroom_color or palette[(u.color or u.id) % len(palette)],
         } for u in agents]
 
     @api.model
@@ -1751,6 +1753,36 @@ class ChatroomChannel(models.Model):
                 'partner_name': self.partner_id.name or self.external_id,
                 'preview': (message.body or '')[:120],
             })
+        self.waiting_response_notified = False
+
+    @api.model
+    def _cron_notify_waiting_response(self):
+        """Avisa cuando el último mensaje sigue siendo del cliente."""
+        icp = self.env['ir.config_parameter'].sudo()
+        try:
+            threshold = max(1, int(icp.get_param(
+                'chatroom_whatsapp.waiting_response_minutes', 10)))
+        except (TypeError, ValueError):
+            threshold = 10
+        cutoff = fields.Datetime.subtract(fields.Datetime.now(), minutes=threshold)
+        template = self.env.ref(
+            'chatroom_whatsapp.mail_template_waiting_response', raise_if_not_found=False)
+        for channel in self.search([
+            ('state', 'in', ('open', 'pending')),
+            ('assigned_user_id', '!=', False),
+            ('waiting_response_notified', '=', False),
+        ]):
+            last = channel.message_ids.sorted('date', reverse=True)[:1]
+            if not last or last.direction != 'inbound' or not last.date or last.date > cutoff:
+                continue
+            self.env['bus.bus']._sendone(
+                f'chatroom_channel_{channel.id}', 'chatroom.message/waiting_response', {
+                    'channel_id': channel.id,
+                    'partner_name': channel.partner_id.name or channel.external_id,
+                })
+            if template and channel.assigned_user_id.partner_id.email:
+                template.send_mail(channel.id, force_send=False, raise_exception=False)
+            channel.waiting_response_notified = True
 
     def action_mark_read(self):
         """Marca como leídos los mensajes entrantes pendientes y le avisa

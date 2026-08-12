@@ -24,6 +24,7 @@ const MESSAGE_FIELDS = [
     "attachment_ids",
     "reply_to_id",
     "sender_user_id",
+    "sender_user_color",
     "retry_count",
     "wa_message_id",
     "own_reaction",
@@ -214,6 +215,12 @@ export class ChatroomThreadCore extends Component {
             if (type === "chatroom.message/new" && payload && payload.channel_id === this.channelId) {
                 this._loadMessages();
                 this._loadChannel();
+            }
+            if (type === "chatroom.message/waiting_response" && payload && payload.channel_id === this.channelId) {
+                this.notification.add(
+                    `${payload.partner_name || "El cliente"} está esperando respuesta en el chat.`,
+                    { type: "warning", sticky: true }
+                );
             }
         }
     }
@@ -817,6 +824,9 @@ export class ChatroomThreadCore extends Component {
     }
 
     senderColor(message) {
+        if (message.sender_user_color) {
+            return message.sender_user_color;
+        }
         const palette = ["#3b82f6", "#16a34a", "#f59e0b", "#8b5cf6", "#ef4444", "#0891b2"];
         const id = message.sender_user_id ? message.sender_user_id[0] : 0;
         return palette[id % palette.length];

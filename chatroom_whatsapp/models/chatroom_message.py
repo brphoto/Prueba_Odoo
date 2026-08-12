@@ -60,6 +60,9 @@ class ChatroomMessage(models.Model):
         help="Agente que escribió este mensaje saliente. Vacío en "
              "mensajes entrantes y en los que mandó la automatización de "
              "IA (corren con el usuario del webhook, no de una persona).")
+    sender_user_color = fields.Char(
+        related='sender_user_id.chatroom_color', readonly=True,
+        string="Color del asesor")
     own_reaction = fields.Char(
         copy=False,
         help="Emoji con el que reaccionamos nosotros a este mensaje "
@@ -69,6 +72,15 @@ class ChatroomMessage(models.Model):
         copy=False,
         help="Emoji con el que reaccionó el contacto a este mensaje, "
              "recibido por webhook.")
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        messages = super().create(vals_list)
+        outbound_channels = messages.filtered(
+            lambda message: message.direction == 'outbound').mapped('channel_id')
+        if outbound_channels:
+            outbound_channels.write({'waiting_response_notified': False})
+        return messages
 
     @api.depends('body')
     def _compute_display_name(self):

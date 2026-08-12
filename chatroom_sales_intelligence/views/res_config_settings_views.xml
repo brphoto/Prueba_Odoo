@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_res_config_settings_chatroom_sales_intelligence" model="ir.ui.view">
+        <field name="name">res.config.settings.chatroom.sales.intelligence</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="chatroom_whatsapp.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//setting[@id='chatroom_sla_auto_reassign_setting']" position="after">
+                <setting id="chatroom_lead_sla_hours_setting"
+                         help="Libera oportunidades al pool si no tienen actividad hecha dentro de este plazo.">
+                    <field name="chatroom_lead_sla_hours"/>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -9,6 +9,17 @@ import { ContactPanel } from "@chatroom_whatsapp/chatroom_app/contact_panel";
  * extensión por patch() que ya usa chatroom_sales_intelligence.
  */
 patch(ContactPanel.prototype, {
+    async createMeetAndSend() {
+        try {
+            await this.orm.call(
+                "chatroom.channel", "action_create_meet_and_send", [this.props.channelId]);
+            this.notification.add("Enlace de reunión enviado al chat.", { type: "success" });
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
+    },
     async scheduleMeeting() {
         try {
             const result = await this.orm.call(
