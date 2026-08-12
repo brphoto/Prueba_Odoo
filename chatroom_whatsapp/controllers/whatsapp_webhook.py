@@ -69,10 +69,15 @@ class WhatsAppWebhookController(http.Controller):
         app_secret = request.env['ir.config_parameter'].sudo().get_param(
             'chatroom_whatsapp.app_secret')
         if not app_secret:
-            # Sin App Secret configurado no se puede verificar; se permite
-            # pasar para no romper instalaciones en curso, pero se
-            # recomienda configurarlo en producción.
-            return True
+            # Sin App Secret configurado no hay forma de verificar que el
+            # POST venga realmente de Meta: el endpoint es auth='public',
+            # así que dejar pasar acá equivale a aceptar mensajes,
+            # contactos y confirmaciones de estado falsificados de
+            # cualquiera que conozca la URL. Se rechaza en vez de permitir.
+            _logger.warning(
+                "Webhook de WhatsApp sin App Secret configurado: se rechaza "
+                "el POST (configuralo en el asistente de conexión)")
+            return False
 
         signature = request.httprequest.headers.get('X-Hub-Signature-256', '')
         expected = 'sha256=' + hmac.new(

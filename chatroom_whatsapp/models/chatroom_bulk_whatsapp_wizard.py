@@ -64,6 +64,13 @@ class ChatroomBulkWhatsappWizard(models.TransientModel):
             wizard.recipient_count = len(wizard._get_target_partners())
 
     def action_send(self):
+        """Encola un chatroom.scheduled.message por contacto en vez de
+        llamar a la Cloud API de Meta una por una en este mismo request:
+        con selecciones grandes eso significaba mantener colgado el
+        worker web (y arriesgar timeout del navegador/proxy) hasta
+        terminar de mandarle a todo el mundo. El cron que ya procesa los
+        mensajes programados (_cron_send_scheduled_messages) se encarga
+        del envío real, de a lotes de 100."""
         self.ensure_one()
         partners = self._get_target_partners()
         if not partners:
@@ -72,24 +79,29 @@ class ChatroomBulkWhatsappWizard(models.TransientModel):
                 "en la selección."))
 
         Channel = self.env['chatroom.channel']
-        sent = 0
+        ScheduledMessage = self.env['chatroom.scheduled.message']
+        queued = 0
         skipped = []
+        now = fields.Datetime.now()
         for partner in partners:
             if partner.whatsapp_opt_out:
                 skipped.append(_("%s (dado de baja)") % partner.name)
                 continue
             try:
                 channel_id = Channel.action_start_conversation(partner.id)
-                channel = Channel.browse(channel_id)
-                channel.action_send_template(
-                    self.template_id.name, self.template_id.language,
-                    self.template_id.get_variable_values(channel))
-                sent += 1
             except UserError as exc:
                 skipped.append(_("%(name)s: %(error)s") % {
                     'name': partner.name, 'error': exc})
+                continue
+            ScheduledMessage.create({
+                'channel_id': channel_id,
+                'message_type': 'template',
+                'template_id': self.template_id.id,
+                'scheduled_date': now,
+            })
+            queued += 1
 
-        message = _("Se mandó la plantilla a %s contactos.") % sent
+        message = _("Se encolaron %s mensajes para mandar en los próximos minutos.") % queued
         if skipped:
             message += " " + _(
                 "Se omitieron %(count)s: %(detail)s"
@@ -100,7 +112,7 @@ class ChatroomBulkWhatsappWizard(models.TransientModel):
             'params': {
                 'title': _("Envío masivo de WhatsApp"),
                 'message': message,
-                'type': 'success' if sent else 'warning',
+                'type': 'success' if queued else 'warning',
                 'sticky': bool(skipped),
             },
         }

@@ -963,6 +963,19 @@ class ChatroomChannel(models.Model):
                 "de enviarse)."))
         return message
 
+    def _confirm_sent(self, message, wa_message_id):
+        """Confirma un mensaje saliente como 'sent' únicamente si Meta
+        devolvió un ID real: un 2xx con el cuerpo esperado pero sin
+        'messages[0].id' (payload inesperado, cambio de formato, etc.) no
+        es un envío exitoso, y antes se guardaba igual como 'sent' porque
+        el mensaje ya nacía en ese estado desde el create()."""
+        self.ensure_one()
+        if not wa_message_id:
+            message.write({'state': 'failed'})
+            raise UserError(_(
+                "Meta respondió sin confirmar el envío (falta el ID del mensaje)."))
+        message.write({'wa_message_id': wa_message_id, 'state': 'sent'})
+
     def action_send_text(self, body, reply_to_id=False):
         """Envía un mensaje de texto directo al Graph API de Meta y guarda
         el registro saliente."""
@@ -989,7 +1002,7 @@ class ChatroomChannel(models.Model):
             'direction': 'outbound',
             'message_type': 'text',
             'body': body,
-            'state': 'sent',
+            'state': 'pending',
             'date': fields.Datetime.now(),
             'sender_user_id': self.env.user.id,
             'reply_to_id': reply_to.id if reply_to else False,
@@ -1000,7 +1013,7 @@ class ChatroomChannel(models.Model):
             response.raise_for_status()
             data = response.json()
             wa_message_id = data.get('messages', [{}])[0].get('id')
-            message.write({'wa_message_id': wa_message_id})
+            self._confirm_sent(message, wa_message_id)
         except requests.RequestException as exc:
             _logger.error("Error enviando mensaje WhatsApp: %s", exc)
             message.write({'state': 'failed'})
@@ -1032,14 +1045,14 @@ class ChatroomChannel(models.Model):
             'direction': 'outbound',
             'message_type': 'text',
             'body': body,
-            'state': 'sent',
+            'state': 'pending',
             'date': fields.Datetime.now(),
             'sender_user_id': self.env.user.id,
         })
         try:
             response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)
             response.raise_for_status()
-            message.write({'wa_message_id': response.json().get('message_id')})
+            self._confirm_sent(message, response.json().get('message_id'))
         except requests.RequestException as exc:
             _logger.error("Error enviando mensaje Messenger/Instagram: %s", exc)
             message.write({'state': 'failed'})
@@ -1119,7 +1132,7 @@ class ChatroomChannel(models.Model):
                 'direction': 'outbound',
                 'message_type': media_type,
                 'body': caption,
-                'state': 'sent',
+                'state': 'pending',
                 'date': fields.Datetime.now(),
                 'attachment_ids': [(4, attachment.id)],
                 'sender_user_id': self.env.user.id,
@@ -1143,8 +1156,10 @@ class ChatroomChannel(models.Model):
                 response.raise_for_status()
                 data = response.json()
                 wa_message_id = data.get('messages', [{}])[0].get('id')
-                message.write({'wa_message_id': wa_message_id})
-            except (requests.RequestException, KeyError) as exc:
+                if not wa_message_id:
+                    raise UserError(_("Meta respondió sin confirmar el envío (falta el ID del mensaje)."))
+                message.write({'wa_message_id': wa_message_id, 'state': 'sent'})
+            except (requests.RequestException, KeyError, UserError) as exc:
                 _logger.error("Error enviando adjunto de WhatsApp: %s", exc)
                 message.write({'state': 'failed'})
                 messages |= message
@@ -1250,7 +1265,7 @@ class ChatroomChannel(models.Model):
             response.raise_for_status()
             data = response.json()
             wa_message_id = data.get('messages', [{}])[0].get('id')
-            message.write({'wa_message_id': wa_message_id, 'state': 'sent'})
+            self._confirm_sent(message, wa_message_id)
         except (requests.RequestException, KeyError) as exc:
             _logger.error("Error reintentando el mensaje %s: %s", message.id, exc)
             message.write({'state': 'failed'})
@@ -1276,7 +1291,7 @@ class ChatroomChannel(models.Model):
         try:
             response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)
             response.raise_for_status()
-            message.write({'wa_message_id': response.json().get('message_id'), 'state': 'sent'})
+            self._confirm_sent(message, response.json().get('message_id'))
         except requests.RequestException as exc:
             message.write({'state': 'failed'})
             raise UserError(_("No se pudo reenviar el mensaje: %s") % exc)
@@ -1372,7 +1387,7 @@ class ChatroomChannel(models.Model):
             'direction': 'outbound',
             'message_type': 'template',
             'body': _("[Plantilla: %s]") % template_name,
-            'state': 'sent',
+            'state': 'pending',
             'date': fields.Datetime.now(),
             'sender_user_id': self.env.user.id,
         })
@@ -1380,7 +1395,7 @@ class ChatroomChannel(models.Model):
             response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)
             response.raise_for_status()
             wa_message_id = response.json().get('messages', [{}])[0].get('id')
-            message.write({'wa_message_id': wa_message_id})
+            self._confirm_sent(message, wa_message_id)
         except requests.RequestException as exc:
             _logger.error("Error enviando plantilla de WhatsApp: %s", exc)
             message.write({'state': 'failed'})
@@ -1428,7 +1443,7 @@ class ChatroomChannel(models.Model):
             'message_type': 'interactive',
             'body': "\n".join([body] + [f"[{label}]" for label in buttons]) if body
                     else "\n".join(f"[{label}]" for label in buttons),
-            'state': 'sent',
+            'state': 'pending',
             'date': fields.Datetime.now(),
             'sender_user_id': self.env.user.id,
         })
@@ -1436,7 +1451,7 @@ class ChatroomChannel(models.Model):
             response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)
             response.raise_for_status()
             wa_message_id = response.json().get('messages', [{}])[0].get('id')
-            message.write({'wa_message_id': wa_message_id})
+            self._confirm_sent(message, wa_message_id)
         except requests.RequestException as exc:
             _logger.error("Error enviando botones de WhatsApp: %s", exc)
             message.write({'state': 'failed'})
@@ -1486,7 +1501,7 @@ class ChatroomChannel(models.Model):
             'direction': 'outbound',
             'message_type': 'location',
             'body': "\n".join(line for line in (name, address) if line),
-            'state': 'sent',
+            'state': 'pending',
             'date': fields.Datetime.now(),
             'sender_user_id': self.env.user.id,
         })
@@ -1494,7 +1509,7 @@ class ChatroomChannel(models.Model):
             response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)
             response.raise_for_status()
             wa_message_id = response.json().get('messages', [{}])[0].get('id')
-            message.write({'wa_message_id': wa_message_id})
+            self._confirm_sent(message, wa_message_id)
         except requests.RequestException as exc:
             _logger.error("Error enviando ubicación de WhatsApp: %s", exc)
             message.write({'state': 'failed'})
@@ -1589,7 +1604,7 @@ class ChatroomChannel(models.Model):
             'direction': 'outbound',
             'message_type': 'interactive',
             'body': message_type_body,
-            'state': 'sent',
+            'state': 'pending',
             'date': fields.Datetime.now(),
             'sender_user_id': self.env.user.id,
         })
@@ -1597,7 +1612,7 @@ class ChatroomChannel(models.Model):
             response = self._meta_request('POST', url, json=payload, headers=headers, timeout=15)
             response.raise_for_status()
             wa_message_id = response.json().get('messages', [{}])[0].get('id')
-            message.write({'wa_message_id': wa_message_id})
+            self._confirm_sent(message, wa_message_id)
         except requests.RequestException as exc:
             _logger.error("Error enviando mensaje de lista de WhatsApp: %s", exc)
             message.write({'state': 'failed'})

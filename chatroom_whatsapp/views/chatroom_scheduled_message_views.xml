@@ -8,7 +8,9 @@
             <list decoration-muted="state in ('sent', 'cancelled')"
                   decoration-danger="state == 'failed'">
                 <field name="channel_id" string="Conversación"/>
+                <field name="message_type" string="Tipo"/>
                 <field name="body" string="Mensaje"/>
+                <field name="template_id" string="Plantilla"/>
                 <field name="scheduled_date" string="Fecha programada"/>
                 <field name="state" string="Estado" widget="badge"
                        decoration-success="state == 'sent'"
@@ -36,11 +38,16 @@
                 <sheet>
                     <group>
                         <field name="channel_id" string="Conversación" readonly="state != 'pending'"/>
+                        <field name="message_type" string="Tipo" readonly="state != 'pending'"/>
                         <field name="scheduled_date" string="Fecha y hora de envío"
                                readonly="state != 'pending'"/>
                     </group>
-                    <group string="Mensaje">
+                    <group string="Mensaje" invisible="message_type != 'text'">
                         <field name="body" string="Texto" nolabel="1"
+                               readonly="state != 'pending'"/>
+                    </group>
+                    <group string="Plantilla" invisible="message_type != 'template'">
+                        <field name="template_id" string="Plantilla" nolabel="1"
                                readonly="state != 'pending'"/>
                     </group>
                     <group string="Resultado del envío" invisible="not error_message">

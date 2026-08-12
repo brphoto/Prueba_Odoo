@@ -44,6 +44,7 @@ class ChatroomMessage(models.Model):
              "específico desde WhatsApp.")
     state = fields.Selection(
         [('received', "Recibido"),
+         ('pending', "Enviando"),
          ('sent', "Enviado"),
          ('delivered', "Entregado"),
          ('read', "Leído"),
