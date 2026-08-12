@@ -38,6 +38,7 @@ módulo deja el chatroom exactamente como estaba antes de instalarlo.
     'author': "Bryan Cando",
     'website': "https://github.com/brphoto/Prueba_Odoo",
     'license': 'LGPL-3',
+    'icon': '/chatroom_calendar/static/description/icon.svg',
 
     'category': 'Sales/CRM',
     'version': '19.0.1.0.0',

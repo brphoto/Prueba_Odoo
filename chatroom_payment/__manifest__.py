@@ -16,6 +16,7 @@
         ],
     },
     'license': 'LGPL-3',
+    'icon': '/chatroom_payment/static/description/icon.svg',
     'installable': True,
     'application': False,
     'auto_install': False,

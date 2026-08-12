@@ -37,6 +37,7 @@ no simplemente ordenar código duplicado.
     'author': "Bryan Cando",
     'website': "https://github.com/brphoto/Prueba_Odoo",
     'license': 'LGPL-3',
+    'icon': '/kpi_engine/static/description/icon.svg',
 
     'category': 'Hidden/Tools',
     'version': '19.0.1.0.0',

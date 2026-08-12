@@ -15,6 +15,7 @@
     'post_init_hook': 'post_init_hook',
     'uninstall_hook': 'uninstall_hook',
     'license': 'LGPL-3',
+    'icon': '/payment_payphone/static/description/icon.svg',
     'assets': {
         'web.assets_frontend': [
             'payment_payphone/static/src/interactions/payment_form.js',

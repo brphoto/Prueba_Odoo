@@ -4,17 +4,26 @@
         <field name="name">chatroom.payment.link.wizard.form</field>
         <field name="model">chatroom.payment.link.wizard</field>
         <field name="arch" type="xml">
-            <form string="Enviar Link de Pago">
+            <form string="Enviar Link de Pago" class="o_chatroom_payment_wizard">
+                <div class="o_chatroom_payment_intro">
+                    <i class="fa fa-credit-card"/>
+                    <div>
+                        <strong>Enviar un enlace de pago seguro</strong>
+                        <div>El cliente recibirá el enlace directamente en esta conversación.</div>
+                    </div>
+                </div>
                 <group>
                     <field name="channel_id" invisible="1"/>
                     <field name="channel_partner_id" invisible="1"/>
                     <field name="sale_order_id"/>
                 </group>
-                <separator string="O crear presupuesto con un producto"/>
-                <group>
-                    <field name="product_id" invisible="sale_order_id"/>
-                    <field name="product_qty" invisible="sale_order_id or not product_id"/>
-                </group>
+                <div class="o_chatroom_payment_section" invisible="sale_order_id">
+                    <separator string="Crear un presupuesto nuevo"/>
+                    <group>
+                        <field name="product_id"/>
+                        <field name="product_qty" invisible="not product_id"/>
+                    </group>
+                </div>
                 <footer>
                     <button name="action_send" type="object" string="Generar y enviar" class="btn-primary"/>
                     <button string="Cancelar" special="cancel" class="btn-secondary"/>

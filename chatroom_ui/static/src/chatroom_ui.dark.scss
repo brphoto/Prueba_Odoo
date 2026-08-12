@@ -1,0 +1,119 @@
+.o_chatroom_app {
+    --chatroom-ui-surface-dark: #111b21;
+    --chatroom-ui-surface-dark-2: #202c33;
+    --chatroom-ui-border-dark: #2a3942;
+    --chatroom-ui-text-dark: #e9edef;
+    --chatroom-ui-muted-dark: #8696a0;
+
+    background: #0b141a;
+    color: var(--chatroom-ui-text-dark);
+
+    .o_chatroom_app_sidebar,
+    .o_chatroom_contact_panel,
+    .o_chatroom_composer {
+        background: var(--chatroom-ui-surface-dark);
+    }
+
+    .o_chatroom_app_sidebar,
+    .o_chatroom_contact_panel {
+        border-color: var(--chatroom-ui-border-dark);
+    }
+
+    .o_chatroom_app_toolbar {
+        border-color: var(--chatroom-ui-border-dark);
+        background: #16232a;
+
+        .btn {
+            color: var(--chatroom-ui-muted-dark);
+
+            &:hover {
+                background: rgba(0, 168, 132, 0.14);
+                color: #00d9a6;
+            }
+        }
+    }
+
+    .o_chatroom_app_search input,
+    .o_chatroom_composer_textarea {
+        border-color: var(--chatroom-ui-border-dark);
+        background: var(--chatroom-ui-surface-dark-2);
+        color: var(--chatroom-ui-text-dark);
+
+        &:focus {
+            border-color: #00a884;
+            background: #233138;
+            box-shadow: 0 0 0 3px rgba(0, 168, 132, 0.16);
+        }
+    }
+
+    .o_chatroom_app_list_item {
+        border-bottom-color: #222d34;
+
+        &:hover,
+        &.o_active {
+            background: #202c33;
+        }
+
+        &.o_active::before {
+            background: #00a884;
+        }
+    }
+
+    .o_chatroom_app_list_name,
+    .o_chatroom_app_list_item.o_unread .o_chatroom_app_list_name {
+        color: var(--chatroom-ui-text-dark);
+    }
+
+    .o_chatroom_app_list_preview,
+    .o_chatroom_app_list_time,
+    .o_chatroom_app_assignment_line,
+    .o_chatroom_app_activity_line {
+        color: var(--chatroom-ui-muted-dark);
+    }
+
+    .o_chatroom_app_list_item .o_chatroom_app_list_channel_icon {
+        background: var(--chatroom-ui-surface-dark);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+    }
+
+    .o_chatroom_thread_subheader,
+    .o_chatroom_contact_panel_toolbar,
+    .o_chatroom_contact_header,
+    .o_chatroom_contact_docs {
+        border-color: var(--chatroom-ui-border-dark);
+        background: var(--chatroom-ui-surface-dark);
+    }
+
+    .o_chatroom_thread_messages {
+        background-color: #0b141a;
+        background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    }
+
+    .o_chatroom_bubble_in {
+        background: var(--chatroom-ui-surface-dark-2);
+        color: var(--chatroom-ui-text-dark);
+    }
+
+    .o_chatroom_bubble_out {
+        background: #005c4b;
+        color: var(--chatroom-ui-text-dark);
+    }
+
+    .o_chatroom_bubble_meta,
+    .o_chatroom_contact_info_row,
+    .o_chatroom_contact_stat_label,
+    .o_chatroom_contact_doc_amount {
+        color: var(--chatroom-ui-muted-dark);
+    }
+
+    .o_chatroom_contact_doc_row:hover,
+    .o_chatroom_contact_stat:hover {
+        background: var(--chatroom-ui-surface-dark-2);
+    }
+
+    .o_chatroom_payment_wizard .o_chatroom_payment_intro {
+        border-color: var(--chatroom-ui-border-dark);
+        background: var(--chatroom-ui-surface-dark-2);
+        color: var(--chatroom-ui-muted-dark);
+    }
+}

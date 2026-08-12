@@ -6,6 +6,7 @@
     'depends': ['chatroom_payment', 'payment_payphone', 'sale', 'account'],
     'data': [],
     'license': 'LGPL-3',
+    'icon': '/chatroom_payment_payphone/static/description/icon.svg',
     'installable': True,
     'application': False,
     'auto_install': True,

@@ -47,6 +47,7 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
     'author': "Bryan Cando",
     'website': "https://github.com/brphoto/Prueba_Odoo",
     'license': 'LGPL-3',
+    'icon': '/crm_customer_intelligence/static/description/icon.svg',
 
     'category': 'Sales/CRM',
     'version': '19.0.1.0.6',
