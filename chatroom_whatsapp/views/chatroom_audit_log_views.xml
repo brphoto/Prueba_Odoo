@@ -29,6 +29,6 @@
         <field name="view_mode">list,form</field>
     </record>
     <menuitem id="menu_chatroom_audit_log" name="Auditoría de conversaciones"
-              parent="menu_chatroom_config" action="action_chatroom_audit_log"
-              sequence="17" groups="chatroom_whatsapp.group_chatroom_manager"/>
+              parent="menu_chatroom_operation" action="action_chatroom_audit_log"
+              sequence="17" groups="chatroom_whatsapp.group_chatroom_supervisor"/>
 </odoo>

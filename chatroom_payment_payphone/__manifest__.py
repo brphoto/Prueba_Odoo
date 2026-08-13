@@ -2,7 +2,7 @@
     'name': 'Chatroom Payment: PayPhone Connector',
     'author': 'Bryan Cando',
     'website': 'https://github.com/brphoto/Prueba_Odoo',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.3',
     'category': 'Sales/Payment',
     'summary': 'Use PayPhone links from Chatroom',
     'depends': ['chatroom_payment', 'payment_payphone', 'sale', 'account'],

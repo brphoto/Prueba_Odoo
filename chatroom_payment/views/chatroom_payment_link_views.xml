@@ -5,6 +5,12 @@
         <field name="model">chatroom.payment.link</field>
         <field name="arch" type="xml">
             <list string="Enlaces de pago" create="false">
+                <button name="action_resend" type="object" string="Reenviar"
+                        class="btn-secondary" groups="chatroom_payment.group_chatroom_payment_agent,chatroom_payment.group_chatroom_payment_manager"
+                        invisible="state in ('paid', 'expired')"/>
+                <button name="action_expire" type="object" string="Expirar"
+                        class="btn-secondary" groups="chatroom_payment.group_chatroom_payment_manager"
+                        invisible="state in ('paid', 'expired')"/>
                 <field name="create_date" string="Fecha"/>
                 <field name="document_name" string="Documento"/>
                 <field name="partner_id"/>
@@ -25,6 +31,20 @@
         <field name="model">chatroom.payment.link</field>
         <field name="arch" type="xml">
             <form string="Enlace de pago" create="false" edit="false">
+                <header>
+                    <button name="action_resend" type="object" string="Reenviar enlace"
+                            class="btn-primary" groups="chatroom_payment.group_chatroom_payment_agent,chatroom_payment.group_chatroom_payment_manager"
+                            invisible="state in ('paid', 'expired')"/>
+                    <button name="action_expire" type="object" string="Expirar enlace"
+                            class="btn-secondary" groups="chatroom_payment.group_chatroom_payment_manager"
+                            invisible="state in ('paid', 'expired')" confirm="¿Expirar este enlace de pago?"/>
+                    <button name="action_sync_now" type="object" string="Sincronizar estado"
+                            class="btn-secondary" groups="chatroom_payment.group_chatroom_payment_manager"
+                            invisible="not transaction_id"/>
+                    <button name="action_diagnose" type="object" string="Diagnóstico"
+                            class="btn-secondary" groups="chatroom_payment.group_chatroom_payment_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="generated,sent,paid,error"/>
+                </header>
                 <sheet>
                     <div class="oe_title"><h1><field name="name"/></h1></div>
                     <group>
@@ -39,6 +59,8 @@
                             <field name="state" widget="badge"/>
                             <field name="create_date"/>
                             <field name="sent_at"/>
+                            <field name="resent_at" invisible="not resent_at"/>
+                            <field name="resent_by" invisible="not resent_by"/>
                             <field name="amount"/>
                             <field name="currency_id"/>
                         </group>

@@ -33,6 +33,10 @@ class ResCompany(models.Model):
         string='Imagen de fondo del chat', max_width=1600, max_height=900,
         help='Imagen opcional para el fondo del área de mensajes. Se recomienda una textura suave o una marca de agua.',
     )
+    chatroom_ui_brand_logo = fields.Image(
+        string='Logo de marca de Chatroom', max_width=800, max_height=800,
+        help='Logo opcional para la cabecera de Chatroom. Si queda vacío se usa el logo de la compañía.',
+    )
     chatroom_ui_sidebar_width = fields.Integer(
         string='Ancho de la bandeja (px)', default=360,
         help='Ancho de la lista de conversaciones en escritorio.',

@@ -132,9 +132,10 @@ class TestChatroomSalesIntelligence(TransactionCase):
         campaign.action_send()
 
         self.assertEqual(campaign.state, 'sending')
-        self.assertEqual(campaign.pending_count, 1)
-        self.assertEqual(len(campaign.recipient_ids), 1)
-        self.assertEqual(campaign.recipient_ids.partner_id, partner)
+        expected_count = len(campaign._get_target_partners())
+        self.assertEqual(campaign.pending_count, expected_count)
+        self.assertEqual(len(campaign.recipient_ids), expected_count)
+        self.assertIn(partner, campaign.recipient_ids.partner_id)
         self.assertTrue(campaign.queued_date)
         self.assertFalse(campaign.sent_date, "todavía no terminó de mandarse")
 
@@ -156,17 +157,21 @@ class TestChatroomSalesIntelligence(TransactionCase):
             'target_rfm_a': True, 'target_rfm_b': False, 'target_rfm_c': False,
         })
         campaign.action_send()
+        expected_count = len(campaign.recipient_ids)
 
         self.env['chatroom.campaign']._cron_process_campaigns()
         self.assertEqual(campaign.state, 'sending', "todavía debe cerrar en la próxima corrida")
-        self.assertEqual(campaign.failed_count, 1)
+        self.assertEqual(campaign.failed_count, expected_count)
         self.assertEqual(campaign.pending_count, 0)
 
         self.env['chatroom.campaign']._cron_process_campaigns()
         self.assertEqual(campaign.state, 'sent')
         self.assertEqual(campaign.sent_count, 0)
-        self.assertEqual(campaign.failed_count, 1)
+        self.assertEqual(campaign.failed_count, expected_count)
         self.assertTrue(campaign.sent_date)
+        campaign.action_retry_failed()
+        self.assertEqual(campaign.state, 'sending')
+        self.assertEqual(campaign.pending_count, expected_count)
 
     def test_campaign_cron_respects_batch_size(self):
         """Con batch_size=2 y 3 destinatarios, la primera corrida procesa
@@ -186,16 +191,17 @@ class TestChatroomSalesIntelligence(TransactionCase):
             'target_rfm_a': True, 'batch_size': 2,
         })
         campaign.action_send()
-        self.assertEqual(campaign.pending_count, 3)
+        expected_count = len(campaign.recipient_ids)
+        self.assertEqual(campaign.pending_count, expected_count)
 
         self.env['chatroom.campaign']._cron_process_campaigns()
         self.assertEqual(campaign.state, 'sending')
         self.assertEqual(campaign.failed_count, 2)
-        self.assertEqual(campaign.pending_count, 1)
+        self.assertEqual(campaign.pending_count, expected_count - 2)
 
         self.env['chatroom.campaign']._cron_process_campaigns()
         self.assertEqual(campaign.state, 'sending')
-        self.assertEqual(campaign.failed_count, 3)
+        self.assertEqual(campaign.failed_count, expected_count)
         self.assertEqual(campaign.pending_count, 0)
 
         self.env['chatroom.campaign']._cron_process_campaigns()

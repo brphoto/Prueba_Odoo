@@ -668,14 +668,14 @@ preguntas repetitivas sin gastar una llamada a la IA.
 ## Datos de demostración
 
 **Chatroom > Configuración > Generar conversaciones de prueba** crea 2
-conversaciones con historial realista (Bryan Cando y Cynthia Molina, con
+conversaciones con historial realista (Contacto 1 y Contacto 2, con
 números reales) para poder probar la interfaz sin esperar tráfico real:
 
-- **Bryan Cando**: consulta de producto sin resolver (queda con un
+- **Contacto 1**: consulta de producto sin resolver (queda con un
   mensaje sin leer, para probar el badge/Dashboard), + una Oportunidad
   y un Presupuesto en borrador (para probar el panel de contacto y
   "enviar PDF por WhatsApp").
-- **Cynthia Molina**: pedido ya resuelto (conversación tranquila, sin
+- **Contacto 2**: pedido ya resuelto (conversación tranquila, sin
   pendientes), + una Oportunidad, un Presupuesto **confirmado** y su
   **factura** (para probar esa parte del panel con un documento real).
 

@@ -24,9 +24,9 @@ class RfmDashboardReportWizard(models.TransientModel):
         default=lambda self: self.env.company)
 
     # El reporte conserva compatibilidad con A/B/C y acepta nuevas
-    # categorÃ­as creadas en el catÃ¡logo de Inteligencia comercial.
+    # categorías creadas en el catálogo de Inteligencia comercial.
     category = fields.Selection(
-        selection='_selection_rfm_category_filter', string='CategorÃ­a RFM',
+        selection='_selection_rfm_category_filter', string='Categoría RFM',
         default='all', required=True)
 
     @api.model

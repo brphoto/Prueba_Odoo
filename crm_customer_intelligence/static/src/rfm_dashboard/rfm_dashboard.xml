@@ -16,6 +16,18 @@
                             t-on-click="openReportWizard">
                         <i class="fa fa-file-pdf-o"/> Imprimir PDF
                     </button>
+                    <button type="button" class="btn btn-secondary"
+                            t-on-click="exportCsv">
+                        <i class="fa fa-download"/> Exportar CSV
+                    </button>
+                    <button type="button" class="btn btn-secondary"
+                            t-on-click="scheduleFollowups">
+                        <i class="fa fa-calendar-check-o"/> Programar seguimientos
+                    </button>
+                    <button t-if="state.data &amp;&amp; state.data.can_recompute" type="button" class="btn btn-secondary"
+                            t-on-click="refreshRfm">
+                        <i class="fa fa-refresh"/> Actualizar RFM
+                    </button>
                     <label>Período
                         <select t-on-change="changePeriod">
                             <option value="30" t-att-selected="state.period === '30'">Últimos 30 días</option>
@@ -32,6 +44,19 @@
                                     t-esc="option.label"/>
                         </select>
                     </label>
+                    <label>Origen
+                        <select t-on-change="changeSource">
+                            <option value="all" t-att-selected="state.source === 'all'">Ventas + históricos</option>
+                            <option value="native" t-att-selected="state.source === 'native'">Ventas Odoo</option>
+                            <option value="history" t-att-selected="state.source === 'history'">Históricos</option>
+                        </select>
+                    </label>
+                    <button type="button" class="btn btn-secondary" t-on-click="openSegments">
+                        <i class="fa fa-filter"/> Segmentos
+                    </button>
+                    <button type="button" class="btn btn-secondary" t-on-click="openCampaigns">
+                        <i class="fa fa-bullhorn"/> Campañas
+                    </button>
                     <div class="o_rfm_kpi_config" t-if="state.kpiConfigOpen">
                         <div class="o_rfm_kpi_config_title">KPIs visibles</div>
                         <label t-foreach="kpiOptions()" t-as="option" t-key="option[0]"
@@ -44,6 +69,10 @@
                                 t-on-click="resetKpis">Restablecer</button>
                     </div>
                 </div>
+            </div>
+
+            <div class="o_rfm_last_update" t-if="state.data &amp;&amp; state.data.last_computed_at">
+                <i class="fa fa-clock-o"/> Último cálculo RFM: <strong t-esc="state.data.last_computed_at"/>
             </div>
 
             <div class="o_rfm_comparison" t-if="state.data &amp;&amp; state.data.comparison">
@@ -93,6 +122,20 @@
                 </div>
 
                 <div class="o_rfm_dashboard_columns">
+                    <section class="o_rfm_dashboard_panel o_rfm_evolution_panel">
+                        <h4>Evolución mensual</h4>
+                        <div class="o_rfm_evolution_chart">
+                            <t t-foreach="state.data.evolution || []" t-as="row" t-key="row.month">
+                                <div class="o_rfm_evolution_item" t-att-title="row.label + ': ' + formatMoney(row.total)">
+                                    <div class="o_rfm_evolution_track">
+                                        <div class="o_rfm_bar o_rfm_bar_product"
+                                             t-attf-style="height: {{ barHeight(row.total, state.data.evolution, 'total') }}%"/>
+                                    </div>
+                                    <small t-esc="row.label"/>
+                                </div>
+                            </t>
+                        </div>
+                    </section>
                     <section class="o_rfm_dashboard_panel">
                         <h4>Distribución RFM</h4>
                         <t t-foreach="state.data.distribution" t-as="row" t-key="row.category">

@@ -1913,6 +1913,10 @@ class ChatroomChannel(models.Model):
         custom_kpis = self.env['chatroom.kpi.definition'].get_dashboard_values(
             period_days)
 
+        management_alerts = {'total': 0, 'danger': 0, 'warning': 0}
+        if 'crm.management.alert' in self.env:
+            management_alerts = self.env['crm.management.alert'].get_my_counts()
+
         raw_last_webhook = self.env['ir.config_parameter'].sudo().get_param(
             'chatroom_whatsapp.last_webhook_at')
         last_webhook = fields.Datetime.to_datetime(raw_last_webhook) if raw_last_webhook else False
@@ -1939,6 +1943,7 @@ class ChatroomChannel(models.Model):
             'sla_answered_count': sla_answered_count,
             'avg_csat_score': round(avg_csat_score or 0.0, 2),
             'csat_answered_count': csat_answered_count,
+            'management_alerts': management_alerts,
             'period_days': period_days,
             'period_label': period_label,
         'custom_kpis': custom_kpis,
@@ -2929,7 +2934,7 @@ class ChatroomChannel(models.Model):
 
         demo_conversations = [
             {
-                'name': "Bryan Cando",
+                'name': "Contacto 1",
                 'phone': "593996726902",
                 'state': 'pending',
                 'ai_intent': 'consulta',
@@ -2939,7 +2944,7 @@ class ChatroomChannel(models.Model):
                      "Hola buenas! Vi la página en Instagram, ¿siguen "
                      "teniendo el producto que estaba en la promo?", 'read'),
                     ('outbound', ago(hours=1, minutes=55),
-                     "¡Hola Bryan! Sí, todavía tenemos stock. ¿Cuál te interesa?", 'read'),
+                     "¡Hola! Sí, todavía tenemos stock. ¿Cuál te interesa?", 'read'),
                     ('inbound', ago(hours=1, minutes=50),
                      "El combo de inicio, el de $49", 'read'),
                     ('outbound', ago(hours=1, minutes=40),
@@ -2952,7 +2957,7 @@ class ChatroomChannel(models.Model):
                 ],
             },
             {
-                'name': "Cynthia Molina",
+                'name': "Contacto 2",
                 'phone': "593998249518",
                 'state': 'open',
                 'ai_intent': 'venta',
@@ -2961,7 +2966,7 @@ class ChatroomChannel(models.Model):
                     ('inbound', ago(days=1, hours=3),
                      "Buenas tardes, quería confirmar si mi pedido ya fue despachado", 'read'),
                     ('outbound', ago(days=1, hours=2, minutes=55),
-                     "¡Hola Cynthia! Dejame revisar el número de seguimiento, un momento", 'read'),
+                     "¡Hola! Dejame revisar el número de seguimiento, un momento", 'read'),
                     ('outbound', ago(days=1, hours=2, minutes=40),
                      "Ya salió ayer por la tarde, deberías tenerlo mañana. "
                      "Te paso el número de guía: 1234567890", 'read'),

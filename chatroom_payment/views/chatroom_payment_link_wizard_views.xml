@@ -15,6 +15,8 @@
                 <group>
                     <field name="channel_id" invisible="1"/>
                     <field name="channel_partner_id" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                    <field name="provider_id"/>
                     <field name="sale_order_id"/>
                 </group>
                 <div class="o_chatroom_payment_section" invisible="sale_order_id">

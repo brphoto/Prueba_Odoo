@@ -93,29 +93,32 @@
     }
 
     .o_chatroom_app_toolbar {
-        display: grid;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
-        justify-content: stretch;
+        display: flex;
+        justify-content: flex-start;
         gap: 4px;
         padding: 8px 12px;
-        overflow: hidden;
+        overflow-x: auto;
+        overflow-y: hidden;
         border-bottom-color: var(--chatroom-ui-border);
         background: var(--chatroom-ui-surface-muted);
+        scrollbar-width: thin;
 
         .btn {
-            min-width: 0;
-            width: 100%;
+            flex: 0 0 64px;
+            width: 64px;
+            min-height: 52px;
             padding: 6px 3px;
             border-radius: 8px;
             color: var(--chatroom-ui-text-muted);
             font-size: 0.7rem;
             line-height: 1.15;
             white-space: normal;
-            overflow-wrap: anywhere;
+            overflow-wrap: normal;
+            word-break: normal;
             transition: color 160ms ease, background 160ms ease;
 
             &:hover {
-                background: rgba(113, 75, 103, 0.08);
+                background: color-mix(in srgb, var(--chatroom-ui-primary) 8%, transparent);
                 color: var(--chatroom-ui-primary);
             }
         }
@@ -133,7 +136,7 @@
             &:focus {
                 border-color: var(--chatroom-ui-primary);
                 background: #fff;
-                box-shadow: 0 0 0 3px rgba(113, 75, 103, 0.12);
+                box-shadow: 0 0 0 3px color-mix(in srgb, var(--chatroom-ui-primary) 12%, transparent);
             }
         }
     }
@@ -163,7 +166,7 @@
             &.btn-primary {
                 border-color: var(--chatroom-ui-primary);
                 background: var(--chatroom-ui-primary);
-                box-shadow: 0 4px 10px rgba(113, 75, 103, 0.2);
+                box-shadow: 0 4px 10px color-mix(in srgb, var(--chatroom-ui-primary) 20%, transparent);
             }
         }
     }
@@ -180,7 +183,7 @@
         }
 
         &.o_active {
-            background: #f3edf2;
+            background: color-mix(in srgb, var(--chatroom-ui-primary) 9%, #fff);
 
             &::before {
                 position: absolute;
@@ -316,7 +319,7 @@
         &:focus {
             border-color: var(--chatroom-ui-primary);
             background: #fff;
-            box-shadow: 0 0 0 3px rgba(113, 75, 103, 0.1);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--chatroom-ui-primary) 10%, transparent);
         }
     }
 
@@ -330,7 +333,7 @@
 
         &:hover,
         &:focus-visible {
-            background: rgba(113, 75, 103, 0.1);
+            background: color-mix(in srgb, var(--chatroom-ui-primary) 10%, transparent);
             color: var(--chatroom-ui-primary);
             transform: translateY(-1px);
         }
@@ -340,12 +343,12 @@
         width: calc(40px * var(--chatroom-ui-icon-scale, 1));
         height: calc(40px * var(--chatroom-ui-icon-scale, 1));
         background: var(--chatroom-ui-primary);
-        box-shadow: 0 5px 12px rgba(113, 75, 103, 0.22);
+            box-shadow: 0 5px 12px color-mix(in srgb, var(--chatroom-ui-primary) 22%, transparent);
         transition: transform 160ms ease, box-shadow 160ms ease;
 
         &:hover {
             transform: translateY(-1px);
-            box-shadow: 0 7px 16px rgba(113, 75, 103, 0.3);
+            box-shadow: 0 7px 16px color-mix(in srgb, var(--chatroom-ui-primary) 30%, transparent);
         }
     }
 
@@ -425,7 +428,7 @@
 .o_chatroom_app button:focus-visible,
 .o_chatroom_thread button:focus-visible,
 .o_chatroom_contact_panel button:focus-visible {
-    outline: 3px solid rgba(113, 75, 103, 0.22);
+    outline: 3px solid color-mix(in srgb, var(--chatroom-ui-primary) 22%, transparent);
     outline-offset: 2px;
 }
 
@@ -461,6 +464,22 @@
         .o_chatroom_contact_panel {
             width: 100%;
             max-width: 100%;
+        }
+    }
+
+    :root[data-chatroom-mobile-compact="1"] .o_chatroom_app {
+        .o_chatroom_app_header {
+            min-height: 48px;
+            padding-block: 6px;
+        }
+
+        .o_chatroom_app_toolbar {
+            gap: 4px;
+            padding: 5px 8px;
+        }
+
+        .o_chatroom_app_sidebar_filters {
+            padding: 6px 8px;
         }
     }
 }

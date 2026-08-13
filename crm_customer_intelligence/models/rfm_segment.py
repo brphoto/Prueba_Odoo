@@ -31,11 +31,11 @@ class RfmSegment(models.Model):
 
     rule_logic = fields.Selection([
         ('all', 'Cumplir todas las reglas'), ('any', 'Cumplir al menos una regla'),
-    ], string='LÃ³gica de reglas', default='all', required=True)
+    ], string='Lógica de reglas', default='all', required=True)
     rule_ids = fields.One2many(
         'crm.rfm.segment.rule', 'segment_id', string='Reglas visuales', copy=True)
     action_ids = fields.One2many(
-        'crm.rfm.segment.action', 'segment_id', string='Acciones automÃ¡ticas', copy=True)
+        'crm.rfm.segment.action', 'segment_id', string='Acciones automáticas', copy=True)
     preview_count = fields.Integer(compute='_compute_preview_count', string='Contactos coincidentes')
 
     @api.model
@@ -83,8 +83,8 @@ class RfmSegment(models.Model):
         if self.max_days_since_sale:
             cutoff = fields.Date.subtract(fields.Date.context_today(self), days=self.max_days_since_sale)
             partners = partners.filtered(
-                lambda partner: partner.commercial_last_sale_date and
-                partner.commercial_last_sale_date >= cutoff)
+                lambda partner: (partner.rfm_last_purchase_date or partner.commercial_last_sale_date) and
+                (partner.rfm_last_purchase_date or partner.commercial_last_sale_date) >= cutoff)
         return partners
 
     @api.depends('category', 'category_id', 'use_score_filter', 'score_min', 'score_max',

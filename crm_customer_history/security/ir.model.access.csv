@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_crm_customer_history_batch_user,crm.customer.history.batch.user,model_crm_customer_history_batch,crm_customer_history.group_crm_customer_history_user,1,1,1,0
+access_crm_customer_history_batch_manager,crm.customer.history.batch.manager,model_crm_customer_history_batch,crm_customer_history.group_crm_customer_history_manager,1,1,1,1
+access_crm_customer_history_line_user,crm.customer.history.line.user,model_crm_customer_history_line,crm_customer_history.group_crm_customer_history_user,1,1,1,0
+access_crm_customer_history_line_manager,crm.customer.history.line.manager,model_crm_customer_history_line,crm_customer_history.group_crm_customer_history_manager,1,1,1,1

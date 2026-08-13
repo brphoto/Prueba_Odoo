@@ -45,8 +45,8 @@ class RfmReactivationRule(models.Model):
             cutoff = today - timedelta(days=max(1, rule.days_allowed))
             partners = Partner.search([]).filtered(lambda partner: (
                 partner.rfm_category == rule.category_code
-                and partner.commercial_last_sale_date
-                and partner.commercial_last_sale_date < cutoff
+                and (partner.rfm_last_purchase_date or partner.commercial_last_sale_date)
+                and (partner.rfm_last_purchase_date or partner.commercial_last_sale_date) < cutoff
             ))
             for partner in partners:
                 if Lead.search_count([

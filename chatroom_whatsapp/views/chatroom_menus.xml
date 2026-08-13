@@ -51,13 +51,17 @@
               parent="menu_chatroom_communication" action="action_chatroom_message"
               sequence="20" groups="chatroom_whatsapp.group_chatroom_manager"/>
 
+    <menuitem id="menu_chatroom_failed_messages" name="Mensajes fallidos"
+              parent="menu_chatroom_communication" action="action_chatroom_failed_message"
+              sequence="21" groups="chatroom_whatsapp.group_chatroom_user"/>
+
     <menuitem id="menu_chatroom_scheduled_messages" name="Mensajes programados"
               parent="menu_chatroom_communication" action="action_chatroom_scheduled_message"
               sequence="25"/>
 
     <menuitem id="menu_chatroom_metrics" name="Métricas"
               parent="menu_chatroom_operation" action="action_chatroom_metrics"
-              sequence="30" groups="chatroom_whatsapp.group_chatroom_manager"/>
+              sequence="30" groups="chatroom_whatsapp.group_chatroom_supervisor"/>
 
     <menuitem id="menu_chatroom_canned_responses" name="Respuestas rápidas"
               parent="menu_chatroom_communication" action="action_chatroom_canned_response"

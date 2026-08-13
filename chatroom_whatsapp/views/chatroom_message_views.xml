@@ -6,6 +6,10 @@
         <field name="model">chatroom.message</field>
         <field name="arch" type="xml">
             <list default_order="date desc">
+                <header>
+                    <button name="action_retry_failed_batch" type="object"
+                            string="Reintentar seleccionados" class="btn-primary"/>
+                </header>
                 <field name="date"/>
                 <field name="channel_id"/>
                 <field name="direction"/>
@@ -21,6 +25,11 @@
         <field name="model">chatroom.message</field>
         <field name="arch" type="xml">
             <form string="Mensaje">
+                <header>
+                    <button name="action_retry_from_audit" type="object" string="Reintentar envío"
+                            class="btn-primary" invisible="state != 'failed' or direction != 'outbound'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,sent,delivered,read,failed"/>
+                </header>
                 <sheet>
                     <group>
                         <group>
@@ -47,6 +56,22 @@
         <field name="name">Mensajes (auditoría)</field>
         <field name="res_model">chatroom.message</field>
         <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_retry_failed_messages_server" model="ir.actions.server">
+        <field name="name">Reintentar mensajes fallidos</field>
+        <field name="model_id" ref="model_chatroom_message"/>
+        <field name="binding_model_id" ref="model_chatroom_message"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_retry_failed_batch()</field>
+    </record>
+
+    <record id="action_chatroom_failed_message" model="ir.actions.act_window">
+        <field name="name">Mensajes fallidos</field>
+        <field name="res_model">chatroom.message</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('direction', '=', 'outbound'), ('state', '=', 'failed')]</field>
     </record>
 
 </odoo>

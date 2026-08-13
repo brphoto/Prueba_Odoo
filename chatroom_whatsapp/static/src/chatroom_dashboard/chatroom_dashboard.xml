@@ -61,6 +61,17 @@
                         <div class="o_chatroom_kpi_value" t-esc="state.unreadTotal"/>
                         <div class="o_chatroom_kpi_label">Mensajes sin leer</div>
                     </div>
+                    <div t-if="state.managementAlerts.total"
+                         t-attf-class="o_chatroom_kpi_tile {{ state.managementAlerts.danger ? 'o_chatroom_kpi_danger' : 'o_chatroom_kpi_warning' }}"
+                         t-on-click="openManagementAlerts"
+                         title="Abrir alertas gerenciales">
+                        <i class="fa fa-exclamation-triangle o_chatroom_kpi_icon"/>
+                        <div class="o_chatroom_kpi_value" t-esc="state.managementAlerts.total"/>
+                        <div class="o_chatroom_kpi_label">
+                            Alertas abiertas
+                            (<t t-esc="state.managementAlerts.danger"/> críticas)
+                        </div>
+                    </div>
                     <div class="o_chatroom_kpi_tile">
                         <i class="fa fa-paper-plane o_chatroom_kpi_icon"/>
                         <div class="o_chatroom_kpi_value" t-esc="state.messagesToday"/>

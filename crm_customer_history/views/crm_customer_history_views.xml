@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_customer_history_batch_list" model="ir.ui.view">
+        <field name="name">crm.customer.history.batch.list</field>
+        <field name="model">crm.customer.history.batch</field>
+        <field name="arch" type="xml">
+            <list decoration-success="state == 'approved'" decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="file_name"/>
+                <field name="company_id"/>
+                <field name="history_date_from"/>
+                <field name="history_date_to"/>
+                <field name="line_count"/>
+                <field name="valid_count"/>
+                <field name="error_count"/>
+                <field name="duplicate_count"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_crm_customer_history_batch_form" model="ir.ui.view">
+        <field name="name">crm.customer.history.batch.form</field>
+        <field name="model">crm.customer.history.batch</field>
+        <field name="arch" type="xml">
+            <form string="Histórico comercial">
+                <header>
+                    <button name="action_import_file" type="object" string="Importar archivo"
+                            class="btn-primary" invisible="state in ('approved', 'cancelled')"/>
+                    <button name="action_revalidate" type="object" string="Revalidar filas"
+                            invisible="state != 'loaded'"/>
+                    <button name="action_approve" type="object" string="Aprobar histórico"
+                            class="btn-primary" invisible="state != 'loaded'"/>
+                    <button name="action_recompute_rfm" type="object" string="Recalcular RFM"
+                            invisible="state != 'approved'"/>
+                    <button name="action_cancel" type="object" string="Cancelar"
+                            invisible="state in ('approved', 'cancelled')"/>
+                    <button name="action_revert_approval" type="object" string="Revertir aprobación"
+                            class="btn-secondary" groups="crm_customer_history.group_crm_customer_history_manager"
+                            invisible="state != 'approved'"
+                            confirm="El lote dejará de alimentar RFM, pero conservará sus datos y trazabilidad. ¿Continuar?"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,loaded,approved"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_lines" type="object" class="oe_stat_button" icon="fa-list">
+                            <field name="line_count" widget="statinfo" string="Filas"/>
+                        </button>
+                        <button name="action_open_errors" type="object" class="oe_stat_button" icon="fa-warning">
+                            <field name="error_count" widget="statinfo" string="Errores"/>
+                        </button>
+                    </div>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group string="Archivo">
+                            <field name="file_data" filename="file_name"/>
+                            <field name="file_name" invisible="1"/>
+                    <button name="action_download_template" type="object" string="Descargar plantilla XLSX"
+                                    class="btn-secondary"/>
+                            <button name="action_export_csv" type="object" string="Exportar resultado CSV"
+                                    class="btn-secondary" invisible="not line_count"/>
+                            <field name="create_missing_partners"/>
+                        </group>
+                        <group string="Resumen">
+                            <field name="company_id"/>
+                            <field name="history_date_from"/>
+                            <field name="history_date_to"/>
+                            <field name="valid_count"/>
+                            <field name="duplicate_count"/>
+                            <field name="unmatched_count"/>
+                        </group>
+                        <group string="Trazabilidad">
+                            <field name="approved_at" invisible="not approved_at"/>
+                            <field name="approved_by" invisible="not approved_by"/>
+                            <field name="cancelled_at" invisible="not cancelled_at"/>
+                            <field name="cancelled_by" invisible="not cancelled_by"/>
+                        </group>
+                    </group>
+                    <field name="note" placeholder="Notas del origen, período o criterio de carga..."/>
+                    <notebook>
+                        <page name="lines" string="Detalle importado">
+                            <field name="line_ids" readonly="state == 'approved'">
+                                <list decoration-danger="state == 'error'" decoration-warning="state == 'duplicate'">
+                                    <field name="row_number"/>
+                                    <field name="customer_name"/>
+                                    <field name="partner_id"/>
+                                    <field name="suggested_partner_ids" widget="many2many_tags"/>
+                                    <field name="invoice_number"/>
+                                    <field name="invoice_date"/>
+                                    <field name="amount_total"/>
+                                    <field name="currency_id"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="error_message"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_crm_customer_history_line_list" model="ir.ui.view">
+        <field name="name">crm.customer.history.line.list</field>
+        <field name="model">crm.customer.history.line</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="state == 'error'" decoration-warning="state == 'duplicate'">
+                <field name="batch_id"/>
+                <field name="row_number"/>
+                <field name="customer_name"/>
+                <field name="partner_id"/>
+                <field name="invoice_number"/>
+                <field name="invoice_date"/>
+                <field name="move_type"/>
+                <field name="amount_total"/>
+                <field name="currency_id"/>
+                <field name="company_amount_total"/>
+                <field name="partner_match_state" widget="badge"/>
+                <field name="state" widget="badge"/>
+                <field name="error_message"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_crm_customer_history_line_form" model="ir.ui.view">
+        <field name="name">crm.customer.history.line.form</field>
+        <field name="model">crm.customer.history.line</field>
+        <field name="arch" type="xml">
+            <form string="Detalle histórico">
+                <sheet>
+                    <group>
+                        <group string="Cliente">
+                            <field name="partner_id"/>
+                            <field name="suggested_partner_ids" widget="many2many_tags"/>
+                            <field name="customer_name"/>
+                            <field name="customer_vat"/>
+                            <field name="customer_email"/>
+                            <field name="customer_phone"/>
+                            <field name="partner_match_state"/>
+                            <button name="action_use_suggested_partner" type="object"
+                                    string="Usar coincidencia sugerida" class="btn-secondary"
+                                    invisible="partner_id or suggested_partner_ids == False"/>
+                        </group>
+                        <group string="Documento">
+                            <field name="batch_id"/>
+                            <field name="row_number"/>
+                            <field name="invoice_number"/>
+                            <field name="invoice_date"/>
+                            <field name="move_type"/>
+                            <field name="amount_total"/>
+                            <field name="currency_id"/>
+                            <field name="company_amount_total"/>
+                            <field name="state"/>
+                        </group>
+                    </group>
+                    <field name="error_message"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_crm_customer_history_batch" model="ir.actions.act_window">
+        <field name="name">Cargas históricas</field>
+        <field name="res_model">crm.customer.history.batch</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="action_crm_customer_history_line" model="ir.actions.act_window">
+        <field name="name">Detalle de históricos</field>
+        <field name="res_model">crm.customer.history.line</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

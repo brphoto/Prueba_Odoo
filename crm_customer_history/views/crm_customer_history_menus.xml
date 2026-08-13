@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_crm_customer_history" name="Históricos comerciales"
+              parent="crm_customer_intelligence.menu_crm_intelligence_config" sequence="32"
+              groups="crm_customer_history.group_crm_customer_history_user"/>
+    <menuitem id="menu_crm_customer_history_batches" name="Cargas históricas"
+              parent="menu_crm_customer_history" action="action_crm_customer_history_batch" sequence="10"/>
+    <menuitem id="menu_crm_customer_history_lines" name="Detalle de compras históricas"
+              parent="menu_crm_customer_history" action="action_crm_customer_history_line" sequence="20"/>
+</odoo>

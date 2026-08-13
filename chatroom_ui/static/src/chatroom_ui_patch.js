@@ -72,6 +72,7 @@ patch(ChatroomApp.prototype, {
             "--chatroom-ui-message-gap": settings.message_gap,
             "--chatroom-ui-bubble-padding": settings.bubble_padding,
         };
+        document.documentElement.dataset.chatroomMobileCompact = settings.mobile_compact ? "1" : "0";
         const roots = [...document.querySelectorAll(".o_chatroom_app")];
         if (this.el?.classList.contains("o_chatroom_app") && !roots.includes(this.el)) {
             roots.push(this.el);
@@ -122,6 +123,7 @@ patch(ChatroomApp.prototype, {
             "--chatroom-ui-chat-background-repeat",
         ];
         targets.forEach((target) => names.forEach((name) => target.style.removeProperty(name)));
+        delete document.documentElement.dataset.chatroomMobileCompact;
         window.removeEventListener("chatroom_ui_settings_updated", this._chatroomUiRefresh);
         window.removeEventListener("focus", this._chatroomUiRefresh);
     },

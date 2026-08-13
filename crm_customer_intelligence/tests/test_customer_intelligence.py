@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+import base64
 from datetime import timedelta
 
+from odoo import fields
 from odoo.exceptions import UserError
 from odoo.fields import Datetime
 from odoo.tests import TransactionCase, tagged
@@ -10,10 +12,22 @@ from odoo.tests import TransactionCase, tagged
 class TestCrmCustomerIntelligence(TransactionCase):
 
     def _create_posted_invoice(self, partner, product, price, invoice_date):
+        country = self.env['res.country'].search([('code', '=', 'EC')], limit=1)
+        document_type = self.env['l10n_latam.document.type'].search([
+            ('country_id', '=', country.id), ('code', '=', '01')], limit=1)
+        # La base de pruebas usa la localización ecuatoriana: una factura
+        # publicada debe tener identificación, país y tipo de documento.
+        partner.write({
+            'vat': partner.vat or '9999999999999',
+            'country_id': partner.country_id.id or country.id,
+        })
         invoice = self.env['account.move'].create({
             'move_type': 'out_invoice',
             'partner_id': partner.id,
             'invoice_date': invoice_date,
+            'l10n_latam_document_type_id': document_type.id,
+            'l10n_latam_document_number': '001-001-%09d' % (
+                partner.id * 100 + len(partner.invoice_ids) + 1),
             'invoice_line_ids': [(0, 0, {
                 'product_id': product.id,
                 'quantity': 1,
@@ -55,9 +69,15 @@ class TestCrmCustomerIntelligence(TransactionCase):
     def test_commercial_metrics_only_counts_posted_invoices(self):
         partner = self.env['res.partner'].create({'name': "Cliente Métricas"})
         product = self.env['product.product'].create({'name': "Producto Métrica", 'type': 'consu'})
+        country = self.env['res.country'].search([('code', '=', 'EC')], limit=1)
+        document_type = self.env['l10n_latam.document.type'].search([
+            ('country_id', '=', country.id), ('code', '=', '01')], limit=1)
         draft_invoice = self.env['account.move'].create({
             'move_type': 'out_invoice',
             'partner_id': partner.id,
+            'invoice_date': '2024-01-01',
+            'l10n_latam_document_type_id': document_type.id,
+            'l10n_latam_document_number': '001-001-000000999',
             'invoice_line_ids': [(0, 0, {'product_id': product.id, 'quantity': 1, 'price_unit': 50.0})],
         })
         self._create_posted_invoice(partner, product, 200.0, '2024-02-01')
@@ -121,3 +141,43 @@ class TestCrmCustomerIntelligence(TransactionCase):
 
         self.assertEqual(big_partner.rfm_category, 'a')
         self.assertGreater(big_partner.rfm_score, small_partner.rfm_score)
+        self.assertEqual(big_partner.rfm_frequency, 1)
+        self.assertEqual(big_partner.rfm_monetary_value, 10000.0)
+        self.assertTrue(big_partner.rfm_explanation)
+        csv_action = self.env['res.partner'].action_export_rfm_dashboard_csv('all', 'all')
+        self.assertIn('/web/content/', csv_action['url'])
+
+    def test_rfm_cron_clears_stale_customer_values(self):
+        partner = self.env['res.partner'].create({'name': "Cliente sin compras"})
+        partner.write({
+            'rfm_score': 88,
+            'rfm_category': 'a',
+            'rfm_frequency': 3,
+            'rfm_monetary_value': 450.0,
+        })
+
+        self.env['res.partner']._cron_compute_rfm_scores()
+
+        self.assertEqual(partner.rfm_score, 0)
+        self.assertEqual(partner.rfm_category, 'none')
+        self.assertEqual(partner.rfm_frequency, 0)
+        self.assertEqual(partner.rfm_monetary_value, 0.0)
+
+    def test_rfm_dashboard_comparison_includes_approved_history(self):
+        historical_date = fields.Date.add(fields.Date.context_today(self), days=-120)
+        csv_text = (
+            'Nombre Cliente,RUC,Número Factura,Fecha Factura,Monto,Moneda\n'
+            'Cliente comparación,999999999991,HIST-COMP,%s,250,USD\n'
+        ) % fields.Date.to_string(historical_date)
+        batch = self.env['crm.customer.history.batch'].create({
+            'name': 'Comparación histórica',
+            'file_name': 'comparison.csv',
+            'file_data': base64.b64encode(csv_text.encode()),
+        })
+        batch.action_import_file()
+        batch.action_approve()
+
+        dashboard = self.env['res.partner'].get_rfm_dashboard_data('90', 'all')
+
+        self.assertEqual(dashboard['comparison']['previous_sales'], 250.0)
+        self.assertEqual(dashboard['comparison']['previous_invoice_count'], 1)

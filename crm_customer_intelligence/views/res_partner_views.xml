@@ -25,12 +25,23 @@
                                    decoration-muted="rfm_category in ('c', 'none')"/>
                             <field name="rfm_score"/>
                         </group>
+                        <group string="Cómo se calculó">
+                            <field name="rfm_recency_days"/>
+                            <field name="rfm_frequency"/>
+                            <field name="rfm_monetary_value"/>
+                            <field name="rfm_last_purchase_date"/>
+                            <field name="rfm_last_computed_at"/>
+                        </group>
                         <group string="Histórico de ventas">
                             <field name="commercial_total_sales"/>
                             <field name="commercial_avg_ticket"/>
                             <field name="commercial_invoice_count"/>
                             <field name="commercial_last_sale_date"/>
                         </group>
+                    </group>
+                    <group string="Explicación de la clasificación"
+                           invisible="not rfm_explanation">
+                        <field name="rfm_explanation" nolabel="1" readonly="1"/>
                     </group>
                     <group string="Análisis Pareto (80/20)" invisible="not commercial_top_product_summary">
                         <field name="commercial_top_product_summary" nolabel="1" readonly="1"/>

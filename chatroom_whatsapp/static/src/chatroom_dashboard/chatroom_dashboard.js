@@ -34,6 +34,7 @@ export class ChatroomDashboard extends Component {
             slaAnsweredCount: 0,
             avgCsatScore: 0,
             csatAnsweredCount: 0,
+            managementAlerts: { total: 0, danger: 0, warning: 0 },
             customKpis: [],
             stageBreakdown: [],
             dashboardWidgets: [],
@@ -67,6 +68,7 @@ export class ChatroomDashboard extends Component {
         this.state.slaAnsweredCount = data.sla_answered_count;
         this.state.avgCsatScore = data.avg_csat_score;
         this.state.csatAnsweredCount = data.csat_answered_count;
+        this.state.managementAlerts = data.management_alerts || { total: 0, danger: 0, warning: 0 };
         this.state.customKpis = data.custom_kpis || [];
         this.state.stageBreakdown = data.stage_breakdown || [];
         this.state.dashboardWidgets = data.dashboard_widgets || [];
@@ -124,6 +126,10 @@ export class ChatroomDashboard extends Component {
         this.action.doAction("chatroom_whatsapp.action_chatroom_channel", {
             additionalContext: { search_default_unread: 1 },
         });
+    }
+
+    openManagementAlerts() {
+        this.action.doAction("crm_customer_intelligence.action_crm_management_alert");
     }
 
     openToday() {

@@ -1,4 +1,4 @@
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 
@@ -12,8 +12,21 @@ class ChatroomPaymentLinkWizard(models.TransientModel):
         domain="[('partner_id', '=', channel_partner_id), ('state', 'in', ('draft', 'sent', 'sale'))]"
     )
     channel_partner_id = fields.Many2one(related='channel_id.partner_id')
+    provider_id = fields.Many2one(
+        'payment.provider', string='Proveedor de pago',
+        domain="[('state', 'in', ('enabled', 'test')), '|', ('company_id', '=', False), ('company_id', '=', company_id)]",
+        default=lambda self: self._default_provider(),
+        help='Selecciona PayPhone para usar su API Link. Si lo dejas vacío, se usará el flujo estándar de Odoo.')
+    company_id = fields.Many2one(related='channel_id.company_id', readonly=True)
     product_id = fields.Many2one('product.product', string='Producto nuevo')
     product_qty = fields.Float(string='Cantidad', default=1.0)
+
+    @api.model
+    def _default_provider(self):
+        providers = self.env['payment.provider'].sudo().search([
+            ('state', 'in', ('enabled', 'test')),
+        ], order='sequence, id')
+        return providers.filtered(lambda provider: provider.code == 'payphone')[:1].id or False
 
     def action_send(self):
         self.ensure_one()
@@ -29,5 +42,8 @@ class ChatroomPaymentLinkWizard(models.TransientModel):
                     'product_uom_qty': max(1.0, self.product_qty),
                 })],
             })
-        self.channel_id.action_send_payment_link('sale.order', order.id)
+        channel = self.channel_id
+        if self.provider_id:
+            channel = channel.with_context(chatroom_payment_provider_id=self.provider_id.id)
+        channel.action_send_payment_link('sale.order', order.id)
         return {'type': 'ir.actions.act_window_close'}

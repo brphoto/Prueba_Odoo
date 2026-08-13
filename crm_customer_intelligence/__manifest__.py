@@ -50,11 +50,12 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
     'icon': '/crm_customer_intelligence/static/description/icon.svg',
 
     'category': 'Sales/CRM',
-    'version': '19.0.1.0.6',
+    'version': '19.0.1.1.3',
 
     'depends': ['crm', 'sale', 'account', 'kpi_engine'],
 
     'data': [
+        'security/crm_intelligence_security.xml',
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
         'data/kpi_definition_data.xml',

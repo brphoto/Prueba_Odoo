@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
+import base64
+import csv
+import io
 from datetime import timedelta
+
+from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -42,11 +47,27 @@ class ResPartner(models.Model):
         selection='_selection_rfm_category',
         string="Categoría RFM", default='none', copy=False, index=True,
         help="Clasificación simplificada A/B/C de valor del cliente, "
-        "calculada por el mismo cron que el score RFM.")
+             "calculada por el mismo cron que el score RFM.")
+    rfm_recency_days = fields.Integer(
+        string="Recencia (días)", default=0, copy=False, readonly=True,
+        help="Días transcurridos desde la última compra usada para el cálculo RFM.")
+    rfm_frequency = fields.Integer(
+        string="Frecuencia RFM", default=0, copy=False, readonly=True,
+        help="Cantidad de compras consideradas por el cálculo RFM.")
+    rfm_monetary_value = fields.Monetary(
+        string="Valor monetario RFM", currency_field='currency_id', default=0.0,
+        copy=False, readonly=True,
+        help="Monto acumulado considerado por el cálculo RFM.")
+    rfm_last_purchase_date = fields.Date(
+        string="Última compra RFM", copy=False, readonly=True)
+    rfm_last_computed_at = fields.Datetime(
+        string="RFM calculado el", copy=False, readonly=True)
+    rfm_explanation = fields.Text(
+        string="Explicación RFM", compute='_compute_rfm_explanation')
 
     @api.model
     def _selection_rfm_category(self):
-        """CategorÃ­as configurables, conservando A/B/C como respaldo."""
+        """Categorías configurables, conservando A/B/C como respaldo."""
         options = list(RFM_CATEGORIES)
         try:
             configured = self.env['crm.rfm.category'].search([], order='sequence, id')
@@ -57,6 +78,30 @@ class ResPartner(models.Model):
             pass
         return options
 
+    @api.depends(
+        'rfm_category', 'rfm_score', 'rfm_recency_days', 'rfm_frequency',
+        'rfm_monetary_value', 'rfm_last_purchase_date',
+    )
+    def _compute_rfm_explanation(self):
+        for partner in self:
+            if not partner.rfm_frequency:
+                partner.rfm_explanation = _(
+                    'Sin compras válidas: todavía no hay datos suficientes para clasificar.')
+                continue
+            category = dict(RFM_CATEGORIES).get(partner.rfm_category, partner.rfm_category or '')
+            partner.rfm_explanation = _(
+                'Categoría %(category)s con score %(score)s. '
+                'Última compra: %(last)s (%(recency)s días), '
+                '%(frequency)s compras y %(amount)s de valor acumulado.'
+            ) % {
+                'category': category,
+                'score': partner.rfm_score,
+                'last': partner.rfm_last_purchase_date or _('sin fecha'),
+                'recency': partner.rfm_recency_days,
+                'frequency': partner.rfm_frequency,
+                'amount': partner.rfm_monetary_value,
+            }
+
     def action_schedule_rfm_followup(self):
         """Acción masiva: crea una actividad nativa para los contactos seleccionados."""
         activity_type = self.env['mail.activity.type'].search(
@@ -65,6 +110,21 @@ class ResPartner(models.Model):
             raise UserError(_('No hay tipos de actividad configurados en Odoo.'))
         model_id = self.env['ir.model']._get_id('res.partner')
         deadline = fields.Date.add(fields.Date.context_today(self), days=3)
+        existing = self.env['mail.activity'].search([
+            ('res_model_id', '=', model_id), ('res_id', 'in', self.ids),
+            ('summary', '=', _('Seguimiento RFM')),
+            ('user_id', '=', self.env.user.id),
+            ('date_deadline', '>=', fields.Date.context_today(self)),
+        ])
+        existing_ids = set(existing.mapped('res_id'))
+        partners = self.filtered(lambda partner: partner.id not in existing_ids)
+        if not partners:
+            return {
+                'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'title': _('Seguimientos'),
+                           'message': _('Los clientes seleccionados ya tienen un seguimiento RFM abierto.'),
+                           'type': 'info'},
+            }
         self.env['mail.activity'].create([{
             'activity_type_id': activity_type.id,
             'summary': _('Seguimiento RFM'),
@@ -73,13 +133,22 @@ class ResPartner(models.Model):
             'user_id': self.env.user.id,
             'res_model_id': model_id,
             'res_id': partner.id,
-        } for partner in self])
+        } for partner in partners])
         return {
             'type': 'ir.actions.client', 'tag': 'display_notification',
             'params': {'title': _('Actividades creadas'),
-                       'message': _('%s seguimientos fueron programados.') % len(self),
+                       'message': _('%s seguimientos fueron programados.') % len(partners),
                        'type': 'success'},
         }
+
+    @api.model
+    def action_schedule_rfm_dashboard_followups(self, period='90', category='all', source='all'):
+        """Schedule idempotent follow-ups for customers shown by the dashboard."""
+        data = self.get_rfm_dashboard_data(period, category, include_all=True, source=source)
+        ids = [row.get('id') for row in data.get('export_customers', []) if row.get('id')]
+        if not ids:
+            raise UserError(_('No hay clientes con compras en el filtro seleccionado.'))
+        return self.browse(ids).action_schedule_rfm_followup()
 
     def _compute_commercial_metrics(self):
         Move = self.env['account.move']
@@ -204,7 +273,47 @@ class ResPartner(models.Model):
         }
 
     @api.model
-    def get_rfm_dashboard_data(self, period='90', category='all'):
+    def action_recompute_rfm_dashboard(self):
+        """Recalculate the portfolio from the dashboard with a clear response."""
+        if not (
+            self.env.user.has_group('sales_team.group_sale_manager')
+            or self.env.user.has_group('base.group_system')
+        ):
+            raise UserError(_('Solo un gerente puede recalcular toda la cartera RFM.'))
+        self.sudo()._cron_compute_rfm_scores()
+        return True
+
+    @api.model
+    def action_export_rfm_dashboard_csv(self, period='90', category='all', source='all'):
+        """Export the visible commercial summary without creating sales data."""
+        data = self.get_rfm_dashboard_data(period, category, include_all=True, source=source)
+        output = io.StringIO(newline='')
+        writer = csv.writer(output)
+        writer.writerow([
+            _('Cliente'), _('Categoría RFM'), _('Score'),
+            _('Ventas del período'), _('Facturas del período'),
+        ])
+        for row in data.get('export_customers', data.get('top_customers', [])):
+            writer.writerow([
+                row.get('name', ''), row.get('category', ''), row.get('score', 0),
+                row.get('total', 0.0), row.get('invoice_count', 0),
+            ])
+        attachment = self.env['ir.attachment'].sudo().create({
+            'name': 'resumen_rfm_%s.csv' % fields.Date.context_today(self),
+            'type': 'binary',
+            'datas': base64.b64encode(output.getvalue().encode('utf-8-sig')),
+            'mimetype': 'text/csv',
+            'res_model': 'res.partner',
+            'res_id': self.env.user.partner_id.id,
+        })
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/web/content/%s?download=true' % attachment.id,
+            'target': 'self',
+        }
+
+    @api.model
+    def get_rfm_dashboard_data(self, period='90', category='all', include_all=False, source='all'):
         """Return configurable RFM and commercial KPIs for the dashboard."""
         today = fields.Date.context_today(self)
         date_from = False
@@ -224,25 +333,39 @@ class ResPartner(models.Model):
         ]
         if date_from:
             invoice_domain.append(('invoice_date', '>=', date_from))
-        grouped = self.env['account.move']._read_group(
-            invoice_domain,
-            groupby=['partner_id'],
-            aggregates=['amount_total_signed:sum', '__count'],
-        )
+        grouped = [] if source == 'history' else self.env['account.move']._read_group(
+            invoice_domain, groupby=['partner_id'],
+            aggregates=['amount_total_signed:sum', '__count'])
 
-        customer_rows = []
+        metrics_by_partner = {}
         for partner, total, count in grouped:
             if not partner:
                 continue
-            customer_rows.append({
-                'id': partner.id,
-                'name': partner.display_name,
-                'total': round(total or 0.0, 2),
-                'invoice_count': count,
-                'category': partner.rfm_category or 'none',
-                'score': partner.rfm_score or 0,
+            metrics_by_partner[partner.id] = {
+                'partner': partner, 'total': total or 0.0, 'invoice_count': count or 0,
+            }
+        external_rows = [] if source == 'native' else self._get_rfm_dashboard_external_rows(partner_ids, date_from)
+        for item in external_rows:
+            partner = item.get('partner')
+            if not partner:
+                continue
+            current = metrics_by_partner.setdefault(partner.id, {
+                'partner': partner, 'total': 0.0, 'invoice_count': 0,
             })
+            current['total'] += item.get('total', 0.0) or 0.0
+            current['invoice_count'] += item.get('invoice_count', 0) or 0
+        customer_rows = [{
+            'id': item['partner'].id,
+            'name': item['partner'].display_name,
+            'total': round(item['total'], 2),
+            'invoice_count': item['invoice_count'],
+            'category': item['partner'].rfm_category or 'none',
+            'score': item['partner'].rfm_score or 0,
+        } for item in metrics_by_partner.values()]
         customer_rows.sort(key=lambda row: row['total'], reverse=True)
+
+        computed_dates = [value for value in partners.mapped('rfm_last_computed_at') if value]
+        last_computed = max(computed_dates) if computed_dates else False
 
         total_sales = round(sum(row['total'] for row in customer_rows), 2)
         invoice_count = sum(row['invoice_count'] for row in customer_rows)
@@ -257,12 +380,18 @@ class ResPartner(models.Model):
                 ('invoice_date', '>=', previous_from),
                 ('invoice_date', '<', date_from),
             ]
-            previous_group = self.env['account.move']._read_group(
+            previous_group = [] if source == 'history' else self.env['account.move']._read_group(
                 previous_domain, groupby=[],
                 aggregates=['amount_total_signed:sum', '__count'])
             if previous_group:
                 previous_total = round(previous_group[0][0] or 0.0, 2)
                 previous_invoice_count = previous_group[0][1] or 0
+            previous_external_rows = [] if source == 'native' else self._get_rfm_dashboard_external_rows(
+                partner_ids, previous_from, date_from)
+            previous_total += sum(
+                item.get('total', 0.0) or 0.0 for item in previous_external_rows)
+            previous_invoice_count += sum(
+                item.get('invoice_count', 0) or 0 for item in previous_external_rows)
         sales_variation = round(
             ((total_sales - previous_total) / previous_total) * 100, 1
         ) if previous_total else False
@@ -320,11 +449,14 @@ class ResPartner(models.Model):
             }
             for value in all_categories
         ]
+        evolution = self._get_rfm_dashboard_evolution(
+            partner_ids, category, source, today)
         return {
             'period': period,
             'date_from': date_from.isoformat() if date_from else False,
             'date_to': today.isoformat(),
             'category': category or 'all',
+            'source': source or 'all',
             'customer_count': len(partners),
             'active_customer_count': len(customer_rows),
             'total_sales': total_sales,
@@ -342,9 +474,62 @@ class ResPartner(models.Model):
             'category_options': configured_categories,
             'distribution': distribution,
             'top_customers': customer_rows[:10],
+            'export_customers': customer_rows if include_all else False,
             'top_products': top_products,
+            'evolution': evolution,
+            'last_computed_at': fields.Datetime.to_string(last_computed) if last_computed else False,
+            'can_recompute': (
+                self.env.user.has_group('sales_team.group_sale_manager')
+                or self.env.user.has_group('base.group_system')
+            ),
             'custom_kpis': self.env['crm.kpi.definition'].get_dashboard_values(period, category),
         }
+
+    @api.model
+    def _get_rfm_dashboard_evolution(self, partner_ids, category='all', source='all', today=False):
+        """Return a stable 12-month series for the dashboard chart."""
+        today = today or fields.Date.context_today(self)
+        first_month = today.replace(day=1) - relativedelta(months=11)
+        months = []
+        cursor = first_month.replace(day=1)
+        for _index in range(12):
+            months.append(cursor)
+            next_month = cursor.replace(day=28) + timedelta(days=4)
+            cursor = next_month.replace(day=1)
+        totals = {month.isoformat(): 0.0 for month in months}
+        counts = {month.isoformat(): 0 for month in months}
+        if source != 'history':
+            moves = self.env['account.move'].search([
+                ('move_type', '=', 'out_invoice'), ('state', '=', 'posted'),
+                ('partner_id', 'in', partner_ids or [0]),
+                ('invoice_date', '>=', first_month),
+            ])
+            for move in moves:
+                month = (move.invoice_date or today).replace(day=1).isoformat()
+                if month in totals:
+                    totals[month] += move.amount_total_signed or 0.0
+                    counts[month] += 1
+        if source != 'native':
+            rows = self._get_rfm_dashboard_evolution_external_rows(
+                partner_ids, first_month, today + timedelta(days=1))
+            for row in rows:
+                date_value = row.get('date')
+                if not date_value:
+                    continue
+                month = date_value.replace(day=1).isoformat()
+                if month in totals:
+                    totals[month] += row.get('total', 0.0) or 0.0
+                    counts[month] += row.get('invoice_count', 1) or 1
+        return [{
+            'month': month.strftime('%Y-%m'),
+            'label': month.strftime('%b %Y'),
+            'total': round(totals[month.isoformat()], 2),
+            'invoice_count': counts[month.isoformat()],
+        } for month in months]
+
+    @api.model
+    def _get_rfm_dashboard_evolution_external_rows(self, partner_ids, date_from, date_to=False):
+        return []
 
     def _get_rfm_weights(self):
         """Pesos configurables (Ajustes > Inteligencia de Clientes) del
@@ -366,6 +551,21 @@ class ResPartner(models.Model):
     def _get_rfm_category_method(self):
         icp = self.env['ir.config_parameter'].sudo()
         return icp.get_param('crm_customer_intelligence.rfm_category_method', 'threshold')
+
+    @api.model
+    def _get_rfm_external_rows(self):
+        """Extension hook for optional historical data providers.
+
+        Providers return ``{partner_id: {partner, total, count, last_date}}``.
+        The core RFM module remains independent from imports, legacy systems,
+        or any other source of commercial history.
+        """
+        return {}
+
+    @api.model
+    def _get_rfm_dashboard_external_rows(self, partner_ids, date_from=False, date_to=False):
+        """Extension hook for optional historical dashboard sources."""
+        return []
 
     def _assign_percentile_categories(self, rows):
         """Corta la cartera ya puntuada en A (20% superior), B (30%
@@ -424,8 +624,34 @@ class ResPartner(models.Model):
             if not partner or total <= 0:
                 continue
             recency_days = (today - last_date).days if last_date else 9999
-            rows.append({'partner': partner, 'total': total, 'count': count, 'recency_days': recency_days})
+            rows.append({
+                'partner': partner, 'total': total, 'count': count,
+                'recency_days': recency_days, 'last_date': last_date,
+            })
+
+        external_rows = self._get_rfm_external_rows()
+        rows_by_partner = {row['partner'].id: row for row in rows}
+        for partner_id, external in external_rows.items():
+            if not external.get('partner') or external.get('total', 0.0) <= 0:
+                continue
+            row = rows_by_partner.get(partner_id)
+            if not row:
+                row = {
+                    'partner': external['partner'], 'total': 0.0,
+                    'count': 0, 'recency_days': 9999, 'last_date': False,
+                }
+                rows.append(row)
+                rows_by_partner[partner_id] = row
+            row['total'] += external.get('total', 0.0)
+            row['count'] += external.get('count', 0)
+            last_date = external.get('last_date')
+            if last_date:
+                external_recency = (today - last_date).days
+                row['recency_days'] = min(row['recency_days'], external_recency)
+                if not row.get('last_date') or last_date > row['last_date']:
+                    row['last_date'] = last_date
         if not rows:
+            self._reset_stale_rfm_values()
             return
 
         def _percentile_rank(values, value, higher_is_better=True):
@@ -454,5 +680,45 @@ class ResPartner(models.Model):
         else:
             self._assign_threshold_categories(rows)
 
+        processed_partner_ids = set()
         for row in rows:
-            row['partner'].write({'rfm_score': row['score'], 'rfm_category': row['category']})
+            processed_partner_ids.add(row['partner'].id)
+            row['partner'].write({
+                'rfm_score': row['score'],
+                'rfm_category': row['category'],
+                'rfm_recency_days': row['recency_days'],
+                'rfm_frequency': row['count'],
+                'rfm_monetary_value': row['total'],
+                'rfm_last_purchase_date': row.get('last_date') or (
+                    today - timedelta(days=row['recency_days'])),
+                'rfm_last_computed_at': fields.Datetime.now(),
+            })
+        self._reset_stale_rfm_values(processed_partner_ids)
+
+    def _reset_stale_rfm_values(self, processed_partner_ids=None):
+        """Remove scores left behind when a customer's last purchase is removed.
+
+        This keeps the dashboard honest after cancelling an invoice or
+        reverting an approved historical batch. Without this cleanup, a
+        customer could retain an old A/B/C classification forever.
+        """
+        domain = [
+            '|', '|', '|',
+            ('rfm_score', '!=', 0),
+            ('rfm_category', '!=', 'none'),
+            ('rfm_frequency', '!=', 0),
+            ('rfm_monetary_value', '!=', 0),
+        ]
+        if processed_partner_ids:
+            domain.append(('id', 'not in', list(processed_partner_ids)))
+        stale = self.search(domain)
+        if stale:
+            stale.write({
+                'rfm_score': 0,
+                'rfm_category': 'none',
+                'rfm_recency_days': 0,
+                'rfm_frequency': 0,
+                'rfm_monetary_value': 0.0,
+                'rfm_last_purchase_date': False,
+                'rfm_last_computed_at': fields.Datetime.now(),
+            })

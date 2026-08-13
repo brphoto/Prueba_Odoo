@@ -50,6 +50,20 @@ class ChatroomControlCenter(models.TransientModel):
         compute='_compute_status', string='Reglas RFM activas', readonly=True)
     rfm_reactivation_count = fields.Integer(
         compute='_compute_status', string='Clientes para reactivar', readonly=True)
+    chatroom_agent_count = fields.Integer(
+        compute='_compute_status', string='Agentes Chatroom', readonly=True)
+    chatroom_supervisor_count = fields.Integer(
+        compute='_compute_status', string='Supervisores Chatroom', readonly=True)
+    chatroom_manager_count = fields.Integer(
+        compute='_compute_status', string='Administradores Chatroom', readonly=True)
+    opportunity_count = fields.Integer(
+        compute='_compute_status', string='Oportunidades', readonly=True)
+    sales_order_count = fields.Integer(
+        compute='_compute_status', string='Presupuestos y pedidos', readonly=True)
+    purchase_order_count = fields.Integer(
+        compute='_compute_status', string='Compras', readonly=True)
+    invoice_count = fields.Integer(
+        compute='_compute_status', string='Facturas', readonly=True)
 
     @api.model
     def action_open_center(self):
@@ -126,6 +140,31 @@ class ChatroomControlCenter(models.TransientModel):
                     ('state', '=', 'pending'),
                 ])
 
+            def company_domain(model_name):
+                if model_name not in self.env or 'company_id' not in self.env[model_name]._fields:
+                    return []
+                return [('company_id', 'in', self.env.companies.ids)]
+
+            def safe_count(model_name, domain):
+                if model_name not in self.env:
+                    return 0
+                return self.env[model_name].sudo().search_count(
+                    company_domain(model_name) + domain)
+
+            record.opportunity_count = safe_count('crm.lead', [
+                ('type', '=', 'opportunity'), ('active', '=', True),
+            ])
+            record.sales_order_count = safe_count('sale.order', [
+                ('state', 'in', ('draft', 'sent', 'sale')),
+            ])
+            record.purchase_order_count = safe_count('purchase.order', [
+                ('state', 'in', ('draft', 'sent', 'to approve', 'purchase')),
+            ])
+            record.invoice_count = safe_count('account.move', [
+                ('move_type', 'in', ('out_invoice', 'out_refund')),
+                ('state', '=', 'posted'),
+            ])
+
             record.rfm_rule_count = 0
             record.rfm_reactivation_count = 0
             if 'rfm.reactivation.rule' in self.env:
@@ -138,6 +177,16 @@ class ChatroomControlCenter(models.TransientModel):
                     record.rfm_reactivation_count = self.env['res.partner'].sudo().search_count([
                         ('rfm_category', 'in', categories),
                     ])
+
+            def group_count(xmlid):
+                group = self.env.ref(xmlid, raise_if_not_found=False)
+                return group and self.env['res.users'].sudo().search_count([
+                    ('group_ids', 'in', group.id), ('share', '=', False),
+                ]) or 0
+
+            record.chatroom_agent_count = group_count('chatroom_whatsapp.group_chatroom_user')
+            record.chatroom_supervisor_count = group_count('chatroom_whatsapp.group_chatroom_supervisor')
+            record.chatroom_manager_count = group_count('chatroom_whatsapp.group_chatroom_manager')
 
             attention_count = sum(
                 status == 'attention' for status in (
@@ -165,6 +214,12 @@ class ChatroomControlCenter(models.TransientModel):
     def action_open_settings(self):
         return self.env.ref('base_setup.action_general_configuration').read()[0]
 
+    def action_open_users(self):
+        return self.env.ref('base.action_res_users').read()[0]
+
+    def action_open_groups(self):
+        return self.env.ref('base.action_res_groups').read()[0]
+
     def action_open_payments(self):
         if 'payment.provider' not in self.env:
             return self._notification(_('Instala el módulo de pagos para administrar proveedores.'))
@@ -191,3 +246,67 @@ class ChatroomControlCenter(models.TransientModel):
             return self._notification(_('Instala Inteligencia Comercial para abrir el dashboard RFM.'))
         return self.env.ref(
             'crm_customer_intelligence.action_customer_intelligence_dashboard').read()[0]
+
+    def _open_operational_records(self, model_name, title, domain):
+        if model_name not in self.env:
+            return self._notification(_('El módulo necesario para abrir %s no está instalado.') % title)
+        return {
+            'type': 'ir.actions.act_window',
+            'name': title,
+            'res_model': model_name,
+            'view_mode': 'list,form',
+            'views': [(False, 'list'), (False, 'form')],
+            'domain': domain,
+            'target': 'new',
+        }
+
+    def action_open_opportunities(self):
+        return self._open_operational_records(
+            'crm.lead', _('Oportunidades'),
+            [('type', '=', 'opportunity'), ('active', '=', True)])
+
+    def action_open_sales_orders(self):
+        return self._open_operational_records(
+            'sale.order', _('Presupuestos y pedidos'),
+            [('state', 'in', ('draft', 'sent', 'sale'))])
+
+    def action_open_purchase_orders(self):
+        return self._open_operational_records(
+            'purchase.order', _('Compras'),
+            [('state', 'in', ('draft', 'sent', 'to approve', 'purchase'))])
+
+    def action_open_invoices(self):
+        return self._open_operational_records(
+            'account.move', _('Facturas'),
+            [('move_type', 'in', ('out_invoice', 'out_refund')), ('state', '=', 'posted')])
+
+    def action_open_open_conversations(self):
+        return self._open_operational_records(
+            'chatroom.channel', _('Conversaciones activas'),
+            [('state', 'in', ('open', 'pending'))])
+
+    def action_open_sla_conversations(self):
+        return self._open_operational_records(
+            'chatroom.channel', _('Conversaciones con SLA'),
+            [('state', 'in', ('open', 'pending')),
+             ('first_response_sla_state', 'in', ('yellow', 'red'))])
+
+    def action_open_pending_payments(self):
+        return self._open_operational_records(
+            'payment.transaction', _('Pagos pendientes'),
+            [('state', '=', 'pending')])
+
+    def action_open_rfm_rules(self):
+        return self._open_operational_records(
+            'rfm.reactivation.rule', _('Reglas RFM activas'),
+            [('active', '=', True)])
+
+    def action_open_reactivation_customers(self):
+        if 'res.partner' not in self.env or 'rfm.reactivation.rule' not in self.env:
+            return self._notification(_('Instala Inteligencia Comercial para abrir estos clientes.'))
+        categories = self.env['rfm.reactivation.rule'].sudo().search([
+            ('active', '=', True),
+        ]).mapped('category_code')
+        return self._open_operational_records(
+            'res.partner', _('Clientes para reactivar'),
+            [('rfm_category', 'in', categories or ['__none__'])])

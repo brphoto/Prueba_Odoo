@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_users_form_chatroom_ui_preferences" model="ir.ui.view">
+        <field name="name">res.users.form.chatroom.ui.preferences</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Chatroom UI" name="chatroom_ui_preferences">
+                    <group>
+                        <group string="Preferencias personales">
+                            <field name="chatroom_ui_user_sidebar_width"/>
+                            <field name="chatroom_ui_user_font_scale"/>
+                            <field name="chatroom_ui_mobile_compact"/>
+                        </group>
+                        <div class="text-muted">
+                            Deja los valores numéricos en 0 para usar la configuración general de la compañía.
+                        </div>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

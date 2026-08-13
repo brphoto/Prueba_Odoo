@@ -99,9 +99,9 @@ export class ChatroomApp extends Component {
             soundEnabled: this._getStoredSoundEnabled(),
             desktopNotifications: this._getStoredDesktopNotifications(),
             companyLogoUrl: false,
-            // El lanzador de Apps de Odoo prioriza este icon.png; usarlo
-            // aqui mantiene exactamente la misma identidad visual.
-            appLogoUrl: "/chatroom_whatsapp/static/description/icon.png",
+            // El lanzador de Apps utiliza este mismo SVG; mantener una sola
+            // fuente evita que el encabezado se vea distinto a Apps.
+            appLogoUrl: "/chatroom_whatsapp/static/description/icon.svg",
             selectedChannelIds: [],
         });
 

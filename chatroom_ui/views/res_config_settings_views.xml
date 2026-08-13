@@ -6,11 +6,14 @@
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
-                <app data-string="Chatroom UI" string="Chatroom UI" name="chatroom_ui">
+                <app data-string="Chatroom UI" string="Chatroom UI" name="chatroom_ui"
+                     groups="base.group_system">
                     <block title="Identidad visual">
                         <setting id="chatroom_ui_theme_preset_setting"
                                  help="Aplica una combinación profesional de colores y proporciones. Luego puedes ajustar cualquier valor y quedará como Personalizado.">
                             <field name="chatroom_ui_theme_preset"/>
+                            <button name="action_reset_chatroom_ui_defaults" type="object"
+                                    string="Restablecer diseño profesional" class="btn-link mt8"/>
                         </setting>
                         <setting id="chatroom_ui_colors_setting"
                                  help="Personaliza los colores de la bandeja sin tocar código. Se aplican a toda la compañía seleccionada.">
@@ -34,15 +37,15 @@
                             <div class="o_chatroom_ui_preview" role="img" aria-label="Vista previa de Chatroom">
                                 <div class="o_chatroom_ui_preview_sidebar">
                                     <div class="o_chatroom_ui_preview_header">
-                                        <img src="/chatroom_whatsapp/static/description/icon.png"
+                                        <img src="/chatroom_whatsapp/static/description/icon.svg"
                                              alt="Icono de Chatroom"/>
                                         <span>Chatroom</span>
                                         <b>+</b>
                                     </div>
                                     <div class="o_chatroom_ui_preview_toolbar">Siguiente - Dashboard - Plantillas</div>
                                     <div class="o_chatroom_ui_preview_search">Buscar conversación...</div>
-                                    <div class="o_chatroom_ui_preview_item"><b>Bryan Cando</b><small>Documento enviado</small></div>
-                                    <div class="o_chatroom_ui_preview_item"><b>Cynthia Molina</b><small>Gracias por tu ayuda</small></div>
+                                    <div class="o_chatroom_ui_preview_item"><b>Contacto 1</b><small>Documento enviado</small></div>
+                                    <div class="o_chatroom_ui_preview_item"><b>Contacto 2</b><small>Gracias por tu ayuda</small></div>
                                 </div>
                                 <div class="o_chatroom_ui_preview_thread">
                                     <div class="o_chatroom_ui_preview_thread_header">Conversación de ejemplo</div>
@@ -54,6 +57,11 @@
                                  help="Una imagen suave o marca de agua puede reforzar la identidad de la empresa. La imagen se muestra únicamente en el área de mensajes.">
                             <field name="chatroom_ui_background_image" widget="image"
                                    options="{'preview_image': 'chatroom_ui_background_image', 'size': [640, 360]}"/>
+                        </setting>
+                        <setting id="chatroom_ui_brand_logo_setting"
+                                 help="Este logo aparece en la cabecera de Chatroom y tiene prioridad sobre el logo general de la compañía.">
+                            <field name="chatroom_ui_brand_logo" widget="image"
+                                   options="{'preview_image': 'chatroom_ui_brand_logo', 'size': [180, 180]}"/>
                         </setting>
                     </block>
                     <block title="Experiencia de uso">

@@ -1,4 +1,13 @@
-.o_rfm_dashboard { 
+.o_rfm_dashboard {
+    .o_rfm_last_update {
+        margin: 0 0 14px;
+        color: var(--o-color-500, #667085);
+        font-size: 0.82rem;
+
+        strong {
+            color: var(--o-color-700, #344054);
+        }
+    }
     padding: 24px;
     max-width: 1440px;
     margin: 0 auto;
@@ -73,6 +82,17 @@
 .o_rfm_custom_kpi { cursor: pointer; }
 .o_rfm_custom_kpi:hover { border-color: var(--o-brand-primary, #714b67); }
 .o_rfm_dashboard_columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.o_rfm_evolution_panel { grid-column: 1 / -1; }
+.o_rfm_evolution_chart { display: flex; align-items: flex-end; gap: 10px; min-height: 150px; padding-top: 12px; }
+.o_rfm_evolution_item { display: flex; flex: 1; flex-direction: column; align-items: center; gap: 6px; min-width: 35px; height: 140px; }
+.o_rfm_evolution_track { display: flex; align-items: flex-end; justify-content: center; width: 100%; height: 112px; border-bottom: 1px solid var(--border-color, #dee2e6); }
+.o_rfm_evolution_track .o_rfm_bar {
+    // Evita que Sass intente evaluar min() con unidades incompatibles.
+    width: #{'min(26px, 70%)'};
+    min-height: 0;
+    transition: height .2s ease;
+}
+.o_rfm_evolution_item small { overflow: hidden; max-width: 70px; color: #6b7280; font-size: .68em; text-overflow: ellipsis; white-space: nowrap; }
 .o_rfm_dashboard_panel { border: 1px solid var(--border-color, #dee2e6); border-radius: 9px; padding: 16px; background: var(--o-view-background-color, #fff); }
 .o_rfm_dashboard_panel h4 { margin: 0 0 14px; }
 .o_rfm_bar_row { display: flex; align-items: center; gap: 8px; margin: 10px 0; font-size: 0.86em; }

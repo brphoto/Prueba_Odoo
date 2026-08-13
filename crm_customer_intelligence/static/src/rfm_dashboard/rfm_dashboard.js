@@ -26,6 +26,7 @@ export class RfmDashboard extends Component {
             loading: true,
             period: "90",
             category: "all",
+            source: "all",
             data: false,
             kpiConfigOpen: false,
             visibleKpis: this._loadVisibleKpis(),
@@ -80,7 +81,7 @@ export class RfmDashboard extends Component {
         this.state.loading = true;
         this.state.data = await this.orm.call(
             "res.partner", "get_rfm_dashboard_data",
-            [this.state.period, this.state.category]
+            [this.state.period, this.state.category, false, this.state.source]
         );
         this.state.loading = false;
     }
@@ -93,6 +94,37 @@ export class RfmDashboard extends Component {
     async changeCategory(ev) {
         this.state.category = ev.target.value;
         await this.loadData();
+    }
+
+    async changeSource(ev) {
+        this.state.source = ev.target.value;
+        await this.loadData();
+    }
+
+    async exportCsv() {
+        const action = await this.orm.call(
+            "res.partner", "action_export_rfm_dashboard_csv",
+            [this.state.period, this.state.category, this.state.source]
+        );
+        await this.action.doAction(action);
+    }
+
+    async scheduleFollowups() {
+        const action = await this.orm.call(
+            "res.partner", "action_schedule_rfm_dashboard_followups",
+            [this.state.period, this.state.category, this.state.source]
+        );
+        await this.action.doAction(action);
+    }
+
+    async refreshRfm() {
+        this.state.loading = true;
+        try {
+            await this.orm.call("res.partner", "action_recompute_rfm_dashboard", []);
+            await this.loadData();
+        } finally {
+            this.state.loading = false;
+        }
     }
 
     formatMoney(value) {
@@ -121,6 +153,27 @@ export class RfmDashboard extends Component {
     barWidth(value, rows, key) {
         const max = Math.max(...rows.map((row) => row[key] || 0), 1);
         return Math.max(5, Math.round(((value || 0) / max) * 100));
+    }
+
+    barHeight(value, rows, key) {
+        const max = Math.max(...rows.map((row) => row[key] || 0), 1);
+        return Math.max(value ? 6 : 0, Math.round(((value || 0) / max) * 100));
+    }
+
+    openSegments() {
+        this.action.doAction({
+            type: "ir.actions.act_window", name: "Segmentos RFM",
+            res_model: "crm.rfm.segment", views: [[false, "list"], [false, "form"]],
+            target: "current",
+        });
+    }
+
+    openCampaigns() {
+        this.action.doAction({
+            type: "ir.actions.act_window", name: "Campañas WhatsApp",
+            res_model: "chatroom.campaign", views: [[false, "list"], [false, "form"]],
+            target: "current",
+        });
     }
 
     openPartner(id) {

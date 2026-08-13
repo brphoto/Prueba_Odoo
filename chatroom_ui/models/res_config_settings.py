@@ -19,6 +19,9 @@ class ResConfigSettings(models.TransientModel):
     chatroom_ui_background_image = fields.Image(
         related='company_id.chatroom_ui_background_image', readonly=False,
     )
+    chatroom_ui_brand_logo = fields.Image(
+        related='company_id.chatroom_ui_brand_logo', readonly=False,
+    )
     chatroom_ui_sidebar_width = fields.Integer(
         related='company_id.chatroom_ui_sidebar_width', readonly=False,
     )
@@ -37,6 +40,22 @@ class ResConfigSettings(models.TransientModel):
     chatroom_ui_message_density = fields.Selection(
         related='company_id.chatroom_ui_message_density', readonly=False,
     )
+
+    def action_reset_chatroom_ui_defaults(self):
+        self.ensure_one()
+        self.update({
+            'chatroom_ui_theme_preset': 'professional',
+            'chatroom_ui_primary_color': '#714B67',
+            'chatroom_ui_secondary_color': '#4F3449',
+            'chatroom_ui_accent_color': '#00A884',
+            'chatroom_ui_sidebar_width': 360,
+            'chatroom_ui_icon_scale': 1.0,
+            'chatroom_ui_font_scale': 1.0,
+            'chatroom_ui_shadow_level': 'medium',
+            'chatroom_ui_bubble_radius': 14,
+            'chatroom_ui_message_density': 'comfortable',
+        })
+        return True
 
     @api.onchange('chatroom_ui_theme_preset')
     def _onchange_chatroom_ui_theme_preset(self):

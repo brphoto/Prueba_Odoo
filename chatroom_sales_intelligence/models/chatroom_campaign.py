@@ -37,8 +37,6 @@ class ChatroomCampaign(models.Model):
     target_category_ids = fields.Many2many(
         'crm.rfm.category', 'chatroom_campaign_rfm_category_rel',
         'campaign_id', 'category_id', string='Categorías RFM',
-        default=lambda self: self.env['crm.rfm.category'].search(
-            [('code', '=', 'a'), ('active', '=', True)], limit=1),
         domain=[('active', '=', True)],
         help='Selecciona cualquier categoría del catálogo RFM, incluidas las personalizadas. '
              'Las casillas A/B/C se conservan para compatibilidad con campañas antiguas.',
@@ -64,6 +62,9 @@ class ChatroomCampaign(models.Model):
     pending_count = fields.Integer(compute='_compute_recipient_stats')
     queued_date = fields.Datetime(readonly=True, copy=False)
     sent_date = fields.Datetime(readonly=True, copy=False)
+    queued_by = fields.Many2one('res.users', readonly=True, copy=False)
+    last_retry_at = fields.Datetime(readonly=True, copy=False)
+    last_retry_by = fields.Many2one('res.users', readonly=True, copy=False)
 
     @api.constrains('batch_size')
     def _check_batch_size(self):
@@ -138,11 +139,33 @@ class ChatroomCampaign(models.Model):
         self.env['chatroom.campaign.recipient'].create([
             {'campaign_id': self.id, 'partner_id': partner.id} for partner in partners
         ])
-        self.write({'state': 'sending', 'queued_date': fields.Datetime.now()})
+        self.write({
+            'state': 'sending',
+            'queued_date': fields.Datetime.now(),
+            'queued_by': self.env.user.id,
+        })
         self.message_post(body=_(
             "Campaña encolada: %(total)s contactos objetivo, se van a mandar "
             "en lotes de %(batch)s cada 5 minutos."
         ) % {'total': len(partners), 'batch': self.batch_size})
+
+    def action_retry_failed(self):
+        """Reencola fallos conservando la audiencia original de la campaña."""
+        for campaign in self:
+            failed = campaign.recipient_ids.filtered(lambda recipient: recipient.state == 'failed')
+            if not failed:
+                raise UserError(_('No hay destinatarios fallidos para reintentar.'))
+            failed.write({'state': 'pending', 'error_message': False})
+            campaign.write({
+                'state': 'sending',
+                'sent_date': False,
+                'last_retry_at': fields.Datetime.now(),
+                'last_retry_by': self.env.user.id,
+            })
+            campaign.message_post(body=_(
+                'Se reencolaron %(count)s destinatarios fallidos para reintento.'
+            ) % {'count': len(failed)})
+        return True
 
     @api.model
     def _cron_process_campaigns(self):

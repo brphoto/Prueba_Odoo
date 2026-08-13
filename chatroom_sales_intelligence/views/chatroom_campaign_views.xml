@@ -30,6 +30,9 @@
                     <button name="action_send" type="object" string="Encolar campaña"
                             class="btn-primary" invisible="state != 'draft'"
                             confirm="Se va a encolar la plantilla para todos los contactos que cumplan la segmentación elegida y se mandará en lotes. ¿Continuar?"/>
+                    <button name="action_retry_failed" type="object" string="Reintentar fallidos"
+                            class="btn-secondary" invisible="failed_count == 0"
+                            confirm="Se volverán a encolar únicamente los destinatarios fallidos. ¿Continuar?"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -51,8 +54,11 @@
                         </group>
                     </group>
                     <group string="Resultado" invisible="state == 'draft'">
-                        <field name="queued_date"/>
-                        <field name="sent_date"/>
+                <field name="queued_date"/>
+                <field name="sent_date"/>
+                <field name="queued_by"/>
+                <field name="last_retry_at" invisible="not last_retry_at"/>
+                <field name="last_retry_by" invisible="not last_retry_by"/>
                         <field name="sent_count"/>
                         <field name="pending_count"/>
                         <field name="failed_count"/>

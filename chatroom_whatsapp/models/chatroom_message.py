@@ -87,6 +87,39 @@ class ChatroomMessage(models.Model):
         for rec in self:
             rec.display_name = (rec.body or '')[:60]
 
+    def action_retry_from_audit(self):
+        self.ensure_one()
+        if self.direction != 'outbound' or self.state != 'failed':
+            raise UserError(_('Solo se pueden reintentar mensajes salientes fallidos.'))
+        return self.channel_id.action_retry_message(self.id)
+
+    def action_retry_failed_batch(self):
+        """Retry the selected failed outbound messages and report the result."""
+        messages = self.filtered(
+            lambda message: message.direction == 'outbound'
+            and message.state == 'failed'
+            and message.retry_count < 3
+        )
+        retried = 0
+        skipped = len(self) - len(messages)
+        for message in messages:
+            try:
+                message.channel_id.action_retry_message(message.id)
+                retried += 1
+            except Exception as exc:
+                skipped += 1
+                _logger.warning('No se pudo reintentar el mensaje %s: %s', message.id, exc)
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Reintentos de WhatsApp'),
+                'message': _('%s mensaje(s) reintentado(s); %s omitido(s).') % (retried, skipped),
+                'type': 'success' if retried else 'warning',
+                'sticky': False,
+            },
+        }
+
     def action_ai_translate(self):
         """Traduce este mensaje al idioma del usuario actual usando el
         mismo proveedor de IA configurado para sugerencias/resúmenes.

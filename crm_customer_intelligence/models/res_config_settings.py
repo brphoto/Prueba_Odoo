@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class ResConfigSettings(models.TransientModel):
@@ -25,6 +26,19 @@ class ResConfigSettings(models.TransientModel):
         default=0.2,
         help="Cuánto pesa qué tan reciente fue la última compra en el "
              "score RFM compuesto.")
+
+    @api.constrains('rfm_weight_monetary', 'rfm_weight_frequency', 'rfm_weight_recency')
+    def _check_rfm_weights(self):
+        for settings in self:
+            weights = (
+                settings.rfm_weight_monetary,
+                settings.rfm_weight_frequency,
+                settings.rfm_weight_recency,
+            )
+            if any(weight < 0 for weight in weights):
+                raise ValidationError(_('Los pesos RFM no pueden ser negativos.'))
+            if not sum(weights):
+                raise ValidationError(_('Configura al menos un peso RFM mayor que cero.'))
 
     rfm_category_method = fields.Selection(
         [('threshold', "Umbral fijo (Categorías RFM)"),

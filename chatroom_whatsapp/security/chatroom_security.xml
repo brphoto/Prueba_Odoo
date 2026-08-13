@@ -16,10 +16,16 @@
         <field name="privilege_id" ref="privilege_chatroom"/>
     </record>
 
+    <record id="group_chatroom_supervisor" model="res.groups">
+        <field name="name">Supervisor</field>
+        <field name="privilege_id" ref="privilege_chatroom"/>
+        <field name="implied_ids" eval="[(4, ref('group_chatroom_user'))]"/>
+    </record>
+
     <record id="group_chatroom_manager" model="res.groups">
         <field name="name">Administrador</field>
         <field name="privilege_id" ref="privilege_chatroom"/>
-        <field name="implied_ids" eval="[(4, ref('group_chatroom_user'))]"/>
+        <field name="implied_ids" eval="[(4, ref('group_chatroom_supervisor'))]"/>
         <field name="user_ids" eval="[(4, ref('base.user_admin'))]"/>
     </record>
 
@@ -35,6 +41,13 @@
         <field name="model_id" ref="model_chatroom_channel"/>
         <field name="domain_force">[(1, '=', 1)]</field>
         <field name="groups" eval="[(4, ref('group_chatroom_manager'))]"/>
+    </record>
+
+    <record id="chatroom_channel_rule_supervisor" model="ir.rule">
+        <field name="name">Chatroom: supervisor ve las conversaciones de su compañía</field>
+        <field name="model_id" ref="model_chatroom_channel"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', '=', user.company_id.id)]</field>
+        <field name="groups" eval="[(4, ref('group_chatroom_supervisor'))]"/>
     </record>
 
 </odoo>

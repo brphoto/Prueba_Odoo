@@ -2,12 +2,13 @@
     'name': 'Chatroom UI Professional',
     'author': 'Bryan Cando',
     'website': 'https://github.com/brphoto/Prueba_Odoo',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.5',
     'category': 'Productivity/Discuss',
     'summary': 'Professional visual layer and responsive UX for Chatroom',
     'depends': ['chatroom_whatsapp'],
     'data': [
         'views/res_config_settings_views.xml',
+        'views/res_users_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

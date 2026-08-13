@@ -16,13 +16,44 @@
                     <div class="alert alert-info" role="alert">
                         <field name="status_summary" nolabel="1" class="fw-bold"/>
                     </div>
-                    <separator string="Indicadores operativos"/>
+                    <separator string="Actividad comercial"/>
                     <group col="4" class="o_chatroom_control_metrics">
-                        <field name="open_conversation_count"/>
-                        <field name="sla_attention_count"/>
-                        <field name="pending_payment_count"/>
-                        <field name="rfm_rule_count"/>
-                        <field name="rfm_reactivation_count"/>
+                        <button name="action_open_opportunities" type="object" class="oe_stat_button" icon="fa-star">
+                            <field name="opportunity_count" widget="statinfo" string="Oportunidades"/>
+                        </button>
+                        <button name="action_open_sales_orders" type="object" class="oe_stat_button" icon="fa-file-text-o">
+                            <field name="sales_order_count" widget="statinfo" string="Ventas"/>
+                        </button>
+                        <button name="action_open_purchase_orders" type="object" class="oe_stat_button" icon="fa-shopping-cart">
+                            <field name="purchase_order_count" widget="statinfo" string="Compras"/>
+                        </button>
+                        <button name="action_open_invoices" type="object" class="oe_stat_button" icon="fa-dollar">
+                            <field name="invoice_count" widget="statinfo" string="Facturas"/>
+                        </button>
+                    </group>
+                    <separator string="Indicadores operativos"/>
+                    <group col="5" class="o_chatroom_control_metrics">
+                        <button name="action_open_open_conversations" type="object" class="oe_stat_button" icon="fa-comments">
+                            <field name="open_conversation_count" widget="statinfo" string="Conversaciones"/>
+                        </button>
+                        <button name="action_open_sla_conversations" type="object" class="oe_stat_button" icon="fa-clock-o">
+                            <field name="sla_attention_count" widget="statinfo" string="SLA"/>
+                        </button>
+                        <button name="action_open_pending_payments" type="object" class="oe_stat_button" icon="fa-credit-card">
+                            <field name="pending_payment_count" widget="statinfo" string="Pagos pendientes"/>
+                        </button>
+                        <button name="action_open_rfm_rules" type="object" class="oe_stat_button" icon="fa-filter">
+                            <field name="rfm_rule_count" widget="statinfo" string="Reglas RFM"/>
+                        </button>
+                        <button name="action_open_reactivation_customers" type="object" class="oe_stat_button" icon="fa-users">
+                            <field name="rfm_reactivation_count" widget="statinfo" string="Para reactivar"/>
+                        </button>
+                    </group>
+                    <separator string="Equipo y permisos"/>
+                    <group col="3" class="o_chatroom_control_metrics">
+                        <field name="chatroom_agent_count"/>
+                        <field name="chatroom_supervisor_count"/>
+                        <field name="chatroom_manager_count"/>
                     </group>
                     <group col="2">
                         <group string="Canales y operación">
@@ -54,6 +85,8 @@
                         <button name="action_open_payments" type="object" string="Configurar PayPhone" class="btn-secondary" icon="fa-credit-card"/>
                         <button name="action_open_calendar" type="object" string="Abrir calendario" class="btn-secondary" icon="fa-calendar"/>
                         <button name="action_open_rfm_dashboard" type="object" string="Dashboard RFM" class="btn-secondary" icon="fa-line-chart"/>
+                        <button name="action_open_users" type="object" string="Usuarios y roles" class="btn-secondary" icon="fa-users" groups="base.group_system"/>
+                        <button name="action_open_groups" type="object" string="Grupos y permisos" class="btn-secondary" icon="fa-shield" groups="base.group_system"/>
                     </div>
                 </sheet>
             </form>
