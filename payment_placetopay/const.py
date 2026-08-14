@@ -1,7 +1,3 @@
-from odoo.tools import LazyTranslate
-
-_lt = LazyTranslate(__name__)
-
 # Default sandbox host. Production hosts are region-specific (Colombia, Ecuador,
 # Chile, etc.) and must be set by the merchant on the provider record, e.g.:
 #   - https://checkout-test.placetopay.com  (sandbox, all regions)
@@ -24,12 +20,12 @@ STATUS_MAPPING = {
 }
 
 DOCUMENT_TYPE_SELECTION = [
-    ('CC', _lt("Cédula de ciudadanía (CC)")),
-    ('CE', _lt("Cédula de extranjería (CE)")),
-    ('NIT', _lt("NIT")),
-    ('RUC', _lt("RUC")),
-    ('TI', _lt("Tarjeta de identidad (TI)")),
-    ('PPN', _lt("Pasaporte (PPN)")),
+    ('CC', "Cédula de ciudadanía (CC)"),
+    ('CE', "Cédula de extranjería (CE)"),
+    ('NIT', "NIT"),
+    ('RUC', "RUC"),
+    ('TI', "Tarjeta de identidad (TI)"),
+    ('PPN', "Pasaporte (PPN)"),
 ]
 
 LOCALE_SELECTION = [
