@@ -170,27 +170,50 @@ class CrmCustomerHistoryBatch(models.Model):
                     break
         return result
 
-    def _find_partner(self, values):
+    def _find_partner(self, values, cache=None):
         Partner = self.env['res.partner'].with_company(self.company_id)
+        cache = cache if cache is not None else {}
+        by_vat = cache.setdefault('partners_by_vat', {})
+        by_email = cache.setdefault('partners_by_email', {})
+        by_name = cache.setdefault('partners_by_name', {})
+        phone_results = cache.setdefault('partners_by_phone', {})
         vat = self._text(values.get('customer_vat'))
         email = self._text(values.get('customer_email')).lower()
         phone = self.env['crm.customer.history.line'].normalize_phone(values.get('customer_phone'))
         name = self._text(values.get('customer_name'))
         if vat:
-            partner = Partner.search([('vat', '=ilike', vat)], limit=1)
+            key = vat.casefold()
+            partner = by_vat.get(key)
+            if partner is None:
+                partner = Partner.search([('vat', '=ilike', vat)], limit=1)
+                by_vat[key] = partner or False
             if partner:
                 return partner, 'matched'
         if email:
-            partner = Partner.search([('email', '=ilike', email)], limit=1)
+            partner = by_email.get(email)
+            if partner is None:
+                partner = Partner.search([('email', '=ilike', email)], limit=1)
+                by_email[email] = partner or False
             if partner:
                 return partner, 'matched'
         if phone:
-            candidates = Partner.search(['|', ('phone', '!=', False), ('mobile', '!=', False)])
-            for partner in candidates:
-                if phone in self.env['crm.customer.history.line'].normalize_phone(partner.phone) or phone in self.env['crm.customer.history.line'].normalize_phone(partner.mobile):
-                    return partner, 'matched'
+            if phone not in phone_results:
+                candidates = cache.get('phone_candidates')
+                if candidates is None:
+                    candidates = Partner.search(['|', ('phone', '!=', False), ('mobile', '!=', False)])
+                    cache['phone_candidates'] = candidates
+                phone_results[phone] = next((partner for partner in candidates if (
+                    phone in self.env['crm.customer.history.line'].normalize_phone(partner.phone)
+                    or phone in self.env['crm.customer.history.line'].normalize_phone(partner.mobile)
+                )), False)
+            if phone_results[phone]:
+                return phone_results[phone], 'matched'
         if name:
-            partner = Partner.search([('name', '=ilike', name)], limit=1)
+            key = name.casefold()
+            partner = by_name.get(key)
+            if partner is None:
+                partner = Partner.search([('name', '=ilike', name)], limit=1)
+                by_name[key] = partner or False
             if partner:
                 return partner, 'matched'
         if self.create_missing_partners and name:
@@ -201,25 +224,40 @@ class CrmCustomerHistoryBatch(models.Model):
                 vals['email'] = email
             if values.get('customer_phone'):
                 vals['phone'] = self._text(values['customer_phone'])
-            return Partner.create(vals), 'created'
+            partner = Partner.create(vals)
+            if vat:
+                by_vat[vat.casefold()] = partner
+            if email:
+                by_email[email] = partner
+            if name:
+                by_name[name.casefold()] = partner
+            if phone:
+                phone_results[phone] = partner
+            return partner, 'created'
         return self.env['res.partner'], 'unmatched'
 
-    def _resolve_currency(self, value):
+    def _resolve_currency(self, value, cache=None):
         text = self._text(value).upper()
         if not text:
             return self.company_id.currency_id
-        return self.env['res.currency'].search([
+        cache = cache if cache is not None else {}
+        currencies = cache.setdefault('currencies', {})
+        if text in currencies:
+            return currencies[text]
+        currency = self.env['res.currency'].search([
             '|', ('name', '=ilike', text), ('symbol', '=ilike', text),
         ], limit=1) or self.company_id.currency_id
+        currencies[text] = currency
+        return currency
 
-    def _build_line_values(self, values, row_number):
+    def _build_line_values(self, values, row_number, cache=None):
         mapped = self._map_row(values)
         invoice_date = self._parse_date(mapped.get('invoice_date'))
         if invoice_date > fields.Date.context_today(self):
             raise ValueError(_('La fecha de factura no puede estar en el futuro.'))
         amount = self._parse_amount(mapped.get('amount_total'))
         move_type = 'refund' if self._normalize_header(mapped.get('move_type')) in {'refund', 'devolucion', 'devoluciones'} else 'sale'
-        partner, match_state = self._find_partner(mapped)
+        partner, match_state = self._find_partner(mapped, cache=cache)
         line_values = {
             'batch_id': self.id,
             'company_id': self.company_id.id,
@@ -235,12 +273,19 @@ class CrmCustomerHistoryBatch(models.Model):
             'invoice_date': invoice_date,
             'move_type': move_type,
             'amount_total': amount,
-            'currency_id': self._resolve_currency(mapped.get('currency')).id,
+            'currency_id': self._resolve_currency(mapped.get('currency'), cache=cache).id,
             'state': 'valid' if partner else 'error',
             'error_message': False if partner else _('No se encontró el cliente y está desactivada la creación automática.'),
         }
         line_values['fingerprint'] = self.env['crm.customer.history.line'].make_fingerprint(line_values)
-        duplicate = self.env['crm.customer.history.line'].search([('fingerprint', '=', line_values['fingerprint'])], limit=1)
+        duplicate_cache = (cache if cache is not None else {}).setdefault('duplicates', {})
+        fingerprint = line_values['fingerprint']
+        duplicate = duplicate_cache.get(fingerprint)
+        if duplicate is None:
+            duplicate = self.env['crm.customer.history.line'].search(
+                [('fingerprint', '=', fingerprint)], limit=1)
+            if duplicate:
+                duplicate_cache[fingerprint] = duplicate
         if duplicate:
             line_values['state'] = 'duplicate'
             line_values['error_message'] = _('Duplicado del lote %s, fila %s.') % (duplicate.batch_id.display_name, duplicate.row_number)
@@ -253,9 +298,13 @@ class CrmCustomerHistoryBatch(models.Model):
         if not self.file_data or not self.file_name:
             raise UserError(_('Adjunte un archivo CSV o XLSX antes de importar.'))
         self.line_ids.sudo().unlink()
+        # Reuse identifier, phone, currency and fingerprint lookups for the
+        # whole file. This keeps large imports bounded by unique values,
+        # rather than by the number of rows.
+        cache = {}
         for row_number, row in enumerate(self._read_rows(), 2):
             try:
-                values = self._build_line_values(row, row_number)
+                values = self._build_line_values(row, row_number, cache=cache)
             except (ValueError, TypeError, UserError) as error:
                 values = {
                     'batch_id': self.id,

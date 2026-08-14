@@ -10,12 +10,17 @@ class RfmSegmentRule(models.Model):
     _description = 'Regla visual de segmento RFM'
     _order = 'sequence, id'
 
-    segment_id = fields.Many2one('crm.rfm.segment', required=True, ondelete='cascade')
+    segment_id = fields.Many2one(
+        'crm.rfm.segment', required=True, ondelete='cascade',
+        domain=[('definition_type', '=', 'segment')])
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
     field_key = fields.Selection([
         ('rfm_score', 'Score RFM'),
         ('rfm_category', 'Categoría RFM'),
+        ('rfm_recency_score', 'Score Recencia'),
+        ('rfm_frequency_score', 'Score Frecuencia'),
+        ('rfm_monetary_score', 'Score Monetario'),
         ('commercial_total_sales', 'Total comprado'),
         ('commercial_invoice_count', 'Cantidad de facturas'),
         ('commercial_avg_ticket', 'Ticket promedio'),
@@ -38,7 +43,8 @@ class RfmSegmentRule(models.Model):
     @api.constrains('field_key', 'operator', 'value')
     def _check_value(self):
         numeric_fields = {
-            'rfm_score', 'commercial_total_sales',
+            'rfm_score', 'rfm_recency_score', 'rfm_frequency_score', 'rfm_monetary_score',
+            'commercial_total_sales',
             'commercial_invoice_count', 'commercial_avg_ticket',
         }
         for rule in self:
@@ -63,7 +69,8 @@ class RfmSegmentRule(models.Model):
         actual = self._raw_value(partner)
         expected = self.value or ''
         if self.field_key in {
-            'rfm_score', 'commercial_total_sales',
+            'rfm_score', 'rfm_recency_score', 'rfm_frequency_score', 'rfm_monetary_score',
+            'commercial_total_sales',
             'commercial_invoice_count', 'commercial_avg_ticket',
         }:
             try:

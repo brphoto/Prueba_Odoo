@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_crm_rfm_recompute_wizard_form" model="ir.ui.view">
+        <field name="name">crm.rfm.recompute.wizard.form</field>
+        <field name="model">crm.rfm.recompute.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Recalcular Clasificación RFM">
+                <div class="alert alert-info" role="alert" invisible="not last_computed_at">
+                    Último cálculo: <field name="last_computed_at" nolabel="1" class="d-inline"/>
+                </div>
+                <group>
+                    <label for="date_from" string="Usar facturas/ventas desde/hasta"/>
+                    <div class="o_row">
+                        <field name="date_from"/> a <field name="date_to"/>
+                    </div>
+                </group>
+                <p class="text-muted">
+                    El cron diario automático siempre usa todo el histórico. Cambia
+                    estas fechas solo para un recálculo puntual (por ejemplo, para
+                    revisar cómo se veía la cartera en una fecha pasada).
+                </p>
+                <footer>
+                    <button name="action_recompute" type="object"
+                            string="Recalcular" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_crm_rfm_recompute_wizard" model="ir.actions.act_window">
+        <field name="name">Recalcular Clasificación RFM</field>
+        <field name="res_model">crm.rfm.recompute.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_crm_rfm_recompute_wizard" name="Recalcular RFM (rango de fechas)"
+              parent="menu_crm_intelligence_config" action="action_crm_rfm_recompute_wizard" sequence="5"/>
+
+</odoo>

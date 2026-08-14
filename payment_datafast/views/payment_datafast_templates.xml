@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="inline_form">
+        <div class="alert alert-info mb-0">
+            <span>El formulario seguro de Datafast se abrirá al continuar.</span>
+        </div>
+    </template>
+</odoo>

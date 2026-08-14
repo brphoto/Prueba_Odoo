@@ -161,11 +161,7 @@ export class RfmDashboard extends Component {
     }
 
     openSegments() {
-        this.action.doAction({
-            type: "ir.actions.act_window", name: "Segmentos RFM",
-            res_model: "crm.rfm.segment", views: [[false, "list"], [false, "form"]],
-            target: "current",
-        });
+        this.action.doAction("crm_customer_intelligence.action_crm_rfm_catalog");
     }
 
     openCampaigns() {

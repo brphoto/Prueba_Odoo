@@ -1,0 +1,127 @@
+// Tarjetas de segmento RFM: ícono + nombre arriba, descripción, 3 anillos
+// de % en su propia fila (no compiten por ancho con el texto), enlaces de
+// drill-down en grilla de 2 columnas y pie con la fecha de cálculo.
+// Ancho fijo ~320px -apenas más grande que una tarjeta kanban normal de
+// Odoo-, nunca 1fr (con auto-fit+1fr cada tarjeta se estira a medio
+// monitor). Usa los tokens de color propios de Odoo (--border-color,
+// --o-view-background-color) para verse bien tanto en claro como oscuro.
+
+.o_rfm_segment_kanban.o_kanban_renderer {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, 320px);
+    justify-content: start;
+    align-items: start;
+    gap: 16px;
+}
+
+// Odoo rellena la última fila de su layout flex por defecto con divs
+// "ghost" invisibles (o_kanban_renderer.xml); al forzar grid quedan
+// visibles como cajas vacías con el mismo borde que las tarjetas reales.
+.o_rfm_segment_kanban .o_kanban_record.o_kanban_ghost {
+    display: none !important;
+}
+
+.o_rfm_segment_kanban .o_kanban_record {
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 10px;
+    padding: 14px 16px;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    float: none !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
+}
+
+.o_rfm_segment_header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.o_rfm_segment_header strong {
+    font-size: 0.95rem;
+}
+
+.o_rfm_icon_circle {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.o_rfm_segment_desc {
+    font-size: 0.75rem;
+    line-height: 1.35;
+    margin: 6px 0 14px;
+}
+
+.o_rfm_segment_rings {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 2px;
+    margin-bottom: 14px;
+}
+.o_rfm_segment_rings > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.o_rfm_ring {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+.o_rfm_ring_hole {
+    position: absolute;
+    inset: 5px;
+    background: var(--o-view-background-color, #fff);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+}
+.o_rfm_ring_label {
+    font-size: 0.65rem;
+    opacity: .75;
+}
+
+.o_rfm_segment_links {
+    border-top: 1px solid var(--border-color, #dee2e6);
+    padding-top: 8px;
+    font-size: 0.78rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px 10px;
+}
+.o_rfm_segment_links a {
+    color: var(--o-brand-primary, #714B67);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.o_rfm_segment_links a:hover {
+    text-decoration: underline;
+}
+
+.o_rfm_segment_footer {
+    border-top: 1px solid var(--border-color, #dee2e6);
+    padding-top: 6px;
+    margin-top: 8px;
+    font-size: 0.68rem;
+    opacity: .75;
+    line-height: 1.45;
+}

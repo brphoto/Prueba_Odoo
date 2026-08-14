@@ -13,7 +13,7 @@ errores, duplicados, clientes identificados y categoría manual.
     'website': 'https://github.com/brphoto/Prueba_Odoo',
     'license': 'LGPL-3',
     'category': 'Sales/CRM',
-    'version': '19.0.1.0.4',
+    'version': '19.0.1.0.5',
     'depends': ['crm_customer_intelligence'],
     'data': [
         'security/crm_customer_history_security.xml',

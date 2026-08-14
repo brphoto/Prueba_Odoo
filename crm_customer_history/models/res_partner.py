@@ -15,7 +15,8 @@ class ResPartner(models.Model):
     history_average_ticket = fields.Monetary(
         string='Ticket histórico promedio', currency_field='currency_id', compute='_compute_history_metrics')
     history_manual_category_id = fields.Many2one(
-        'crm.rfm.category', string='Categoría manual', domain=[('active', '=', True)], copy=False)
+        'crm.rfm.segment', string='Categoría manual',
+        domain=[('definition_type', '=', 'category'), ('active', '=', True)], copy=False)
     history_manual_category_reason = fields.Text(string='Motivo de categoría manual', copy=False)
     history_manual_category_date = fields.Date(string='Fecha de categoría manual', readonly=True, copy=False)
     history_category_source = fields.Selection([
@@ -113,8 +114,8 @@ class ResPartner(models.Model):
             'invoice_count': 1,
         } for line in lines]
 
-    def _cron_compute_rfm_scores(self):
-        result = super()._cron_compute_rfm_scores()
+    def _cron_compute_rfm_scores(self, date_from=None, date_to=None):
+        result = super()._cron_compute_rfm_scores(date_from=date_from, date_to=date_to)
         manual = self.search([('history_manual_category_id', '!=', False)])
         for partner in manual:
             partner.rfm_category = partner.history_manual_category_id.code

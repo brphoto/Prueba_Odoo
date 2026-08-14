@@ -9,8 +9,6 @@ access_crm_kpi_target_user,crm.kpi.target.user,model_crm_kpi_target,base.group_u
 access_crm_kpi_target_manager,crm.kpi.target.manager,model_crm_kpi_target,sales_team.group_sale_manager,1,1,1,1
 access_crm_rfm_segment_user,crm.rfm.segment.user,model_crm_rfm_segment,base.group_user,1,0,0,0
 access_crm_rfm_segment_manager,crm.rfm.segment.manager,model_crm_rfm_segment,sales_team.group_sale_manager,1,1,1,1
-access_crm_rfm_category_user,crm.rfm.category.user,model_crm_rfm_category,base.group_user,1,0,0,0
-access_crm_rfm_category_manager,crm.rfm.category.manager,model_crm_rfm_category,sales_team.group_sale_manager,1,1,1,1
 access_crm_rfm_segment_rule_user,crm.rfm.segment.rule.user,model_crm_rfm_segment_rule,base.group_user,1,0,0,0
 access_crm_rfm_segment_rule_manager,crm.rfm.segment.rule.manager,model_crm_rfm_segment_rule,sales_team.group_sale_manager,1,1,1,1
 access_crm_rfm_segment_action_user,crm.rfm.segment.action.user,model_crm_rfm_segment_action,base.group_user,1,0,0,0
@@ -21,8 +19,6 @@ access_rfm_reactivation_rule_user,rfm.reactivation.rule.user,model_rfm_reactivat
 access_rfm_reactivation_rule_manager,rfm.reactivation.rule.manager,model_rfm_reactivation_rule,sales_team.group_sale_manager,1,1,1,1
 access_crm_rfm_segment_action_log_user,crm.rfm.segment.action.log.user,model_crm_rfm_segment_action_log,base.group_user,1,0,0,0
 access_crm_rfm_segment_action_log_manager,crm.rfm.segment.action.log.manager,model_crm_rfm_segment_action_log,sales_team.group_sale_manager,1,1,1,1
-access_crm_rfm_category_analyst,crm.rfm.category.analyst,model_crm_rfm_category,crm_customer_intelligence.group_crm_intelligence_user,1,0,0,0
-access_crm_rfm_category_intelligence_manager,crm.rfm.category.intelligence.manager,model_crm_rfm_category,crm_customer_intelligence.group_crm_intelligence_manager,1,1,1,1
 access_crm_rfm_segment_analyst,crm.rfm.segment.analyst,model_crm_rfm_segment,crm_customer_intelligence.group_crm_intelligence_user,1,0,0,0
 access_crm_rfm_segment_intelligence_manager,crm.rfm.segment.intelligence.manager,model_crm_rfm_segment,crm_customer_intelligence.group_crm_intelligence_manager,1,1,1,1
 access_crm_rfm_segment_rule_analyst,crm.rfm.segment.rule.analyst,model_crm_rfm_segment_rule,crm_customer_intelligence.group_crm_intelligence_user,1,0,0,0
@@ -31,3 +27,6 @@ access_crm_rfm_segment_action_analyst,crm.rfm.segment.action.analyst,model_crm_r
 access_crm_rfm_segment_action_intelligence_manager,crm.rfm.segment.action.intelligence.manager,model_crm_rfm_segment_action,crm_customer_intelligence.group_crm_intelligence_manager,1,1,1,1
 access_rfm_reactivation_rule_analyst,rfm.reactivation.rule.analyst,model_rfm_reactivation_rule,crm_customer_intelligence.group_crm_intelligence_user,1,0,0,0
 access_rfm_reactivation_rule_intelligence_manager,rfm.reactivation.rule.intelligence.manager,model_rfm_reactivation_rule,crm_customer_intelligence.group_crm_intelligence_manager,1,1,1,1
+access_crm_rfm_snapshot_user,crm.rfm.snapshot.user,model_crm_rfm_snapshot,base.group_user,1,0,0,0
+access_crm_rfm_snapshot_manager,crm.rfm.snapshot.manager,model_crm_rfm_snapshot,sales_team.group_sale_manager,1,1,1,1
+access_crm_rfm_recompute_wizard_manager,crm.rfm.recompute.wizard.manager,model_crm_rfm_recompute_wizard,sales_team.group_sale_manager,1,1,1,1

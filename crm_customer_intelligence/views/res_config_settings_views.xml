@@ -29,9 +29,9 @@
                         </setting>
                     </block>
 
-                    <block title="Categorías A/B/C">
+                    <block title="Clasificación RFM">
                         <setting id="rfm_category_method_setting"
-                                 help="'Umbral fijo' compara contra los rangos de Configuración > Categorías RFM (editables ahí). 'Percentil' ordena la cartera y corta 20/30/50 sin importar el score absoluto">
+                                 help="'Umbral fijo' compara contra los rangos de Configuración > Catálogo RFM (editables allí). 'Percentil' ordena la cartera y corta 20/30/50 sin importar el score absoluto">
                             <field name="rfm_category_method" widget="radio"/>
                         </setting>
                     </block>

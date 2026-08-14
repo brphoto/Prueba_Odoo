@@ -82,8 +82,11 @@ class CrmManagementAlert(models.Model):
                     'detail': _('Lleva %s días sin gestión.') % lead.days_since_last_management,
                     'user_id': lead.user_id.id or self.env.user.id,
                 })
-        Category = self.env['crm.rfm.category']
-        risk_codes = Category.search([('active', '=', True), ('is_at_risk', '=', True)]).mapped('code')
+        Category = self.env['crm.rfm.segment']
+        risk_codes = Category.search([
+            ('definition_type', '=', 'category'), ('active', '=', True),
+            ('is_at_risk', '=', True),
+        ]).mapped('code')
         if risk_codes:
             for partner in self.env['res.partner'].search([('rfm_category', 'in', risk_codes)]):
                 self._upsert({

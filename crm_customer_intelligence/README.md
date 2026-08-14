@@ -1,4 +1,8 @@
-# Inteligencia de Clientes / RFM / Pareto (Odoo 19)
+# Inteligencia Comercial / RFM / Pareto (Odoo 19)
+
+La aplicación se muestra como un menú raíz independiente llamado **Inteligencia Comercial**,
+con su propio icono. CRM, Ventas y Facturación aportan los datos; no son el contenedor visual
+de esta aplicación.
 
 Módulo independiente que agrega clasificación de clientes (RFM/ABC),
 alerta de oportunidades estancadas y análisis Pareto (80/20) de

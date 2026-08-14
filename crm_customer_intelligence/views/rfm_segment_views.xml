@@ -1,13 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="view_crm_rfm_catalog_search" model="ir.ui.view">
+        <field name="name">crm.rfm.segment.catalog.search</field>
+        <field name="model">crm.rfm.segment</field>
+        <field name="arch" type="xml">
+            <search string="Catálogo RFM">
+                <field name="name"/>
+                <field name="code"/>
+                <filter name="filter_categories" string="Categorías"
+                        domain="[('definition_type', '=', 'category')]"/>
+                <filter name="filter_segments" string="Segmentos"
+                        domain="[('definition_type', '=', 'segment')]"/>
+                <filter name="filter_active" string="Activos"
+                        domain="[('active', '=', True)]"/>
+            </search>
+        </field>
+    </record>
+
     <record id="view_crm_rfm_segment_list" model="ir.ui.view">
         <field name="name">crm.rfm.segment.list</field>
         <field name="model">crm.rfm.segment</field>
         <field name="arch" type="xml">
             <list decoration-muted="not active">
-                <field name="sequence" widget="handle"/><field name="name"/>
-                <field name="category"/><field name="use_score_filter" optional="show"/>
-                <field name="max_days_since_sale"/><field name="active" widget="boolean_toggle"/>
+                <field name="sequence" widget="handle"/>
+                <field name="definition_type" string="Tipo"/>
+                <field name="code" optional="show"/>
+                <field name="name"/>
+                <field name="category_id" optional="show"/>
+                <field name="score_min" optional="show"/>
+                <field name="score_max" optional="show"/>
+                <field name="use_score_filter" optional="show"/>
+                <field name="max_days_since_sale" optional="show"/>
+                <field name="preview_count" optional="show" string="Coincidentes"/>
+                <field name="active" widget="boolean_toggle"/>
             </list>
         </field>
     </record>
@@ -15,24 +40,133 @@
         <field name="name">crm.rfm.segment.form</field>
         <field name="model">crm.rfm.segment</field>
         <field name="arch" type="xml">
-            <form string="Segmento RFM"><header>
-                <button name="action_open_contacts" type="object" string="Ver contactos" class="btn-primary"/>
+            <form string="Catálogo RFM"><header>
+                <button name="action_open_contacts" type="object" string="Ver contactos" class="btn-primary"
+                        invisible="definition_type != 'segment'"/>
                 <field name="active" widget="boolean_button"/>
             </header><sheet><div class="oe_title"><h1><field name="name"/></h1></div>
-                    <group><group><field name="category_id"/><field name="category"/><field name="description"/></group>
                     <group>
+                        <group>
+                            <field name="definition_type" readonly="id"/>
+                            <field name="code" invisible="definition_type != 'category'"/>
+                            <field name="category_id" invisible="definition_type != 'segment'"/>
+                            <field name="description"/>
+                        </group>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="color" widget="color_picker"/>
+                        </group>
+                    </group>
+                    <group string="Clasificación" invisible="definition_type != 'category'">
+                        <field name="score_min"/>
+                        <field name="score_max"/>
+                        <field name="is_at_risk"/>
+                    </group>
+                    <group string="Audiencia del segmento" invisible="definition_type != 'segment'">
                         <field name="use_score_filter"/>
                         <field name="score_min" invisible="not use_score_filter"/>
                         <field name="score_max" invisible="not use_score_filter"/>
-                        <field name="max_days_since_sale"/><field name="sequence"/>
+                        <field name="max_days_since_sale"/>
+                        <field name="icon" placeholder="fa-trophy"/>
                     </group>
-                </group>
             </sheet></form>
         </field>
     </record>
     <record id="action_crm_rfm_segment" model="ir.actions.act_window">
         <field name="name">Segmentos RFM</field><field name="res_model">crm.rfm.segment</field><field name="view_mode">list,form</field>
+        <field name="domain">[('definition_type', '=', 'segment')]</field>
     </record>
     <menuitem id="menu_crm_rfm_segment" name="Segmentos RFM"
-              parent="menu_crm_intelligence_config" action="action_crm_rfm_segment" sequence="30"/>
+              parent="menu_crm_intelligence_config" action="action_crm_rfm_segment" sequence="30" active="False"/>
+
+    <record id="view_crm_rfm_segment_kanban_dashboard" model="ir.ui.view">
+        <field name="name">crm.rfm.segment.kanban.dashboard</field>
+        <field name="model">crm.rfm.segment</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_dashboard o_rfm_segment_kanban">
+                <field name="name"/>
+                <field name="description"/>
+                <field name="icon"/>
+                <field name="color"/>
+                <field name="preview_count"/>
+                <field name="preview_count_pct"/>
+                <field name="sale_count_pct"/>
+                <field name="revenue_pct"/>
+                <field name="lead_count"/>
+                <field name="quotation_count"/>
+                <field name="sale_count"/>
+                <field name="mailing_count"/>
+                <field name="calc_last_run_text"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="o_rfm_segment_header">
+                            <div class="o_rfm_icon_circle"
+                                 t-attf-style="background:#{['#E4E4E4','#F06050','#F4A460','#F7CD1F','#6CC1ED','#9B59B6','#D9B48F','#3FA9A0','#5B8DEF','#D6478B','#2ECC71','#8E7CC3'][record.color.raw_value] || '#714B67'}">
+                                <i t-attf-class="fa #{record.icon.raw_value || 'fa-users'}"/>
+                            </div>
+                            <div class="flex-grow-1">
+                                <strong><field name="name"/></strong>
+                            </div>
+                        </div>
+                        <p class="o_rfm_segment_desc" t-out="record.description.raw_value"/>
+                        <div class="o_rfm_segment_rings">
+                            <div>
+                                <div class="o_rfm_ring" t-attf-style="background:conic-gradient(#0B9E94 #{Math.round(record.preview_count_pct.raw_value) * 3.6}deg, #E9ECEF 0)">
+                                    <div class="o_rfm_ring_hole"><span t-esc="Math.round(record.preview_count_pct.raw_value)"/>%</div>
+                                </div>
+                                <span class="o_rfm_ring_label">Clientes</span>
+                            </div>
+                            <div>
+                                <div class="o_rfm_ring" t-attf-style="background:conic-gradient(#0B9E94 #{Math.round(record.sale_count_pct.raw_value) * 3.6}deg, #E9ECEF 0)">
+                                    <div class="o_rfm_ring_hole"><span t-esc="Math.round(record.sale_count_pct.raw_value)"/>%</div>
+                                </div>
+                                <span class="o_rfm_ring_label">Órdenes</span>
+                            </div>
+                            <div>
+                                <div class="o_rfm_ring" t-attf-style="background:conic-gradient(#0B9E94 #{Math.round(record.revenue_pct.raw_value) * 3.6}deg, #E9ECEF 0)">
+                                    <div class="o_rfm_ring_hole"><span t-esc="Math.round(record.revenue_pct.raw_value)"/>%</div>
+                                </div>
+                                <span class="o_rfm_ring_label">Ingresos</span>
+                            </div>
+                        </div>
+                        <div class="o_rfm_segment_links">
+                            <a type="object" name="action_preview_contacts">
+                                <field name="preview_count"/> Clientes
+                            </a>
+                            <a type="object" name="action_open_segment_leads">
+                                <field name="lead_count"/> Leads
+                            </a>
+                            <a type="object" name="action_open_segment_quotations">
+                                <field name="quotation_count"/> Cotizaciones
+                            </a>
+                            <a type="object" name="action_open_segment_sales">
+                                <field name="sale_count"/> Ventas
+                            </a>
+                            <a type="object" name="action_open_segment_mailings">
+                                <field name="mailing_count"/> Mailings
+                            </a>
+                        </div>
+                        <div class="o_rfm_segment_footer">
+                            <div t-esc="record.calc_last_run_text.raw_value"/>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="action_crm_rfm_segment_dashboard" model="ir.actions.act_window">
+        <field name="name">Dashboard de Segmentos</field>
+        <field name="res_model">crm.rfm.segment</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('definition_type', '=', 'segment'), ('active', '=', True)]</field>
+        <field name="view_ids" eval="[
+            Command.clear(),
+            Command.create({'view_mode': 'kanban', 'view_id': ref('view_crm_rfm_segment_kanban_dashboard')}),
+            Command.create({'view_mode': 'list', 'view_id': ref('view_crm_rfm_segment_list')}),
+            Command.create({'view_mode': 'form', 'view_id': ref('view_crm_rfm_segment_form')}),
+        ]"/>
+    </record>
+    <menuitem id="menu_crm_rfm_segment_dashboard" name="Dashboard de Segmentos"
+              parent="menu_crm_intelligence_reports" action="action_crm_rfm_segment_dashboard" sequence="5"/>
 </odoo>

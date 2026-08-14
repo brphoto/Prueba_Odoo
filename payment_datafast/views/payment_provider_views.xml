@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="payment_provider_form_datafast" model="ir.ui.view">
+        <field name="name">payment.provider.form.datafast</field>
+        <field name="model">payment.provider</field>
+        <field name="inherit_id" ref="payment.payment_provider_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='provider_credentials']" position="inside">
+                <group invisible="code != 'datafast'">
+                    <field name="datafast_entity_id" invisible="code != 'datafast'" required="code == 'datafast' and state != 'disabled'"/>
+                    <field name="datafast_authorization" password="True" invisible="code != 'datafast'" required="code == 'datafast' and state != 'disabled'"/>
+                    <field name="datafast_merchant_id" invisible="code != 'datafast'" required="code == 'datafast' and state != 'disabled'"/>
+                    <field name="datafast_terminal_id" invisible="code != 'datafast'" required="code == 'datafast' and state != 'disabled'"/>
+                </group>
+            </xpath>
+            <xpath expr="//group[@name='provider_config']" position="inside">
+                <group string="Datafast" invisible="code != 'datafast'">
+                    <field name="datafast_merchant_name" required="code == 'datafast' and state != 'disabled'"/>
+                    <field name="datafast_api_url" required="code == 'datafast' and state != 'disabled'"/>
+                    <field name="datafast_brands" required="code == 'datafast' and state != 'disabled'"/>
+                    <field name="datafast_credit_type"/>
+                    <field name="datafast_installments"/>
+                    <div class="text-muted" colspan="2">
+                        En pruebas usa la URL entregada por Datafast. En producción cambia a la URL productiva y utiliza nuevas credenciales.
+                    </div>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

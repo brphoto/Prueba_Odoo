@@ -11,6 +11,14 @@
     padding: 24px;
     max-width: 1440px;
     margin: 0 auto;
+    // El contenedor de acción de Odoo recorta su contenido por defecto
+    // (overflow: hidden) esperando que el componente maneje su propio
+    // scroll; sin esto, las filas de abajo (Distribución RFM, Clientes
+    // principales, Productos principales) quedaban cortadas y sin forma
+    // de bajar a verlas.
+    height: 100%;
+    overflow-y: auto;
+    box-sizing: border-box;
 }
 
 .o_rfm_dashboard_header {

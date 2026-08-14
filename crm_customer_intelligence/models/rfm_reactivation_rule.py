@@ -30,9 +30,10 @@ class RfmReactivationRule(models.Model):
 
     @api.model
     def _selection_rfm_category(self):
-        """Usa el catálogo crm.rfm.category, no una lista fija A/B/C."""
-        categories = self.env['crm.rfm.category'].search(
-            [('active', '=', True)], order='sequence, id')
+        """Usa el catálogo unificado de categorías, no una lista fija A/B/C."""
+        categories = self.env['crm.rfm.segment'].search(
+            [('definition_type', '=', 'category'), ('active', '=', True)],
+            order='sequence, id')
         return [(category.code, category.name) for category in categories]
 
     @api.model
@@ -43,21 +44,25 @@ class RfmReactivationRule(models.Model):
         created = 0
         for rule in self.search([('active', '=', True)]):
             cutoff = today - timedelta(days=max(1, rule.days_allowed))
-            partners = Partner.search([]).filtered(lambda partner: (
-                partner.rfm_category == rule.category_code
-                and (partner.rfm_last_purchase_date or partner.commercial_last_sale_date)
-                and (partner.rfm_last_purchase_date or partner.commercial_last_sale_date) < cutoff
-            ))
+            # RFM ya consolida facturas, POS/pedidos y los historicos
+            # importados. Usar sus campos indexados evita cargar todos los
+            # contactos y hacer un search_count por cada uno.
+            partners = Partner.search([
+                ('rfm_category', '=', rule.category_code),
+                ('rfm_last_purchase_date', '<', cutoff),
+            ])
+            open_lead_partner_ids = set(Lead.search([
+                ('partner_id', 'in', partners.ids), ('active', '=', True),
+                ('probability', '<', 100),
+            ]).mapped('partner_id').ids)
+            lead_values = []
             for partner in partners:
-                if Lead.search_count([
-                    ('partner_id', '=', partner.id), ('active', '=', True),
-                    ('probability', '<', 100),
-                ]):
+                if partner.id in open_lead_partner_ids:
                     continue
                 assigned = rule.user_id
                 if not assigned and 'user_id' in partner._fields:
                     assigned = partner.user_id
-                Lead.create({
+                lead_values.append({
                     'name': _('Reactivación RFM - %s') % partner.name,
                     'partner_id': partner.id,
                     'user_id': assigned.id if assigned else False,
@@ -70,6 +75,8 @@ class RfmReactivationRule(models.Model):
                         'description': rule.lead_description or '',
                     },
                 })
-                created += 1
+            if lead_values:
+                Lead.create(lead_values)
+                created += len(lead_values)
             rule.last_run = fields.Datetime.now()
         return created

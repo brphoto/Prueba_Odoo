@@ -1,18 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
-    <record id="rfm_segment_high_value" model="crm.rfm.segment">
-        <field name="name">Clientes de alto valor</field>
-        <field name="sequence">10</field><field name="category">a</field>
-        <field name="description">Clientes prioritarios para fidelización y venta cruzada.</field>
+
+    <record id="rfm_segment_champions" model="crm.rfm.segment">
+        <field name="definition_type">segment</field>
+        <field name="name">Champions</field>
+        <field name="sequence">10</field>
+        <field name="color">10</field>
+        <field name="icon">fa-trophy</field>
+        <field name="rule_logic">all</field>
+        <field name="description">Compraron recientemente, compran seguido y gastan más. Recompénsalos: acceso anticipado, programas VIP, referidos.</field>
+        <field name="rule_ids" eval="[
+            (0, 0, {'sequence': 10, 'field_key': 'rfm_recency_score', 'operator': '>=', 'value': '70'}),
+            (0, 0, {'sequence': 20, 'field_key': 'rfm_frequency_score', 'operator': '>=', 'value': '70'}),
+            (0, 0, {'sequence': 30, 'field_key': 'rfm_monetary_score', 'operator': '>=', 'value': '70'}),
+        ]"/>
     </record>
-    <record id="rfm_segment_at_risk" model="crm.rfm.segment">
-        <field name="name">Clientes en riesgo</field>
-        <field name="sequence">20</field><field name="category">c</field>
-        <field name="description">Contactos de bajo valor relativo para campañas de recuperación.</field>
+
+    <record id="rfm_segment_loyal" model="crm.rfm.segment">
+        <field name="definition_type">segment</field>
+        <field name="name">Loyal</field>
+        <field name="sequence">20</field>
+        <field name="color">2</field>
+        <field name="icon">fa-user-circle</field>
+        <field name="rule_logic">all</field>
+        <field name="description">Compran con más frecuencia que el resto de la cartera. Recompénsalos con programas de lealtad, reseñas y envío gratis.</field>
+        <field name="rule_ids" eval="[
+            (0, 0, {'sequence': 10, 'field_key': 'rfm_frequency_score', 'operator': '>=', 'value': '70'}),
+        ]"/>
     </record>
-    <record id="rfm_segment_no_history" model="crm.rfm.segment">
-        <field name="name">Clientes sin historial</field>
-        <field name="sequence">30</field><field name="category">none</field>
-        <field name="description">Contactos que aún no tienen facturación registrada.</field>
+
+    <record id="rfm_segment_highest_paying" model="crm.rfm.segment">
+        <field name="definition_type">segment</field>
+        <field name="name">Highest Paying</field>
+        <field name="sequence">30</field>
+        <field name="color">3</field>
+        <field name="icon">fa-usd</field>
+        <field name="rule_logic">all</field>
+        <field name="description">El mayor gasto acumulado de la cartera, aunque no compren muy seguido. Cuídalos con atención personalizada, ofertas premium y upselling.</field>
+        <field name="rule_ids" eval="[
+            (0, 0, {'sequence': 10, 'field_key': 'rfm_monetary_score', 'operator': '>=', 'value': '70'}),
+        ]"/>
     </record>
+
+    <record id="rfm_segment_promising" model="crm.rfm.segment">
+        <field name="definition_type">segment</field>
+        <field name="name">Promising - Faithful</field>
+        <field name="sequence">40</field>
+        <field name="color">5</field>
+        <field name="icon">fa-handshake-o</field>
+        <field name="rule_logic">all</field>
+        <field name="description">Vuelven seguido, pero no gastan mucho todavía. Ya lograste su lealtad: enfócate en aumentar el monto con recomendaciones e incentivos por monto mínimo.</field>
+        <field name="rule_ids" eval="[
+            (0, 0, {'sequence': 10, 'field_key': 'rfm_recency_score', 'operator': '>=', 'value': '60'}),
+            (0, 0, {'sequence': 20, 'field_key': 'rfm_frequency_score', 'operator': '>=', 'value': '40'}),
+            (0, 0, {'sequence': 30, 'field_key': 'rfm_monetary_score', 'operator': '&lt;', 'value': '50'}),
+        ]"/>
+    </record>
+
+    <record id="rfm_segment_needing_attention" model="crm.rfm.segment">
+        <field name="definition_type">segment</field>
+        <field name="name">Needing Attention</field>
+        <field name="sequence">50</field>
+        <field name="color">6</field>
+        <field name="icon">fa-street-view</field>
+        <field name="rule_logic">all</field>
+        <field name="description">Por encima del promedio, pero llevan un tiempo sin comprar. Campañas de reactivación con plazo limitado.</field>
+        <field name="rule_ids" eval="[
+            (0, 0, {'sequence': 10, 'field_key': 'rfm_recency_score', 'operator': '&lt;', 'value': '60'}),
+            (0, 0, {'sequence': 20, 'field_key': 'rfm_recency_score', 'operator': '>=', 'value': '20'}),
+        ]"/>
+    </record>
+
+    <record id="rfm_segment_newest" model="crm.rfm.segment">
+        <field name="definition_type">segment</field>
+        <field name="name">Newest</field>
+        <field name="sequence">60</field>
+        <field name="color">4</field>
+        <field name="icon">fa-user-plus</field>
+        <field name="rule_logic">all</field>
+        <field name="description">Compraron por primera vez muy recientemente. Genera una buena segunda impresión: onboarding, soporte cercano.</field>
+        <field name="rule_ids" eval="[
+            (0, 0, {'sequence': 10, 'field_key': 'rfm_recency_score', 'operator': '>=', 'value': '90'}),
+            (0, 0, {'sequence': 20, 'field_key': 'rfm_frequency_score', 'operator': '&lt;', 'value': '20'}),
+        ]"/>
+    </record>
+
+    <record id="rfm_segment_sleeping" model="crm.rfm.segment">
+        <field name="definition_type">segment</field>
+        <field name="name">Sleeping</field>
+        <field name="sequence">70</field>
+        <field name="color">1</field>
+        <field name="icon">fa-bed</field>
+        <field name="rule_logic">all</field>
+        <field name="description">Buenos clientes en el pasado que no han comprado en un buen tiempo. Recupéralos con descuentos agresivos o encuestas de por qué se fueron.</field>
+        <field name="rule_ids" eval="[
+            (0, 0, {'sequence': 10, 'field_key': 'rfm_recency_score', 'operator': '&lt;', 'value': '20'}),
+        ]"/>
+    </record>
+
 </odoo>

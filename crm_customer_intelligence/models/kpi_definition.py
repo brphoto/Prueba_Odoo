@@ -70,7 +70,7 @@ class CrmKpiDefinition(models.Model):
 
     # El filtro también usa el catálogo configurable de categorías RFM.
     rfm_category = fields.Selection(
-        selection='_selection_rfm_category_filter', string='Segmento RFM', default='all')
+        selection='_selection_rfm_category_filter', string='Categoría RFM', default='all')
 
     @api.model
     def _selection_rfm_category_filter(self):

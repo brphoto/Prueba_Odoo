@@ -1,32 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_crm_rfm_category_list" model="ir.ui.view">
-        <field name="name">crm.rfm.category.list</field>
-        <field name="model">crm.rfm.category</field>
-        <field name="arch" type="xml">
-            <list decoration-muted="not active">
-                <field name="sequence" widget="handle"/><field name="code"/>
-                <field name="name"/><field name="score_min"/><field name="score_max"/>
-                <field name="is_at_risk"/><field name="color"/><field name="active" widget="boolean_toggle"/>
-            </list>
-        </field>
+    <record id="action_crm_rfm_catalog" model="ir.actions.act_window">
+        <field name="name">Catálogo RFM</field>
+        <field name="res_model">crm.rfm.segment</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="crm_customer_intelligence.view_crm_rfm_segment_list"/>
+        <field name="search_view_id" ref="crm_customer_intelligence.view_crm_rfm_catalog_search"/>
     </record>
-    <record id="view_crm_rfm_category_form" model="ir.ui.view">
-        <field name="name">crm.rfm.category.form</field>
-        <field name="model">crm.rfm.category</field>
-        <field name="arch" type="xml">
-            <form string="Categoría RFM"><sheet>
-                <div class="oe_title"><h1><field name="name"/></h1></div>
-                <group><group><field name="code"/><field name="description"/><field name="active"/></group>
-                    <group><field name="score_min"/><field name="score_max"/><field name="color"/><field name="is_at_risk"/><field name="sequence"/></group>
-                </group>
-                <div class="text-muted">Las categorías activas se muestran en el dashboard y se asignan automáticamente según el score.</div>
-            </sheet></form>
-        </field>
-    </record>
+    <menuitem id="menu_crm_rfm_catalog" name="Catálogo RFM"
+              parent="menu_crm_intelligence_config" action="action_crm_rfm_catalog" sequence="30"/>
+
+    <!-- Compatibility records: the unified catalog replaces both menus. -->
     <record id="action_crm_rfm_category" model="ir.actions.act_window">
-        <field name="name">Categorías RFM</field><field name="res_model">crm.rfm.category</field><field name="view_mode">list,form</field>
+        <field name="name">Categorias RFM</field>
+        <field name="res_model">crm.rfm.segment</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('definition_type', '=', 'category')]</field>
     </record>
-    <menuitem id="menu_crm_rfm_category" name="Categorías RFM"
-              parent="menu_crm_intelligence_config" action="action_crm_rfm_category" sequence="31"/>
+    <menuitem id="menu_crm_rfm_category" name="Categorias RFM"
+              parent="menu_crm_intelligence_config" action="action_crm_rfm_category"
+              sequence="31" active="False"/>
 </odoo>

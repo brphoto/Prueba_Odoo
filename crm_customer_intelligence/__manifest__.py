@@ -50,7 +50,7 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
     'icon': '/crm_customer_intelligence/static/description/icon.svg',
 
     'category': 'Sales/CRM',
-    'version': '19.0.1.1.3',
+    'version': '19.0.4.0.0',
 
     'depends': ['crm', 'sale', 'account', 'kpi_engine'],
 
@@ -67,6 +67,7 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
         'views/rfm_dashboard_report_views.xml',
         'views/crm_kpi_snapshot_views.xml',
         'views/crm_kpi_target_views.xml',
+        'views/rfm_snapshot_views.xml',
         'views/rfm_segment_views.xml',
         'views/rfm_segment_automation_views.xml',
         'views/rfm_category_views.xml',
@@ -74,6 +75,8 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
         'views/res_partner_views.xml',
         'views/res_config_settings_views.xml',
         'views/rfm_reactivation_rule_views.xml',
+        'views/rfm_recompute_wizard_views.xml',
+        'views/sale_crm_search_views.xml',
     ],
 
     'assets': {
@@ -81,6 +84,7 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
             'crm_customer_intelligence/static/src/rfm_dashboard/rfm_dashboard.js',
             'crm_customer_intelligence/static/src/rfm_dashboard/rfm_dashboard.xml',
             'crm_customer_intelligence/static/src/rfm_dashboard/rfm_dashboard.scss',
+            'crm_customer_intelligence/static/src/rfm_segment/rfm_segment_kanban.scss',
         ],
         'web.assets_web_dark': [
             'crm_customer_intelligence/static/src/rfm_dashboard/rfm_dashboard.dark.scss',
@@ -90,6 +94,6 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
     'demo': [],
 
     'installable': True,
-    'application': False,
+    'application': True,
     'auto_install': False,
 }

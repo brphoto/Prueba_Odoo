@@ -51,7 +51,8 @@ class TestCustomerHistory(TransactionCase):
             'name': 'Cliente con categoría manual',
             'rfm_category': 'b',
         })
-        category = self.env['crm.rfm.category'].search([('code', '=', 'a')], limit=1)
+        category = self.env['crm.rfm.segment'].search([
+            ('definition_type', '=', 'category'), ('code', '=', 'a')], limit=1)
         partner.write({'history_manual_category_id': category.id})
 
         self.assertEqual(partner.history_manual_category_changed_by, self.env.user)

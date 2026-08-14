@@ -7,7 +7,9 @@ class RfmSegmentAction(models.Model):
     _description = 'Acción automática de segmento RFM'
     _order = 'sequence, id'
 
-    segment_id = fields.Many2one('crm.rfm.segment', required=True, ondelete='cascade')
+    segment_id = fields.Many2one(
+        'crm.rfm.segment', required=True, ondelete='cascade',
+        domain=[('definition_type', '=', 'segment')])
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
     action_type = fields.Selection([

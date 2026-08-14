@@ -26,7 +26,9 @@ patch(ChatroomApp.prototype, {
         const codes = [...new Set(extra.map((e) => e.rfm_category).filter((code) => code && code !== "none"))];
         const categories = codes.length
             ? await this.orm.searchRead(
-                "crm.rfm.category", [["code", "in", codes]], ["code", "name", "color"])
+                "crm.rfm.segment", [
+                    ["definition_type", "=", "category"], ["code", "in", codes],
+                ], ["code", "name", "color"])
             : [];
         const categoryByCode = Object.fromEntries(categories.map((category) => [category.code, category]));
         this.state.channels = this.state.channels.map((c) => ({

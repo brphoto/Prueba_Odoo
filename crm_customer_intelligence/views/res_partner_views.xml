@@ -101,4 +101,50 @@
               action="action_customer_intelligence_dashboard"
               sequence="10"/>
 
+    <record id="view_res_partner_kanban_rfm_category" model="ir.ui.view">
+        <field name="name">res.partner.kanban.rfm.category</field>
+        <field name="model">res.partner</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_small_column" default_group_by="rfm_category" records_draggable="0">
+                <field name="name"/>
+                <field name="rfm_category"/>
+                <field name="rfm_score"/>
+                <field name="commercial_total_sales"/>
+                <field name="currency_id"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex">
+                            <field name="image_128" widget="image" class="o_kanban_image rounded-circle me-2"
+                                   options="{'size': [32, 32]}" alt="Avatar"/>
+                            <div>
+                                <strong><field name="name"/></strong>
+                                <div class="text-muted small">
+                                    Score <field name="rfm_score"/> ·
+                                    <field name="commercial_total_sales" widget="monetary"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="action_res_partner_by_rfm_category" model="ir.actions.act_window">
+        <field name="name">Clientes por Categoría RFM</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('rfm_category', '!=', 'none')]</field>
+        <field name="search_view_id" ref="view_res_partner_filter_rfm"/>
+        <field name="context">{'search_default_group_rfm_category': 1}</field>
+        <field name="view_ids" eval="[
+            Command.clear(),
+            Command.create({'view_mode': 'kanban', 'view_id': ref('view_res_partner_kanban_rfm_category')}),
+            Command.create({'view_mode': 'list', 'view_id': False}),
+            Command.create({'view_mode': 'form', 'view_id': False}),
+        ]"/>
+    </record>
+    <menuitem id="menu_res_partner_by_rfm_category" name="Clientes por Categoría"
+              parent="menu_crm_intelligence_root" action="action_res_partner_by_rfm_category" sequence="15"/>
+
 </odoo>

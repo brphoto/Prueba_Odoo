@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_rfm_snapshot_list" model="ir.ui.view">
+        <field name="name">crm.rfm.snapshot.list</field>
+        <field name="model">crm.rfm.snapshot</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="snapshot_date"/>
+                <field name="partner_id"/>
+                <field name="rfm_category"/>
+                <field name="rfm_score"/>
+                <field name="rfm_recency_days"/>
+                <field name="rfm_frequency"/>
+                <field name="rfm_monetary_value"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_crm_rfm_snapshot_graph" model="ir.ui.view">
+        <field name="name">crm.rfm.snapshot.graph</field>
+        <field name="model">crm.rfm.snapshot</field>
+        <field name="arch" type="xml">
+            <graph string="Evolución RFM por cliente" type="line">
+                <field name="snapshot_date" interval="month"/>
+                <field name="rfm_score" type="measure"/>
+                <field name="partner_id"/>
+            </graph>
+        </field>
+    </record>
+    <record id="view_crm_rfm_snapshot_search" model="ir.ui.view">
+        <field name="name">crm.rfm.snapshot.search</field>
+        <field name="model">crm.rfm.snapshot</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner_id"/>
+                <field name="rfm_category"/>
+                <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                <filter name="group_category" string="Categoría RFM" context="{'group_by': 'rfm_category'}"/>
+                <filter name="group_month" string="Mes" context="{'group_by': 'snapshot_date:month'}"/>
+            </search>
+        </field>
+    </record>
+    <record id="action_crm_rfm_snapshot" model="ir.actions.act_window">
+        <field name="name">Histórico RFM por cliente</field>
+        <field name="res_model">crm.rfm.snapshot</field>
+        <field name="view_mode">list,graph</field>
+        <field name="context">{'search_default_group_partner': 1}</field>
+    </record>
+    <menuitem id="menu_crm_rfm_snapshot" name="Histórico RFM"
+              parent="menu_crm_intelligence_reports" action="action_crm_rfm_snapshot" sequence="15"/>
+</odoo>

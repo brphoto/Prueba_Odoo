@@ -242,7 +242,7 @@ class ChatroomControlCenter(models.TransientModel):
         }
 
     def action_open_rfm_dashboard(self):
-        if 'crm.rfm.category' not in self.env:
+        if 'crm.rfm.segment' not in self.env:
             return self._notification(_('Instala Inteligencia Comercial para abrir el dashboard RFM.'))
         return self.env.ref(
             'crm_customer_intelligence.action_customer_intelligence_dashboard').read()[0]

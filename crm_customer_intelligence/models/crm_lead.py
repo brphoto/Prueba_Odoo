@@ -8,6 +8,10 @@ YELLOW_THRESHOLD_DAYS = 7
 class CrmLead(models.Model):
     _inherit = 'crm.lead'
 
+    rfm_category = fields.Selection(
+        related='partner_id.rfm_category', string="Categoría RFM", store=True, readonly=True)
+    rfm_score = fields.Integer(
+        related='partner_id.rfm_score', string="Score RFM", store=True, readonly=True)
     days_since_last_management = fields.Integer(
         string="Días sin gestión", compute='_compute_management_alert')
     management_alert_state = fields.Selection(

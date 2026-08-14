@@ -64,4 +64,13 @@
         <field name="interval_type">days</field>
         <field name="active">True</field>
     </record>
+    <record id="ir_cron_snapshot_rfm" model="ir.cron">
+        <field name="name">Inteligencia comercial: foto mensual de clasificación RFM</field>
+        <field name="model_id" ref="model_crm_rfm_snapshot"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_snapshot_rfm()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="active">True</field>
+    </record>
 </odoo>

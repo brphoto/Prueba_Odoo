@@ -35,15 +35,15 @@ class ChatroomCampaign(models.Model):
     target_rfm_b = fields.Boolean(string="Categoría B (intermedios)")
     target_rfm_c = fields.Boolean(string="Categoría C (en riesgo/inactivos)")
     target_category_ids = fields.Many2many(
-        'crm.rfm.category', 'chatroom_campaign_rfm_category_rel',
+        'crm.rfm.segment', 'chatroom_campaign_rfm_category_rel',
         'campaign_id', 'category_id', string='Categorías RFM',
-        domain=[('active', '=', True)],
+        domain=[('definition_type', '=', 'category'), ('active', '=', True)],
         help='Selecciona cualquier categoría del catálogo RFM, incluidas las personalizadas. '
              'Las casillas A/B/C se conservan para compatibilidad con campañas antiguas.',
     )
     segment_id = fields.Many2one(
         'crm.rfm.segment', string='Segmento guardado',
-        domain=[('active', '=', True)],
+        domain=[('definition_type', '=', 'segment'), ('active', '=', True)],
         help='Usa las reglas visuales del segmento para seleccionar destinatarios.')
     batch_size = fields.Integer(
         default=20, required=True, string="Tamaño de lote",
