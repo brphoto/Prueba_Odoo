@@ -116,6 +116,12 @@ class PaymentTransaction(models.Model):
         payment_data = dict(response, reference=self.reference)
         self.env['payment.transaction'].sudo()._process('placetopay', payment_data)
 
+    def action_placetopay_verify(self):
+        """Let a user manually re-check the PlacetoPay session status from the transaction form."""
+        self.ensure_one()
+        self._placetopay_query_and_process()
+        return True
+
     @staticmethod
     def _placetopay_get_last_payment(payment_data):
         payments = payment_data.get('payment') or []

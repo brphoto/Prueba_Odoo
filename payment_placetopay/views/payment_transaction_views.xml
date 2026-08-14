@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="payment_transaction_form_placetopay" model="ir.ui.view">
+        <field name="name">payment.transaction.form.placetopay</field>
+        <field name="model">payment.transaction</field>
+        <field name="inherit_id" ref="payment.payment_transaction_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/field[@name='state']" position="before">
+                <button
+                    type="object"
+                    name="action_placetopay_verify"
+                    string="Verificar en PlacetoPay"
+                    class="oe_highlight"
+                    invisible="provider_code != 'placetopay' or state in ('done', 'cancel')"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

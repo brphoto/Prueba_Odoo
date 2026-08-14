@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="df-bg" x1="15" y1="18" x2="240" y2="241" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E4032E"/>
+      <stop offset="1" stop-color="#3B0A14"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="54" fill="url(#df-bg)"/>
+  <!-- payment card with a "fast" motion streak -->
+  <rect x="60" y="82" width="136" height="92" rx="12" fill="#ffffff"/>
+  <rect x="60" y="100" width="136" height="18" fill="#3B0A14"/>
+  <rect x="74" y="132" width="36" height="10" rx="2" fill="#E4032E"/>
+  <rect x="74" y="148" width="60" height="8" rx="2" fill="#3B0A14" opacity=".35"/>
+  <path d="M150 118l30 28-30 28" fill="none" stroke="#E4032E" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M40 132h18M34 146h14M40 160h10" stroke="#ffffff" stroke-width="7" stroke-linecap="round" opacity=".55"/>
+  <text x="128" y="212" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="-.5">datafast</text>
+</svg>

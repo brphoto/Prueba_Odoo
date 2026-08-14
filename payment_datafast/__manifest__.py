@@ -25,4 +25,5 @@ inside the provider widget and is never sent to Odoo.
     },
     'license': 'LGPL-3',
     'author': 'Custom',
+    'icon': '/payment_datafast/static/description/icon.svg',
 }

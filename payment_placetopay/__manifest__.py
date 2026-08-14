@@ -21,6 +21,7 @@ los proveedores de pago de Odoo.
     'data': [
         'views/payment_provider_views.xml',
         'views/payment_placetopay_templates.xml',
+        'views/payment_transaction_views.xml',
         'data/payment_provider_data.xml',
         'data/placetopay_cron.xml',
     ],

@@ -99,7 +99,7 @@ class PaymentProvider(models.Model):
         self.ensure_one()
         if self.code != 'datafast':
             return super()._get_default_payment_method_codes()
-        return {'card'}
+        return {'datafast'}
 
     def _datafast_make_request(self, endpoint, method='GET', payload=None):
         self.ensure_one()
