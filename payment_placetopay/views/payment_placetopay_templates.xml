@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="redirect_form">
+        <!-- PlacetoPay generates a unique, self-contained processUrl for each session. -->
+        <form t-att-action="api_url" method="get"/>
+    </template>
+
+</odoo>

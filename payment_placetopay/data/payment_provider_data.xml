@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <record id="payment_method_placetopay" model="payment.method">
+        <field name="name">PlacetoPay</field>
+        <field name="code">placetopay</field>
+        <field name="sequence">25</field>
+        <field name="image" type="base64" file="payment_placetopay/static/img/placetopay.svg"/>
+        <field name="support_tokenization">False</field>
+        <field name="support_express_checkout">False</field>
+        <field name="support_refund">none</field>
+    </record>
+
+    <record id="payment_provider_placetopay" model="payment.provider">
+        <field name="name">PlacetoPay</field>
+        <field name="code">placetopay</field>
+        <field name="image_128" type="base64" file="payment_placetopay/static/img/placetopay.svg"/>
+        <field name="redirect_form_view_id" ref="redirect_form"/>
+        <field name="payment_method_ids" eval="[Command.set([ref('payment_placetopay.payment_method_placetopay')])]"/>
+    </record>
+
+</odoo>
