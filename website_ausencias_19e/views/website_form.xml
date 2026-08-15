@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+    <odoo>
+
+        <!-- Sub-item del menú "Mi portal" (no aparece suelto en la barra
+             principal del sitio; la navegación entre secciones del portal
+             ya la resuelve la cabecera azul compartida, portal_topbar). -->
+        <record id="menu_partner_form" model="website.menu">
+            <field name="name">Registrar Ausencia</field>
+            <field name="url">/customer/form</field>
+            <field name="parent_id" ref="website_ausencias_19e.menu_portal_home"/>
+            <field name="sequence" type="int">22</field>
+        </record>
+
+        <template id="tmp_customer_form" name="Solicitar ausencia">
+            <t t-call="website.layout">
+                <div class="ea-page">
+                    <div class="container">
+                        <t t-call="website_ausencias_19e.portal_topbar">
+                            <t t-set="active" t-value="'solicitar'"/>
+                        </t>
+
+                        <div class="ea-card ea-form">
+                            <h2><i class="fa fa-calendar-plus-o me-1"/> Solicitar ausencia</h2>
+                            <div class="ea-subtitle">Completa el formulario y tu solicitud se enviará automáticamente a RRHH y a tu jefe inmediato.</div>
+
+                            <t t-if="error">
+                                <div class="alert alert-danger d-flex align-items-center gap-2">
+                                    <i class="fa fa-exclamation-triangle"/>
+                                    <strong t-esc="error"/>
+                                </div>
+                            </t>
+
+                            <form action="/customer/form/submit" method="post" enctype="multipart/form-data" class="oe_import">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Correo</label>
+                                        <input type="text" class="form-control" t-att-value="email" readonly="readonly"/>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Nombre</label>
+                                        <input type="text" class="form-control" t-att-value="name" readonly="readonly"/>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Área</label>
+                                        <select class="form-select" name="departments">
+                                            <t t-foreach="departments" t-as="department">
+                                                <option t-attf-value="#{department.id}"><t t-esc="department.name"/></option>
+                                            </t>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Tipo de permiso</label>
+                                        <select class="form-select" name="leave_type">
+                                            <t t-foreach="leave_type" t-as="leave">
+                                                <option t-attf-value="#{leave.id}"><t t-esc="leave.name"/></option>
+                                            </t>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Desde</label>
+                                        <input type="date" id="start" name="De" min="2020-01-01" max="2050-12-31" class="form-control" required="required"/>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Hasta</label>
+                                        <input type="date" id="end" name="Hasta" min="2020-01-01" max="2050-12-31" class="form-control" required="required"/>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Motivo del permiso</label>
+                                        <input type="text" class="form-control" name="Motivo Permiso" id="subject" required="required" placeholder="Describe brevemente el motivo de tu solicitud"/>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Adjuntar archivo (opcional)</label>
+                                        <input type="file" name="att" class="form-control" multiple="true" accept="image/*,application/pdf,video/*"/>
+                                        <div class="form-text">Certificados médicos, autorizaciones u otro respaldo de tu solicitud.</div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary"><i class="fa fa-paper-plane me-1"/> Enviar solicitud</button>
+                                    <a href="/portal/inicio" class="btn btn-outline-secondary">Cancelar</a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+
+        <template id="tmp_customer_form_success" name="Solicitud enviada">
+            <t t-call="website.layout">
+                <div class="ea-page">
+                    <div class="container" style="max-width: 560px;">
+                        <div class="ea-card text-center py-5">
+                            <div style="font-size: 48px; color: #1a7f3c;"><i class="fa fa-check-circle"/></div>
+                            <h2 class="mt-3">¡Solicitud enviada!</h2>
+                            <p class="text-muted" t-if="mensaje" t-esc="mensaje"/>
+                            <div class="mt-4 d-flex gap-2 justify-content-center">
+                                <a href="/leave/user" class="btn btn-primary">Ver mis ausencias</a>
+                                <a href="/portal/inicio" class="btn btn-outline-secondary">Volver al inicio</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+</odoo>

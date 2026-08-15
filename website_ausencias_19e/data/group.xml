@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_employee_leave" model="ir.module.category">
+        <field name="name">Ausencia Empleado</field>
+        <field name="description">User access level for hr employee manager leaves</field>
+        <field name="sequence">3</field>
+    </record>
+
+
+    <record id="group_hr_payroll_user_manager_leave" model="res.groups">
+        <field name="name">Manager Leave</field>
+    </record>
+
+    <record id="action_create_portal_user" model="ir.actions.server">
+        <field name="name">Crear Usuarios Portal</field>
+        <field name="model_id" ref="model_hr_employee"/>
+        <field name="binding_model_id" ref="model_hr_employee"/>
+        <field name="state">code</field>
+        <field name="code">
+            records._create_portal_user()
+        </field>
+    </record>
+   
+</odoo>

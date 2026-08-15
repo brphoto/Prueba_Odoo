@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+   
+
+    <record id="manager_employee_leave_form" model="ir.ui.view">
+        <field name="name">hr.manager.leave.form</field>
+        <field name="model">hr.manager.leave</field>
+        <field name="arch" type="xml">
+            <form string="Leave ">
+                <header>
+                    <button name="aprobar" string="Aprobar" type="object" class="btn btn-default" icon="fa-check" invisible="state in ['reject', 'approved']"/>
+                    <button name="rechazar" string="Rechazar" type="object" class="btn btn-default" icon="fa-times" invisible="state in ['reject', 'approved']"/>
+
+                    <field name="state" widget="statusbar"/>
+             </header>
+                <sheet>
+                    <group>
+                        <field name="name"  readonly="1"  />
+                        <field name="employee_id" readonly="1" invisible='1'/>
+                        <field name="date_from" readonly="1"/>
+                          <field name="date_to" readonly="1"/>
+                          <field name="duration_display" string="Duración" readonly="1"/>
+                          <field  name="leave_type" readonly="1"/>
+                          <field name="leave_id" invisible="1"/>
+                          <field name='department_id'/>
+                          <field  name="description" string="Comentarios"/>
+                          <field name="manager_id" readonly='1'/>
+                        <!--     <field name="email_text" /> -->
+                          
+                    </group>
+                </sheet>     
+            </form>
+        </field>
+    </record>
+    <record id="hr_leave_view_form_view_inherit_web_tree" model="ir.ui.view">
+        <field name="name">hr.leave.view.form.inherit.web.tree</field>
+        <field name="model">hr.leave</field>
+        <field name="inherit_id" ref="hr_holidays.hr_leave_view_tree"/>
+        <field name="mode">extension</field>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_approve'][not(ancestor::header)]" position="replace">
+                <button name="action_approve" icon="fa-check text-success"  string="Aprobar" type="object" class="oe_highlight"  invisible="state in ['validate', 'validate1', 'refuse']"/>
+
+
+            </xpath>
+        <xpath expr="//field[@name='state']" position="after">
+            <field name="validate_ares"  string="Aprobar" invisible='1' />
+        
+        </xpath>
+   
+
+    </field>
+
+    </record>
+
+    <record id="view_holiday_manager_employee_tree" model="ir.ui.view">
+        <field name="name">hr.manager.leave.tree</field>
+        <field name="model">hr.manager.leave</field>
+
+        <field name="arch" type="xml">
+
+            <list string="LEAVE" decoration-warning="state == 'draft'" decoration-success="state == 'approved'" decoration-muted="state == 'reject'">
+               <field name="name" />
+               <field name="leave_id" invisible="1"/>
+                <field name="description"/>
+                <field name="date_from"/>
+                  <field name="date_to"/>
+                  <field name="duration_display" string="Duración"/>
+                  <field  name="leave_type"/>
+                  <field name='department_id'/>
+                  <field name='state' widget="badge" decoration-warning="state == 'draft'" decoration-success="state == 'approved'" decoration-danger="state == 'reject'"/>
+
+
+            </list>
+
+        </field>
+    </record>
+
+    <!-- Vista kanban de aprobaciones pendientes: pensada para el jefe de
+         área, que revisa desde el celular igual que desde escritorio y
+         necesita aprobar/rechazar en un clic sin abrir cada formulario. -->
+    <record id="view_holiday_manager_employee_kanban" model="ir.ui.view">
+        <field name="name">hr.manager.leave.kanban</field>
+        <field name="model">hr.manager.leave</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_small_column" default_group_by="state">
+                <field name="state"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <strong><field name="name"/></strong>
+                            <field name="state" widget="badge" decoration-warning="state == 'draft'" decoration-success="state == 'approved'" decoration-danger="state == 'reject'"/>
+                        </div>
+                        <div class="text-muted small">
+                            <i class="fa fa-fw fa-sitemap me-1" title="Área"/><field name="department_id"/>
+                        </div>
+                        <div class="small mt-1">
+                            <i class="fa fa-fw fa-calendar me-1" title="Periodo"/>
+                            <field name="date_from"/> - <field name="date_to"/>
+                        </div>
+                        <div class="small text-muted">
+                            <field name="duration_display"/> · <field name="leave_type"/>
+                        </div>
+                        <div class="mt-2 d-flex gap-1" t-if="record.state.raw_value == 'draft'">
+                            <button name="aprobar" type="object" class="btn btn-sm btn-success"><i class="fa fa-check me-1"/>Aprobar</button>
+                            <button name="rechazar" type="object" class="btn btn-sm btn-outline-danger"><i class="fa fa-times me-1"/>Rechazar</button>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_employee_filter_ausencias" model="ir.ui.view">
+        <field name="name">hr.manager.search</field>
+        <field name="model">hr.manager.leave</field>
+        <field name="arch" type="xml">
+            <search string="Ausencias">
+                <field name="employee_id"/>
+                <field name="state"/>
+                <field name="department_id"/>
+                <separator/>
+                <filter name="group_state" string="Agrupar por estado" context="{'group_by': 'state'}"/>
+                <filter name="group_employee" string="Agrupar por empleado" context="{'group_by': 'employee_id'}"/>
+                <filter name="group_department" string="Agrupar por departamento" context="{'group_by': 'department_id'}"/>
+            </search>
+        </field>
+    </record>
+    
+
+    <record id="action_l10n_ec_hr_leave_employees_test" model="ir.actions.act_window">
+        <field name="name">Employees Leave</field>
+        <field name="res_model">hr.manager.leave</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="context">{'search_default_group_state': 1}</field>
+    </record>
+
+    <record model="ir.rule" id="partner_view_rule_manager">
+        <field name="name">Manager  Department</field>
+        <field name="model_id" ref="model_hr_manager_leave"/>
+        <field name="groups" eval="[(4, ref('website_ausencias_19e.group_hr_payroll_user_manager_leave'))]" />
+       <field name="domain_force">[('manager_id', '=',user.id)]</field> 
+    </record>
+    
+
+    <menuitem id='ausencias_manager' name="Ausencias por Empleado" sequence='10'/>
+    <menuitem
+    id="menu_hr_holidays_employee_approve_test1"
+    name="Ausencias por Empleado"
+    parent="ausencias_manager"
+    action="action_l10n_ec_hr_leave_employees_test"
+    sequence="10"
+    groups='group_hr_payroll_user_manager_leave'/>
+  
+
+    <record id="hr_leave_view_form_view_inherit_web" model="ir.ui.view">
+        <field name="name">hr.leave.view.form.inherit.web</field>
+        <field name="model">hr.leave</field>
+        <field name="inherit_id" ref="l10n_ec_hr_payroll_19e.l10n_ec_hr_leave_view_form_inherit"/>
+        <field name="mode">extension</field>
+        <field name="priority">20</field>
+        
+        <field name="arch" type="xml">
+            <xpath expr="/form/header/field[@name='state']" position="replace">
+                <field name="state" widget="statusbar" statusbar_visible="draft,confirm,validate,validate1,refuse"/>
+            
+            </xpath>
+          
+
+            <xpath expr="/form/header" position="inside">
+                <button name='action_super_approve' icon="fa-check text-success" string="Aprobacion Directa" type="object" class="oe_highlight" invisible="state in ['validate', 'validate1', 'refuse']"/>
+                <button name='notificar'  invisible="state in ['draft', 'cancel', 'confirm', 'validate', 'refuse']" string="Notificar a Jefe " type="object" class="oe_highlight"/>
+            </xpath>
+            <xpath expr="//button[@name='action_approve']" position="replace">
+                <button name="action_approve"  string="Aprobar" type="object" class="oe_highlight"  invisible="state in ['validate', 'validate1', 'refuse']"/>
+                
+            </xpath>
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="validate_ares"  string="Aprobar" invisible='1' />
+                <field name='file' string='Adjunto'/>
+                <field name='attachment' string='Nombre Adjunto'/>
+            
+            </xpath>
+
+        </field>
+    </record>
+
+   
+    
+    <record id="actionview_holiday_manager_employee_tree" model="ir.actions.act_window">
+        <field name="name">Pendiente de Aprobación (Jefe Directo)</field>
+        <field name="res_model">hr.manager.leave</field>
+        <field name="view_mode">list</field>
+        <field name="domain">[('state', '=', 'draft')]</field>
+        <field name="context">{'readonly': True}</field>
+        <field name="view_id" ref="view_holiday_manager_employee_tree"/>
+    </record>
+    
+    <menuitem
+        id="model_pending_approve"
+        name="Pendiente de Aprobación (Jefe Directo)"
+        sequence="10"
+        parent="hr_holidays.menu_hr_holidays_management"
+        action="actionview_holiday_manager_employee_tree"
+        groups="hr.group_hr_manager"
+    />
+    
+
+    <record id="ir_cron_check_self_carea_day_absences" model="ir.cron">
+        <field name="name">Check Self Care Day Absences</field>
+        <field name="model_id" ref="hr_holidays.model_hr_leave"/>
+        <field name="state">code</field>
+        <field name="code">model.check_self_carea_day_absences()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="active">False</field>
+        <!-- Programado para ejecutarse diariamente -->
+        <field name="interval_type">days</field>
+        <field name="interval_number">1</field>
+    </record>
+
+    <!-- Recordatorio diario a RRHH de solicitudes pendientes hace más de 2
+         días (ver check_pending_leave_reminders en hr_holidays.py).
+         Desactivado por defecto: RRHH debe activarlo desde
+         Ajustes > Técnico > Acciones Planificadas una vez confirme que
+         quiere recibir estos correos automáticos. -->
+    <record id="ir_cron_check_pending_leave_reminders" model="ir.cron">
+        <field name="name">Recordatorio de Ausencias Pendientes (RRHH)</field>
+        <field name="model_id" ref="hr_holidays.model_hr_leave"/>
+        <field name="state">code</field>
+        <field name="code">model.check_pending_leave_reminders()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="active">False</field>
+        <field name="interval_type">days</field>
+        <field name="interval_number">1</field>
+    </record>
+
+
+
+</odoo>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Sub-item del menú "Mi portal", ver nota en website_form.xml -->
+    <record id="menu_employee_documents" model="website.menu">
+        <field name="name">Mis Documentos</field>
+        <field name="url">/employee/documents</field>
+        <field name="parent_id" ref="website_ausencias_19e.menu_portal_home"/>
+        <field name="sequence" type="int">28</field>
+    </record>
+
+    <template id="employee_documents_template" name="Mis documentos">
+        <t t-call="website.layout">
+            <div class="ea-page">
+                <div class="container">
+                    <t t-call="website_ausencias_19e.portal_topbar">
+                        <t t-set="active" t-value="'documentos'"/>
+                    </t>
+
+                    <div class="ea-card">
+                        <h2><i class="fa fa-folder-open-o me-1"/> Mis documentos</h2>
+                        <div class="ea-subtitle">Archivos que RRHH ha adjuntado a tu ficha (contratos, certificados, etc.)</div>
+
+                        <t t-if="not documents">
+                            <div class="ea-empty">
+                                <i class="fa fa-file-o"/>
+                                Todavía no tienes documentos disponibles.
+                            </div>
+                        </t>
+
+                        <t t-if="documents">
+                            <div class="table-responsive">
+                                <table class="table ea-table align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Documento</th>
+                                            <th>Fecha</th>
+                                            <th class="text-end">Descargar</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="documents" t-as="doc">
+                                            <tr>
+                                                <td><i class="fa fa-file-text-o me-2 text-muted"/><span t-esc="doc.name"/></td>
+                                                <td><span t-field="doc.create_date" t-options="{'widget': 'date'}"/></td>
+                                                <td class="text-end">
+                                                    <a t-attf-href="/employee/documents/#{doc.id}" class="btn btn-primary btn-sm">
+                                                        <i class="fa fa-download"/> Descargar
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+</odoo>

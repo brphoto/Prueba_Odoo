@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+   
+    <record id="hr_manager_view_inherit_web" model="ir.ui.view">
+        <field name="name">hr.employee.view.inherit.web</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="mode">extension</field>
+        <field name="priority">20</field>
+        
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='work_phone']" position="after">
+
+                <field name='manager_id_web'  options="{'edit':false,'create': false, 'create_edit': false}"/>
+                <div class="alert alert-warning py-2 mb-2" role="alert" colspan="2" invisible="manager_id_web">
+                    <i class="fa fa-exclamation-triangle me-1" title="Advertencia"/>
+                    Sin jefe inmediato (Manager Web) configurado: no se podrán aprobar ni notificar las ausencias de este empleado hasta asignar uno.
+                </div>
+                <field name="method_calc" invisible="contract_type in ['1', '3']"/>
+
+                <field name="days_initial"
+                invisible="contract_type != 1 and method_calc != '3'"/>
+
+                <field name="date_initial"
+                invisible="contract_type not in [1, 3] and method_calc not in ['2', '3']"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

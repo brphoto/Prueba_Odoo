@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="inherit_view_id_inherit_res_users" model="ir.ui.view">
+        <field name="name">res.uders.view.form.inherit</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='access_rights']" position="after">
+                <page string="Ausencias">
+                    <group>
+                        <field name="is_configured"/>
+                        
+                    </group>
+                </page>
+            </xpath>
+           
+            
+        </field>
+    </record>
+</odoo>

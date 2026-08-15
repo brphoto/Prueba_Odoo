@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Sub-item del menú "Mi portal", ver nota en website_form.xml -->
+    <record id="menu_employee_cargas_familiares" model="website.menu">
+        <field name="name">Mis Cargas Familiares</field>
+        <field name="url">/employee/cargas-familiares</field>
+        <field name="parent_id" ref="website_ausencias_19e.menu_portal_home"/>
+        <field name="sequence" type="int">29</field>
+    </record>
+
+    <template id="employee_cargas_familiares_template" name="Mis cargas familiares">
+        <t t-call="website.layout">
+            <div class="ea-page">
+                <div class="container">
+                    <t t-call="website_ausencias_19e.portal_topbar">
+                        <t t-set="active" t-value="'cargas'"/>
+                    </t>
+
+                    <div class="ea-card">
+                        <h2><i class="fa fa-users me-1"/> Mis cargas familiares</h2>
+                        <div class="ea-subtitle">Cónyuge e hijos registrados por RRHH. Si algo está desactualizado, avisa a RRHH.</div>
+
+                        <t t-if="not employee or not employee.family_ids">
+                            <div class="ea-empty">
+                                <i class="fa fa-users"/>
+                                No tienes cargas familiares registradas.
+                            </div>
+                        </t>
+
+                        <t t-if="employee and employee.family_ids">
+                            <div class="table-responsive">
+                                <table class="table ea-table align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre</th>
+                                            <th>Parentesco</th>
+                                            <th>Fecha de nacimiento</th>
+                                            <th class="text-center">Edad</th>
+                                            <th>Identificación</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="employee.family_ids" t-as="member">
+                                            <tr>
+                                                <td><t t-esc="member.name"/></td>
+                                                <td>
+                                                    <t t-if="member.relation == 'spouse'">Cónyuge</t>
+                                                    <t t-elif="member.relation == 'child'">Hijo/a</t>
+                                                    <t t-elif="member.relation == 'father'">Padre</t>
+                                                    <t t-elif="member.relation == 'mother'">Madre</t>
+                                                    <t t-elif="member.relation == 'other'"><t t-esc="member.other"/></t>
+                                                    <t t-else=""><t t-esc="member.relation"/></t>
+                                                </td>
+                                                <td><span t-field="member.birthday" t-options="{'widget': 'date'}"/></td>
+                                                <td class="text-center"><t t-esc="member.age"/></td>
+                                                <td><t t-esc="member.identification_id or member.passport_id or '—'"/></td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+</odoo>

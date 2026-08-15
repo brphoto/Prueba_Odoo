@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="menu_portal_home" model="website.menu">
+        <field name="name">Mi portal</field>
+        <field name="url">/portal/inicio</field>
+        <field name="parent_id" ref="website.main_menu"/>
+        <field name="sequence" type="int">20</field>
+    </record>
+
+    <template id="portal_home" name="Portal del empleado">
+        <t t-call="website.layout">
+            <div class="ea-page">
+                <div class="container">
+                    <t t-call="website_ausencias_19e.portal_topbar">
+                        <t t-set="active" t-value="'inicio'"/>
+                    </t>
+
+                    <div class="alert alert-warning d-flex align-items-center gap-2 mb-3" t-if="vac_acumulacion_alta">
+                        <i class="fa fa-umbrella-beach"/>
+                        <div>
+                            Tienes <strong><t t-esc="vac_restantes"/> días</strong> de vacaciones acumulados.
+                            Considera planificar tu descanso pronto.
+                        </div>
+                    </div>
+
+                    <div class="ea-stat-row mb-4">
+                        <div class="ea-stat">
+                            <div class="ea-stat-icon"><i class="fa fa-umbrella-beach"/></div>
+                            <div class="ea-stat-value"><t t-esc="vac_restantes"/></div>
+                            <div class="ea-stat-label">Días de vacaciones disponibles</div>
+                            <div class="ea-progress">
+                                <div t-attf-style="width: #{vac_pct}%;"/>
+                            </div>
+                        </div>
+                        <div class="ea-stat">
+                            <div class="ea-stat-icon"><i class="fa fa-clock-o"/></div>
+                            <div class="ea-stat-value"><t t-esc="pendientes_count"/></div>
+                            <div class="ea-stat-label">Solicitudes pendientes de aprobación</div>
+                        </div>
+                        <div class="ea-stat">
+                            <div class="ea-stat-icon"><i class="fa fa-heart-o"/></div>
+                            <div class="ea-stat-value"><t t-esc="selfcare_restantes"/></div>
+                            <div class="ea-stat-label">Self care day disponibles (de 2)</div>
+                        </div>
+                        <div class="ea-stat">
+                            <div class="ea-stat-icon"><i class="fa fa-file-text-o"/></div>
+                            <div class="ea-stat-value"><t t-esc="payslip_count"/></div>
+                            <div class="ea-stat-label">Roles de pago disponibles</div>
+                        </div>
+                    </div>
+
+                    <div class="ea-card">
+                        <h2>Accesos rápidos</h2>
+                        <div class="ea-subtitle">Todo lo que necesitas, a un clic de distancia</div>
+                        <div class="ea-quick-actions">
+                            <a href="/customer/form">
+                                <i class="fa fa-calendar-plus-o"/>
+                                <span class="ea-qa-title">Solicitar ausencia</span>
+                                <span class="ea-qa-desc">Vacaciones, permisos y más</span>
+                            </a>
+                            <a href="/leave/user">
+                                <i class="fa fa-list-alt"/>
+                                <span class="ea-qa-title">Mis ausencias</span>
+                                <span class="ea-qa-desc">Historial y estado de tus solicitudes</span>
+                            </a>
+                            <a href="/payslip/form">
+                                <i class="fa fa-file-text-o"/>
+                                <span class="ea-qa-title">Roles de pago</span>
+                                <span class="ea-qa-desc">Descarga tus recibos en PDF</span>
+                            </a>
+                            <a href="/calendar/leave">
+                                <i class="fa fa-users"/>
+                                <span class="ea-qa-title">Calendario del equipo</span>
+                                <span class="ea-qa-desc">Quién está fuera y cuándo</span>
+                            </a>
+                            <a href="/employee/documents">
+                                <i class="fa fa-folder-open-o"/>
+                                <span class="ea-qa-title">Mis documentos</span>
+                                <span class="ea-qa-desc">Contratos, certificados y más</span>
+                            </a>
+                            <a href="/employee/certificate" target="_blank">
+                                <i class="fa fa-certificate"/>
+                                <span class="ea-qa-title">Certificado laboral</span>
+                                <span class="ea-qa-desc">Descarga tu certificado en PDF</span>
+                            </a>
+                            <a href="/employee/cargas-familiares">
+                                <i class="fa fa-users"/>
+                                <span class="ea-qa-title">Cargas familiares</span>
+                                <span class="ea-qa-desc">Cónyuge e hijos registrados</span>
+                            </a>
+                            <a href="/loan/request">
+                                <i class="fa fa-money"/>
+                                <span class="ea-qa-title">Solicitar anticipo</span>
+                                <span class="ea-qa-desc">Anticipos y préstamos</span>
+                            </a>
+                            <a href="/customer/form-update">
+                                <i class="fa fa-user-circle-o"/>
+                                <span class="ea-qa-title">Mis datos</span>
+                                <span class="ea-qa-desc">Contacto de emergencia y dirección</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="ea-card">
+                                <h2>Últimas solicitudes de ausencia</h2>
+                                <div class="ea-subtitle">Tus 5 solicitudes más recientes</div>
+                                <t t-if="not ultimas_ausencias">
+                                    <div class="ea-empty">
+                                        <i class="fa fa-calendar-o"/>
+                                        Todavía no has registrado ninguna ausencia.
+                                    </div>
+                                </t>
+                                <t t-if="ultimas_ausencias">
+                                    <table class="table ea-table mb-0">
+                                        <tbody>
+                                            <t t-foreach="ultimas_ausencias" t-as="lv">
+                                                <tr>
+                                                    <td>
+                                                        <div t-esc="lv.holiday_status_id.name"/>
+                                                        <div class="text-muted small">
+                                                            <span t-field="lv.request_date_from" t-options="{'widget': 'date'}"/> -
+                                                            <span t-field="lv.request_date_to" t-options="{'widget': 'date'}"/>
+                                                        </div>
+                                                    </td>
+                                                    <td class="text-end">
+                                                        <t t-call="website_ausencias_19e.leave_status_badge"/>
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </t>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="ea-card">
+                                <h2>Último rol de pago</h2>
+                                <div class="ea-subtitle">Descarga directa en PDF</div>
+                                <t t-if="not ultimo_payslip">
+                                    <div class="ea-empty">
+                                        <i class="fa fa-file-o"/>
+                                        Todavía no tienes roles de pago disponibles.
+                                    </div>
+                                </t>
+                                <t t-if="ultimo_payslip">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <div style="font-weight:600;" t-esc="ultimo_payslip.name"/>
+                                            <div class="text-muted small">
+                                                <span t-field="ultimo_payslip.date_from" t-options="{'widget': 'date'}"/> -
+                                                <span t-field="ultimo_payslip.date_to" t-options="{'widget': 'date'}"/>
+                                            </div>
+                                        </div>
+                                        <a t-attf-href="/report/#{ultimo_payslip.id}" target="_blank" class="btn btn-primary btn-sm">
+                                            <i class="fa fa-download"/> Descargar
+                                        </a>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Insignia de estado reutilizable para una ausencia (`lv` en el contexto) -->
+    <template id="leave_status_badge">
+        <span t-if="lv.state == 'validate'" class="ea-badge ea-badge-success"><i class="fa fa-check"/> Aprobado</span>
+        <span t-elif="lv.state == 'validate1'" class="ea-badge ea-badge-info"><i class="fa fa-hourglass-half"/> En 2da aprobación</span>
+        <span t-elif="lv.state == 'confirm'" class="ea-badge ea-badge-warning"><i class="fa fa-clock-o"/> Pendiente</span>
+        <span t-elif="lv.state == 'refuse'" class="ea-badge ea-badge-danger"><i class="fa fa-times"/> Rechazado</span>
+        <span t-elif="lv.state == 'cancel'" class="ea-badge ea-badge-secondary"><i class="fa fa-ban"/> Cancelado</span>
+        <span t-else="" class="ea-badge ea-badge-secondary" t-esc="lv.state"/>
+    </template>
+
+</odoo>

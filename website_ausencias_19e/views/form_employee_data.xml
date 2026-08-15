@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Sub-item del menú "Mi portal", ver nota en website_form.xml -->
+    <record id="menu_partner_form_update" model="website.menu">
+        <field name="name">Mis Datos</field>
+        <field name="url">/customer/form-update</field>
+        <field name="parent_id" ref="website_ausencias_19e.menu_portal_home"/>
+        <field name="sequence" type="int">30</field>
+    </record>
+
+    <template id="employee_info_template" name="Actualizar Informacion">
+        <t t-call="website.layout">
+            <div class="ea-page">
+                <div class="container">
+                    <t t-call="website_ausencias_19e.portal_topbar">
+                        <t t-set="active" t-value="'datos'"/>
+                    </t>
+
+                    <div class="ea-card">
+                        <h2><i class="fa fa-briefcase me-1"/> Información laboral</h2>
+                        <div class="ea-subtitle">Datos de tu puesto, gestionados por RRHH</div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="text-muted small">Puesto</div>
+                                <div style="font-weight:600;" t-esc="employee.job_id.name or employee.job_title or '—'"/>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="text-muted small">Área</div>
+                                <div style="font-weight:600;" t-esc="employee.department_id.name or '—'"/>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="text-muted small">Jefe inmediato</div>
+                                <div style="font-weight:600;" t-esc="employee.manager_id_web.name or '—'"/>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="text-muted small">Tipo de contrato</div>
+                                <div style="font-weight:600;" t-esc="contract_type_label or '—'"/>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="text-muted small">Fecha de ingreso</div>
+                                <div style="font-weight:600;">
+                                    <span t-if="employee.date_of_admission" t-field="employee.date_of_admission" t-options="{'widget': 'date'}"/>
+                                    <span t-else="">—</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="text-muted small">Antigüedad</div>
+                                <div style="font-weight:600;" t-esc="antiguedad or '—'"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ea-card ea-form">
+                        <h2><i class="fa fa-user-circle-o me-1"/> Mis datos personales</h2>
+                        <div class="ea-subtitle">Mantén actualizado tu contacto de emergencia y dirección.</div>
+
+                        <form action="/employee/form/save" method="post" class="oe_import">
+                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Nombre</label>
+                                    <input type="text" class="form-control" name="name" id="name" t-att-value="employee.name"/>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Estado civil</label>
+                                    <select id="marital" name="marital" class="form-select">
+                                        <t t-foreach="['single', 'married', 'widower', 'divorced', 'cohabitant', 'union_fact']" t-as="state">
+                                            <option t-att-value="state" t-att-selected="employee.marital == state">
+                                                <t t-esc="civil[state]"/>
+                                            </option>
+                                        </t>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Nro. de hijos</label>
+                                    <input type="text" class="form-control" name="children" id="children" t-att-value="employee.children"/>
+                                </div>
+
+                                <div class="col-12"><hr/></div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Contacto de emergencia</label>
+                                    <input type="text" class="form-control" name="emergency_contact" id="emergency_contact" t-att-value="employee.emergency_contact" placeholder="Nombre completo"/>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Teléfono de emergencia</label>
+                                    <input type="text" class="form-control" name="emergency_phone" id="emergency_phone" t-att-value="employee.emergency_phone" placeholder="09XXXXXXXX"/>
+                                </div>
+
+                                <div class="col-12"><hr/></div>
+
+                                <div class="col-12">
+                                    <label class="form-label">Dirección</label>
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control" name="street" id="street" t-att-value="employee.partner_id.street" placeholder="Calle principal"/>
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control" name="street2" id="street2" t-att-value="employee.partner_id.street2" placeholder="Calle secundaria / referencia"/>
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control" name="city" id="city" t-att-value="employee.partner_id.city" placeholder="Ciudad"/>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 d-flex gap-2">
+                                <button type="submit" class="btn btn-primary"><i class="fa fa-save me-1"/> Guardar cambios</button>
+                                <a href="/portal/inicio" class="btn btn-outline-secondary">Cancelar</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+</odoo>

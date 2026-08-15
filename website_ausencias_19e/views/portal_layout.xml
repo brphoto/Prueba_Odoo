@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Estilos y cabecera compartidos por todas las páginas del portal de
+         empleados. Se incluyen con t-call en cada plantilla para mantener
+         una apariencia consistente sin duplicar CSS en cada archivo. -->
+    <template id="portal_assets_style">
+        <style>
+            :root {
+                --ea-primary: #2c5aa0;
+                --ea-primary-dark: #1e3d6f;
+                --ea-bg: #f4f6f9;
+                --ea-border: #e4e8ee;
+                --ea-text-muted: #6c757d;
+            }
+            .ea-page { background: var(--ea-bg); padding: 32px 0 56px; min-height: 70vh; }
+            .ea-topbar {
+                background: linear-gradient(135deg, var(--ea-primary) 0%, var(--ea-primary-dark) 100%);
+                color: #fff; border-radius: 14px; padding: 28px 32px; margin-bottom: 28px;
+                display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;
+            }
+            .ea-topbar h1 { font-size: 22px; font-weight: 600; margin: 0; color: #fff; }
+            .ea-topbar p { margin: 4px 0 0; opacity: .85; font-size: 14px; }
+            .ea-bell { position: relative; display: inline-flex; color: #fff; opacity: .9; margin-left: 10px; font-size: 18px; text-decoration: none; vertical-align: middle; }
+            .ea-bell:hover { opacity: 1; color: #fff; }
+            .ea-bell-badge {
+                position: absolute; top: -6px; right: -8px; background: #e0433f; color: #fff;
+                font-size: 10px; font-weight: 700; line-height: 1; padding: 3px 5px; border-radius: 999px;
+                min-width: 16px; text-align: center;
+            }
+            .ea-nav { display: flex; flex-wrap: wrap; gap: 8px; }
+            .ea-nav a {
+                display: inline-flex; align-items: center; gap: 6px;
+                background: rgba(255,255,255,.12); color: #fff; text-decoration: none;
+                padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+                transition: background .15s ease;
+            }
+            .ea-nav a:hover { background: rgba(255,255,255,.24); color: #fff; }
+            .ea-nav a.active { background: #fff; color: var(--ea-primary-dark); }
+            .ea-card {
+                background: #fff; border: 1px solid var(--ea-border); border-radius: 12px;
+                padding: 24px; box-shadow: 0 1px 3px rgba(16,24,40,.05); margin-bottom: 24px;
+            }
+            .ea-card h2 { font-size: 17px; font-weight: 600; margin: 0 0 4px; color: #1a2942; }
+            .ea-card .ea-subtitle { color: var(--ea-text-muted); font-size: 13px; margin-bottom: 18px; }
+            .ea-stat-row { display: flex; flex-wrap: wrap; gap: 16px; }
+            .ea-stat {
+                flex: 1 1 180px; background: #fff; border: 1px solid var(--ea-border); border-radius: 12px;
+                padding: 18px 20px; box-shadow: 0 1px 3px rgba(16,24,40,.05);
+            }
+            .ea-stat .ea-stat-icon {
+                width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center;
+                justify-content: center; background: #eaf1fb; color: var(--ea-primary); font-size: 18px; margin-bottom: 10px;
+            }
+            .ea-stat .ea-stat-value { font-size: 26px; font-weight: 700; color: #1a2942; line-height: 1.1; }
+            .ea-stat .ea-stat-label { color: var(--ea-text-muted); font-size: 13px; margin-top: 2px; }
+            .ea-progress { height: 8px; border-radius: 999px; background: #eef1f5; overflow: hidden; margin-top: 10px; }
+            .ea-progress > div { height: 100%; background: var(--ea-primary); border-radius: 999px; }
+            .ea-quick-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+            .ea-quick-actions a {
+                flex: 1 1 160px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+                background: #fff; border: 1px solid var(--ea-border); border-radius: 12px; padding: 16px 18px;
+                text-decoration: none; color: #1a2942; transition: box-shadow .15s ease, transform .15s ease;
+            }
+            .ea-quick-actions a:hover { box-shadow: 0 4px 14px rgba(16,24,40,.10); transform: translateY(-2px); color: #1a2942; }
+            .ea-quick-actions a i { font-size: 20px; color: var(--ea-primary); }
+            .ea-quick-actions a span.ea-qa-title { font-weight: 600; font-size: 14px; }
+            .ea-quick-actions a span.ea-qa-desc { font-size: 12px; color: var(--ea-text-muted); }
+            .ea-table thead th { background: #f8f9fb; border-bottom: 1px solid var(--ea-border); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--ea-text-muted); font-weight: 600; }
+            .ea-table td, .ea-table th { padding: 12px 14px; vertical-align: middle; }
+            .ea-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+            .ea-badge-success { background: #e4f6ea; color: #1a7f3c; }
+            .ea-badge-warning { background: #fff4e0; color: #9a6400; }
+            .ea-badge-info { background: #e4f0fb; color: #1c5faa; }
+            .ea-badge-danger { background: #fbe6e6; color: #b3261e; }
+            .ea-badge-secondary { background: #eceff3; color: #556; }
+            .ea-empty { text-align: center; padding: 48px 16px; color: var(--ea-text-muted); }
+            .ea-empty i { font-size: 36px; margin-bottom: 12px; opacity: .5; display: block; }
+            .ea-form label.form-label { font-weight: 500; font-size: 13px; color: #33415c; margin-bottom: 4px; }
+            .ea-btn-cancel { color: #b3261e; border: 1px solid #f0c9c8; background: #fff; }
+            .ea-btn-cancel:hover { background: #fbe6e6; color: #b3261e; }
+        </style>
+    </template>
+
+    <template id="portal_topbar">
+        <t t-call="website_ausencias_19e.portal_assets_style"/>
+        <t t-set="notifications_count" t-value="employee.get_recent_notifications_count() if employee else 0"/>
+        <div class="ea-topbar">
+            <div>
+                <h1>
+                    Hola, <t t-esc="(employee and employee.name) or 'Empleado'"/> 👋
+                    <a href="/notifications" class="ea-bell" title="Notificaciones">
+                        <i class="fa fa-bell"/>
+                        <span t-if="notifications_count" class="ea-bell-badge" t-esc="notifications_count"/>
+                    </a>
+                </h1>
+                <p>Portal de empleados — ausencias, roles de pago y datos personales</p>
+            </div>
+            <div class="ea-nav">
+                <a href="/portal/inicio" t-attf-class="#{active == 'inicio' and 'active' or ''}"><i class="fa fa-home"/> Inicio</a>
+                <a href="/customer/form" t-attf-class="#{active == 'solicitar' and 'active' or ''}"><i class="fa fa-calendar-plus-o"/> Solicitar ausencia</a>
+                <a href="/leave/user" t-attf-class="#{active == 'ausencias' and 'active' or ''}"><i class="fa fa-list-alt"/> Mis ausencias</a>
+                <a href="/payslip/form" t-attf-class="#{active == 'roles' and 'active' or ''}"><i class="fa fa-file-text-o"/> Roles de pago</a>
+                <a href="/calendar/leave" t-attf-class="#{active == 'equipo' and 'active' or ''}"><i class="fa fa-users"/> Equipo</a>
+                <a href="/employee/documents" t-attf-class="#{active == 'documentos' and 'active' or ''}"><i class="fa fa-folder-open-o"/> Documentos</a>
+                <a href="/employee/cargas-familiares" t-attf-class="#{active == 'cargas' and 'active' or ''}"><i class="fa fa-users"/> Cargas familiares</a>
+                <a href="/loan/user" t-attf-class="#{active == 'prestamos' and 'active' or ''}"><i class="fa fa-money"/> Anticipos</a>
+                <a href="/customer/form-update" t-attf-class="#{active == 'datos' and 'active' or ''}"><i class="fa fa-user-circle-o"/> Mis datos</a>
+            </div>
+        </div>
+    </template>
+
+</odoo>
