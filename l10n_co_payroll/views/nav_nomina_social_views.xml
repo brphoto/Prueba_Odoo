@@ -1,0 +1,12 @@
+<odoo>
+    <record id="view_nav_nomina_social_list" model="ir.ui.view">
+        <field name="name">nav.nomina.social.list</field><field name="model">nav.nomina.social</field>
+        <field name="arch" type="xml"><list string="Perfiles PILA" decoration-warning="state == 'draft'" decoration-muted="state == 'archived'"><field name="name"/><field name="employee_id"/><field name="effective_from"/><field name="effective_to"/><field name="contributor_type"/><field name="eps_code"/><field name="pension_code"/><field name="state" widget="badge"/></list></field>
+    </record>
+    <record id="view_nav_nomina_social_form" model="ir.ui.view">
+        <field name="name">nav.nomina.social.form</field><field name="model">nav.nomina.social</field>
+        <field name="arch" type="xml"><form string="Perfil de seguridad social"><header><button name="action_activate" type="object" string="Activar" class="oe_highlight" invisible="state == 'active'" groups="l10n_co_payroll.group_nav_nomina_manager"/><button name="action_archive" type="object" string="Archivar" invisible="state == 'archived'" groups="l10n_co_payroll.group_nav_nomina_manager"/><field name="state" widget="statusbar" statusbar_visible="draft,active,archived"/></header><sheet><div class="oe_title"><h1><field name="name"/></h1></div><group><group><field name="employee_id"/><field name="company_id"/><field name="effective_from"/><field name="effective_to"/></group><group><field name="identification_type"/><field name="contributor_type"/><field name="contributor_subtype"/><field name="risk_class"/></group></group><group string="Administradoras"><field name="eps_code"/><field name="pension_code"/><field name="arl_code"/><field name="ccf_code"/></group><field name="notes" placeholder="Soporte y observaciones..."/></sheet></form></field>
+    </record>
+    <record id="view_nav_nomina_social_search" model="ir.ui.view"><field name="name">nav.nomina.social.search</field><field name="model">nav.nomina.social</field><field name="arch" type="xml"><search string="Buscar perfiles PILA"><field name="employee_id"/><field name="state"/><field name="eps_code"/><field name="pension_code"/><filter name="active" string="Activos" domain="[('state', '=', 'active')]"/></search></field></record>
+    <record id="action_nav_nomina_social" model="ir.actions.act_window"><field name="name">Perfiles PILA</field><field name="res_model">nav.nomina.social</field><field name="view_mode">list,form</field><field name="search_view_id" ref="view_nav_nomina_social_search"/></record>
+</odoo>

@@ -1,0 +1,201 @@
+<odoo>
+    <record id="view_nav_nomina_period_list" model="ir.ui.view">
+        <field name="name">nav.nomina.period.list</field>
+        <field name="model">nav.nomina.period</field>
+        <field name="arch" type="xml">
+            <list string="Periodos de nómina" decoration-muted="state == 'cancelled'" decoration-success="state == 'closed'" decoration-warning="blocking_issue_count &gt; 0">
+                <field name="name"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="period_type"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="employee_count"/>
+                <field name="payslip_count"/>
+                <field name="issue_count"/>
+                <field name="approval_mode" widget="badge"/>
+                <field name="approval_state" widget="badge"/>
+                <field name="net_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_nav_nomina_period_kanban" model="ir.ui.view">
+        <field name="name">nav.nomina.period.kanban</field>
+        <field name="model">nav.nomina.period</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_small_column" default_group_by="state">
+                <field name="name"/><field name="state"/><field name="date_from"/><field name="date_to"/>
+                <field name="employee_count"/><field name="payslip_count"/><field name="issue_count"/><field name="blocking_issue_count"/>
+                <field name="net_total"/><field name="currency_id"/><field name="period_type"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_global_click">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong><field name="name"/></strong>
+                                <field name="state" widget="label_selection" options="{'classes': {'draft': 'secondary', 'ready': 'warning', 'closed': 'success', 'cancelled': 'danger'}}"/>
+                            </div>
+                            <div class="text-muted"><field name="date_from"/> — <field name="date_to"/></div>
+                            <div class="row mt-3">
+                                <div class="col-6"><span class="text-muted">Empleados</span><br/><strong><field name="employee_count"/></strong></div>
+                                <div class="col-6"><span class="text-muted">Recibos</span><br/><strong><field name="payslip_count"/></strong></div>
+                            </div>
+                            <div class="mt-3"><span class="text-muted">Neto a pagar</span><br/><strong><field name="net_total" widget="monetary" options="{'currency_field': 'currency_id'}"/></strong></div>
+                            <div t-if="record.blocking_issue_count.raw_value &gt; 0" class="text-danger mt-2"><i class="fa fa-exclamation-triangle" title="Bloqueantes"/> <field name="blocking_issue_count"/> bloqueantes</div>
+                            <div t-elif="record.issue_count.raw_value &gt; 0" class="text-warning mt-2"><i class="fa fa-info-circle" title="Hallazgos"/> <field name="issue_count"/> hallazgos</div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_nav_nomina_period_search" model="ir.ui.view">
+        <field name="name">nav.nomina.period.search</field>
+        <field name="model">nav.nomina.period</field>
+        <field name="arch" type="xml">
+            <search string="Buscar periodos">
+                <field name="name"/><field name="company_id"/><field name="date_from"/><field name="date_to"/><field name="state"/><field name="period_type"/><field name="approval_mode"/><field name="approval_state"/>
+                <separator/>
+                <filter name="filter_open" string="Abiertos" domain="[('state', 'in', ['draft', 'ready'])]"/>
+                <filter name="filter_closed" string="Cerrados" domain="[('state', '=', 'closed')]"/>
+                <filter name="filter_pending_approval" string="Pendientes de aprobación" domain="[('approval_state', 'in', ['pending', 'first_approved', 'rejected'])]"/>
+                <group>
+                    <filter name="group_state" string="Estado" domain="[]" context="{'group_by': 'state'}"/>
+                    <filter name="group_approval" string="Aprobación" domain="[]" context="{'group_by': 'approval_state'}"/>
+                    <filter name="group_company" string="Compañía" domain="[]" context="{'group_by': 'company_id'}"/>
+                    <filter name="group_period_type" string="Frecuencia" domain="[]" context="{'group_by': 'period_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_nav_nomina_period_form" model="ir.ui.view">
+        <field name="name">nav.nomina.period.form</field>
+        <field name="model">nav.nomina.period</field>
+        <field name="arch" type="xml">
+            <form string="Periodo de nómina">
+                <header>
+                    <button name="action_prepare" type="object" string="Preparar / actualizar" class="oe_highlight" invisible="state in ('closed', 'cancelled')" groups="l10n_co_payroll.group_nav_nomina_user"/>
+                    <button name="action_run_checks" type="object" string="Validar" invisible="state == 'cancelled'" groups="l10n_co_payroll.group_nav_nomina_user"/>
+                    <button name="action_approve" type="object" string="Aprobar cierre" class="oe_highlight" invisible="state != 'ready' or approval_mode == 'none' or approval_state == 'approved'" groups="l10n_co_payroll.group_nav_nomina_manager"/>
+                    <button name="action_reject_approval" type="object" string="Rechazar aprobación" invisible="state != 'ready' or approval_mode == 'none' or approval_state == 'approved'" groups="l10n_co_payroll.group_nav_nomina_manager"/>
+                    <button name="action_close" type="object" string="Cerrar periodo" class="oe_highlight" invisible="state != 'ready'" groups="l10n_co_payroll.group_nav_nomina_manager" confirm="Al cerrar el periodo se conservará este resumen. ¿Deseas continuar?"/>
+                    <button name="action_mark_pila_reviewed" type="object" string="Marcar PILA revisada" invisible="state in ('draft', 'cancelled')" groups="l10n_co_payroll.group_nav_nomina_user"/>
+                    <button name="action_set_draft" type="object" string="Volver a borrador" invisible="state in ('draft', 'closed')" groups="l10n_co_payroll.group_nav_nomina_user"/>
+                    <button name="action_cancel" type="object" string="Cancelar" invisible="state in ('closed', 'cancelled')" groups="l10n_co_payroll.group_nav_nomina_manager"/>
+                    <button name="action_export_csv" type="object" string="Exportar CSV" invisible="state == 'draft'"/>
+                    <button name="action_export_pila_csv" type="object" string="Exportar PILA" invisible="state == 'draft'"/>
+                    <button name="action_create_accounting_move" type="object" string="Crear asiento" invisible="state not in ('ready', 'closed') or accounting_state != 'pending'" groups="l10n_co_payroll.group_nav_nomina_manager"/>
+                    <button name="action_post_accounting_move" type="object" string="Contabilizar" class="oe_highlight" invisible="state not in ('ready', 'closed') or accounting_state == 'posted'" groups="l10n_co_payroll.group_nav_nomina_manager"/>
+                    <button name="action_create_provision_move" type="object" string="Crear provisiones" invisible="state not in ('ready', 'closed') or provision_move_id" groups="l10n_co_payroll.group_nav_nomina_manager"/>
+                    <button name="action_print_report" type="object" string="Imprimir resumen" invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,ready,closed,cancelled"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_payslips" type="object" class="oe_stat_button" icon="fa-file-text-o"><field name="payslip_count" widget="statinfo" string="Recibos"/></button>
+                        <button name="action_open_lines" type="object" class="oe_stat_button" icon="fa-users"><field name="employee_count" widget="statinfo" string="Empleados"/></button>
+                        <button name="action_open_issues" type="object" class="oe_stat_button" icon="fa-exclamation-triangle"><field name="issue_count" widget="statinfo" string="Hallazgos"/></button>
+                        <button name="action_open_novelties" type="object" class="oe_stat_button" icon="fa-calendar"><field name="novelty_count" widget="statinfo" string="Novedades"/></button>
+                    </div>
+                    <div class="oe_title"><label for="name" class="oe_edit_only" string="Referencia"/><h1><field name="name" placeholder="Ej. Nómina enero 2026"/></h1></div>
+                    <div class="alert alert-info" role="alert" invisible="state != 'draft' or payslip_count != 0">Selecciona los filtros y pulsa <strong>Preparar / actualizar</strong> para construir el resumen.</div>
+                    <div class="alert alert-warning" role="alert" invisible="unvalidated_count == 0"><strong>Atención:</strong> hay <field name="unvalidated_count" class="oe_inline" nolabel="1"/> recibos pendientes de validar.</div>
+                    <div class="alert alert-danger" role="alert" invisible="blocking_issue_count == 0"><strong>No se puede cerrar todavía:</strong> hay <field name="blocking_issue_count" class="oe_inline" nolabel="1"/> hallazgos bloqueantes. Revisa la pestaña Validaciones.</div>
+                    <div class="alert alert-warning" role="alert" invisible="warning_issue_count == 0 or not block_on_warnings"><strong>Control estricto:</strong> hay <field name="warning_issue_count" class="oe_inline" nolabel="1"/> advertencias que también bloquean el cierre.</div>
+                    <div class="alert alert-warning" role="alert" invisible="pending_novelty_count == 0"><strong>Novedades pendientes:</strong> hay <field name="pending_novelty_count" class="oe_inline" nolabel="1"/> novedades sin aprobar.</div>
+                    <group>
+                        <group string="Periodo">
+                            <field name="company_id" options="{'no_create': True}" readonly="state != 'draft'"/>
+                            <field name="period_type" readonly="state != 'draft'"/>
+                            <field name="date_from" readonly="state != 'draft'"/>
+                            <field name="date_to" readonly="state != 'draft'"/>
+                            <field name="payment_date" readonly="state == 'closed'"/>
+                            <field name="parameter_id" options="{'no_create': True}" readonly="state == 'closed'"/>
+                            <field name="approval_mode" readonly="state != 'draft'"/>
+                            <field name="block_on_warnings" readonly="state != 'draft'"/>
+                            <field name="require_novelty_approval" readonly="state != 'draft'"/>
+                        </group>
+                        <group string="Resultados">
+                            <field name="currency_id" invisible="1"/>
+                            <field name="basic_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="gross_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="deduction_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="net_total" widget="monetary" options="{'currency_field': 'currency_id'}" class="fw-bold"/>
+                            <field name="employer_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="worked_days_total"/>
+                            <field name="provision_severance" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="provision_severance_interest" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="provision_vacation" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="provision_bonus" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="adjustment_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                        </group>
+                    </group>
+                    <group string="Filtros opcionales" col="2">
+                        <field name="employee_ids" widget="many2many_tags" options="{'no_create': True}" readonly="state != 'draft'"/>
+                        <field name="department_ids" widget="many2many_tags" options="{'no_create': True}" readonly="state != 'draft'"/>
+                        <field name="job_ids" widget="many2many_tags" options="{'no_create': True}" readonly="state != 'draft'"/>
+                        <field name="structure_ids" widget="many2many_tags" options="{'no_create': True}" readonly="state != 'draft'"/>
+                        <field name="payslip_run_ids" widget="many2many_tags" options="{'no_create': True}" readonly="state != 'draft'"/>
+                    </group>
+                    <notebook>
+                        <page name="employee_summary" string="Resumen por empleado">
+                            <field name="line_ids" readonly="1">
+                                <list create="false" delete="false" decoration-success="comparison_state == 'new'" decoration-warning="comparison_state == 'changed'">
+                                    <field name="employee_id" widget="many2one_avatar_employee"/><field name="department_id" optional="hide"/><field name="comparison_state" widget="badge"/>
+                                    <field name="payslip_count"/><field name="basic_wage" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="gross_wage" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="deduction_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="net_wage" widget="monetary" options="{'currency_field': 'currency_id'}" sum="Total neto"/><field name="net_variation" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="worked_days" sum="Días"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page name="validation" string="Validaciones">
+                            <group><field name="last_check_at"/><field name="approval_state" widget="badge"/><field name="approval_by"/><field name="approval_at"/><field name="second_approval_by" invisible="approval_mode != 'double'"/><field name="second_approval_at" invisible="approval_mode != 'double'"/><field name="previous_period_id"/><button name="action_open_previous_period" type="object" string="Abrir periodo anterior" invisible="not previous_period_id" class="oe_link"/></group>
+                            <field name="issue_ids" readonly="1"><list create="false" delete="false"><field name="severity" widget="badge"/><field name="code"/><field name="message"/><field name="employee_id"/><field name="payslip_id"/><field name="resolved"/></list></field>
+                        </page>
+                        <page name="novelties" string="Novedades">
+                            <field name="novelty_ids" readonly="1"><list create="false" delete="false"><field name="employee_id"/><field name="novelty_type"/><field name="date_from"/><field name="date_to"/><field name="days"/><field name="affects_ibc"/><field name="state" widget="badge"/></list></field>
+                        </page>
+                        <page name="adjustments" string="Ajustes">
+                            <field name="adjustment_ids" readonly="1"><list create="false" delete="false"><field name="employee_id"/><field name="adjustment_type"/><field name="date"/><field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="installment_number"/><field name="installments"/><field name="state" widget="badge"/></list></field>
+                        </page>
+                        <page name="source_payslips" string="Recibos detectados">
+                            <field name="source_payslip_ids" readonly="1"><list create="false" delete="false"><field name="name"/><field name="employee_id"/><field name="date_from"/><field name="date_to"/><field name="state" widget="badge"/><field name="net_wage" widget="monetary" options="{'currency_field': 'currency_id'}"/></list></field>
+                        </page>
+                        <page name="audit" string="Auditoría">
+                            <group><field name="prepared_by"/><field name="prepared_at"/><field name="closed_by"/><field name="closed_at"/><field name="processing_seconds"/><field name="last_run_count"/><field name="accounting_state"/><field name="account_move_id"/><field name="provision_move_id"/></group>
+                            <field name="note" placeholder="Observaciones del periodo..." readonly="state == 'closed'"/>
+                            <field name="audit_event_ids" readonly="1"><list create="false" delete="false"><field name="event_at"/><field name="action" widget="badge"/><field name="user_id"/><field name="description"/></list></field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_nav_nomina_period_line_list" model="ir.ui.view">
+        <field name="name">nav.nomina.period.line.list</field><field name="model">nav.nomina.period.line</field>
+        <field name="arch" type="xml"><list string="Resumen por empleado" create="false" delete="false" decoration-success="comparison_state == 'new'" decoration-warning="comparison_state == 'changed'"><field name="employee_id" widget="many2one_avatar_employee"/><field name="department_id"/><field name="period_id"/><field name="comparison_state" widget="badge"/><field name="payslip_count"/><field name="pila_type" optional="hide"/><field name="pila_subtype" optional="hide"/><field name="ibc_base" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="novelty_count"/><field name="pila_status" widget="badge"/><field name="gross_wage" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="deduction_total" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="net_wage" widget="monetary" options="{'currency_field': 'currency_id'}" sum="Total"/><field name="net_variation" widget="monetary" options="{'currency_field': 'currency_id'}"/></list></field>
+    </record>
+
+    <record id="view_nav_nomina_period_line_form" model="ir.ui.view">
+        <field name="name">nav.nomina.period.line.form</field><field name="model">nav.nomina.period.line</field>
+        <field name="arch" type="xml"><form string="Resumen del empleado"><sheet><div class="oe_button_box" name="button_box"><button name="action_open_payslips" type="object" class="oe_stat_button" icon="fa-file-text-o"><field name="payslip_count" widget="statinfo" string="Recibos"/></button></div><div class="oe_title"><h1><field name="employee_id"/></h1></div><group><field name="period_id"/><field name="department_id"/><field name="job_id"/><field name="contract_id"/><field name="comparison_state" widget="badge"/><field name="pila_status" widget="badge"/></group><group string="Totales"><field name="currency_id" invisible="1"/><field name="basic_wage" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="gross_wage" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="deduction_total" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="net_wage" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="employer_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="ibc_base" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="worked_days"/><field name="worked_hours" widget="float_time"/></group><group string="Novedades y jornada"><field name="novelty_count"/><field name="novelty_days"/><field name="overtime_day_hours"/><field name="overtime_night_hours"/><field name="night_hours"/><field name="holiday_hours"/></group><group string="Comparación"><field name="previous_net_wage" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="net_variation" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="net_variation_pct"/></group></sheet></form></field>
+    </record>
+
+    <record id="view_nav_nomina_period_issue_list" model="ir.ui.view">
+        <field name="name">nav.nomina.period.issue.list</field><field name="model">nav.nomina.period.issue</field>
+        <field name="arch" type="xml"><list string="Hallazgos de validación" create="false" decoration-danger="severity == 'error'" decoration-warning="severity == 'warning'"><field name="severity" widget="badge"/><field name="code"/><field name="message"/><field name="employee_id"/><field name="payslip_id"/><field name="resolved"/></list></field>
+    </record>
+    <record id="view_nav_nomina_period_issue_form" model="ir.ui.view">
+        <field name="name">nav.nomina.period.issue.form</field><field name="model">nav.nomina.period.issue</field>
+        <field name="arch" type="xml"><form string="Hallazgo"><sheet><group><field name="period_id"/><field name="severity"/><field name="code"/><field name="employee_id"/><field name="payslip_id"/><field name="resolved"/></group><field name="message"/></sheet></form></field>
+    </record>
+
+    <record id="action_nav_nomina_period" model="ir.actions.act_window"><field name="name">Periodos de nómina</field><field name="res_model">nav.nomina.period</field><field name="view_mode">list,form</field><field name="search_view_id" ref="view_nav_nomina_period_search"/></record>
+    <record id="action_nav_nomina_dashboard" model="ir.actions.act_window"><field name="name">Panel de nómina</field><field name="res_model">nav.nomina.period</field><field name="view_mode">kanban,list,form</field><field name="view_id" ref="view_nav_nomina_period_kanban"/><field name="search_view_id" ref="view_nav_nomina_period_search"/></record>
+    <record id="action_nav_nomina_period_line" model="ir.actions.act_window"><field name="name">Resumen por empleado</field><field name="res_model">nav.nomina.period.line</field><field name="view_mode">list,form</field></record>
+    <record id="action_nav_nomina_period_issue" model="ir.actions.act_window"><field name="name">Validaciones</field><field name="res_model">nav.nomina.period.issue</field><field name="view_mode">list,form</field></record>
+</odoo>
