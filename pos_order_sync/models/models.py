@@ -14,7 +14,7 @@ _logger = logging.getLogger(__name__)
 
 
 class PosConfig(models.Model):
-    _inherit = ['pos.config']
+    _inherit = 'pos.config'
 
     quotation_print_type = fields.Selection([('pdf', 'Browser based (Pdf Report)'), (
         'posbox', 'POSBOX (Xml Report)')], default='pdf', required=True, string="Quotation Print Type")
