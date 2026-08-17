@@ -13,6 +13,9 @@
                     <setting string="Quotation Print Type">
                         <field name="pos_quotation_print_type"/>
                     </setting>    
+					<setting string="Seguimiento de transferencias" help="Registra el cajero que recibe un pedido desde otra caja y muestra el resumen en las sesiones.">
+                        <field name="pos_enable_transfer_tracking"/>
+                    </setting>
                 </block>
             </xpath>
         </field>

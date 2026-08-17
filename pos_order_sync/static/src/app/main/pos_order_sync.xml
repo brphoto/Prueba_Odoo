@@ -13,7 +13,7 @@
 		</xpath>
 		<xpath expr="//div[hasclass('pos-leftheader')]" position="after">
 			<div id="save_order_quote" t-on-click="click_save_order_quote" class="order-button btn btn-secondary d-flex align-items-center justify-content-center gap-2" style="color: #7a6f6f;">
-				<i class="fa fa-paper-plane" aria-hidden="true"></i>Send
+				<i class="fa fa-paper-plane" aria-hidden="true"></i>Enviar
 			</div>
 			<div id="new_quote_notification" t-on-click="click_new_quote_notification" class="order-button d-flex btn btn-secondary mx-1 justify-content-center align-items-center position-relative" title="Pedidos recibidos" aria-label="Pedidos recibidos" style="cursor: pointer;background: white;color: rgb(58, 133, 141);">
 				<i class="fa fa-shopping-cart me-1" style="font-size:20px" aria-hidden="true"></i>
@@ -27,7 +27,7 @@
 	</t>
 
 	<t t-name="pos_order_sync.QuoteSendPopupWidget" >
-		<Dialog size="'md'" title="'Quotation Saved'">
+		<Dialog size="'md'" title="'Pedido guardado'">
 				<div class="order_status" style="height: 80px;width: 80px;margin-top: 15px;border-color: rgb(92, 184, 92);/* text-align: center; *//* display: flex; *//* justify-content: center; */margin-left: 44%;">
 					<div class="show_tick draw"></div>
 				</div>
@@ -45,18 +45,18 @@
 	</t>
 
 	<t t-name="pos_order_sync.WkErrorNotifyPopopWidget" >
-		<Dialog size="'md'" title="'Quotation History'" footer="false">
+		<Dialog size="'md'" title="'Aviso'" footer="false">
 				<center>
 					<div class="wk_mark">
 					</div>
 					<h2>
-						<t t-esc="props.title ||'Error !!!'"/>
+						<t t-esc="props.title ||'Aviso'"/>
 					</h2>
 					<p>
 						<t t-esc="props.body ||''"/>
 					</p>
 					<button id='wk_cancel' t-on-click="props.close" class="button cancel btn btn-lg btn-secondary">
-                            Close
+							Cerrar
 					</button>
 				</center>
 			<t t-set-slot="footer">
@@ -70,13 +70,13 @@
 	</t>
 
 	<t t-name="pos_order_sync.SaveAsOrderQuotePopupWidget" >
-		<Dialog size="'md'" title="'Quotation'">
+		<Dialog size="'md'" title="'Enviar pedido'">
 				<t t-set-slot="header">
 					<div class="d-flex justify-space-between w-100 align-items-center">
 						<div class="flex-grow-1 fw-bolder">
-								Send Order As Quotation
+								Enviar pedido a otra caja
 						</div>
-						<div class="quote_title flex-grow-1">Quote ID : 
+						<div class="quote_title flex-grow-1">Número de pedido: 
 							<span id="quote_id"></span>
 						</div>
 					</div>
@@ -84,7 +84,7 @@
 				<div id="active_session_div" style="height:40%;overflow-y: scroll;text-align: center;">
 					<t t-if="pos.other_active_session">
 						<t t-if="!(pos.other_active_session.length &gt; 0)">
-							<h3> No active session is available.</h3>
+							<h3> No hay otra caja abierta disponible.</h3>
 						</t>
 						<t t-log="pos.other_active_session"/>
 						<t t-foreach="pos.other_active_session" t-as="session" t-key="session.id">
@@ -106,37 +106,37 @@
 				<div id="wk_floor_table" style="display: none;">
 								<div style="display: inline-block;width: 90%;margin-left: 100px;">
 									<div style="float:left; width: 50%;">
-										<span class="wk_floor">Floor : </span>
+										<span class="wk_floor">Piso: </span>
 										<select id="wk_change_floor" t-on-change="change_tables" style="width: 60%;">
 											<option value="">None</option>
 										</select>
 									</div>
 									<div style="float:right; width: 50%;">
-										<span class="wk_table">Table : </span>
+										<span class="wk_table">Mesa: </span>
 										<select id="wk_change_table" t-on-click="click_table" style="width: 60%;">
 											<option value="">None</option>
 										</select>
 									</div>
 								</div>
-								<p class="show_info">*Please select table.</p>
+								<p class="show_info">*Selecciona una mesa.</p>
 				</div>
 				<div style="text-align:left">
 					<span class="wk_note fw-bolder">
-									Note:</span>
+															Nota:</span>
 					<br/>
-					<textarea rows="2" class="p-2" cols="45" id="quote_note" placeholder="Note For Internal Use"></textarea>
+											<textarea rows="2" class="p-2" cols="45" id="quote_note" placeholder="Nota para uso interno"></textarea>
 				</div>
 				<div class="fa fa-warning" id="order_quote_id_input_error" style="color: rgb(82, 54, 21);font-size: initial;padding-top: 2%;text-align: justify;padding-right: 5%;height: 6%;padding-left: 18%;background-color: rgb(250, 235, 174); display:none;"></div>
 				<t t-set-slot="footer">
 					<div class="d-flex w-100 justify-content-start gap-2">
 							<button id='wk_save_order_quote' class="button confirm btn btn-lg btn-primary" t-on-click="click_wk_save_order_quote">
-									Send 
+															Enviar
 							</button>
 							<button id='wk_print_and_save' class="button confirm btn btn-lg btn-primary" t-on-click="click_wk_print_and_save" >
-									Send and Print
+															Enviar e imprimir
 							</button>
 							<button id='wk_cancel' class="button cancel btn btn-lg btn-secondary" t-on-click="props.close">
-									Cancel
+															Cancelar
 							</button>
 					</div>
 				</t>
@@ -144,17 +144,17 @@
 	</t>
 
 	<t t-name="pos_order_sync.MyMessagePopup" >
-		<Dialog size="'md'" title="'Message'">
+		<Dialog size="'md'" title="'Mensaje'">
 			<div class="popup popup-textinput">
 				<t t-set-slot="header">
-					<t t-esc=" props.title || &apos;Message&apos; "/>
+						<t t-esc=" props.title || &apos;Mensaje&apos; "/>
 				</t>
 				<div class="form-floating" style="display: flex;justify-content: center;gap: 85px;">
 					<t t-esc="props.body || &apos;&apos; "/>
 				</div>
 				<t t-set-slot="footer">
 					<div class="button cancel" t-on-click="props.close">
-                        OK
+						Aceptar
 					</div>
 				</t>
 			</div>
@@ -166,10 +166,10 @@
 			<div class="top-content d-flex align-items-center p-2 border-bottom text-center">
 				<span class="button back btn btn-lg btn-secondary mx-2"  t-on-click="click_back">
 					<i class="fa fa-angle-double-left"></i>
-						Cancel
+						Cancelar
 				</span>
 				<div class="searchbox-client top-content-center" style="padding: 3px 13px;margin-top: 12px;margin-bottom: 12px;">
-					<input class="quotation_search" style="width: 231px;border: 1px solid #cecbcb;padding: 10px 20px;padding-left: 38px;padding-right: 13px;background-color: white;border-radius: 20px;font-family: 'Lato','Lucida Grande', Helvetica, Verdana, Arial;font-size: 13px;margin-left: 186%;" placeholder="Search Quotation" size="1" t-on-keyup="updateQuoteList" />
+					<input class="quotation_search" style="width: 231px;border: 1px solid #cecbcb;padding: 10px 20px;padding-left: 38px;padding-right: 13px;background-color: white;border-radius: 20px;font-family: 'Lato','Lucida Grande', Helvetica, Verdana, Arial;font-size: 13px;margin-left: 186%;" placeholder="Buscar pedido" size="1" t-on-keyup="updateQuoteList" />
 					<span class="search-clear-client"></span>
 				</div>
 			</div>
@@ -183,10 +183,10 @@
 				<table class='wk_quotation_table'>
 					<thead>
 						<tr class="wk_quotation_table_header" style="background-color: rgb(188, 214, 216);">
-							<th class="all_quotation_table_data" >Quote Id</th>
-							<th class="all_quotation_table_data">Customer</th>
-							<th class="all_quotation_table_data">Total Amount</th>
-							<th class="all_quotation_table_data">From session</th>
+														<th class="all_quotation_table_data" >Número</th>
+														<th class="all_quotation_table_data">Cliente</th>
+														<th class="all_quotation_table_data">Total</th>
+														<th class="all_quotation_table_data">Caja origen</th>
 						</tr>
 					</thead>
 					<tbody class='quotation-list-contents'>
@@ -197,14 +197,14 @@
 									<td class="all_quotation_table_data"> 
 										<t t-esc="quote.quote_id"/>
 									</td >
-									<td class="all_quotation_table_data">
-										<t t-esc="quote.partner_id[1]|| &apos;-&apos;"/>
+															<td class="all_quotation_table_data">
+																<t t-esc="quote.partner_id &amp;&amp; quote.partner_id[1] || &apos;-&apos;"/>
 									</td >
 									<td class="all_quotation_table_data">
-										<t t-esc="env.utils.formatCurrency(quote.amount_total)"/>
+																<t t-esc="env.utils.formatCurrency(quote.amount_total || 0)"/>
 									</td>
 									<td class="all_quotation_table_data">
-										<t t-esc="quote.from_session_id"/>
+																<t t-esc="quote.from_session_id || &apos;Otra caja&apos;"/>
 									</td>
 								</tr>
 							</t>
@@ -216,19 +216,19 @@
 	</t>
 
 	<t t-name="pos_order_sync.QuoteHistoryPopupWidget" >
-		<Dialog size="'md'" title="'Message'" bodyClass="" >
+		<Dialog size="'md'" title="'Historial de pedidos'" bodyClass="" >
 			<t t-set-slot="header">
-				Quotation History
+				Historial de pedidos
 			</t>
 			<div class="overflow-y-auto" style="max-height: 35vh;">
 				<table class="history">
 					<thead  class="border-bottom fw-bolder">
 						<tr>
-							<th>Quote Id</th>
-							<th>Customer</th>
-							<th>Total Amount</th>
-							<th>To POS session</th>
-							<th>State</th>
+							<th>Número</th>
+							<th>Cliente</th>
+							<th>Total</th>
+							<th>Caja destino</th>
+							<th>Estado</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -309,7 +309,7 @@
 					</div>
 				</t>
 				<t t-if="quote.quote_id">
-					<div>Quote:
+					<div>Pedido:
 						<h3>
 							<t t-esc="quote.quote_id"/>
 						</h3>
@@ -358,7 +358,7 @@
 						</t>
 						<t t-if="line.discount !== 0">
 							<div class="pos-receipt-left-padding">
-                                Discount: <t t-esc="line.discount"/>
+								Descuento: <t t-esc="line.discount"/>
 %
 							</div>
 						</t>
@@ -390,7 +390,7 @@
 			<div class="pos-receipt-right-align">--------</div>
 			<br/>
 			<div class="pos-receipt-amount">
-                TOTAL
+				TOTAL
 				<span t-esc="widget.format_currency_no_symbol(receipt.total_with_tax)" class="pos-receipt-right-align"/>
 			</div>
 			<br/>
@@ -404,14 +404,14 @@
 			</t>
 			<br/>
 			<div class="pos-receipt-amount receipt-change">
-                CHANGE
+				CAMBIO
 				<span t-esc="widget.format_currency_no_symbol(receipt.change)" class="pos-receipt-right-align"/>
 			</div>
 			<br/>
 			<!-- Extra Payment Info -->
 			<t t-if="receipt.total_discount">
 				<div>
-                    Discounts
+                    Descuentos
 					<span t-esc="widget.format_currency_no_symbol(receipt.total_discount)" class="pos-receipt-right-align"/>
 				</div>
 			</t>
@@ -423,7 +423,7 @@
 					</div>
 				</t>
 				<div>
-                    Total Taxes
+                    Total impuestos
 					<span t-esc="widget.format_currency_no_symbol(receipt.total_tax)" class="pos-receipt-right-align"/>
 				</div>
 			</t>
@@ -469,7 +469,7 @@
 				<br/>
 			</t>
 			<t t-if="quote.quote_id">
-				<div>Quote:
+				<div>Pedido:
 					<h3>
 						<t t-esc="quote.quote_id"/>
 					</h3>
@@ -514,18 +514,18 @@
 				<t t-if="receipt.cashier">
 					<div class="cashier">
 						<div>--------------------------------</div>
-						<div>User
+						<div>Cajero:
 							<t t-esc="receipt.cashier"/>
 						</div>
 					</div>
 				</t>
 				<t t-if="quote.from_session">
-					<div>From POS:
+					<div>Desde caja:
 						<t t-esc="quote.from_session"/>
 					</div>
 				</t>
 				<t t-if="quote.to_session">
-					<div>To POS:
+					<div>Hacia caja:
 						<t t-esc="quote.to_session"/>
 					</div>
 				</t>
@@ -556,7 +556,7 @@
 						</line>
 						<t t-if="line.discount !== 0">
 							<line indent="1">
-								<left>Discount:
+							<left>Descuento:
 									<t t-esc="line.discount"/>
 %</left>
 							</line>

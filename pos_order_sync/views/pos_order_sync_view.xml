@@ -9,8 +9,10 @@
 			<field name="model">pos.order</field>
 			<field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
 			<field name="arch" type="xml">
-				<xpath expr="//field[@name='pos_reference']" position="after">  
-					<field name="quote_id"/>
+					<xpath expr="//field[@name='pos_reference']" position="after">  
+						<field name="quote_id"/>
+						<field name="seller_name"/>
+						<field name="cashier_name"/>
 				</xpath>
 			</field>
 		</record>
@@ -19,12 +21,17 @@
 			<field name="model">pos.quote</field>
 			<field name="type">list</field>
 			<field name="arch" type="xml">
-				<list string="list session" create="false" default_order="quote_id desc">
+				<list string="Pedidos transferidos" create="false" default_order="quote_id desc">
 					<field name="quote_id"/>
 					<field name="partner_id"/>
 					<field name="date_order"/>
 					<field name="session_id"/>
 					<field name="to_session_id"/>
+					<field name="user_id" string="Cajero Origen"/>
+					<field name="seller_name"/>
+					<field name="received_user_id"/>
+					<field name="received_cashier_name"/>
+					<field name="received_at"/>
 					<field name="amount_total"/>
 					<field name="state"/>
 				</list>
@@ -35,9 +42,9 @@
 			<field name="model">pos.quote</field>
 			<field name="type">form</field>
 			<field name="arch" type="xml">
-				<form string="Form session" create="false">
+				<form string="Pedido transferido" create="false">
 					<header>
-						<button name="click_cancel" string="Cancel" type="object" invisible="state in ('done','cancel')"></button>
+						<button name="click_cancel" string="Cancelar" type="object" invisible="state in ('done','cancel')"></button>
 						<field name="state"  widget="statusbar" statusbar_visible="draft,done"/>
 					</header>
 					<sheet>
@@ -49,7 +56,7 @@
 						<notebook colspan="4">
 							<page string="Products">
 								<field name="lines" colspan="4" nolabel="1">
-									<list string="Quote lines" editable="bottom">
+								<list string="Líneas del pedido" editable="bottom">
 										<field name="product_id"/>
 										<field name="qty" />
 										<field name="price_unit" widget="monetary"/>
@@ -58,7 +65,7 @@
 										<field name="price_subtotal" widget="monetary"/>
 										<field name="price_subtotal_incl" widget="monetary"/>
 									</list>
-									<form string="Quote lines">
+									<form string="Líneas del pedido">
 										<group col="4">
 											<field name="product_id" />
 											<field name="qty" />
@@ -86,6 +93,12 @@
 										<field name="pricelist_id"/>
 										<field name="session_id"/>
 										<field name="to_session_id"/>
+										<field name="user_id" string="Cajero Origen"/>
+						<field name="seller_name"/>
+						<field name="received_user_id"/>
+						<field name="received_cashier_name"/>
+						<field name="received_at"/>
+										<field name="received_order_id"/>
 										<field name="date_order"/>
 										<field name="fiscal_position_id" options="{'no_create': True}"/>
 										<field name="pos_res_info" invisible="not pos_res_info"/>
@@ -94,7 +107,7 @@
 								</group>
 							</page>
 							<page string="Notes" >
-								<field name="note"/>
+											<field name="note" string="Notas internas"/>
 							</page>
 						</notebook>
 					</sheet>
@@ -106,6 +119,80 @@
 			<field name="res_model">pos.quote</field>
 			<field name="view_mode">list,form</field>
 		</record>
-		<menuitem name="Order Quotations" id="point_of_sale_order_quotes_menu" parent="point_of_sale.menu_point_of_sale" action="pos_order_quotes_form_view_action" sequence="0"/>
+		<menuitem name="Pedidos transferidos" id="point_of_sale_order_quotes_menu" parent="point_of_sale.menu_point_of_sale" action="pos_order_quotes_form_view_action" sequence="0"/>
+
+		<record id="pos_transfer_quotes_search_view" model="ir.ui.view">
+			<field name="name">pos.quote.transfer.search</field>
+			<field name="model">pos.quote</field>
+			<field name="arch" type="xml">
+				<search string="Transferencias entre cajas">
+					<field name="quote_id"/>
+					<field name="session_id"/>
+					<field name="to_session_id"/>
+					<field name="user_id" string="Cajero Origen"/>
+					<field name="seller_name" string="Nombre Cajero Origen"/>
+					<field name="received_user_id" string="Cajero Receptor"/>
+					<field name="received_cashier_name" string="Nombre Cajero Receptor"/>
+					<separator/>
+					<filter name="pending" string="Pendientes" domain="[('state','=','draft')]"/>
+					<filter name="received" string="Recibidos" domain="[('received_at','!=',False)]"/>
+					<filter name="completed" string="Completados" domain="[('state','=','done')]"/>
+					<group string="Agrupar por">
+						<filter name="group_by_origin_cashier" string="Cajero Origen" context="{'group_by':'seller_name'}"/>
+						<filter name="group_by_receiver_cashier" string="Cajero Receptor" context="{'group_by':'received_cashier_name'}"/>
+						<filter name="group_by_origin_session" string="Caja Origen" context="{'group_by':'session_id'}"/>
+						<filter name="group_by_target_session" string="Caja Destino" context="{'group_by':'to_session_id'}"/>
+					</group>
+				</search>
+			</field>
+		</record>
+
+		<record id="pos_transfer_quotes_pivot_view" model="ir.ui.view">
+			<field name="name">pos.quote.transfer.pivot</field>
+			<field name="model">pos.quote</field>
+			<field name="arch" type="xml">
+				<pivot string="Trabajo transferido entre cajas">
+					<field name="seller_name" type="row" string="Cajero Origen"/>
+					<field name="received_cashier_name" type="col" string="Cajero Receptor"/>
+					<field name="amount_total" type="measure"/>
+				</pivot>
+			</field>
+		</record>
+
+		<record id="pos_transfer_quotes_graph_view" model="ir.ui.view">
+			<field name="name">pos.quote.transfer.graph</field>
+			<field name="model">pos.quote</field>
+			<field name="arch" type="xml">
+				<graph string="Trabajo transferido entre cajas" type="bar">
+					<field name="seller_name" type="row" string="Cajero Origen"/>
+					<field name="amount_total" type="measure"/>
+				</graph>
+			</field>
+		</record>
+
+		<record id="pos_transfer_quotes_action" model="ir.actions.act_window">
+			<field name="name">Transferencias entre cajas</field>
+			<field name="res_model">pos.quote</field>
+			<field name="view_mode">list,pivot,graph,form</field>
+			<field name="search_view_id" ref="pos_transfer_quotes_search_view"/>
+			<field name="context">{'search_default_group_by_origin_cashier': 1}</field>
+		</record>
+		<menuitem name="Transferencias entre cajas" id="pos_transfer_quotes_menu" parent="point_of_sale.menu_point_of_sale" action="pos_transfer_quotes_action" sequence="1"/>
+
+		<record id="view_pos_session_transfer_buttons" model="ir.ui.view">
+			<field name="name">pos.session.transfer.buttons</field>
+			<field name="model">pos.session</field>
+			<field name="inherit_id" ref="point_of_sale.view_pos_session_form"/>
+			<field name="arch" type="xml">
+				<xpath expr="//div[@name='button_box']" position="inside">
+					<button name="action_view_transfer_sent_quotes" type="object" class="oe_stat_button" icon="fa-paper-plane" invisible="transfer_sent_count == 0">
+						<field name="transfer_sent_count" widget="statinfo" string="Enviados"/>
+					</button>
+					<button name="action_view_transfer_received_quotes" type="object" class="oe_stat_button" icon="fa-inbox" invisible="transfer_received_count == 0">
+						<field name="transfer_received_count" widget="statinfo" string="Recibidos"/>
+					</button>
+				</xpath>
+			</field>
+		</record>
 	</data>
 </odoo>

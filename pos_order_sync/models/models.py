@@ -17,7 +17,12 @@ class PosConfig(models.Model):
     _inherit = 'pos.config'
 
     quotation_print_type = fields.Selection([('pdf', 'Browser based (Pdf Report)'), (
-        'posbox', 'POSBOX (Xml Report)')], default='pdf', required=True, string="Quotation Print Type")
+        'posbox', 'POSBOX (Reporte XML)')], default='pdf', required=True, string="Tipo de impresión del pedido")
+    enable_transfer_tracking = fields.Boolean(
+        string="Registrar transferencias entre cajas",
+        default=True,
+        help="Registra el cajero que recibe un pedido transferido y lo muestra en los reportes de sesión.",
+    )
 
     def _compute_all_active_session(self):
         for obj in self:
@@ -31,7 +36,7 @@ class PosConfig(models.Model):
             if (obj.quotation_print_type == 'posbox'):
                 if(obj.iface_print_via_proxy == False):
                     raise UserError(
-                        "You can not print Xml receipt. Please check receipt printer in Hardware Proxy / PosBox")
+                        "No se puede imprimir el comprobante XML. Revisa la impresora en Hardware Proxy / PosBox.")
 
 
     @api.model
@@ -116,6 +121,50 @@ class ResConfigSettings(models.TransientModel):
 
     pos_quotation_print_type = fields.Selection(
         related='pos_config_id.quotation_print_type', readonly=False)
+    pos_enable_transfer_tracking = fields.Boolean(
+        related='pos_config_id.enable_transfer_tracking', readonly=False)
+
+
+class PosSession(models.Model):
+    _inherit = 'pos.session'
+
+    transfer_sent_count = fields.Integer(compute='_compute_transfer_counts')
+    transfer_received_count = fields.Integer(compute='_compute_transfer_counts')
+
+    def _compute_transfer_counts(self):
+        Quote = self.env['pos.quote']
+        for session in self:
+            session.transfer_sent_count = Quote.search_count([
+                ('session_id', '=', session.id),
+            ])
+            session.transfer_received_count = Quote.search_count([
+                ('to_session_id', '=', session.id),
+            ])
+
+    def _open_transfer_quotes(self, domain, title):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': title,
+            'res_model': 'pos.quote',
+            'view_mode': 'list,form',
+            'domain': domain,
+            'context': {'create': False},
+        }
+
+    def action_view_transfer_sent_quotes(self):
+        self.ensure_one()
+        return self._open_transfer_quotes(
+            [('session_id', '=', self.id)],
+            'Pedidos enviados desde esta caja',
+        )
+
+    def action_view_transfer_received_quotes(self):
+        self.ensure_one()
+        return self._open_transfer_quotes(
+            [('to_session_id', '=', self.id)],
+            'Pedidos recibidos en esta caja',
+        )
 
 
 class PosOrder(models.Model):
@@ -148,7 +197,10 @@ class PosOrder(models.Model):
         records = super().create(vals_list)
         for record in records:
             if record.quote_id:
-                record.quote_id.sudo().write({'state': 'done'})
+                record.quote_id.sudo().write({
+                    'state': 'done',
+                    'received_order_id': record.id,
+                })
         return records
 
 class PosQuotes(models.Model):
@@ -156,12 +208,12 @@ class PosQuotes(models.Model):
     _description = "Pos Quotes"
     _rec_name = 'quote_id'
 
-    quote_id = fields.Char('Quote Identifier', readonly=True)
-    table_json = fields.Text("Table JSON")
-    pos_res_info = fields.Text("Restaturant Info")
-    name = fields.Char("Name")
-    user_id = fields.Many2one('res.users', 'Salesman')
-    date_order = fields.Datetime('Quote Date', readonly=True, index=True)
+    quote_id = fields.Char('Número de pedido', readonly=True)
+    table_json = fields.Text("Datos de mesa")
+    pos_res_info = fields.Text("Información del restaurante")
+    name = fields.Char("Nombre")
+    user_id = fields.Many2one('res.users', 'Cajero origen')
+    date_order = fields.Datetime('Fecha del pedido', readonly=True, index=True)
     lines = fields.One2many('pos.quote.line', 'quote_id',
                             'Quote Lines', readonly=True)
     pricelist_id = fields.Many2one(
@@ -177,15 +229,23 @@ class PosQuotes(models.Model):
     amount_tax = fields.Float(
         string='Taxes', digits=0, readonly=True)
     state = fields.Selection([
-        ("draft", "Draft"),
-        ("done", "Done"),
-        ("cancel", "Cancel")],
+        ("draft", "Pendiente"),
+        ("done", "Completado"),
+        ("cancel", "Cancelado")],
         default='draft')
     fiscal_position_id = fields.Many2one(
         'account.fiscal.position', 'Fiscal Position', readonly=True)
     quote_sent = fields.Boolean('Quote sent')
     trackingNumber = fields.Char("Tracking Number")
     seller_name= fields.Char('Vendedor Origen')
+    received_user_id = fields.Many2one(
+        'res.users', string='Cajero Receptor', readonly=True, copy=False)
+    received_cashier_name = fields.Char(
+        string='Nombre Cajero Receptor', readonly=True, copy=False)
+    received_at = fields.Datetime(
+        string='Fecha de Recepción', readonly=True, copy=False)
+    received_order_id = fields.Many2one(
+        'pos.order', string='Pedido POS Generado', readonly=True, copy=False)
 
     @api.model
     def search_quote(self, args):
@@ -202,7 +262,7 @@ class PosQuotes(models.Model):
                     [('quote_id', '=', vals['quote_id'])]).ids
                 if len(found_ids) > 0:
                     raise UserError(
-                        "Please use some other Quote Id !!!\nThis id has already been used for some other quote.")
+                        "Usa otro número de pedido.\nEste número ya fue utilizado en otro pedido.")
         return super(PosQuotes, self).write(vals)
 
     @api.model_create_multi
@@ -228,6 +288,21 @@ class PosQuotes(models.Model):
         return report_ids and report_ids[0] or False
 
     @api.model
+    def mark_received(self, quote_id, user_id=False, cashier_name=False):
+        quote = self.browse(int(quote_id)).exists()
+        if not quote:
+            return False
+        if not quote.to_session_id or not quote.to_session_id.config_id.enable_transfer_tracking:
+            return False
+        receiver = self.env['res.users'].browse(int(user_id)).exists() if user_id else self.env['res.users']
+        quote.sudo().write({
+            'received_user_id': receiver.id if receiver else False,
+            'received_cashier_name': cashier_name or (receiver.name if receiver else self.env.user.name),
+            'received_at': fields.Datetime.now(),
+        })
+        return True
+
+    @api.model
     def search_all_record(self, kwargs):
         results = {}
         record_list = []
@@ -249,8 +324,13 @@ class PosQuotes(models.Model):
                 quote_obj.partner_id.id, quote_obj.partner_id.name or '-']
             result['to_session_id'] = quote_obj.to_session_id.id
             result['from_session_id'] = quote_obj.session_id.config_id.display_name or '-'
-            result['message'] = 'Quote Id does not belong to this POS session .'
+            result['message'] = 'El número del pedido no pertenece a esta sesión de Punto de Venta.'
             result['seller_name'] = quote_obj.seller_name or '-'
+            result['received_user_id'] = [
+                quote_obj.received_user_id.id,
+                quote_obj.received_user_id.name or '-',
+            ] if quote_obj.received_user_id else False
+            result['received_cashier_name'] = quote_obj.received_cashier_name or '-'
             if(quote_obj.table_json):
                 result['table_json'] = quote_obj.table_json
             result['line'] = []
@@ -287,7 +367,11 @@ class PosQuotes(models.Model):
                 quote_obj.to_session_id.config_id.display_name
                 if quote_obj.to_session_id else '-'
             )
-            result["state"] = quote_obj.state[0].upper() + quote_obj.state[1:] if quote_obj.state else '-'
+            result["state"] = {
+                'draft': 'Pendiente',
+                'done': 'Completado',
+                'cancel': 'Cancelado',
+            }.get(quote_obj.state, '-')
             result['seller_name'] = quote_obj.seller_name or '-'
             quote_list.append(result)
         results['quote_list'] = quote_list

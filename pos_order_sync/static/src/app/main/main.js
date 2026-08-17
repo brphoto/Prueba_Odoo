@@ -139,7 +139,17 @@ patch(PosStore.prototype, {
                     session_id: this.session.id,
                 }]
             );
-            const incoming = Array.isArray(result?.quote_list) ? result.quote_list : [];
+            const incoming = (Array.isArray(result?.quote_list) ? result.quote_list : [])
+                .filter((quote) => quote && quote.quote_id)
+                .map((quote) => ({
+                    ...quote,
+                    quote_id: String(quote.quote_id),
+                    from_session_id: quote.from_session_id || "Otra caja",
+                    partner_id: Array.isArray(quote.partner_id) ? quote.partner_id : [false, "-"],
+                    line: Array.isArray(quote.line) ? quote.line : [],
+                    amount_total: Number(quote.amount_total) || 0,
+                    loaded: Boolean(quote.loaded),
+                }));
             const fresh = incoming.filter((quote) => !knownIds.has(quote.quote_id));
             if (fresh.length) {
                 this.all_quotes = [...fresh, ...knownQuotes];
@@ -431,8 +441,8 @@ patch(Navbar.prototype, {
         } catch {
             $("#quote_history").css("color", "red");
             self.dialog.add(WkErrorNotifyPopopWidget, {
-                title: "Failed to show quotation history",
-                body: "Please make sure you are connected to the network.",
+                title: "No se pudo mostrar el historial",
+                body: "Verifica la conexión de red e inténtalo nuevamente.",
             });
         }
     },
@@ -443,8 +453,8 @@ patch(Navbar.prototype, {
         if (current_order && current_order.get_orderlines()) {
             if (current_order.get_orderlines().length == 0)
                 self.dialog.add(WkErrorNotifyPopopWidget, {
-                    title: "Empty order!!!",
-                    body: "You can't send an empty order, Please add some product(s) in cart.",
+                    title: "Pedido vacío",
+                    body: "No puedes enviar un pedido vacío. Agrega al menos un producto al carrito.",
                 });
             else {
                 try {
@@ -460,8 +470,8 @@ patch(Navbar.prototype, {
                     }
                 } catch {
                     self.dialog.add(WkErrorNotifyPopopWidget, {
-                        title: "Failed To Send Quotation",
-                        body: "Please make sure you are connected to the network.",
+                        title: "No se pudo preparar el envío",
+                        body: "Verifica la conexión de red e inténtalo nuevamente.",
                     });
                 }
             }
@@ -476,7 +486,8 @@ patch(Navbar.prototype, {
         $(".quotation_count").show();
         $(".fa-shopping-cart").show();
 
-        var all_quotes = Array.isArray(self.pos.all_quotes) ? self.pos.all_quotes : [];
+        var all_quotes = (Array.isArray(self.pos.all_quotes) ? self.pos.all_quotes : [])
+            .filter((quote) => quote && !quote.loaded);
         var all_quotes_length = all_quotes.length;
         self.pos._updateQuoteIndicator();
 
@@ -609,7 +620,19 @@ patch(Navbar.prototype, {
         new_order.quote_id = quote_dict.quote_obj_id || false;
         new_order.quote_name = quote_dict.quote_id || "";
         new_order.seller_name = quote_dict.seller_name || "";
+        new_order.cashier_name = self.pos.cashier?.name || self.pos.user?.name || "";
         new_order.setInternalNote(quote_dict.note || "");
+        if (quote_dict.quote_obj_id) {
+            const cashier = self.pos.cashier;
+            const cashierUserId = cashier?.model?.name === "res.users"
+                ? cashier.id
+                : cashier?.user_id?.id || false;
+            await self.env.services.orm.silent.call("pos.quote", "mark_received", [
+                quote_dict.quote_obj_id,
+                cashierUserId,
+                cashier?.name || self.pos.user?.name || "",
+            ]);
+        }
         self.pos.markQuoteLoaded(quote_dict.quote_id);
         //new_order.quote_name = quote_dict.quote_id || "";
 
@@ -894,9 +917,9 @@ export class AllQuotesListScreenWidget extends Component {
 
         if (already_loaded) {
             self.dialog.add(MyMessagePopup, {
-                title: "Quotation is already loaded & in progress",
+                title: "El pedido ya está cargado",
                 body:
-                    "This quotation is already in progress. Please proceed with Order Reference " +
+                    "Este pedido ya está abierto. Continúa con la referencia " +
                     already_loaded.sequence_number,
             });
             return;
@@ -986,10 +1009,9 @@ export class AllQuotesListScreenWidget extends Component {
             var new_quotation_data = [];
             var search_text = intput_txt.toLowerCase();
             all_quotations_for_customer.forEach(function (quotation) {
-                if (
-                    quotation.quote_id.toLowerCase().indexOf(search_text) != -1 ||
-                    quotation.from_session_id.toLowerCase().indexOf(search_text) != -1
-                ) {
+                const quoteId = String(quotation.quote_id || "").toLowerCase();
+                const fromSession = String(quotation.from_session_id || "").toLowerCase();
+                if (quoteId.indexOf(search_text) != -1 || fromSession.indexOf(search_text) != -1) {
                     new_quotation_data = new_quotation_data.concat(quotation);
                 }
             });
@@ -1054,7 +1076,19 @@ export class AllQuotesListScreenWidget extends Component {
         new_order.quote_id = quote_dict.quote_obj_id || false;
         new_order.quote_name = quote_dict.quote_id || "";
         new_order.seller_name = quote_dict.seller_name || "";
+        new_order.cashier_name = self.pos.cashier?.name || self.pos.user?.name || "";
         new_order.setInternalNote(quote_dict.note || "");
+        if (quote_dict.quote_obj_id) {
+            const cashier = self.pos.cashier;
+            const cashierUserId = cashier?.model?.name === "res.users"
+                ? cashier.id
+                : cashier?.user_id?.id || false;
+            await self.env.services.orm.silent.call("pos.quote", "mark_received", [
+                quote_dict.quote_obj_id,
+                cashierUserId,
+                cashier?.name || self.pos.user?.name || "",
+            ]);
+        }
         self.pos.markQuoteLoaded(quote_dict.quote_id);
 
         console.log("new_order.seller_name =", new_order.seller_name);
@@ -1198,8 +1232,8 @@ export class SaveAsOrderQuotePopupWidget extends Component {
         if (!current_order.get_partner()) {
             self.props.close();
             self.dialog.add(WkErrorNotifyPopopWidget, {
-                title: "Failed To Save Quotation",
-                body: "Please Select Customer First",
+                title: "No se pudo guardar el pedido",
+                body: "Primero selecciona un cliente.",
             });
         } else {
             var order_vals = {};
@@ -1289,7 +1323,7 @@ export class SaveAsOrderQuotePopupWidget extends Component {
                 });
 
                 if ($("#quote_id").text() == "") {
-                    $("#order_quote_id_input_error").text("No Quote Id Found.");
+                    $("#order_quote_id_input_error").text("No se encontró el número del pedido.");
                     $("#order_quote_id_input_error").css("width", "66%");
                     $("#order_quote_id_input_error").css("padding-left", "26%");
                     $("#order_quote_id_input_error").show();
@@ -1350,20 +1384,20 @@ export class SaveAsOrderQuotePopupWidget extends Component {
                                 }
                             } catch {
                                 self.dialog.add(WkErrorNotifyPopopWidget, {
-                                    title: "Failed To Save Quotation",
-                                    body: "Please make sure you are connected to the network.",
+                                    title: "No se pudo guardar el pedido",
+                                    body: "Verifica la conexión de red e inténtalo nuevamente.",
                                 });
                             }
                         } else {
-                            $("#order_quote_id_input_error").text("This Quote Id has Already been used.");
+                            $("#order_quote_id_input_error").text("Este número de pedido ya fue utilizado.");
                             $("#order_quote_id_input_error").css("width", "75%");
                             $("#order_quote_id_input_error").css("padding-left", "18%");
                             $("#order_quote_id_input_error").show();
                         }
                     } catch {
                         self.dialog.add(WkErrorNotifyPopopWidget, {
-                            title: "Failed To Save Quotation.",
-                            body: "Please make sure you are connected to the network.",
+                        title: "No se pudo guardar el pedido",
+                        body: "Verifica la conexión de red e inténtalo nuevamente.",
                         });
                         $(".show_info").hide();
                     }
