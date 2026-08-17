@@ -17,7 +17,7 @@
     "name"              :  "POS Order Sync",
     "summary"           :  """The POS user can synchronize one POS session with other so they can send quotations from one POS to another in case of multiple orders.""",
     "category"          :  "Point of Sale",
-    "version"           :  "1.3.1",
+    "version"           :  "1.3.3",
     "author"            :  "Webkul Software Pvt. Ltd.",
     "license"           :  "Other proprietary",
     "website"           :  "https://store.webkul.com/Odoo-POS-Order-Sync.html",

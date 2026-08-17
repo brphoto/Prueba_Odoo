@@ -103,7 +103,6 @@
 										<field name="fiscal_position_id" options="{'no_create': True}"/>
 										<field name="pos_res_info" invisible="not pos_res_info"/>
 									</group>
-									<group></group>
 								</group>
 							</page>
 							<page string="Notes" >
@@ -137,7 +136,7 @@
 					<filter name="pending" string="Pendientes" domain="[('state','=','draft')]"/>
 					<filter name="received" string="Recibidos" domain="[('received_at','!=',False)]"/>
 					<filter name="completed" string="Completados" domain="[('state','=','done')]"/>
-					<group string="Agrupar por">
+					<group>
 						<filter name="group_by_origin_cashier" string="Cajero Origen" context="{'group_by':'seller_name'}"/>
 						<filter name="group_by_receiver_cashier" string="Cajero Receptor" context="{'group_by':'received_cashier_name'}"/>
 						<filter name="group_by_origin_session" string="Caja Origen" context="{'group_by':'session_id'}"/>

@@ -14,6 +14,22 @@ import { patch } from "@web/core/utils/patch";
 import { Dialog } from "@web/core/dialog/dialog";
 import { PosOrder } from "@point_of_sale/app/models/pos_order";
 
+function normalizeInternalNote(note) {
+    const value = String(note || "");
+    if (!value.trim()) {
+        return "";
+    }
+    try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+            return JSON.stringify(parsed);
+        }
+    } catch {
+        // Legacy transferred notes were saved as plain text.
+    }
+    return JSON.stringify([{ text: value, colorIndex: 0 }]);
+}
+
 // ============================================================
 // PosStore patch
 // ============================================================
@@ -26,6 +42,7 @@ patch(PosOrder.prototype, {
         this.quote_name = this.quote_name || "";
         this.seller_name = this.seller_name || "";
         this.cashier_name = this.cashier_name || "";
+        this.internal_note = normalizeInternalNote(this.internal_note);
     },
 
     // Compatibility helpers for the original addon code. Odoo 19 renamed
@@ -63,7 +80,43 @@ patch(PosStore.prototype, {
     get_order() {
         return this.getOrder();
     },
+    _ensureDeviceSequenceData() {
+        if (!this.device) {
+            return;
+        }
+
+        let sequenceData;
+        try {
+            sequenceData = this.device.data;
+        } catch {
+            sequenceData = null;
+        }
+        if (sequenceData?.device_identifier && sequenceData.next_number) {
+            return;
+        }
+
+        // Odoo 19 reads this value from localStorage when it creates an
+        // order. A cleared/corrupted browser value otherwise causes
+        // "Cannot read properties of null (reading 'device_identifier')".
+        try {
+            const storageKey = String(odoo.access_token) + "-unique_device_identifier";
+            const deviceIdentifier =
+                this.device.device_identifier ||
+                "P" + String(this.config?.id || odoo.pos_config_id || "POS");
+            localStorage.setItem(
+                storageKey,
+                JSON.stringify({
+                    device_identifier: deviceIdentifier,
+                    next_number: 1,
+                    unsynced_number_stack: [],
+                })
+            );
+        } catch (error) {
+            console.warn("No se pudo recuperar la secuencia local del dispositivo:", error);
+        }
+    },
     add_new_order(data = {}) {
+        this._ensureDeviceSequenceData();
         return this.addNewOrder(data);
     },
     showScreen(routeName, params = {}) {
@@ -621,7 +674,7 @@ patch(Navbar.prototype, {
         new_order.quote_name = quote_dict.quote_id || "";
         new_order.seller_name = quote_dict.seller_name || "";
         new_order.cashier_name = self.pos.cashier?.name || self.pos.user?.name || "";
-        new_order.setInternalNote(quote_dict.note || "");
+        new_order.setInternalNote(normalizeInternalNote(quote_dict.note));
         if (quote_dict.quote_obj_id) {
             const cashier = self.pos.cashier;
             const cashierUserId = cashier?.model?.name === "res.users"
@@ -1084,7 +1137,7 @@ export class AllQuotesListScreenWidget extends Component {
         new_order.quote_name = quote_dict.quote_id || "";
         new_order.seller_name = quote_dict.seller_name || "";
         new_order.cashier_name = self.pos.cashier?.name || self.pos.user?.name || "";
-        new_order.setInternalNote(quote_dict.note || "");
+        new_order.setInternalNote(normalizeInternalNote(quote_dict.note));
         if (quote_dict.quote_obj_id) {
             const cashier = self.pos.cashier;
             const cashierUserId = cashier?.model?.name === "res.users"
