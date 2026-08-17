@@ -14,11 +14,6 @@
                 <div class="small text-muted" t-esc="order.quote_name or ''"/>
             </td>
         </xpath>
-        <xpath expr="//div[contains(@class, 'mobileOrderList')]//div[contains(@class, 'small text-muted')][2]"
-               position="after">
-            <div class="small text-muted" t-esc="order.quote_name or ''"/>
-        </xpath>
-
     </t>
 
 </templates>
