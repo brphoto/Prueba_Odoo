@@ -676,6 +676,7 @@ export class QuoteSendPopupWidget extends Component {
     static props = {
         close: { type: Function, optional: true },
         quote_status: { type: String, optional: true },
+        clear_order: { type: Boolean, optional: true },
     };
 
     setup() {
@@ -698,15 +699,21 @@ export class QuoteSendPopupWidget extends Component {
             $(".order_status").css({ "border-color": "#5cb85c" });
         }, 500);
 
-        if (!(self.props && self.props.quote_status)) {
+        const shouldClearOrder = Boolean(
+            self.props?.clear_order || !self.props?.quote_status
+        );
+        if (shouldClearOrder) {
+            const orderToRemove = self.pos.get_order();
             setTimeout(function () {
-                self.pos.removeOrder(self.pos.get_order(), false);
-                self.props.close();
+                if (orderToRemove) {
+                    self.pos.removeOrder(orderToRemove, false);
+                }
+                self.props.close?.();
                 self.pos.add_new_order();
             }, 1500);
         } else {
             setTimeout(function () {
-                self.props.close();
+                self.props.close?.();
             }, 1500);
         }
     }
@@ -1380,6 +1387,7 @@ export class SaveAsOrderQuotePopupWidget extends Component {
                                     self.props.close();
                                     self.dialog.add(QuoteSendPopupWidget, {
                                         quote_status: "Pedido enviado a la caja destino",
+                                        clear_order: true,
                                     });
                                 }
                             } catch {
