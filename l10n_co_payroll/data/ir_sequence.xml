@@ -1,7 +1,7 @@
 <odoo>
-    <record id="seq_nav_nomina_period" model="ir.sequence">
+    <record id="seq_co_payroll_period" model="ir.sequence">
         <field name="name">Periodo de nómina</field>
-        <field name="code">nav.nomina.period</field>
+        <field name="code">l10n.co.payroll.period</field>
         <field name="prefix">NOM/%(year)s/</field>
         <field name="padding">4</field>
         <field name="company_id" eval="False"/>

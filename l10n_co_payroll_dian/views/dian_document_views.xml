@@ -1,0 +1,89 @@
+<odoo>
+    <record id="view_co_payroll_dian_document_list" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.dian.document.list</field>
+        <field name="model">l10n.co.payroll.dian.document</field>
+        <field name="arch" type="xml">
+            <list string="Nómina electrónica DIAN" decoration-success="state == 'accepted'" decoration-danger="state in ('rejected', 'error')" decoration-warning="state == 'pending'">
+                <field name="name"/>
+                <field name="period_id"/>
+                <field name="employee_id" widget="many2one_avatar_employee"/>
+                <field name="is_adjustment"/>
+                <field name="cune" optional="hide"/>
+                <field name="state" widget="badge"/>
+                <field name="status_code" optional="hide"/>
+                <field name="zip_key" optional="hide"/>
+                <field name="generated_at" optional="hide"/>
+                <field name="sent_at" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_co_payroll_dian_document_form" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.dian.document.form</field>
+        <field name="model">l10n.co.payroll.dian.document</field>
+        <field name="arch" type="xml">
+            <form string="Nómina electrónica DIAN">
+                <header>
+                    <button name="action_generate" type="object" string="Generar y firmar" class="oe_highlight" invisible="state not in ('draft', 'error')" groups="l10n_co_payroll.group_co_payroll_user"/>
+                    <button name="action_validate_xml" type="object" string="Validar XML" invisible="not xml_file or state == 'cancelled'" groups="l10n_co_payroll.group_co_payroll_user"/>
+                    <button name="action_send" type="object" string="Enviar a la DIAN" class="oe_highlight" invisible="state not in ('validated', 'generated')" groups="l10n_co_payroll.group_co_payroll_user" confirm="Se transmitirá este documento al ambiente configurado de la DIAN. ¿Deseas continuar?"/>
+                    <button name="action_check_status" type="object" string="Consultar estado" invisible="state != 'pending' or not zip_key" groups="l10n_co_payroll.group_co_payroll_user"/>
+                    <button name="action_fetch_application_response" type="object" string="Obtener respuesta" invisible="not xml_document_key" groups="l10n_co_payroll.group_co_payroll_user"/>
+                    <button name="action_create_adjustment" type="object" string="Crear nota de ajuste" invisible="state != 'accepted' or is_adjustment" groups="l10n_co_payroll.group_co_payroll_user"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,validated,pending,accepted,rejected"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" placeholder="Se asigna al generar"/></h1></div>
+                    <div class="alert alert-danger" role="alert" invisible="not error_message"><field name="error_message" nolabel="1"/></div>
+                    <div class="alert alert-warning" role="alert" invisible="not status_message"><field name="status_message" nolabel="1"/></div>
+                    <group>
+                        <group string="Origen">
+                            <field name="company_id" readonly="state != 'draft'"/>
+                            <field name="period_id" readonly="state != 'draft'"/>
+                            <field name="period_line_id" readonly="state != 'draft'"/>
+                            <field name="employee_id"/>
+                            <field name="is_adjustment"/>
+                            <field name="tipo_nota" invisible="not is_adjustment"/>
+                            <field name="predecessor_id" invisible="not is_adjustment"/>
+                        </group>
+                        <group string="Identificación DIAN">
+                            <field name="prefix"/>
+                            <field name="consecutive"/>
+                            <field name="cune"/>
+                            <field name="status_code"/>
+                            <field name="zip_key"/>
+                            <field name="xml_document_key"/>
+                            <field name="attempt_count"/>
+                            <field name="last_query_operation"/>
+                            <field name="submission_environment"/>
+                            <field name="reconciliation_difference" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="files" string="Archivos">
+                            <group><field name="xml_filename"/><field name="xml_file" filename="xml_filename"/><field name="zip_filename"/><field name="zip_file" filename="zip_filename"/><field name="application_response_filename"/><field name="application_response_file" filename="application_response_filename"/></group>
+                        </page>
+                        <page name="validation" string="Validación">
+                            <field name="xml_validation_errors" nolabel="1" placeholder="Sin errores locales."/>
+                            <field name="cune_seed" placeholder="Semilla CUNE"/>
+                            <field name="error_category"/>
+                        </page>
+                        <page name="communication" string="Comunicación DIAN">
+                            <group><field name="generated_by"/><field name="generated_at"/><field name="sent_by"/><field name="sent_at"/><field name="last_checked_at"/></group>
+                            <field name="request_log" nolabel="1" placeholder="Solicitud SOAP"/>
+                            <field name="response_log" nolabel="1" placeholder="Respuesta SOAP"/>
+                        </page>
+                        <page name="attempts" string="Trazabilidad">
+                            <field name="attempt_ids" readonly="1"><list create="false" delete="false"><field name="create_date"/><field name="operation"/><field name="status" widget="badge"/><field name="message"/><field name="zip_key"/></list></field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="action_co_payroll_dian_document" model="ir.actions.act_window">
+        <field name="name">Nómina electrónica DIAN</field>
+        <field name="res_model">l10n.co.payroll.dian.document</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

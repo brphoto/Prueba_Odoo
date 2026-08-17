@@ -1,0 +1,5 @@
+<odoo>
+    <record id="rule_co_payroll_portal_request_company" model="ir.rule"><field name="name">Solicitudes por compañía</field><field name="model_id" ref="model_l10n_co_payroll_portal_request"/><field name="domain_force">[('company_id', 'in', company_ids)]</field><field name="groups" eval="[(4, ref('l10n_co_payroll.group_co_payroll_user')), (4, ref('l10n_co_payroll.group_co_payroll_manager'))]"/></record>
+    <record id="rule_co_payroll_portal_request_own" model="ir.rule"><field name="name">Portal: solicitudes propias</field><field name="model_id" ref="model_l10n_co_payroll_portal_request"/><field name="domain_force">[('requested_by', '=', user.id)]</field><field name="groups" eval="[(4, ref('base.group_portal'))]"/></record>
+    <record id="rule_co_payroll_portal_access_log_company" model="ir.rule"><field name="name">Auditoría portal por compañía</field><field name="model_id" ref="model_l10n_co_payroll_portal_access_log"/><field name="domain_force">[('company_id', 'in', company_ids)]</field><field name="groups" eval="[(4, ref('l10n_co_payroll.group_co_payroll_manager')), (4, ref('l10n_co_payroll.group_co_payroll_auditor'))]"/></record>
+</odoo>

@@ -1,0 +1,19 @@
+<odoo>
+    <record id="view_hr_payslip_co_payroll" model="ir.ui.view">
+        <field name="name">hr.payslip.l10n.co.payroll</field>
+        <field name="model">hr.payslip</field>
+        <field name="inherit_id" ref="hr_payroll.view_hr_payslip_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='compute_sheet']" position="after">
+                <button name="action_co_recompute_rules" type="object" string="Aplicar reglas CO" invisible="state != 'draft'" class="oe_highlight" groups="l10n_co_payroll.group_co_payroll_user"/>
+            </xpath>
+            <xpath expr="//page[@name='salary_computation']" position="after">
+                <page name="co_payroll_rules" string="Reglas Colombia" invisible="not co_formula_applied and not co_formula_error">
+                    <group><field name="co_formula_applied"/><field name="co_formula_parameter_id"/><field name="co_formula_error"/></group>
+                    <group string="Totales resultantes"><field name="co_formula_gross_wage" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="co_formula_deduction_total" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="co_formula_net_wage" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="co_formula_employer_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="co_formula_ibc_base" widget="monetary" options="{'currency_field': 'currency_id'}"/></group>
+                    <field name="co_formula_breakdown" nolabel="1"/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

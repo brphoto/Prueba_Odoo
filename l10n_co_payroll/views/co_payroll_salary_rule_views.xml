@@ -1,0 +1,101 @@
+<odoo>
+    <record id="view_co_payroll_salary_rule_list" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.salary.rule.list</field>
+        <field name="model">l10n.co.payroll.salary.rule</field>
+        <field name="arch" type="xml">
+            <list string="Reglas salariales" decoration-success="validation_state == 'valid'" decoration-danger="validation_state == 'error'">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="parameter_id"/>
+                <field name="concept_type" widget="badge"/>
+                <field name="impact"/>
+                <field name="active"/>
+                <field name="validation_state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_co_payroll_salary_rule_form" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.salary.rule.form</field>
+        <field name="model">l10n.co.payroll.salary.rule</field>
+        <field name="arch" type="xml">
+            <form string="Regla salarial">
+                <header>
+                    <button name="action_validate_formula" type="object" string="Validar fórmula" class="oe_highlight" groups="l10n_co_payroll.group_co_payroll_manager"/>
+                    <field name="validation_state" widget="statusbar" statusbar_visible="pending,valid,error"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <div class="alert alert-info" role="alert">
+                        Fórmulas seguras para nómina. Variables: basic_wage, gross_wage, deduction_total, net_wage, worked_days, worked_hours, ibc_base, minimum_wage, transport_allowance, uvt_value. Funciones: rule('CODIGO'), source('CODIGO'), legal('campo').
+                    </div>
+                    <group>
+                        <group><field name="company_id"/><field name="parameter_id"/><field name="sequence"/><field name="code"/></group>
+                        <group><field name="concept_type"/><field name="impact"/><field name="active"/><field name="validated_at"/></group>
+                    </group>
+                    <group string="Cálculo">
+                        <field name="condition" placeholder="Ej.: worked_days &gt; 0 and basic_wage &lt;= minimum_wage * 2"/>
+                        <field name="amount_expression" placeholder="Ej.: min(transport_allowance, basic_wage * 0.10)"/>
+                    </group>
+                    <group string="Resultado de validación" invisible="validation_state != 'error'"><field name="validation_message"/></group>
+                    <field name="description" placeholder="Explique el concepto, la base legal y ejemplos de prueba..."/>
+                    <group string="Casos de prueba">
+                        <button name="action_run_tests" type="object" string="Ejecutar pruebas" class="oe_highlight" groups="l10n_co_payroll.group_co_payroll_manager"/>
+                        <field name="test_ids">
+                            <list editable="bottom" decoration-success="state == 'passed'" decoration-danger="state == 'failed'">
+                                <field name="sequence"/><field name="name"/><field name="basic_wage"/><field name="gross_wage"/><field name="deduction_total"/><field name="worked_days"/><field name="minimum_wage"/><field name="transport_allowance"/><field name="expected_amount"/><field name="tolerance"/><field name="actual_amount"/><field name="state" widget="badge"/>
+                            </list>
+                        </field>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_co_payroll_parameter_form_salary_rules" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.parameter.form.salary.rules</field>
+        <field name="model">l10n.co.payroll.parameter</field>
+        <field name="inherit_id" ref="view_co_payroll_parameter_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='withholding_notes']" position="before">
+                <group string="Motor de reglas salariales">
+                    <div class="alert alert-secondary" role="alert">Las reglas se ejecutan por secuencia al preparar el periodo. El resultado queda guardado por empleado para auditoría.</div>
+                    <field name="salary_rule_ids" nolabel="1">
+                        <list editable="bottom" decoration-success="validation_state == 'valid'" decoration-danger="validation_state == 'error'">
+                            <field name="sequence"/>
+                            <field name="name"/>
+                            <field name="code"/>
+                            <field name="concept_type"/>
+                            <field name="impact"/>
+                            <field name="condition"/>
+                            <field name="amount_expression"/>
+                            <field name="validation_state" widget="badge"/>
+                        </list>
+                    </field>
+                </group>
+            </xpath>
+        </field>
+    </record>
+    <record id="action_co_payroll_salary_rule" model="ir.actions.act_window">
+        <field name="name">Reglas salariales</field>
+        <field name="res_model">l10n.co.payroll.salary.rule</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+    <record id="view_co_payroll_period_line_form_salary_rules" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.period.line.form.salary.rules</field>
+        <field name="model">l10n.co.payroll.period.line</field>
+        <field name="inherit_id" ref="view_co_payroll_period_line_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='net_variation_pct']" position="after">
+                <field name="rule_result_ids" invisible="not rule_result_ids">
+                    <list create="false" delete="false">
+                        <field name="sequence"/><field name="code"/><field name="name"/>
+                        <field name="concept_type" widget="badge"/>
+                        <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                        <field name="condition_met"/>
+                    </list>
+                </field>
+            </xpath>
+        </field>
+    </record>
+</odoo>

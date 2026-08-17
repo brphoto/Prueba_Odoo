@@ -1,0 +1,34 @@
+<odoo>
+    <record id="view_company_form_dian_payroll" model="ir.ui.view">
+        <field name="name">res.company.form.dian.payroll</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="arch" type="xml">
+            <field name="vat" position="after">
+                <separator string="Nómina electrónica DIAN"/>
+                <field name="co_dian_payroll_enabled"/>
+                <field name="co_dian_environment" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_software_id" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_software_pin" password="True" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_test_set_id" invisible="not co_dian_payroll_enabled or co_dian_environment != '2'"/>
+                <field name="co_dian_certificate" filename="co_dian_certificate_filename" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_certificate_filename" invisible="1"/>
+                <field name="co_dian_certificate_password" password="True" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_certificate_id" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_request_timeout" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_auto_check_pending" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_require_habilitation" invisible="not co_dian_payroll_enabled"/>
+                <button name="action_co_dian_validate_certificate" type="object" string="Validar certificado" class="oe_link" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_certificate_status" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_certificate_expiration" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_certificate_subject" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_certificate_issuer" invisible="not co_dian_payroll_enabled or not co_dian_certificate_status"/>
+                <field name="co_dian_certificate_serial" invisible="not co_dian_payroll_enabled or not co_dian_certificate_status"/>
+                <field name="co_dian_certificate_fingerprint" invisible="not co_dian_payroll_enabled or not co_dian_certificate_status"/>
+                <field name="co_dian_test_payroll_count" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_test_adjustment_count" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_habilitation_ready" invisible="not co_dian_payroll_enabled"/>
+            </field>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,7 @@
+<odoo>
+    <record id="view_co_payroll_period_wizard_form" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.period.wizard.form</field><field name="model">l10n.co.payroll.period.wizard</field>
+        <field name="arch" type="xml"><form string="Crear periodo de nómina"><div class="alert alert-info" role="alert">Define el rango y los filtros. Después podrás preparar el resumen, revisar validaciones y cerrar el periodo.</div><group><group><field name="company_id"/><field name="period_type"/><field name="date_from"/><field name="date_to"/><field name="payment_date"/></group><group><field name="employee_ids" widget="many2many_tags" options="{'no_create': True}"/><field name="department_ids" widget="many2many_tags" options="{'no_create': True}"/><field name="job_ids" widget="many2many_tags" options="{'no_create': True}"/><field name="structure_ids" widget="many2many_tags" options="{'no_create': True}"/></group></group><field name="note" placeholder="Notas iniciales..."/><footer><button name="action_create_period" type="object" string="Crear periodo" class="oe_highlight"/><button string="Cancelar" special="cancel"/></footer></form></field>
+    </record>
+    <record id="action_co_payroll_period_wizard" model="ir.actions.act_window"><field name="name">Crear periodo</field><field name="res_model">l10n.co.payroll.period.wizard</field><field name="view_mode">form</field><field name="target">new</field></record>
+</odoo>

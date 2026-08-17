@@ -1,1 +1,1 @@
-from . import nav_nomina_period_wizard
+from . import co_payroll_period_wizard

@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_co_payroll_dian_document_user,Documento nómina electrónica usuario,model_l10n_co_payroll_dian_document,l10n_co_payroll.group_co_payroll_user,1,1,1,0
+access_co_payroll_dian_document_manager,Documento nómina electrónica supervisor,model_l10n_co_payroll_dian_document,l10n_co_payroll.group_co_payroll_manager,1,1,1,1
+access_co_payroll_dian_attempt_user,Intento DIAN usuario,model_l10n_co_payroll_dian_attempt,l10n_co_payroll.group_co_payroll_user,1,0,0,0
+access_co_payroll_dian_attempt_manager,Intento DIAN supervisor,model_l10n_co_payroll_dian_attempt,l10n_co_payroll.group_co_payroll_manager,1,1,1,1

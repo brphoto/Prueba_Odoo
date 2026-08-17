@@ -1,0 +1,13 @@
+<odoo>
+    <template id="report_payslip_co_payroll" inherit_id="hr_payroll.report_payslip">
+        <xpath expr="//div[hasclass('page')]" position="inside">
+            <div t-if="o.co_formula_applied and o.co_formula_breakdown" class="mt-3">
+                <h4>Conceptos calculados por Nómina Colombia</h4>
+                <table class="table table-sm">
+                    <thead><tr><th>Regla</th><th>Condición</th><th>Fórmula</th><th class="text-end">Resultado</th></tr></thead>
+                    <tbody><tr t-foreach="o.co_formula_breakdown" t-as="rule"><td><span t-esc="rule.get('name') or rule.get('code')"/></td><td><span t-esc="rule.get('condition_snapshot')"/></td><td><span t-esc="rule.get('formula_snapshot')"/></td><td class="text-end"><span t-esc="rule.get('amount', 0.0)"/></td></tr></tbody>
+                </table>
+            </div>
+        </xpath>
+    </template>
+</odoo>

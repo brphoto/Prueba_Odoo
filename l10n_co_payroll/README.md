@@ -2,7 +2,7 @@
 
 Módulo operativo para Odoo 19 que consolida la nómina calculada por `hr_payroll` en un producto independiente. No depende de módulos DIAN, nómina electrónica, XML, SOAP, certificados ni servicios externos.
 
-El nombre técnico del producto es `l10n_co_payroll`. Se conserva el nombre de los modelos internos `nav.nomina.*` para facilitar la continuidad de datos y desarrollos.
+El nombre técnico del producto es `l10n_co_payroll`. Se conserva el nombre de los modelos internos `l10n.co.payroll.*` para facilitar la continuidad de datos y desarrollos.
 
 ## Qué incluye
 
@@ -57,3 +57,10 @@ Los importes se toman de las líneas calculadas por `hr_payroll`: básico, deven
 - Bitácora de auditoría para preparación, aprobaciones, cierre, exportaciones, contabilidad, pagos, PILA y liquidaciones.
 
 El producto está diseñado para operar sin servicios DIAN, XML, certificados, SOAP ni conexiones electrónicas externas. Las tarifas, topes, códigos y estructuras de PILA deben ser revisados y actualizados por el responsable laboral antes de usarlos en producción.
+
+## Complementos opcionales
+
+- `l10n_co_payroll_documents`: documentos laborales, certificados y archivos visibles de forma controlada.
+- `l10n_co_payroll_portal`: autoservicio de empleados, desprendibles y solicitudes de vacaciones, permisos o cambios de datos. Este módulo es opcional y no se instala con el núcleo.
+
+El núcleo también incorpora calendario, tareas operativas, reglas de validación por empresa, simulador salarial, sandbox, historial salarial, préstamos, embargos, conciliación bancaria y analítica de costos.

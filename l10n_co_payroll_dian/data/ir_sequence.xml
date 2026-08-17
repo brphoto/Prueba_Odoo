@@ -1,0 +1,9 @@
+<odoo>
+    <record id="seq_co_payroll_dian_document" model="ir.sequence">
+        <field name="name">Nómina electrónica DIAN</field>
+        <field name="code">l10n.co.payroll.dian.document</field>
+            <field name="prefix">NOM</field>
+        <field name="padding">8</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

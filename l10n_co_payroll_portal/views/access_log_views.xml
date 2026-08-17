@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_co_payroll_portal_access_log_list" model="ir.ui.view"><field name="name">l10n.co.payroll.portal.access.log.list</field><field name="model">l10n.co.payroll.portal.access.log</field><field name="arch" type="xml"><list string="Auditoría del portal"><field name="accessed_at"/><field name="employee_id"/><field name="payslip_id"/><field name="action"/><field name="user_id"/><field name="ip_address"/></list></field></record>
+    <record id="action_co_payroll_portal_access_log" model="ir.actions.act_window"><field name="name">Auditoría del portal</field><field name="res_model">l10n.co.payroll.portal.access.log</field><field name="view_mode">list</field></record>
+    <menuitem id="menu_co_payroll_portal_access_log" name="Auditoría portal" parent="l10n_co_payroll.menu_co_payroll_configuration" action="action_co_payroll_portal_access_log" sequence="50" groups="l10n_co_payroll.group_co_payroll_manager,l10n_co_payroll.group_co_payroll_auditor"/>
+</odoo>

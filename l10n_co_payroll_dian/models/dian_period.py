@@ -1,0 +1,66 @@
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
+
+
+class CoPayrollDianPeriod(models.Model):
+    _inherit = "l10n.co.payroll.period"
+
+    dian_document_ids = fields.One2many("l10n.co.payroll.dian.document", "period_id", string="Documentos DIAN", copy=False)
+    dian_document_count = fields.Integer(string="Cantidad de documentos DIAN", compute="_compute_dian_metrics")
+    dian_pending_count = fields.Integer(string="Pendientes DIAN", compute="_compute_dian_metrics")
+    dian_rejected_count = fields.Integer(string="Rechazados DIAN", compute="_compute_dian_metrics")
+    dian_state = fields.Selection([
+        ("none", "Sin generar"), ("draft", "Borrador"), ("generated", "Generados"),
+        ("pending", "Pendientes"), ("accepted", "Aceptados"), ("rejected", "Con rechazos"),
+    ], compute="_compute_dian_metrics", string="Estado DIAN")
+
+    @api.depends("dian_document_ids.state")
+    def _compute_dian_metrics(self):
+        for period in self:
+            documents = period.dian_document_ids
+            period.dian_document_count = len(documents)
+            period.dian_pending_count = len(documents.filtered(lambda doc: doc.state == "pending"))
+            period.dian_rejected_count = len(documents.filtered(lambda doc: doc.state in ("rejected", "error")))
+            if not documents:
+                period.dian_state = "none"
+            elif period.dian_rejected_count:
+                period.dian_state = "rejected"
+            elif documents.filtered(lambda doc: doc.state == "pending"):
+                period.dian_state = "pending"
+            elif all(doc.state == "accepted" for doc in documents):
+                period.dian_state = "accepted"
+            elif documents.filtered(lambda doc: doc.state in ("generated", "validated")):
+                period.dian_state = "generated"
+            else:
+                period.dian_state = "draft"
+
+    def action_generate_dian_documents(self):
+        document_model = self.env["l10n.co.payroll.dian.document"]
+        for period in self:
+            if period.state not in ("ready", "closed"):
+                raise UserError(_("El periodo debe estar preparado o cerrado antes de generar nómina electrónica."))
+            if not period.company_id.co_dian_payroll_enabled:
+                raise UserError(_("Activa nómina electrónica DIAN en la compañía %s.") % period.company_id.display_name)
+            existing = period.dian_document_ids.filtered(lambda doc: not doc.is_adjustment)
+            for line in period.line_ids:
+                if not existing.filtered(lambda doc, line=line: doc.period_line_id == line):
+                    document_model.create({"period_id": period.id, "period_line_id": line.id, "company_id": period.company_id.id})
+            period.dian_document_ids.filtered(lambda doc: doc.state in ("draft", "error") and not doc.is_adjustment).action_generate()
+        return {"type": "ir.actions.client", "tag": "reload"}
+
+    def action_send_dian_documents(self):
+        for period in self:
+            documents = period.dian_document_ids.filtered(lambda doc: not doc.is_adjustment and doc.state in ("validated", "generated"))
+            if not documents:
+                raise UserError(_("No hay documentos DIAN validados localmente para enviar."))
+            documents.action_send()
+        return {"type": "ir.actions.client", "tag": "reload"}
+
+    def action_check_dian_status(self):
+        for period in self:
+            period.dian_document_ids.filtered(lambda doc: doc.state == "pending" and (doc.zip_key or doc.cune)).action_check_status()
+        return {"type": "ir.actions.client", "tag": "reload"}
+
+    def action_open_dian_documents(self):
+        self.ensure_one()
+        return {"type": "ir.actions.act_window", "name": _("Nómina electrónica DIAN"), "res_model": "l10n.co.payroll.dian.document", "view_mode": "list,form", "domain": [("period_id", "=", self.id)], "context": {"default_period_id": self.id, "create": False}}

@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_co_payroll_portal_request_user,l10n.co.payroll.portal.request.user,model_l10n_co_payroll_portal_request,l10n_co_payroll.group_co_payroll_user,1,1,1,0
+access_co_payroll_portal_request_manager,l10n.co.payroll.portal.request.manager,model_l10n_co_payroll_portal_request,l10n_co_payroll.group_co_payroll_manager,1,1,1,1
+access_co_payroll_portal_request_portal,l10n.co.payroll.portal.request.portal,model_l10n_co_payroll_portal_request,base.group_portal,1,1,1,0
+access_co_payroll_portal_access_log_manager,l10n.co.payroll.portal.access.log.manager,model_l10n_co_payroll_portal_access_log,l10n_co_payroll.group_co_payroll_manager,1,0,0,0
+access_co_payroll_portal_access_log_auditor,l10n.co.payroll.portal.access.log.auditor,model_l10n_co_payroll_portal_access_log,l10n_co_payroll.group_co_payroll_auditor,1,0,0,0

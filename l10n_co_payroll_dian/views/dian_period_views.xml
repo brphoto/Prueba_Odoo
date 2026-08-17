@@ -1,0 +1,23 @@
+<odoo>
+    <record id="view_co_payroll_period_form_dian" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.period.form.dian</field>
+        <field name="model">l10n.co.payroll.period</field>
+        <field name="inherit_id" ref="l10n_co_payroll.view_co_payroll_period_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/field[@name='state']" position="before">
+                <button name="action_generate_dian_documents" type="object" string="Generar nómina DIAN" invisible="state not in ('ready', 'closed')" groups="l10n_co_payroll.group_co_payroll_user"/>
+                <button name="action_send_dian_documents" type="object" string="Enviar nómina DIAN" class="oe_highlight" invisible="dian_state not in ('generated', 'draft')" groups="l10n_co_payroll.group_co_payroll_user"/>
+                <button name="action_check_dian_status" type="object" string="Consultar DIAN" invisible="dian_pending_count == 0" groups="l10n_co_payroll.group_co_payroll_user"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_dian_documents" type="object" class="oe_stat_button" icon="fa-cloud-upload"><field name="dian_document_count" widget="statinfo" string="DIAN"/></button>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page name="dian_electronic_payroll" string="Nómina electrónica DIAN">
+                    <group><field name="dian_state" widget="badge"/><field name="dian_document_count"/><field name="dian_pending_count"/><field name="dian_rejected_count"/></group>
+                    <field name="dian_document_ids" readonly="1"><list create="false" delete="false"><field name="name"/><field name="employee_id"/><field name="is_adjustment"/><field name="cune" optional="hide"/><field name="state" widget="badge"/><field name="status_code"/><field name="zip_key" optional="hide"/></list></field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
