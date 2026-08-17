@@ -13,6 +13,8 @@ class CoPayrollDianDashboard(models.TransientModel):
     pending_count = fields.Integer(string="Pendientes", compute="_compute_metrics")
     rejected_count = fields.Integer(string="Rechazados", compute="_compute_metrics")
     error_count = fields.Integer(string="Errores", compute="_compute_metrics")
+    attention_count = fields.Integer(string="Requieren atención", compute="_compute_metrics")
+    stale_pending_count = fields.Integer(string="Pendientes antiguos", compute="_compute_metrics")
     habilitation_payroll_count = fields.Integer(string="Nóminas de habilitación", related="company_id.co_dian_test_payroll_count")
     habilitation_adjustment_count = fields.Integer(string="Ajustes de habilitación", related="company_id.co_dian_test_adjustment_count")
     habilitation_ready = fields.Boolean(string="Habilitación lista", related="company_id.co_dian_habilitation_ready")
@@ -36,6 +38,8 @@ class CoPayrollDianDashboard(models.TransientModel):
             dashboard.pending_count = len(documents.filtered(lambda record: record.state == "pending"))
             dashboard.rejected_count = len(documents.filtered(lambda record: record.state == "rejected"))
             dashboard.error_count = len(documents.filtered(lambda record: record.state == "error"))
+            dashboard.attention_count = len(documents.filtered(lambda record: record.attention_level in ("warning", "danger")))
+            dashboard.stale_pending_count = len(documents.filtered("is_stale_pending"))
             checked = documents.mapped("last_checked_at")
             dashboard.last_sync = max(checked) if checked else False
 
@@ -78,6 +82,12 @@ class CoPayrollDianDashboard(models.TransientModel):
         action["domain"] = self._document_domain("error")
         return action
 
+    def action_open_attention(self):
+        self.ensure_one()
+        action = self.action_open_documents()
+        action["domain"] = self._document_domain() + [("attention_level", "in", ["warning", "danger"])]
+        return action
+
     def action_refresh(self):
         return {"type": "ir.actions.client", "tag": "reload"}
 
@@ -102,6 +112,12 @@ class CoPayrollDianSetupWizard(models.TransientModel):
     approval_mode = fields.Selection([
         ("none", "Sin aprobación"), ("single", "Una aprobación"), ("double", "Doble aprobación"),
     ], string="Aprobación de envío", required=True, default="none")
+    notifications_enabled = fields.Boolean(string="Avisos operativos", default=True)
+    notify_errors = fields.Boolean(string="Avisar errores", default=True)
+    notify_pending = fields.Boolean(string="Avisar pendientes antiguos", default=True)
+    pending_alert_hours = fields.Integer(string="Horas para alertar pendientes", default=4)
+    notify_certificate = fields.Boolean(string="Avisar certificado", default=True)
+    notify_user_ids = fields.Many2many("res.users", string="Responsables de avisos")
 
     @api.model
     def default_get(self, fields_list):
@@ -121,6 +137,12 @@ class CoPayrollDianSetupWizard(models.TransientModel):
             "require_habilitation": company.co_dian_require_habilitation,
             "require_explicit_mapping": company.co_dian_require_explicit_mapping,
             "approval_mode": company.co_dian_approval_mode,
+            "notifications_enabled": company.co_dian_notifications_enabled,
+            "notify_errors": company.co_dian_notify_errors,
+            "notify_pending": company.co_dian_notify_pending,
+            "pending_alert_hours": company.co_dian_pending_alert_hours,
+            "notify_certificate": company.co_dian_notify_certificate,
+            "notify_user_ids": [(6, 0, company.co_dian_notify_user_ids.ids)],
         })
         return values
 
@@ -140,6 +162,12 @@ class CoPayrollDianSetupWizard(models.TransientModel):
             "co_dian_require_habilitation": self.require_habilitation,
             "co_dian_require_explicit_mapping": self.require_explicit_mapping,
             "co_dian_approval_mode": self.approval_mode,
+            "co_dian_notifications_enabled": self.notifications_enabled,
+            "co_dian_notify_errors": self.notify_errors,
+            "co_dian_notify_pending": self.notify_pending,
+            "co_dian_pending_alert_hours": self.pending_alert_hours,
+            "co_dian_notify_certificate": self.notify_certificate,
+            "co_dian_notify_user_ids": [(6, 0, self.notify_user_ids.ids)],
         }
 
     def action_apply(self):

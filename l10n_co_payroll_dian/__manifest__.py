@@ -7,10 +7,15 @@
     """,
     "author": "Bryan Cando",
     "category": "Human Resources/Payroll",
-    "version": "19.0.3.0.0",
+    "version": "19.0.4.0.0",
     "license": "OPL-1",
     "depends": ["l10n_co_payroll", "certificate"],
     "external_dependencies": {"python": ["cryptography", "lxml", "signxml", "requests"]},
+    "assets": {
+        "web.assets_backend": [
+            "l10n_co_payroll_dian/static/src/scss/dian_ui.scss",
+        ],
+    },
     "data": [
         "security/ir.model.access.csv",
         "data/ir_sequence.xml",

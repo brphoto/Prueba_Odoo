@@ -9,6 +9,8 @@
                 <filter name="accepted" string="Aceptados" domain="[('state', '=', 'accepted')]"/>
                 <filter name="rejected" string="Rechazados" domain="[('state', '=', 'rejected')]"/>
                 <filter name="errors" string="Errores" domain="[('state', '=', 'error')]"/>
+                <filter name="attention" string="Requieren atención" domain="[('attention_level', 'in', ['warning', 'danger'])]"/>
+                <filter name="stale_pending" string="Pendientes antiguos" domain="[('is_stale_pending', '=', True)]"/>
                 <filter name="preflight_errors" string="Prevalidación con errores" domain="[('preflight_state', '=', 'error')]"/>
                 <filter name="adjustments" string="Notas de ajuste" domain="[('is_adjustment', '=', True)]"/>
                 <separator/>
@@ -38,7 +40,7 @@
                 </header>
                 <field name="name"/><field name="period_id"/><field name="employee_id" widget="many2one_avatar_employee"/><field name="is_adjustment"/>
                 <field name="submission_environment" optional="hide"/><field name="cune" optional="hide"/><field name="state" widget="badge"/>
-                <field name="preflight_state" widget="badge" optional="hide"/><field name="status_code" optional="hide"/><field name="error_category" optional="hide"/>
+                <field name="preflight_state" widget="badge" optional="hide"/><field name="attention_level" widget="badge" optional="hide"/><field name="attention_message" optional="hide"/><field name="status_code" optional="hide"/><field name="error_category" optional="hide"/>
                 <field name="zip_key" optional="hide"/><field name="generated_at" optional="hide"/><field name="sent_at" optional="hide"/>
             </list>
         </field>
@@ -48,7 +50,7 @@
         <field name="name">l10n.co.payroll.dian.document.form</field>
         <field name="model">l10n.co.payroll.dian.document</field>
         <field name="arch" type="xml">
-            <form string="Nómina electrónica DIAN">
+            <form string="Nómina electrónica DIAN" class="o_dian_document_form">
                 <header>
                     <button name="action_prevalidate" type="object" string="Prevalidar" invisible="state in ('accepted', 'cancelled')" groups="l10n_co_payroll.group_co_payroll_user"/>
                     <button name="action_generate" type="object" string="Generar y firmar" class="oe_highlight" invisible="state not in ('draft', 'error')" groups="l10n_co_payroll.group_co_payroll_user"/>
@@ -66,6 +68,7 @@
                     <div class="alert alert-danger" role="alert" invisible="not error_message"><field name="error_message" nolabel="1"/></div>
                     <div class="alert alert-warning" role="alert" invisible="not status_message"><field name="status_message" nolabel="1"/></div>
                     <div class="alert alert-info" role="alert" invisible="preflight_state != 'error'"><field name="preflight_message" nolabel="1"/></div>
+                    <div class="o_dian_attention_banner" role="alert" invisible="not attention_message or attention_level == 'success'"><span class="fa fa-info-circle" title="Aviso operativo"/><field name="attention_message" nolabel="1"/></div>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_export_csv" type="object" class="oe_stat_button" icon="fa-download"><div class="o_stat_info"><span class="o_stat_text">Exportar</span><span class="o_stat_text">CSV</span></div></button>
                     </div>

@@ -17,8 +17,9 @@
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page name="dian_electronic_payroll" string="Nómina electrónica DIAN">
-                    <group><field name="dian_state" widget="badge"/><field name="dian_document_count"/><field name="dian_pending_count"/><field name="dian_rejected_count"/></group>
-                    <field name="dian_document_ids" readonly="1"><list create="false" delete="false"><field name="name"/><field name="employee_id"/><field name="is_adjustment"/><field name="submission_environment" optional="hide"/><field name="preflight_state" widget="badge" optional="hide"/><field name="cune" optional="hide"/><field name="state" widget="badge"/><field name="status_code"/><field name="zip_key" optional="hide"/></list></field>
+                    <group><field name="dian_state" widget="badge"/><field name="dian_document_count"/><field name="dian_pending_count"/><field name="dian_rejected_count"/><field name="dian_attention_count"/></group>
+                    <div class="o_dian_alert o_dian_alert_warning" invisible="dian_attention_count == 0"><span class="fa fa-exclamation-triangle" title="Requiere atención"/><span>Hay documentos DIAN que requieren atención antes de continuar.</span></div>
+                    <field name="dian_document_ids" readonly="1"><list create="false" delete="false" decoration-danger="attention_level == 'danger'" decoration-warning="attention_level == 'warning'"><field name="name"/><field name="employee_id"/><field name="is_adjustment"/><field name="submission_environment" optional="hide"/><field name="attention_level" widget="badge"/><field name="attention_message" optional="hide"/><field name="preflight_state" widget="badge" optional="hide"/><field name="cune" optional="hide"/><field name="state" widget="badge"/><field name="status_code"/><field name="zip_key" optional="hide"/></list></field>
                 </page>
             </xpath>
         </field>

@@ -100,6 +100,11 @@ class CoPayrollDianDocument(models.Model):
     source_net = fields.Monetary(string="Neto fuente", currency_field="currency_id", compute="_compute_reconciliation")
     transmitted_net = fields.Monetary(string="Neto transmitido", currency_field="currency_id", compute="_compute_reconciliation")
     mapping_summary = fields.Char(string="Mapeo DIAN", compute="_compute_mapping_summary")
+    attention_level = fields.Selection([
+        ("success", "Correcto"), ("info", "Información"), ("warning", "Atención"), ("danger", "Crítico"),
+    ], string="Nivel de atención", compute="_compute_attention", store=True)
+    attention_message = fields.Char(string="Aviso operativo", compute="_compute_attention", store=True)
+    is_stale_pending = fields.Boolean(string="Pendiente antiguo", compute="_compute_attention", store=True)
     attempt_ids = fields.One2many("l10n.co.payroll.dian.attempt", "document_id", string="Trazabilidad", readonly=True)
     currency_id = fields.Many2one(related="company_id.currency_id", readonly=True)
 
@@ -125,6 +130,34 @@ class CoPayrollDianDocument(models.Model):
             ])
             mapped = len(mappings.filtered("dian_concept"))
             document.mapping_summary = _("%s reglas DIAN configuradas") % mapped
+
+    @api.depends("state", "preflight_state", "error_message", "status_message", "last_checked_at", "sent_at", "company_id.co_dian_pending_alert_hours")
+    def _compute_attention(self):
+        now = fields.Datetime.now()
+        for document in self:
+            level = "info"
+            message = _("Pendiente de revisión")
+            stale = False
+            if document.state == "accepted":
+                level, message = "success", _("Aceptado por la DIAN")
+            elif document.state == "rejected":
+                level, message = "danger", document.status_message or _("Rechazado por la DIAN")
+            elif document.state == "error":
+                level, message = "danger", document.error_message or _("Revisar el error del documento")
+            elif document.state == "pending":
+                sent_at = document.sent_at
+                stale = bool(sent_at and sent_at <= now - timedelta(hours=max(document.company_id.co_dian_pending_alert_hours, 1)))
+                level = "danger" if stale else "warning"
+                message = _("Sin respuesta DIAN desde hace más de %s horas") % document.company_id.co_dian_pending_alert_hours if stale else _("Esperando respuesta de la DIAN")
+            elif document.preflight_state == "error":
+                level, message = "danger", document.preflight_message or _("Corregir prevalidación")
+            elif document.preflight_state == "warning":
+                level, message = "warning", document.preflight_message or _("Revisar advertencias")
+            elif document.state in ("validated", "generated"):
+                level, message = "info", _("Listo para transmitir")
+            document.attention_level = level
+            document.attention_message = message
+            document.is_stale_pending = stale
 
     _co_dian_document_number_unique = models.Constraint(
         "unique(company_id, name)",
@@ -851,6 +884,7 @@ class CoPayrollDianDocument(models.Model):
                 # Un documento con un error inesperado no debe detener la consulta
                 # de los demás pendientes.
                 continue
+        self.env["res.company"]._cron_create_dian_notifications()
         return True
 
 

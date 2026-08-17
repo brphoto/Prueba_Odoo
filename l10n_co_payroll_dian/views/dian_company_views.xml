@@ -27,6 +27,13 @@
                 <field name="co_dian_max_retries" invisible="not co_dian_payroll_enabled or not co_dian_retry_enabled"/>
                 <field name="co_dian_retry_delay_minutes" invisible="not co_dian_payroll_enabled or not co_dian_retry_enabled"/>
                 <field name="co_dian_certificate_alert_days" invisible="not co_dian_payroll_enabled"/>
+                <separator string="Avisos operativos" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_notifications_enabled" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_notify_errors" invisible="not co_dian_payroll_enabled or not co_dian_notifications_enabled"/>
+                <field name="co_dian_notify_pending" invisible="not co_dian_payroll_enabled or not co_dian_notifications_enabled"/>
+                <field name="co_dian_pending_alert_hours" invisible="not co_dian_payroll_enabled or not co_dian_notifications_enabled or not co_dian_notify_pending"/>
+                <field name="co_dian_notify_certificate" invisible="not co_dian_payroll_enabled or not co_dian_notifications_enabled"/>
+                <field name="co_dian_notify_user_ids" widget="many2many_tags" invisible="not co_dian_payroll_enabled or not co_dian_notifications_enabled"/>
                 <button name="action_co_dian_validate_configuration" type="object" string="Validar configuración" class="oe_link" invisible="not co_dian_payroll_enabled"/>
                 <button name="action_co_dian_validate_certificate" type="object" string="Validar certificado" class="oe_link" invisible="not co_dian_payroll_enabled"/>
                 <field name="co_dian_certificate_status" invisible="not co_dian_payroll_enabled"/>

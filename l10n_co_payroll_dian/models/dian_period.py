@@ -9,6 +9,7 @@ class CoPayrollDianPeriod(models.Model):
     dian_document_count = fields.Integer(string="Cantidad de documentos DIAN", compute="_compute_dian_metrics")
     dian_pending_count = fields.Integer(string="Pendientes DIAN", compute="_compute_dian_metrics")
     dian_rejected_count = fields.Integer(string="Rechazados DIAN", compute="_compute_dian_metrics")
+    dian_attention_count = fields.Integer(string="Requieren atención DIAN", compute="_compute_dian_metrics")
     dian_state = fields.Selection([
         ("none", "Sin generar"), ("draft", "Borrador"), ("generated", "Generados"),
         ("pending", "Pendientes"), ("accepted", "Aceptados"), ("rejected", "Con rechazos"),
@@ -21,6 +22,7 @@ class CoPayrollDianPeriod(models.Model):
             period.dian_document_count = len(documents)
             period.dian_pending_count = len(documents.filtered(lambda doc: doc.state == "pending"))
             period.dian_rejected_count = len(documents.filtered(lambda doc: doc.state in ("rejected", "error")))
+            period.dian_attention_count = len(documents.filtered(lambda doc: doc.attention_level in ("warning", "danger")))
             if not documents:
                 period.dian_state = "none"
             elif period.dian_rejected_count:

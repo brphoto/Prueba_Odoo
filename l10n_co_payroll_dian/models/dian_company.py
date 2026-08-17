@@ -7,7 +7,7 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.serialization.pkcs12 import load_key_and_certificates
 
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 
@@ -65,6 +65,20 @@ class CoPayrollDianCompany(models.Model):
     co_dian_max_retries = fields.Integer(string="Máximo de reintentos", default=3)
     co_dian_retry_delay_minutes = fields.Integer(string="Espera entre reintentos (minutos)", default=15)
     co_dian_certificate_alert_days = fields.Integer(string="Avisar certificado con días de anticipación", default=30)
+    co_dian_notifications_enabled = fields.Boolean(
+        string="Avisos operativos DIAN",
+        default=True,
+        help="Crea actividades internas cuando existan errores, pendientes antiguos o certificados próximos a vencer.",
+    )
+    co_dian_notify_errors = fields.Boolean(string="Avisar errores", default=True)
+    co_dian_notify_pending = fields.Boolean(string="Avisar pendientes antiguos", default=True)
+    co_dian_pending_alert_hours = fields.Integer(string="Horas para alertar un pendiente", default=4)
+    co_dian_notify_certificate = fields.Boolean(string="Avisar certificado", default=True)
+    co_dian_notify_user_ids = fields.Many2many(
+        "res.users", "co_dian_notify_user_rel", "company_id", "user_id", string="Responsables de avisos",
+        domain="[(\'company_ids\', \'in\', [id])]",
+        help="Usuarios que recibirán actividades internas de seguimiento.",
+    )
     co_dian_certificate_subject = fields.Char(string="Titular del certificado", readonly=True, copy=False)
     co_dian_certificate_issuer = fields.Char(string="Emisor del certificado", readonly=True, copy=False)
     co_dian_certificate_serial = fields.Char(string="Serial del certificado", readonly=True, copy=False)
@@ -142,9 +156,58 @@ class CoPayrollDianCompany(models.Model):
                 errors.append(_("El máximo de reintentos no puede ser negativo."))
             if company.co_dian_retry_delay_minutes < 1:
                 errors.append(_("La espera entre reintentos debe ser de al menos un minuto."))
+            if company.co_dian_pending_alert_hours < 1:
+                errors.append(_("Las horas para alertar pendientes deben ser mayores que cero."))
             if errors:
                 raise UserError("\n".join(errors))
+        return {"type": "ir.actions.client", "tag": "display_notification", "params": {
+            "title": _("Configuración DIAN válida"),
+            "message": _("Los datos básicos de la compañía están completos."),
+            "type": "success", "sticky": False,
+        }}
+
+    @api.model
+    def _cron_create_dian_notifications(self):
+        document_model = self.env["l10n.co.payroll.dian.document"]
+        activity_type = self.env.ref("mail.mail_activity_data_todo", raise_if_not_found=False)
+        if not activity_type:
+            return True
+        company_model_id = self.env["ir.model"]._get_id("res.company")
+        document_model_id = self.env["ir.model"]._get_id("l10n.co.payroll.dian.document")
+        now = fields.Datetime.now()
+        for company in self.search([("co_dian_notifications_enabled", "=", True)]):
+            users = company.co_dian_notify_user_ids or self.env["res.users"].search([
+                ("company_ids", "in", company.id), ("all_group_ids", "in", self.env.ref("l10n_co_payroll.group_co_payroll_manager").id),
+            ], limit=5)
+            if not users:
+                users = self.env.user
+            if company.co_dian_notify_errors:
+                documents = document_model.search([("company_id", "=", company.id), ("state", "=", "error")], limit=100)
+                for document in documents:
+                    self._create_dian_activity(document, document_model_id, users, activity_type, _("Error DIAN: %s") % (document.name or document.employee_id.display_name), document.error_message or document.status_message or _("Revisar el documento."))
+            if company.co_dian_notify_pending:
+                threshold = now - timedelta(hours=max(company.co_dian_pending_alert_hours, 1))
+                documents = document_model.search([("company_id", "=", company.id), ("state", "=", "pending"), ("sent_at", "<=", threshold)], limit=100)
+                for document in documents:
+                    self._create_dian_activity(document, document_model_id, users, activity_type, _("Pendiente DIAN: %s") % (document.name or document.employee_id.display_name), _("El documento lleva más de %s horas sin respuesta.") % company.co_dian_pending_alert_hours)
+            if company.co_dian_notify_certificate and company.co_dian_certificate_status in ("expiring", "expired"):
+                message = _("El certificado DIAN está vencido.") if company.co_dian_certificate_status == "expired" else _("El certificado DIAN está próximo a vencer el %s.") % fields.Datetime.to_string(company.co_dian_certificate_expiration)
+                self._create_dian_activity(company, company_model_id, users, activity_type, _("Revisar certificado DIAN"), message)
         return True
+
+    @staticmethod
+    def _create_dian_activity(record, model_id, users, activity_type, summary, note):
+        activity_model = record.env["mail.activity"]
+        for user in users:
+            existing = activity_model.search([
+                ("res_model_id", "=", model_id), ("res_id", "=", record.id),
+                ("user_id", "=", user.id), ("summary", "=", summary), ("active", "=", True),
+            ], limit=1)
+            if not existing:
+                activity_model.create({
+                    "activity_type_id": activity_type.id, "res_model_id": model_id, "res_id": record.id,
+                    "user_id": user.id, "summary": summary, "note": note,
+                })
 
     def _co_dian_signing_material(self):
         self.ensure_one()

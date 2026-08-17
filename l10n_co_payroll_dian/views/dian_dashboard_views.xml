@@ -3,29 +3,25 @@
         <field name="name">l10n.co.payroll.dian.dashboard.form</field>
         <field name="model">l10n.co.payroll.dian.dashboard</field>
         <field name="arch" type="xml">
-            <form string="Panel operativo DIAN" create="false" delete="false">
+            <form string="Panel operativo DIAN" create="false" delete="false" class="o_dian_dashboard">
                 <header>
                     <button name="action_refresh" type="object" string="Actualizar" class="oe_highlight"/>
                     <button name="action_open_documents" type="object" string="Ver documentos"/>
                 </header>
                 <sheet>
-                    <div class="oe_title"><h1>Panel de nómina electrónica DIAN</h1></div>
-                    <group><field name="company_id"/><field name="environment"/><field name="date_from"/><field name="date_to"/></group>
-                    <div class="oe_button_box" name="button_box">
-                        <button name="action_open_documents" type="object" class="oe_stat_button" icon="fa-files-o"><field name="total_count" widget="statinfo" string="Total"/></button>
-                        <button name="action_open_accepted" type="object" class="oe_stat_button" icon="fa-check-circle"><field name="accepted_count" widget="statinfo" string="Aceptados"/></button>
-                        <button name="action_open_pending" type="object" class="oe_stat_button" icon="fa-clock-o"><field name="pending_count" widget="statinfo" string="Pendientes"/></button>
-                        <button name="action_open_errors" type="object" class="oe_stat_button" icon="fa-exclamation-triangle"><field name="error_count" widget="statinfo" string="Errores"/></button>
+                    <div class="oe_title"><h1>Panel de nómina electrónica DIAN</h1><p class="o_dian_subtitle">Controla generación, transmisión y respuesta desde un solo lugar.</p></div>
+                    <div class="o_dian_context_bar"><field name="company_id"/><field name="environment"/><field name="date_from"/><field name="date_to"/></div>
+                    <div class="o_dian_alert o_dian_alert_warning" invisible="attention_count == 0"><span class="fa fa-exclamation-triangle" title="Requiere atención"/><strong><field name="attention_count"/> documentos requieren atención.</strong><button name="action_open_attention" type="object" string="Revisar ahora" class="btn btn-link"/></div>
+                    <div class="o_dian_alert o_dian_alert_info" invisible="stale_pending_count == 0"><span class="fa fa-clock-o" title="Pendientes antiguos"/><strong><field name="stale_pending_count"/> documentos llevan demasiado tiempo pendientes.</strong><button name="action_open_pending" type="object" string="Consultar pendientes" class="btn btn-link"/></div>
+                    <div class="o_dian_kpi_grid">
+                        <button name="action_open_documents" type="object" class="o_dian_kpi_card o_dian_kpi_total"><span class="fa fa-files-o" title="Total documentos"/><small>Total documentos</small><field name="total_count"/></button>
+                        <button name="action_open_accepted" type="object" class="o_dian_kpi_card o_dian_kpi_success"><span class="fa fa-check-circle" title="Aceptados"/><small>Aceptados</small><field name="accepted_count"/></button>
+                        <button name="action_open_pending" type="object" class="o_dian_kpi_card o_dian_kpi_pending"><span class="fa fa-clock-o" title="Pendientes"/><small>Pendientes</small><field name="pending_count"/></button>
+                        <button name="action_open_errors" type="object" class="o_dian_kpi_card o_dian_kpi_error"><span class="fa fa-exclamation-triangle" title="Errores"/><small>Errores</small><field name="error_count"/></button>
                     </div>
-                    <group string="Estado DIAN">
-                        <field name="accepted_count"/><field name="pending_count"/><field name="rejected_count"/><field name="error_count"/><field name="last_sync"/>
-                    </group>
-                    <group string="Habilitación">
-                        <field name="habilitation_payroll_count"/><field name="habilitation_adjustment_count"/><field name="habilitation_ready" widget="badge"/>
-                    </group>
-                    <group string="Certificado">
-                        <field name="certificate_status" widget="badge"/><field name="certificate_expiration"/>
-                    </group>
+                    <group string="Estado operativo"><field name="rejected_count"/><field name="last_sync"/><field name="attention_count"/><field name="stale_pending_count"/></group>
+                    <group string="Habilitación"><field name="habilitation_payroll_count"/><field name="habilitation_adjustment_count"/><field name="habilitation_ready" widget="badge"/></group>
+                    <group string="Certificado"><field name="certificate_status" widget="badge"/><field name="certificate_expiration"/></group>
                 </sheet>
             </form>
         </field>
@@ -41,6 +37,7 @@
                     <group string="Empresa"><field name="company_id" readonly="1"/><field name="enabled"/><field name="environment"/><field name="software_id"/><field name="software_pin" password="True"/><field name="test_set_id" invisible="environment != '2'"/></group>
                     <group string="Certificado"><field name="certificate" filename="certificate_filename"/><field name="certificate_filename" invisible="1"/><field name="certificate_password" password="True"/><field name="native_certificate_id"/></group>
                     <group string="Operación"><field name="auto_check"/><field name="require_habilitation"/><field name="require_explicit_mapping"/><field name="approval_mode"/></group>
+                    <group string="Avisos"><field name="notifications_enabled"/><field name="notify_errors" invisible="not notifications_enabled"/><field name="notify_pending" invisible="not notifications_enabled"/><field name="pending_alert_hours" invisible="not notifications_enabled or not notify_pending"/><field name="notify_certificate" invisible="not notifications_enabled"/><field name="notify_user_ids" widget="many2many_tags" invisible="not notifications_enabled"/></group>
                 </sheet>
                 <footer><button name="action_apply_and_validate" type="object" string="Guardar y validar" class="oe_highlight"/><button name="action_apply" type="object" string="Guardar"/><button special="cancel" string="Cancelar"/></footer>
             </form>
