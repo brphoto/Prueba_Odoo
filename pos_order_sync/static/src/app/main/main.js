@@ -30,6 +30,25 @@ function normalizeInternalNote(note) {
     return JSON.stringify([{ text: value, colorIndex: 0 }]);
 }
 
+function getOrderInternalNoteText(order) {
+    const rawNote = String(order?.internal_note || "");
+    if (!rawNote.trim()) {
+        return "";
+    }
+    try {
+        const notes = JSON.parse(rawNote);
+        if (Array.isArray(notes)) {
+            return notes
+                .map((note) => String(note?.text || "").trim())
+                .filter(Boolean)
+                .join("\n");
+        }
+    } catch {
+        // Support orders created before Odoo 19's JSON note format.
+    }
+    return rawNote.trim();
+}
+
 // ============================================================
 // PosStore patch
 // ============================================================
@@ -1336,7 +1355,9 @@ export class SaveAsOrderQuotePopupWidget extends Component {
                 if (current_order.pricelist_id != undefined) {
                     order_vals.pricelist_id = current_order.pricelist_id.id;
                 }
-                order_vals.note = $("#quote_note").val();
+                const transferNote = String($("#quote_note").val() || "").trim();
+                const orderNote = getOrderInternalNoteText(current_order);
+                order_vals.note = transferNote || orderNote;
                 order_vals.quote_id = $("#quote_id").text();
                 order_vals.amount_total = current_order.get_total_with_tax();
                 order_vals.amount_tax = current_order.get_total_tax();
