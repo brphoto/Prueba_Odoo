@@ -130,10 +130,14 @@ class PosOrder(models.Model):
     def _load_pos_data_fields(self, config):
         """Expose synchronization fields to Odoo 19's POS data loader."""
         result = super()._load_pos_data_fields(config)
-        # Odoo 19's PosOrder model computes prices from ``this.lines``.
-        # The relation must be part of the POS data definition; otherwise
-        # newly-created orders receive no ``lines`` property and the POS
-        # crashes in PosOrderAccounting._computeAllPrices().
+        # In Odoo 19 an empty result means: load all non-manual fields.
+        # Returning only the addon fields would hide standard POS fields
+        # such as uuid, lines, session_id and payment_ids.
+        if not result:
+            return result
+
+        # Keep synchronization fields when another module uses a restricted
+        # POS field list.  ``lines`` is required by the price computation.
         for field_name in ['lines', 'quote_id', 'seller_name', 'cashier_name', 'quote_name']:
             if field_name not in result:
                 result.append(field_name)

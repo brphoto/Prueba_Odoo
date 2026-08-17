@@ -7,12 +7,9 @@
             <xpath expr="//page[@name='salary_computation']/field[@name='line_ids']" position="attributes">
                 <attribute name="domain">[('total', '!=', 0)]</attribute>
             </xpath>
-            <xpath expr="//header/button[@name='compute_sheet']" position="after">
-                <button name="action_co_recompute_rules" type="object" string="Aplicar reglas CO" invisible="state != 'draft'" class="oe_highlight" groups="l10n_co_payroll.group_co_payroll_user"/>
-            </xpath>
             <xpath expr="//page[@name='salary_computation']" position="after">
                 <page name="co_payroll_rules" string="Nómina Colombia">
-                    <div class="alert alert-info" role="alert" invisible="co_formula_applied or co_formula_error">Calcula el recibo con «Calcular hoja» y luego ejecuta «Aplicar reglas CO» para ver los conceptos y resultados parametrizados.</div>
+                    <div class="alert alert-info" role="alert" invisible="co_formula_applied or co_formula_error">Pulsa «Calcular hoja» para calcular automáticamente las reglas colombianas y ver los conceptos y resultados parametrizados.</div>
                     <group><field name="co_formula_applied"/><field name="co_formula_parameter_id"/><field name="co_formula_error"/></group>
                     <group string="Totales resultantes"><field name="co_formula_gross_wage" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="co_formula_deduction_total" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="co_formula_net_wage" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="co_formula_employer_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="co_formula_ibc_base" widget="monetary" options="{'currency_field': 'currency_id'}"/></group>
                     <field name="co_formula_breakdown" nolabel="1"/>

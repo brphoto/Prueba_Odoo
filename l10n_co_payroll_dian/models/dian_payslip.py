@@ -29,64 +29,57 @@ class CoPayrollDianPayslip(models.Model):
         ("error", "Error"),
     ], string="Estado DIAN", compute="_compute_co_dian_status")
     co_dian_attention_level = fields.Selection(
-        related="co_dian_document_id.attention_level",
         string="Nivel de atención DIAN",
-        readonly=True,
+        selection=[
+            ("success", "Correcto"), ("info", "Información"),
+            ("warning", "Atención"), ("danger", "Crítico"),
+        ],
+        compute="_compute_co_dian_status",
     )
     co_dian_attention_message = fields.Char(
-        related="co_dian_document_id.attention_message",
         string="Seguimiento DIAN",
-        readonly=True,
+        compute="_compute_co_dian_status",
     )
     co_dian_number = fields.Char(
-        related="co_dian_document_id.name",
         string="Número DIAN",
-        readonly=True,
+        compute="_compute_co_dian_status",
     )
     co_dian_cune = fields.Char(
-        related="co_dian_document_id.cune",
         string="CUNE",
-        readonly=True,
+        compute="_compute_co_dian_status",
     )
     co_dian_status_code = fields.Char(
-        related="co_dian_document_id.status_code",
         string="Código DIAN",
-        readonly=True,
+        compute="_compute_co_dian_status",
     )
     co_dian_status_message = fields.Text(
-        related="co_dian_document_id.status_message",
         string="Respuesta DIAN",
-        readonly=True,
+        compute="_compute_co_dian_status",
     )
     co_dian_environment = fields.Selection(
-        related="co_dian_document_id.submission_environment",
         string="Ambiente DIAN",
-        readonly=True,
+        selection=[("1", "Producción"), ("2", "Habilitación")],
+        compute="_compute_co_dian_status",
     )
     co_dian_generated_at = fields.Datetime(
-        related="co_dian_document_id.generated_at",
         string="Generado el",
-        readonly=True,
+        compute="_compute_co_dian_status",
     )
     co_dian_sent_at = fields.Datetime(
-        related="co_dian_document_id.sent_at",
         string="Enviado el",
-        readonly=True,
+        compute="_compute_co_dian_status",
     )
     co_dian_last_checked_at = fields.Datetime(
-        related="co_dian_document_id.last_checked_at",
         string="Última consulta DIAN",
-        readonly=True,
+        compute="_compute_co_dian_status",
     )
     co_dian_zip_key = fields.Char(
-        related="co_dian_document_id.zip_key",
         string="ZipKey / Track ID",
-        readonly=True,
+        compute="_compute_co_dian_status",
     )
     co_dian_xml_document_key = fields.Char(
-        related="co_dian_document_id.xml_document_key",
         string="XmlDocumentKey",
-        readonly=True,
+        compute="_compute_co_dian_status",
     )
 
     @api.depends("employee_id", "date_from", "date_to")
@@ -102,8 +95,25 @@ class CoPayrollDianPayslip(models.Model):
                 ("is_adjustment", "=", False),
             ], order="id desc") if lines else document_model
             slip.co_dian_document_ids = documents
-            slip.co_dian_document_id = documents[:1].id if documents else False
+            document = documents[:1]
+            slip.co_dian_document_id = document.id if document else False
             slip.co_dian_document_count = len(documents)
+            slip.co_dian_attention_level = document.attention_level if document else False
+            slip.co_dian_attention_message = document.attention_message if document else False
+            slip.co_dian_number = document.name if document else False
+            slip.co_dian_cune = document.cune if document else False
+            slip.co_dian_status_code = document.status_code if document else False
+            slip.co_dian_status_message = document.status_message if document else False
+            slip.co_dian_environment = (
+                document.submission_environment
+                if document and document.submission_environment
+                else slip.company_id.co_dian_environment
+            )
+            slip.co_dian_generated_at = document.generated_at if document else False
+            slip.co_dian_sent_at = document.sent_at if document else False
+            slip.co_dian_last_checked_at = document.last_checked_at if document else False
+            slip.co_dian_zip_key = document.zip_key if document else False
+            slip.co_dian_xml_document_key = document.xml_document_key if document else False
             if not documents:
                 slip.co_dian_state = "none"
             elif documents.filtered(lambda doc: doc.state == "error"):

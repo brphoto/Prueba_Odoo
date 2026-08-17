@@ -4,7 +4,7 @@
         <field name="model">hr.payslip</field>
         <field name="inherit_id" ref="l10n_co_payroll.view_hr_payslip_co_payroll"/>
         <field name="arch" type="xml">
-            <xpath expr="//page[@name='co_payroll_rules']" position="inside">
+            <xpath expr="//page[@name='co_payroll_rules']/*[1]" position="before">
                 <separator string="Seguimiento de nómina electrónica DIAN"/>
                 <div class="alert alert-success" role="alert" invisible="co_dian_state != 'accepted'">
                     <span class="fa fa-check-circle me-2" title="Aceptado"/>
