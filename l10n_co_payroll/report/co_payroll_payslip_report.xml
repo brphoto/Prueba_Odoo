@@ -5,9 +5,19 @@
                 <h4>Conceptos calculados por Nómina Colombia</h4>
                 <table class="table table-sm">
                     <thead><tr><th>Regla</th><th>Condición</th><th>Fórmula</th><th class="text-end">Resultado</th></tr></thead>
-                    <tbody><tr t-foreach="o.co_formula_breakdown" t-as="rule"><td><span t-esc="rule.get('name') or rule.get('code')"/></td><td><span t-esc="rule.get('condition_snapshot')"/></td><td><span t-esc="rule.get('formula_snapshot')"/></td><td class="text-end"><span t-esc="rule.get('amount', 0.0)"/></td></tr></tbody>
+                    <tbody><tr t-foreach="o.co_formula_breakdown" t-as="rule" t-if="rule.get('amount', 0.0) != 0.0"><td><span t-esc="rule.get('name') or rule.get('code')"/></td><td><span t-esc="rule.get('condition_snapshot')"/></td><td><span t-esc="rule.get('formula_snapshot')"/></td><td class="text-end"><span t-esc="rule.get('amount', 0.0)"/></td></tr></tbody>
                 </table>
             </div>
+        </xpath>
+    </template>
+    <template id="report_payslip_co_payroll_hide_zero_lines" inherit_id="hr_payroll.report_payslip">
+        <xpath expr='//span[@t-foreach="o.line_ids.filtered(lambda line: line.appears_on_payslip)"]' position="attributes">
+            <attribute name="t-foreach">o.line_ids.filtered(lambda line: line.appears_on_payslip and line.total != 0)</attribute>
+        </xpath>
+    </template>
+    <template id="report_light_payslip_co_payroll_hide_zero_lines" inherit_id="hr_payroll.report_light_payslip">
+        <xpath expr='//span[@t-foreach="o.line_ids.filtered(lambda line: line.appears_on_payslip)"]' position="attributes">
+            <attribute name="t-foreach">o.line_ids.filtered(lambda line: line.appears_on_payslip and line.total != 0)</attribute>
         </xpath>
     </template>
 </odoo>

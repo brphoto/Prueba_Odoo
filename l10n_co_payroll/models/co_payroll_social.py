@@ -20,9 +20,21 @@ class CoPayrollSocialProfile(models.Model):
         ("ordinary", "Salario ordinario"),
         ("integral", "Salario integral"),
     ], string="Modalidad salarial", required=True, default="ordinary", help="Se usa para determinar el IBC legal del periodo.")
-    contributor_type = fields.Char(string="Tipo cotizante", required=True, default="01")
-    contributor_subtype = fields.Char(string="Subtipo", required=True, default="0")
-    identification_type = fields.Char(string="Tipo documento", default="CC")
+    contributor_type = fields.Selection([
+        ("01", "01 - Dependiente"), ("02", "02 - Servicio doméstico"),
+        ("03", "03 - Independiente"), ("04", "04 - Agremiado"),
+        ("12", "12 - Aprendiz etapa lectiva"), ("19", "19 - Aprendiz productiva"),
+        ("23", "23 - Estudiante aporte"), ("40", "40 - Beneficiario UPC"),
+        ("51", "51 - Independiente agremiado"), ("52", "52 - Independiente cuenta propia"),
+    ], string="Tipo cotizante", required=True, default="01")
+    contributor_subtype = fields.Selection([
+        ("0", "0 - No aplica"), ("1", "1 - Dependiente"), ("2", "2 - Servicio doméstico"),
+        ("3", "3 - Independiente"), ("4", "4 - Madre comunitaria"),
+    ], string="Subtipo", required=True, default="0")
+    identification_type = fields.Selection([
+        ("CC", "Cédula de ciudadanía"), ("CE", "Cédula de extranjería"),
+        ("TI", "Tarjeta de identidad"), ("PA", "Pasaporte"), ("PEP", "Permiso especial"),
+    ], string="Tipo documento", default="CC")
     eps_code = fields.Char(string="Código EPS")
     pension_code = fields.Char(string="Código AFP")
     arl_code = fields.Char(string="Código ARL")

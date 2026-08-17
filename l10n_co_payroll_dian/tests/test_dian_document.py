@@ -22,9 +22,9 @@ class TestCoPayrollDianDocument(TransactionCase):
         subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Prueba DIAN")])
         certificate = x509.CertificateBuilder().subject_name(subject).issuer_name(issuer).public_key(key.public_key()).serial_number(x509.random_serial_number()).not_valid_before(datetime.utcnow() - timedelta(days=1)).not_valid_after(datetime.utcnow() + timedelta(days=30)).sign(key, hashes.SHA256())
         p12 = pkcs12.serialize_key_and_certificates(b"test", key, certificate, None, serialization.NoEncryption())
-        company.write({"vat": "900123456", "co_dian_payroll_enabled": True, "co_dian_software_id": "software-test", "co_dian_software_pin": "pin-test", "co_dian_certificate": base64.b64encode(p12), "co_dian_certificate_password": ""})
+        company.write({"vat": "900123432-1", "co_dian_payroll_enabled": True, "co_dian_software_id": "software-test", "co_dian_software_pin": "pin-test", "co_dian_certificate": base64.b64encode(p12), "co_dian_certificate_password": ""})
         employee = self.env["hr.employee"].create({"name": "Empleado Firmado", "company_id": company.id, "identification_id": "123456789"})
-        period = self.env["l10n.co.payroll.period"].create({"company_id": company.id, "date_from": "2026-05-01", "date_to": "2026-05-15", "payment_date": "2026-05-15", "state": "ready"})
+        period = self.env["l10n.co.payroll.period"].create({"company_id": company.id, "date_from": "2026-06-01", "date_to": "2026-06-15", "payment_date": "2026-06-15", "state": "ready"})
         line = self.env["l10n.co.payroll.period.line"].create({"period_id": period.id, "employee_id": employee.id, "basic_wage": 2500000, "gross_wage": 2500000, "deduction_total": 0, "worked_days": 15})
         document = self.env["l10n.co.payroll.dian.document"].create({"company_id": company.id, "period_id": period.id, "period_line_id": line.id})
         document.action_generate()
@@ -57,9 +57,9 @@ class TestCoPayrollDianDocument(TransactionCase):
 
     def test_unmapped_earning_is_explicitly_sent_as_other_concept(self):
         company = self.env.company
-        company.write({"vat": "900123456", "co_dian_payroll_enabled": True, "co_dian_software_id": "software-test", "co_dian_software_pin": "pin-test"})
+        company.write({"vat": "900123432-1", "co_dian_payroll_enabled": True, "co_dian_software_id": "software-test", "co_dian_software_pin": "pin-test"})
         employee = self.env["hr.employee"].create({"name": "Empleado Concepto", "company_id": company.id, "identification_id": "123456789"})
-        period = self.env["l10n.co.payroll.period"].create({"company_id": company.id, "date_from": "2026-05-01", "date_to": "2026-05-15", "payment_date": "2026-05-15", "state": "ready"})
+        period = self.env["l10n.co.payroll.period"].create({"company_id": company.id, "date_from": "2026-06-01", "date_to": "2026-06-15", "payment_date": "2026-06-15", "state": "ready"})
         line = self.env["l10n.co.payroll.period.line"].create({"period_id": period.id, "employee_id": employee.id, "basic_wage": 2500000, "gross_wage": 2700000, "deduction_total": 0, "worked_days": 15})
         document = self.env["l10n.co.payroll.dian.document"].create({"company_id": company.id, "period_id": period.id, "period_line_id": line.id})
         context = document._build_context()
@@ -68,7 +68,7 @@ class TestCoPayrollDianDocument(TransactionCase):
 
     def test_cune_is_sha384_and_document_context_is_complete(self):
         company = self.env.company
-        company.write({"vat": "900123456", "co_dian_payroll_enabled": True, "co_dian_software_id": "software-test", "co_dian_software_pin": "pin-test"})
+        company.write({"vat": "900123432-1", "co_dian_payroll_enabled": True, "co_dian_software_id": "software-test", "co_dian_software_pin": "pin-test"})
         employee = self.env["hr.employee"].create({
             "name": "Laura García López",
             "company_id": company.id,
@@ -76,9 +76,9 @@ class TestCoPayrollDianDocument(TransactionCase):
         })
         period = self.env["l10n.co.payroll.period"].create({
             "company_id": company.id,
-            "date_from": "2026-05-01",
-            "date_to": "2026-05-15",
-            "payment_date": "2026-05-15",
+            "date_from": "2026-06-01",
+            "date_to": "2026-06-15",
+            "payment_date": "2026-06-15",
             "state": "ready",
         })
         line = self.env["l10n.co.payroll.period.line"].create({
@@ -106,14 +106,14 @@ class TestCoPayrollDianDocument(TransactionCase):
     def test_prevalidation_and_single_approval(self):
         company = self.env.company
         company.write({
-            "vat": "900123456", "co_dian_payroll_enabled": True,
+            "vat": "900123432-1", "co_dian_payroll_enabled": True,
             "co_dian_software_id": "software-test", "co_dian_software_pin": "pin-test",
             "co_dian_approval_mode": "single",
         })
         employee = self.env["hr.employee"].create({"name": "Empleado Aprobación", "company_id": company.id, "identification_id": "123456789"})
         period = self.env["l10n.co.payroll.period"].create({
-            "company_id": company.id, "date_from": "2026-05-01", "date_to": "2026-05-15",
-            "payment_date": "2026-05-15", "state": "ready",
+            "company_id": company.id, "date_from": "2026-06-01", "date_to": "2026-06-15",
+            "payment_date": "2026-06-15", "state": "ready",
         })
         line = self.env["l10n.co.payroll.period.line"].create({
             "period_id": period.id, "employee_id": employee.id, "basic_wage": 2500000,

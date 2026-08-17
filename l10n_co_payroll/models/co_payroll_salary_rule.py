@@ -67,10 +67,16 @@ def _evaluate_configured_rules(rules, values, salary_rule_totals, parameter):
         "minimum_wage", "transport_allowance", "uvt_value", "health_employee_rate",
         "health_employer_rate", "pension_employee_rate", "pension_employer_rate", "solidarity_threshold_mw", "weekly_hours",
         "overtime_day_rate", "overtime_night_rate", "night_rate", "holiday_rate",
-        "night_start_hour", "night_end_hour", "severance_rate", "vacation_rate", "bonus_rate",
+        "night_start_hour", "night_end_hour", "severance_rate", "severance_interest_rate", "vacation_rate", "bonus_rate",
         "maximum_ibc_multiple", "integral_salary_min_multiple", "integral_ibc_ratio",
-        "arl_rate", "ccf_rate", "sena_rate", "icbf_rate",
+        "transport_allowance_max_wage_multiple", "overtime_daily_limit_hours", "overtime_weekly_limit_hours",
+        "arl_rate", "arl_rate_class_1", "arl_rate_class_2", "arl_rate_class_3", "arl_rate_class_4", "arl_rate_class_5",
+        "ccf_rate", "sena_rate", "icbf_rate", "employer_health_exempt", "employer_sena_exempt", "employer_icbf_exempt",
+        "withholding_enabled", "withholding_procedure", "pension_regime_mode",
     )}
+    legal_values["withholding_value"] = parameter.calculate_withholding(values.get("gross_wage", 0.0)) if parameter.withholding_enabled else 0.0
+    if values.get("risk_class"):
+        legal_values["arl_rate"] = parameter.get_arl_rate(values["risk_class"])
 
     def get_rule(code, default=0.0):
         return calculated.get(str(code).upper(), default)
@@ -87,6 +93,8 @@ def _evaluate_configured_rules(rules, values, salary_rule_totals, parameter):
         "transport_allowance": legal_values["transport_allowance"],
         "uvt_value": legal_values["uvt_value"],
         "employee_count": values.get("employee_count", 1),
+        "salary_mode": values.get("salary_mode", "ordinary"),
+        "solidarity_rate": parameter.get_solidarity_rate(values.get("ibc_base") or values.get("basic_wage") or 0.0),
         "rule": get_rule,
         "source": get_source,
         "legal": get_legal,
@@ -99,9 +107,13 @@ def _evaluate_configured_rules(rules, values, salary_rule_totals, parameter):
             "net_wage": values["net_wage"],
             "employer_cost": values["employer_cost"],
             "ibc_base": values["ibc_base"],
+            "salary_mode": values.get("salary_mode", "ordinary"),
+            "solidarity_rate": parameter.get_solidarity_rate(calculated.get("IBC_BASE", values["ibc_base"]) or 0.0),
         })
         condition_met = bool(_evaluate_formula(rule.condition, context))
         amount = float(_evaluate_formula(rule.amount_expression, context)) if condition_met else 0.0
+        if rule.concept_type in ("ibc", "social_base"):
+            amount = parameter.normalize_ibc(amount, values.get("worked_days", 30.0), values.get("salary_mode", "ordinary"))
         calculated[rule.code.upper()] = amount
         target = {"earning": "gross_wage", "deduction": "deduction_total", "employee_contribution": "deduction_total", "employer": "employer_cost", "employer_contribution": "employer_cost", "ibc": "ibc_base", "social_base": "ibc_base"}.get(rule.concept_type)
         if target:
@@ -140,6 +152,7 @@ class CoPayrollSalaryRule(models.Model):
     condition = fields.Char(string="Condición", required=True, default="True", help="Ejemplo: basic_wage <= minimum_wage * 2.")
     amount_expression = fields.Char(string="Fórmula", required=True, default="0.0", help="Ejemplo: min(transport_allowance, basic_wage * 0.10).")
     description = fields.Text(string="Descripción / soporte")
+    is_system_default = fields.Boolean(string="Regla predeterminada del producto", default=False, readonly=True, copy=False)
     active = fields.Boolean(default=True)
     validation_state = fields.Selection([("pending", "Pendiente"), ("valid", "Válida"), ("error", "Con error")], default="pending", readonly=True, copy=False)
     validation_message = fields.Char(readonly=True, copy=False)
@@ -159,7 +172,7 @@ class CoPayrollSalaryRule(models.Model):
         vals = dict(vals)
         if "code" in vals:
             vals["code"] = (vals.get("code") or "").upper()
-        if {"code", "condition", "amount_expression"} & set(vals):
+        if ({"code", "condition", "amount_expression"} & set(vals)) and "validation_state" not in vals:
             vals.update({"validation_state": "pending", "validation_message": False, "validated_at": False})
         return super().write(vals)
 

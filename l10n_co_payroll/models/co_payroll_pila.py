@@ -64,6 +64,8 @@ class CoPayrollPilaFile(models.Model):
                 errors.append(_("%s: falta perfil PILA vigente.") % line.employee_id.name)
             if not line.pila_type:
                 errors.append(_("%s: falta tipo de cotizante.") % line.employee_id.name)
+            if line.pila_type and line.pila_type not in ("01", "02", "03", "04", "12", "19", "23", "40", "51", "52"):
+                errors.append(_("%s: el tipo de cotizante PILA no está en el catálogo configurado.") % line.employee_id.name)
             if line.social_profile_id and not line.eps_code:
                 errors.append(_("%s: falta código EPS.") % line.employee_id.name)
             if line.social_profile_id and not line.pension_code:
@@ -89,12 +91,12 @@ class CoPayrollPilaFile(models.Model):
 
     def _build_content(self):
         self.ensure_one()
-        headers = ["tipo_documento", "numero_documento", "empleado", "tipo_cotizante", "subtipo", "dias", "ibc", "eps", "afp", "arl", "caja", "clase_riesgo", "salud_empleado", "salud_empleador", "pension_empleado", "pension_empleador", "solidaridad", "arl_empleador", "caja_empleador"]
+        headers = ["tipo_documento", "numero_documento", "empleado", "tipo_cotizante", "subtipo", "dias", "ibc", "novedades", "eps", "afp", "arl", "caja", "clase_riesgo", "salud_empleado", "salud_empleador", "pension_empleado", "pension_empleador", "solidaridad", "arl_empleador", "caja_empleador"]
         rows = []
         for line in self.period_id.line_ids:
-            rows.append([line.social_profile_id.identification_type if line.social_profile_id else "CC", line.employee_id.identification_id or "", line.employee_id.name, line.pila_type or "", line.pila_subtype or "", line.worked_days, line.ibc_base, line.eps_code or "", line.pension_code or "", line.arl_code or "", line.ccf_code or "", line.risk_class or "", line.health_employee, line.health_employer, line.pension_employee, line.pension_employer, line.solidarity_employee, line.arl_employer, line.ccf_employer])
+            rows.append([line.social_profile_id.identification_type if line.social_profile_id else "CC", line.employee_id.identification_id or "", line.employee_id.name, line.pila_type or "", line.pila_subtype or "", round(line.worked_days or 0), round(line.ibc_base or 0), line.pila_novelty_codes or "", line.eps_code or "", line.pension_code or "", line.arl_code or "", line.ccf_code or "", line.risk_class or "", round(line.health_employee or 0), round(line.health_employer or 0), round(line.pension_employee or 0), round(line.pension_employer or 0), round(line.solidarity_employee or 0), round(line.arl_employer or 0), round(line.ccf_employer or 0)])
         if self.config_id.file_format == "fixed":
-            widths = [4, 20, 60, 4, 4, 3, 15, 12, 12, 12, 12, 4, 15, 15, 15, 15, 15, 15, 15]
+            widths = [4, 20, 60, 4, 4, 3, 15, 20, 12, 12, 12, 12, 4, 15, 15, 15, 15, 15, 15, 15]
             fixed_rows = [headers] if self.config_id.include_header else []
             fixed_rows += rows
             return "".join("".join(str(value or "")[:width].ljust(width) for value, width in zip(row, widths)) + "\r\n" for row in fixed_rows)

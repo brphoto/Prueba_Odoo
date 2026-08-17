@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_portal_payslip">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page o_portal_payslip_report">
+                        <div class="row mb-4">
+                            <div class="col-8">
+                                <h2 style="color: #16324f; margin-bottom: 4px;">Desprendible de nómina</h2>
+                                <p style="color: #5f6f7f; margin: 0;">Documento informativo para el colaborador</p>
+                            </div>
+                            <div class="col-4 text-end">
+                                <span style="background-color: #e8f5f3; color: #0b6e69; padding: 8px 14px; border-radius: 16px; font-weight: 600;">
+                                    <t t-esc="o.state"/>
+                                </span>
+                            </div>
+                        </div>
+                        <div style="background-color: #f3f6f9; border: 1px solid #dce5ec; border-radius: 8px; padding: 18px; margin-bottom: 22px;">
+                            <div class="row">
+                                <div class="col-6">
+                                    <p style="margin: 0 0 7px;"><strong>Colaborador</strong><br/><t t-esc="o.employee_id.name"/></p>
+                                    <p style="margin: 0;"><strong>Identificación</strong><br/><t t-esc="o.employee_id.identification_id or 'No registrada'"/></p>
+                                </div>
+                                <div class="col-6">
+                                    <p style="margin: 0 0 7px;"><strong>Período</strong><br/><t t-esc="o.date_from"/> - <t t-esc="o.date_to"/></p>
+                                    <p style="margin: 0;"><strong>Referencia</strong><br/><t t-esc="o.name"/></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-4"><div style="border-left: 4px solid #1b9aaa; padding: 8px 12px;"><small style="color:#5f6f7f;">Devengado</small><br/><strong style="font-size:18px;"><span t-field="o.gross_wage" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></strong></div></div>
+                            <div class="col-4"><div style="border-left: 4px solid #e4a11b; padding: 8px 12px;"><small style="color:#5f6f7f;">Deducciones</small><br/><strong style="font-size:18px;"><span t-esc="o.gross_wage - o.net_wage"/></strong></div></div>
+                            <div class="col-4"><div style="border-left: 4px solid #0b6e69; padding: 8px 12px;"><small style="color:#5f6f7f;">Neto a pagar</small><br/><strong style="font-size:18px;"><span t-field="o.net_wage" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></strong></div></div>
+                        </div>
+                        <table class="table table-sm" style="border: 1px solid #dce5ec; margin-top: 18px;">
+                            <thead style="background-color: #16324f; color: white;"><tr><th>Concepto</th><th class="text-end">Cantidad</th><th class="text-end">Total</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="o.line_ids" t-as="line">
+                                    <td><t t-esc="line.name"/></td>
+                                    <td class="text-end"><t t-esc="line.quantity"/></td>
+                                    <td class="text-end"><span t-field="line.total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+                                </tr>
+                                <tr t-if="not o.line_ids"><td colspan="3" class="text-center" style="color:#6b7c8c;">No hay conceptos detallados publicados.</td></tr>
+                            </tbody>
+                        </table>
+                        <div style="margin-top: 36px; padding-top: 12px; border-top: 1px solid #dce5ec; color: #6b7c8c; font-size: 11px;">
+                            Documento generado desde el portal de colaboradores. Conserve este comprobante para sus registros.
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <record id="action_report_portal_payslip" model="ir.actions.report">
+        <field name="name">Desprendible de nómina del portal</field>
+        <field name="model">hr.payslip</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">l10n_co_payroll_portal.report_portal_payslip</field>
+        <field name="report_file">l10n_co_payroll_portal.report_portal_payslip</field>
+        <field name="print_report_name">'Desprendible_%s' % (object.name or '')</field>
+    </record>
+</odoo>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (c) 2016-Present Webkul Software Pvt. Ltd. (<https://webkul.com/>) -->
+<!-- See LICENSE file for full copyright and licensing details. -->
+<!-- License URL : <https://store.webkul.com/license.html/> -->
+<odoo>
+
+	<template id="quote_order_report">
+		<t t-call="web.html_container">
+			<t t-foreach="docs" t-as="o">
+				<t t-call="web.basic_layout">
+					<div class="header">
+					</div>
+					<div>
+						<div class="row">
+							<div class="col-12 text-center">
+								<img t-attf-src="/web/image?model=res.company&amp;id={{o.session_id.user_id.company_id.id}}&amp;field=logo" alt="Logo" height="250"/>
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-12 text-center">
+								<div t-if="o.session_id.user_id.company_id" t-esc="o.session_id.user_id.company_id.name" />
+								<t t-if="o.session_id.user_id.company_id.phone">
+									<div>Tel:<t t-esc="o.session_id.user_id.company_id.phone" /></div>
+								</t>
+								<!-- <t t-if="o.session_id.user_id.company_id.vat">
+									<div><t t-esc="o.session_id.user_id.company_id.country_id.vat_label or 'Tax ID'"/>: <t t-esc="o.session_id.user_id.company_id.vat" /></div>
+								</t>
+								<div t-if="o.session_id.user_id.company_id.email" t-esc="o.session_id.user_id.company_id.email" />
+								<div t-if="o.session_id.user_id.company_id.website" t-esc="o.session_id.user_id.company_id.website" />
+								<div t-if="o.session_id.config_id.receipt_header" style="white-space:pre-line" t-esc="o.session_id.config_id.receipt_header" /> -->
+								<div t-if="o.seller_name" class="cashier">
+									<div>--------------------------------</div>
+									<div>Vendedor: <t t-esc="o.seller_name"/></div>
+								</div>
+								
+								<div t-if="o.trackingNumber">
+									<span class="tracking-number fs-1" t-esc="o.trackingNumber" />
+								</div>
+								<div t-if="o.quote_id">
+									<span class="tracking-number fs-1" t-esc="o.quote_id" />
+								</div>
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-12 text-center">
+								<!-- Total -->
+								<div class="text-center">--------------------------------</div>
+								<div class="pos-receipt-amount">
+									TOTAL
+									<span t-esc="o.session_id.user_id.company_id.currency_id.format(o.amount_total)" class="pos-receipt-right-align"/>
+								</div>
+								<div class="pos-receipt-amount">
+									CLIENTE
+									<span t-if="o.partner_id" t-esc="o.partner_id.name" class="pos-receipt-right-align"/>
+								</div>
+
+								<br/>
+
+								<div class="pos-receipt-order-data">
+									<p>Con la tecnología Odoo</p>
+									<div t-esc="o.name" />
+									<div id="order-date" t-esc="o.date_order" />
+								</div>
+							</div>
+						</div>
+					</div>
+				</t>
+			</t>
+		</t>
+	</template>
+</odoo>

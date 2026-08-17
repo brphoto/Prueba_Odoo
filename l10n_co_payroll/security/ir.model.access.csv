@@ -76,3 +76,5 @@ access_co_payroll_snapshot_manager,l10n.co.payroll.snapshot.manager,model_l10n_c
 access_co_payroll_snapshot_auditor,l10n.co.payroll.snapshot.auditor,model_l10n_co_payroll_snapshot,l10n_co_payroll.group_co_payroll_auditor,1,0,0,0
 access_co_payroll_novelty_import_user,l10n.co.payroll.novelty.import.user,model_l10n_co_payroll_novelty_import,l10n_co_payroll.group_co_payroll_user,1,1,1,0
 access_co_payroll_novelty_import_manager,l10n.co.payroll.novelty.import.manager,model_l10n_co_payroll_novelty_import,l10n_co_payroll.group_co_payroll_manager,1,1,1,1
+access_co_payroll_withholding_bracket_user,l10n.co.payroll.withholding.bracket.user,model_l10n_co_payroll_withholding_bracket,l10n_co_payroll.group_co_payroll_user,1,0,0,0
+access_co_payroll_withholding_bracket_manager,l10n.co.payroll.withholding.bracket.manager,model_l10n_co_payroll_withholding_bracket,l10n_co_payroll.group_co_payroll_manager,1,1,1,1

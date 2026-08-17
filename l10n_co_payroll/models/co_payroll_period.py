@@ -24,14 +24,14 @@ class CoPayrollPeriod(models.Model):
 
     name = fields.Char(string="Referencia", required=True, copy=False, default=lambda self: self.env["ir.sequence"].next_by_code("l10n.co.payroll.period") or _("Nuevo"), tracking=True)
     company_id = fields.Many2one("res.company", string="Compañía", required=True, default=lambda self: self.env.company, index=True, tracking=True)
-    period_type = fields.Selection([("monthly", "Mensual"), ("biweekly", "Quincenal"), ("weekly", "Semanal"), ("off_cycle", "Extraordinario")], string="Frecuencia", required=True, default="monthly", tracking=True)
+    period_type = fields.Selection([("monthly", "Mensual"), ("biweekly", "Quincenal"), ("weekly", "Semanal"), ("off_cycle", "Extraordinario")], string="Tipo de nómina / frecuencia", required=True, default="monthly", tracking=True, help="Define la frecuencia del periodo. No crea una estructura salarial diferente.")
     date_from = fields.Date(string="Desde", required=True, default=lambda self: fields.Date.context_today(self).replace(day=1), tracking=True, index=True)
     date_to = fields.Date(string="Hasta", required=True, default=lambda self: fields.Date.context_today(self) + relativedelta(day=31), tracking=True, index=True)
     payment_date = fields.Date(string="Fecha de pago", tracking=True)
-    employee_ids = fields.Many2many("hr.employee", "co_payroll_period_employee_rel", "period_id", "employee_id", string="Empleados a incluir", help="Déjalo vacío para incluir todos los empleados con recibos en el periodo.")
+    employee_ids = fields.Many2many("hr.employee", "co_payroll_period_employee_rel", "period_id", "employee_id", string="Colaboradores a incluir", help="Déjalo vacío para incluir todos los colaboradores con recibos en el periodo.")
     department_ids = fields.Many2many("hr.department", "co_payroll_period_department_rel", "period_id", "department_id", string="Departamentos")
     job_ids = fields.Many2many("hr.job", "co_payroll_period_job_rel", "period_id", "job_id", string="Cargos")
-    structure_ids = fields.Many2many("hr.payroll.structure", "co_payroll_period_structure_rel", "period_id", "structure_id", string="Estructuras salariales")
+    structure_ids = fields.Many2many("hr.payroll.structure", "co_payroll_period_structure_rel", "period_id", "structure_id", string="Estructuras salariales", domain=[("active", "=", True)])
     payslip_run_ids = fields.Many2many("hr.payslip.run", "co_payroll_period_run_rel", "period_id", "run_id", string="Lotes de nómina")
     parameter_id = fields.Many2one("l10n.co.payroll.parameter", string="Parámetros del año", domain="[('company_id', '=', company_id)]", help="Configuración anual de referencia. Los valores son editables y no calculan automáticamente el recibo.")
     approval_mode = fields.Selection([("none", "Sin aprobación adicional"), ("single", "Una aprobación"), ("double", "Doble aprobación")], string="Aprobación de cierre", default="none", required=True, tracking=True)
@@ -197,10 +197,10 @@ class CoPayrollPeriod(models.Model):
                 period.provision_vacation = period.provision_bonus = 0.0
                 continue
             days = sum(period.line_ids.mapped("worked_days"))
-            period.provision_severance = sum(period.line_ids.mapped("provision_severance_base")) * parameter.severance_days_per_year / 360.0
-            period.provision_severance_interest = period.provision_severance * parameter.severance_interest_rate * days / 36000.0
+            period.provision_severance = sum(period.line_ids.mapped("provision_severance_base")) * (parameter.severance_days_per_year / 30.0) * days / 360.0
+            period.provision_severance_interest = period.provision_severance * parameter.severance_interest_rate / 100.0 * days / 360.0
             period.provision_vacation = sum(period.line_ids.mapped("provision_vacation_base")) * parameter.vacation_days_per_year / 360.0
-            period.provision_bonus = sum(period.line_ids.mapped("provision_bonus_base")) * parameter.bonus_days_per_year / 360.0
+            period.provision_bonus = sum(period.line_ids.mapped("provision_bonus_base")) * (parameter.bonus_days_per_year / 30.0) * days / 360.0
 
     @api.model
     def _summarize_payslips(self, payslips, parameter=None):
@@ -213,11 +213,17 @@ class CoPayrollPeriod(models.Model):
                 "employer_cost": sum(payslips.mapped("co_formula_employer_cost")),
                 "worked_days": sum(sum(line.number_of_days or 0.0 for line in slip.worked_days_line_ids) for slip in payslips),
                 "worked_hours": sum(sum(line.number_of_hours or 0.0 for line in slip.worked_days_line_ids) for slip in payslips),
+                "overtime_day_hours": 0.0, "overtime_night_hours": 0.0, "night_hours": 0.0, "holiday_hours": 0.0,
                 "ibc_base": sum(payslips.mapped("co_formula_ibc_base")),
                 "rule_results": [],
             }
             result_by_rule = defaultdict(lambda: {"amount": 0.0, "condition_met": False, "condition_snapshot": False, "formula_snapshot": False})
             for slip in payslips:
+                for input_line in slip.input_line_ids:
+                    code = input_line.input_type_id.code.upper() if input_line.input_type_id else ""
+                    field_name = {"HED": "overtime_day_hours", "HEN": "overtime_night_hours", "HDF": "holiday_hours", "RN": "night_hours"}.get(code)
+                    if field_name:
+                        values[field_name] += input_line.amount or 0.0
                 for result in slip.co_formula_breakdown or []:
                     item = result_by_rule[result.get("rule_id")]
                     item["amount"] += result.get("amount", 0.0)
@@ -226,7 +232,7 @@ class CoPayrollPeriod(models.Model):
                     item["formula_snapshot"] = result.get("formula_snapshot")
             values["rule_results"] = [{"rule_id": rule_id, **result} for rule_id, result in result_by_rule.items()]
             return self._add_legal_calculations(values, payslips, parameter)
-        values = {"basic_wage": sum(payslips.mapped("basic_wage")), "gross_wage": sum(payslips.mapped("gross_wage")) if "gross_wage" in payslips._fields else 0.0, "deduction_total": 0.0, "net_wage": sum(payslips.mapped("net_wage")), "employer_cost": sum(payslips.mapped("employer_cost")) if "employer_cost" in payslips._fields else 0.0, "worked_days": 0.0, "worked_hours": 0.0, "ibc_base": 0.0}
+        values = {"basic_wage": sum(payslips.mapped("basic_wage")), "gross_wage": sum(payslips.mapped("gross_wage")) if "gross_wage" in payslips._fields else 0.0, "deduction_total": 0.0, "net_wage": sum(payslips.mapped("net_wage")), "employer_cost": sum(payslips.mapped("employer_cost")) if "employer_cost" in payslips._fields else 0.0, "worked_days": 0.0, "worked_hours": 0.0, "overtime_day_hours": 0.0, "overtime_night_hours": 0.0, "night_hours": 0.0, "holiday_hours": 0.0, "ibc_base": 0.0}
         category_totals = defaultdict(float)
         mapped_totals = defaultdict(float)
         salary_rule_totals = defaultdict(float)
@@ -242,6 +248,13 @@ class CoPayrollPeriod(models.Model):
                     mapped_totals[mapping.concept_type] += line.total or 0.0
                     if mapping.include_in_ibc:
                         mapped_totals["ibc"] += line.total or 0.0
+            for input_line in slip.input_line_ids:
+                input_code = input_line.input_type_id.code if input_line.input_type_id else False
+                if input_code:
+                    salary_rule_totals[input_code.upper()] += input_line.amount or 0.0
+                    hour_fields = {"HED": "overtime_day_hours", "HEN": "overtime_night_hours", "HDF": "holiday_hours", "RN": "night_hours"}
+                    if input_code.upper() in hour_fields:
+                        values[hour_fields[input_code.upper()]] += input_line.amount or 0.0
             for worked_day in slip.worked_days_line_ids:
                 values["worked_days"] += worked_day.number_of_days or 0.0
                 values["worked_hours"] += worked_day.number_of_hours or 0.0
@@ -257,7 +270,8 @@ class CoPayrollPeriod(models.Model):
         configured_rules = parameter.salary_rule_ids.filtered(lambda rule: rule.active and rule.company_id == parameter.company_id).sorted(key=lambda rule: (rule.sequence, rule.id)) if parameter and "salary_rule_ids" in parameter._fields else self.env["l10n.co.payroll.salary.rule"]
         if configured_rules:
             calculated = {}
-            legal_values = {field: getattr(parameter, field, 0.0) for field in ("minimum_wage", "transport_allowance", "uvt_value", "health_employee_rate", "health_employer_rate", "pension_employee_rate", "pension_employer_rate", "solidarity_threshold_mw", "weekly_hours", "overtime_day_rate", "overtime_night_rate", "night_rate", "holiday_rate", "severance_rate", "vacation_rate", "bonus_rate", "maximum_ibc_multiple", "integral_ibc_ratio", "arl_rate", "ccf_rate", "sena_rate", "icbf_rate")}
+            legal_values = {field: getattr(parameter, field, 0.0) for field in ("minimum_wage", "transport_allowance", "uvt_value", "health_employee_rate", "health_employer_rate", "pension_employee_rate", "pension_employer_rate", "solidarity_threshold_mw", "weekly_hours", "overtime_day_rate", "overtime_night_rate", "night_rate", "holiday_rate", "severance_rate", "severance_interest_rate", "vacation_rate", "bonus_rate", "maximum_ibc_multiple", "integral_ibc_ratio", "transport_allowance_max_wage_multiple", "overtime_daily_limit_hours", "overtime_weekly_limit_hours", "arl_rate", "ccf_rate", "sena_rate", "icbf_rate", "employer_health_exempt", "employer_sena_exempt", "employer_icbf_exempt", "withholding_enabled", "withholding_procedure", "pension_regime_mode")}
+            legal_values["withholding_value"] = parameter.calculate_withholding(values.get("gross_wage", 0.0)) if parameter.withholding_enabled else 0.0
             def get_rule(code, default=0.0):
                 return calculated.get(str(code).upper(), default)
             def get_source(code, default=0.0):
@@ -265,7 +279,7 @@ class CoPayrollPeriod(models.Model):
             def get_legal(code, default=0.0):
                 return legal_values.get(str(code), default)
             context = dict(values)
-            context.update({"minimum_wage": legal_values["minimum_wage"], "transport_allowance": legal_values["transport_allowance"], "uvt_value": legal_values["uvt_value"], "employee_count": len(payslips.mapped("employee_id")), "rule": get_rule, "source": get_source, "legal": get_legal})
+            context.update({"minimum_wage": legal_values["minimum_wage"], "transport_allowance": legal_values["transport_allowance"], "uvt_value": legal_values["uvt_value"], "employee_count": len(payslips.mapped("employee_id")), "salary_mode": "ordinary", "solidarity_rate": parameter.get_solidarity_rate(values.get("ibc_base") or 0.0), "rule": get_rule, "source": get_source, "legal": get_legal})
             results = []
             for rule in configured_rules:
                 context.update({"gross_wage": values["gross_wage"], "deduction_total": values["deduction_total"], "net_wage": values["net_wage"], "employer_cost": values["employer_cost"], "ibc_base": values["ibc_base"]})
@@ -300,15 +314,16 @@ class CoPayrollPeriod(models.Model):
         values["provision_bonus_base"] = values.get("gross_wage", 0.0)
         values["provision_vacation_base"] = values.get("basic_wage", 0.0)
         values["health_employee"] = values["social_ibc_base"] * parameter.health_employee_rate / 100.0
-        values["health_employer"] = values["social_ibc_base"] * parameter.health_employer_rate / 100.0
+        values["health_employer"] = 0.0 if parameter.employer_health_exempt else values["social_ibc_base"] * parameter.health_employer_rate / 100.0
         values["pension_employee"] = values["social_ibc_base"] * parameter.pension_employee_rate / 100.0
         values["pension_employer"] = values["social_ibc_base"] * parameter.pension_employer_rate / 100.0
         values["solidarity_rate"] = parameter.get_solidarity_rate(values["social_ibc_base"])
         values["solidarity_employee"] = values["social_ibc_base"] * values["solidarity_rate"] / 100.0
-        values["arl_employer"] = values["social_ibc_base"] * parameter.arl_rate / 100.0
+        risk_class = social.risk_class if social else "I"
+        values["arl_employer"] = values["social_ibc_base"] * parameter.get_arl_rate(risk_class) / 100.0
         values["ccf_employer"] = values["social_ibc_base"] * parameter.ccf_rate / 100.0
-        values["sena_employer"] = values["social_ibc_base"] * parameter.sena_rate / 100.0
-        values["icbf_employer"] = values["social_ibc_base"] * parameter.icbf_rate / 100.0
+        values["sena_employer"] = 0.0 if parameter.employer_sena_exempt else values["social_ibc_base"] * parameter.sena_rate / 100.0
+        values["icbf_employer"] = 0.0 if parameter.employer_icbf_exempt else values["social_ibc_base"] * parameter.icbf_rate / 100.0
         values["social_employee_total"] = values["health_employee"] + values["pension_employee"] + values["solidarity_employee"]
         values["social_employer_total"] = values["health_employer"] + values["pension_employer"] + values["arl_employer"] + values["ccf_employer"] + values["sena_employer"] + values["icbf_employer"]
         return values
@@ -344,6 +359,11 @@ class CoPayrollPeriod(models.Model):
                         vals_list.append({"period_id": period.id, "severity": "warning", "code": "MISSING_SMLMV", "message": _("La versión legal no tiene salario mínimo configurado."), "employee_id": employee.id, "payslip_id": slip.id})
                     if summary.get("salary_mode") == "integral" and summary["basic_wage"] < period.parameter_id.minimum_wage * period.parameter_id.integral_salary_min_multiple:
                         vals_list.append({"period_id": period.id, "severity": "error", "code": "INTEGRAL_BELOW_MINIMUM", "message": _("El salario integral de %s está por debajo del mínimo legal parametrizado de %s SMLMV.") % (employee.name, period.parameter_id.integral_salary_min_multiple), "employee_id": employee.id, "payslip_id": slip.id})
+                    overtime_total = summary.get("overtime_day_hours", 0.0) + summary.get("overtime_night_hours", 0.0)
+                    expected_daily_limit = period.parameter_id.overtime_daily_limit_hours * max(summary.get("worked_days", 0.0), 1.0)
+                    expected_weekly_limit = period.parameter_id.overtime_weekly_limit_hours * max((summary.get("worked_days", 0.0) + 6.0) // 7.0, 1.0)
+                    if overtime_total > expected_daily_limit or overtime_total > expected_weekly_limit:
+                        vals_list.append({"period_id": period.id, "severity": "warning", "code": "OVERTIME_LIMIT", "message": _("Las horas extra de %s superan el control preventivo diario o semanal configurado; revisa autorización y soporte.") % employee.name, "employee_id": employee.id, "payslip_id": slip.id})
                     if period.parameter_id.minimum_wage and summary.get("social_ibc_base", 0.0) <= 0:
                         vals_list.append({"period_id": period.id, "severity": "error", "code": "ZERO_LEGAL_IBC", "message": _("El IBC legal de %s es cero.") % employee.name, "employee_id": employee.id, "payslip_id": slip.id})
                 if summary["net_wage"] < 0:
@@ -380,7 +400,7 @@ class CoPayrollPeriod(models.Model):
                 variation = summary["net_wage"] - previous_net
                 novelties = period.novelty_ids.filtered(lambda novelty: novelty.employee_id == employee and novelty.state in ("approved", "applied"))
                 adjustments = period.adjustment_ids.filtered(lambda adjustment: adjustment.employee_id == employee and adjustment.state in ("approved", "applied"))
-                line = line_model.create({"period_id": period.id, "employee_id": employee_id, "contract_id": employee_payslips[0].version_id.id if employee_payslips[0].version_id else False, "source_payslip_ids": [(6, 0, employee_payslips.ids)], "social_profile_id": social.id, "pila_type": social.contributor_type if social else "01", "pila_subtype": social.contributor_subtype if social else "0", "eps_code": social.eps_code if social else False, "pension_code": social.pension_code if social else False, "arl_code": social.arl_code if social else False, "ccf_code": social.ccf_code if social else False, "risk_class": social.risk_class if social else False, "novelty_count": len(novelties), "novelty_days": sum(novelties.mapped("days")), "adjustment_total": sum(adjustments.mapped("amount")), "pila_status": "pending", "previous_net_wage": previous_net, "net_variation": variation, "comparison_state": "new" if not previous else ("changed" if abs(variation) > 0.01 else "unchanged"), **summary})
+                line = line_model.create({"period_id": period.id, "employee_id": employee_id, "contract_id": employee_payslips[0].version_id.id if employee_payslips[0].version_id else False, "source_payslip_ids": [(6, 0, employee_payslips.ids)], "social_profile_id": social.id, "pila_type": social.contributor_type if social else "01", "pila_subtype": social.contributor_subtype if social else "0", "eps_code": social.eps_code if social else False, "pension_code": social.pension_code if social else False, "arl_code": social.arl_code if social else False, "ccf_code": social.ccf_code if social else False, "risk_class": social.risk_class if social else False, "novelty_count": len(novelties), "novelty_days": sum(novelties.mapped("days")), "pila_novelty_codes": ",".join(sorted(set(novelties.mapped("novelty_type")))) if novelties else False, "adjustment_total": sum(adjustments.mapped("amount")), "pila_status": "pending", "previous_net_wage": previous_net, "net_variation": variation, "comparison_state": "new" if not previous else ("changed" if abs(variation) > 0.01 else "unchanged"), **summary})
                 if rule_results:
                     self.env["l10n.co.payroll.period.rule.result"].sudo().create([dict(result, period_line_id=line.id) for result in rule_results])
             period._run_validation(payslips)
@@ -571,6 +591,7 @@ class CoPayrollPeriodLine(models.Model):
     provision_bonus_base = fields.Monetary(string="Base prima", currency_field="currency_id", readonly=True)
     novelty_count = fields.Integer(string="Novedades", readonly=True)
     novelty_days = fields.Float(string="Días con novedad", readonly=True)
+    pila_novelty_codes = fields.Char(string="Novedades PILA", readonly=True, help="Códigos de novedad aplicados al periodo: ING, RET, VSP, VST, SLN, IGE, LMA, VAC, IRL o VCT.")
     adjustment_total = fields.Monetary(string="Ajustes", currency_field="currency_id", readonly=True)
     loan_deduction = fields.Monetary(string="Cuotas de préstamos", currency_field="currency_id", readonly=True)
     embargo_deduction = fields.Monetary(string="Embargos", currency_field="currency_id", readonly=True)

@@ -8,14 +8,14 @@ class CoPayrollPeriodWizard(models.TransientModel):
     _description = "Crear periodo de nómina"
 
     company_id = fields.Many2one("res.company", required=True, default=lambda self: self.env.company)
-    period_type = fields.Selection([("monthly", "Mensual"), ("biweekly", "Quincenal"), ("weekly", "Semanal"), ("off_cycle", "Extraordinario")], string="Frecuencia", required=True, default="monthly")
+    period_type = fields.Selection([("monthly", "Mensual"), ("biweekly", "Quincenal"), ("weekly", "Semanal"), ("off_cycle", "Extraordinario")], string="Tipo de nómina / frecuencia", required=True, default="monthly", help="Define la frecuencia del periodo; la estructura salarial se selecciona aparte.")
     date_from = fields.Date(string="Desde", required=True, default=lambda self: fields.Date.context_today(self).replace(day=1))
     date_to = fields.Date(string="Hasta", required=True, default=lambda self: fields.Date.context_today(self) + relativedelta(day=31))
     payment_date = fields.Date(string="Fecha de pago")
     employee_ids = fields.Many2many("hr.employee", string="Empleados")
     department_ids = fields.Many2many("hr.department", string="Departamentos")
     job_ids = fields.Many2many("hr.job", string="Cargos")
-    structure_ids = fields.Many2many("hr.payroll.structure", string="Estructuras salariales")
+    structure_ids = fields.Many2many("hr.payroll.structure", string="Estructuras salariales", domain=[("active", "=", True)])
     note = fields.Text(string="Notas")
 
     @api.onchange("date_from", "period_type")

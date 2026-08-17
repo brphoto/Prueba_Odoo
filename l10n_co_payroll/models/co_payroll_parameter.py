@@ -38,9 +38,24 @@ class CoPayrollParameter(models.Model):
     solidarity_rate_5 = fields.Float(string="Fondo solidaridad 19–20 SMLMV (%)", default=1.8)
     solidarity_rate_6 = fields.Float(string="Fondo solidaridad más de 20 SMLMV (%)", default=2.0)
     arl_rate = fields.Float(string="ARL empleador (%)", default=0.522)
+    arl_rate_class_1 = fields.Float(string="ARL clase I (%)", default=0.522)
+    arl_rate_class_2 = fields.Float(string="ARL clase II (%)", default=1.044)
+    arl_rate_class_3 = fields.Float(string="ARL clase III (%)", default=2.436)
+    arl_rate_class_4 = fields.Float(string="ARL clase IV (%)", default=4.350)
+    arl_rate_class_5 = fields.Float(string="ARL clase V (%)", default=6.960)
     ccf_rate = fields.Float(string="Caja de compensación (%)", default=4.0)
     sena_rate = fields.Float(string="SENA (%)", default=2.0)
     icbf_rate = fields.Float(string="ICBF (%)", default=3.0)
+    employer_health_exempt = fields.Boolean(string="Exoneración salud empleador", default=False, help="Actívalo solo si la compañía cumple los requisitos legales de exoneración.")
+    employer_sena_exempt = fields.Boolean(string="Exoneración SENA", default=False, help="Actívalo solo si la compañía cumple los requisitos legales aplicables.")
+    employer_icbf_exempt = fields.Boolean(string="Exoneración ICBF", default=False, help="Actívalo solo si la compañía cumple los requisitos legales aplicables.")
+    withholding_enabled = fields.Boolean(string="Aplicar retención en la fuente", default=False)
+    withholding_procedure = fields.Selection([("1", "Procedimiento 1"), ("2", "Procedimiento 2")], string="Procedimiento de retención", default="1")
+    pension_regime_mode = fields.Selection([
+        ("legacy_law100", "Régimen vigente parametrizado"),
+        ("reform_2381_pending", "Reforma pensional en revisión"),
+    ], string="Marco pensional", default="legacy_law100", required=True,
+        help="Permite mantener la operación parametrizada mientras se define la aplicación de cambios normativos.")
     approval_mode = fields.Selection(
         [("none", "Sin aprobación adicional"), ("single", "Una aprobación"), ("double", "Doble aprobación")],
         string="Aprobación de cierre", default="none", required=True,
@@ -55,6 +70,8 @@ class CoPayrollParameter(models.Model):
         help="Las novedades pendientes no permitirán cerrar cuando esté activo.",
     )
     weekly_hours = fields.Float(string="Jornada semanal de referencia", default=42.0)
+    overtime_daily_limit_hours = fields.Float(string="Límite diario horas extra", default=2.0, help="Control preventivo configurable; conserva la autorización y sus excepciones como soporte.")
+    overtime_weekly_limit_hours = fields.Float(string="Límite semanal horas extra", default=12.0, help="Control preventivo configurable para la jornada ordinaria.")
     overtime_day_rate = fields.Float(string="Recargo hora extra diurna (%)", default=25.0)
     overtime_night_rate = fields.Float(string="Recargo hora extra nocturna (%)", default=75.0)
     night_rate = fields.Float(string="Recargo nocturno (%)", default=35.0)
@@ -88,6 +105,7 @@ class CoPayrollParameter(models.Model):
     currency_id = fields.Many2one(related="company_id.currency_id", readonly=True)
     rule_mapping_ids = fields.One2many("l10n.co.payroll.rule.mapping", "parameter_id", string="Mapeo de conceptos")
     salary_rule_ids = fields.One2many("l10n.co.payroll.salary.rule", "parameter_id", string="Reglas salariales")
+    withholding_bracket_ids = fields.One2many("l10n.co.payroll.withholding.bracket", "parameter_id", string="Tabla de retención")
 
     def get_solidarity_rate(self, ibc):
         """Return the progressive FSP rate for an IBC expressed in pesos."""
@@ -107,6 +125,17 @@ class CoPayrollParameter(models.Model):
             return self.solidarity_rate_5
         return self.solidarity_rate_6
 
+    def get_arl_rate(self, risk_class="I"):
+        """Devuelve la tarifa inicial de ARL según la clase de riesgo."""
+        self.ensure_one()
+        return {
+            "I": self.arl_rate_class_1 or self.arl_rate,
+            "II": self.arl_rate_class_2,
+            "III": self.arl_rate_class_3,
+            "IV": self.arl_rate_class_4,
+            "V": self.arl_rate_class_5,
+        }.get(risk_class or "I", self.arl_rate)
+
     def normalize_ibc(self, raw_ibc, worked_days=30.0, salary_mode="ordinary"):
         """Apply the configurable Colombian IBC floor, integral base and cap."""
         self.ensure_one()
@@ -123,6 +152,24 @@ class CoPayrollParameter(models.Model):
         if maximum:
             ibc = min(ibc, maximum)
         return ibc
+
+    def calculate_withholding(self, taxable_income, exemptions=0.0):
+        """Calcula una retención base con la tabla del artículo 383 del ET."""
+        self.ensure_one()
+        if not self.withholding_enabled or not self.uvt_value:
+            return 0.0
+        base = max((taxable_income or 0.0) - (exemptions or 0.0), 0.0)
+        income_uvt = base / self.uvt_value
+        brackets = self.env["l10n.co.payroll.withholding.bracket"].sudo().search([
+            ("parameter_id", "=", self.id), ("active", "=", True),
+        ], order="sequence, from_uvt")
+        if not brackets:
+            brackets = self.env["l10n.co.payroll.withholding.bracket"].default_brackets(self)
+        bracket = brackets.filtered(lambda item: income_uvt > item.from_uvt and (not item.to_uvt or income_uvt <= item.to_uvt))[:1]
+        if not bracket:
+            return 0.0
+        result_uvt = max(income_uvt - bracket.from_uvt, 0.0) * bracket.marginal_rate / 100.0 + bracket.fixed_uvt
+        return round(max(result_uvt, 0.0) * self.uvt_value)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -167,6 +214,8 @@ class CoPayrollParameter(models.Model):
         "health_employee_rate", "health_employer_rate", "pension_employee_rate", "pension_employer_rate",
         "solidarity_threshold_mw", "maximum_ibc_multiple", "integral_salary_min_multiple", "integral_ibc_ratio",
         "overtime_day_rate", "overtime_night_rate", "night_rate", "holiday_rate",
+        "overtime_daily_limit_hours", "overtime_weekly_limit_hours",
+        "arl_rate", "arl_rate_class_1", "arl_rate_class_2", "arl_rate_class_3", "arl_rate_class_4", "arl_rate_class_5",
     )
     def _check_legal_values(self):
         for record in self:
@@ -174,6 +223,8 @@ class CoPayrollParameter(models.Model):
                 record.health_employee_rate, record.health_employer_rate, record.pension_employee_rate,
                 record.pension_employer_rate, record.overtime_day_rate, record.overtime_night_rate,
                 record.night_rate, record.holiday_rate, record.integral_ibc_ratio,
+                record.arl_rate, record.arl_rate_class_1, record.arl_rate_class_2,
+                record.arl_rate_class_3, record.arl_rate_class_4, record.arl_rate_class_5,
             )
             if any(rate < 0 or rate > 100 for rate in rates):
                 raise ValidationError(_("Las tasas legales deben estar entre 0 y 100 por ciento."))
@@ -183,6 +234,8 @@ class CoPayrollParameter(models.Model):
                 raise ValidationError(_("El mínimo de salario integral debe ser positivo."))
             if record.minimum_ibc_multiple < 0:
                 raise ValidationError(_("El mínimo de IBC no puede ser negativo."))
+            if record.overtime_daily_limit_hours < 0 or record.overtime_weekly_limit_hours < 0:
+                raise ValidationError(_("Los límites de horas extra no pueden ser negativos."))
 
     def action_activate(self):
         if not (self.env.su or self.env.user._is_admin() or self.env.user.has_group("l10n_co_payroll.group_co_payroll_manager")):
@@ -199,6 +252,56 @@ class CoPayrollParameter(models.Model):
             raise ValidationError(_("Solo un supervisor puede archivar una versión legal."))
         self.write({"status": "archived"})
         return True
+
+
+class CoPayrollWithholdingBracket(models.Model):
+    _name = "l10n.co.payroll.withholding.bracket"
+    _description = "Rango de retención en la fuente"
+    _order = "sequence, from_uvt"
+    _check_company_auto = True
+
+    name = fields.Char(string="Nombre", required=True)
+    company_id = fields.Many2one("res.company", required=True, default=lambda self: self.env.company, index=True)
+    parameter_id = fields.Many2one("l10n.co.payroll.parameter", required=True, ondelete="cascade", domain="[('company_id', '=', company_id)]")
+    sequence = fields.Integer(default=10)
+    from_uvt = fields.Float(string="Desde UVT", required=True)
+    to_uvt = fields.Float(string="Hasta UVT")
+    fixed_uvt = fields.Float(string="Impuesto fijo (UVT)", default=0.0)
+    marginal_rate = fields.Float(string="Tarifa marginal (%)", default=0.0)
+    active = fields.Boolean(default=True)
+    legal_reference = fields.Char(string="Referencia legal", default="Artículo 383 del Estatuto Tributario")
+
+    @api.constrains("parameter_id", "company_id", "from_uvt", "to_uvt", "fixed_uvt", "marginal_rate")
+    def _check_values(self):
+        for record in self:
+            if record.parameter_id.company_id != record.company_id:
+                raise ValidationError(_("El rango y sus parámetros deben pertenecer a la misma compañía."))
+            if record.from_uvt < 0 or (record.to_uvt and record.to_uvt <= record.from_uvt):
+                raise ValidationError(_("El rango de UVT no es válido."))
+            if record.fixed_uvt < 0 or record.marginal_rate < 0 or record.marginal_rate > 100:
+                raise ValidationError(_("Los valores de retención no son válidos."))
+
+    @api.model
+    def default_brackets(self, parameter):
+        values = [
+            (0, 95, 0, 0), (95, 150, 0, 19), (150, 360, 10, 28),
+            (360, 640, 69, 33), (640, 945, 162, 35),
+            (945, 2300, 268, 37), (2300, 0, 770, 39),
+        ]
+        model = self.sudo()
+        records = model.browse()
+        for index, (from_uvt, to_uvt, fixed_uvt, rate) in enumerate(values, 1):
+            records |= model.create({
+                "name": _("Rango %s") % index,
+                "company_id": parameter.company_id.id,
+                "parameter_id": parameter.id,
+                "sequence": index * 10,
+                "from_uvt": from_uvt,
+                "to_uvt": to_uvt,
+                "fixed_uvt": fixed_uvt,
+                "marginal_rate": rate,
+            })
+        return records
 
 
 class CoPayrollParameterImport(models.Model):
@@ -233,6 +336,7 @@ class CoPayrollParameterImport(models.Model):
         "arl_rate": float, "ccf_rate": float, "sena_rate": float, "icbf_rate": float,
         "night_start_hour": float, "night_end_hour": float,
         "severance_days_per_year": float, "vacation_days_per_year": float, "bonus_days_per_year": float,
+        "overtime_daily_limit_hours": float, "overtime_weekly_limit_hours": float,
     }
 
     @staticmethod

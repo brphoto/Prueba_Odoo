@@ -61,10 +61,10 @@ class CoPayrollSettlement(models.Model):
                 interest_rate = parameter.severance_interest_rate if parameter else 12.0
                 record.write({
                     "parameter_id": parameter.id if parameter else False,
-                    "severance": benefit_base * severance_days * record.service_days / 36000.0,
-                    "severance_interest": benefit_base * severance_days * record.service_days / 36000.0 * interest_rate * record.service_days / 36000.0,
+                    "severance": benefit_base * (severance_days / 30.0) * record.service_days / 360.0,
+                    "severance_interest": benefit_base * (severance_days / 30.0) * record.service_days / 360.0 * interest_rate / 100.0 * record.service_days / 360.0,
                     "vacation": record.base_salary * vacation_days * record.service_days / 36000.0,
-                    "bonus": benefit_base * bonus_days * record.service_days / 36000.0,
+                    "bonus": benefit_base * (bonus_days / 30.0) * record.service_days / 360.0,
                 })
             record.write({"state": "calculated", "calculated_by": self.env.user.id, "calculated_at": fields.Datetime.now()})
         return True

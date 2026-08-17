@@ -25,7 +25,12 @@ class CoPayrollSalaryRuleNative(models.Model):
         category_refs = {
             "earning": "hr_payroll.ALW",
             "deduction": "hr_payroll.DED",
+            "employee_contribution": "hr_payroll.DED",
             "employer": "hr_payroll.COMP",
+            "employer_contribution": "hr_payroll.COMP",
+            "ibc": "hr_payroll.BASIC",
+            "social_base": "hr_payroll.BASIC",
+            "provision": "hr_payroll.COMP",
         }
         for configured in self.filtered(lambda rule: rule.active and rule.concept_type in category_refs):
             for structure in structures:
@@ -38,13 +43,13 @@ class CoPayrollSalaryRuleNative(models.Model):
                         "name": "[CO] %s" % configured.name,
                         "code": "CO_%s" % configured.code,
                         "struct_id": structure.id,
-                        "sequence": 190 + min(max(configured.sequence, 1), 8),
+                        "sequence": 110 + min(max(configured.sequence, 1), 80),
                         "category_id": category.id,
                         "condition_select": "none",
                         "amount_select": "fix",
                         "amount_fix": 0.0,
-                        "appears_on_payslip": False,
-                        "appears_on_employee_cost_dashboard": configured.concept_type == "employer",
+                        "appears_on_payslip": configured.concept_type in ("earning", "deduction", "employee_contribution"),
+                        "appears_on_employee_cost_dashboard": configured.concept_type in ("employer", "employer_contribution"),
                         "co_payroll_rule_id": configured.id,
                     })
         return True
@@ -72,14 +77,35 @@ class CoPayrollSalaryRuleNative(models.Model):
             return previous.get(str(code).upper(), default)
 
         def get_source(code, default=0.0):
-            return (result_rules.get(str(code).upper()) or result_rules.get(str(code)) or {}).get("total", default)
+            code = str(code).upper()
+            input_lines = self.env["hr.payslip.input"].search([
+                ("payslip_id", "=", payslip.id if payslip else 0),
+                ("input_type_id.code", "=", code),
+            ]) if payslip else self.env["hr.payslip.input"]
+            if input_lines:
+                return sum(input_lines.mapped("amount"))
+            source = (result_rules.get(code) or result_rules.get(str(code)) or {}).get("total")
+            if source is not None:
+                return source
+            for input_line in (payslip.input_line_ids if payslip else self.env["hr.payslip.input"]):
+                if input_line.input_type_id.code.upper() == code:
+                    return input_line.amount or default
+            return default
 
         legal = {field: getattr(parameter, field, 0.0) for field in (
-            "minimum_wage", "transport_allowance", "uvt_value", "health_employee_rate",
-            "pension_employee_rate", "solidarity_threshold_mw", "weekly_hours",
+            "minimum_wage", "transport_allowance", "uvt_value", "health_employee_rate", "health_employer_rate",
+            "pension_employee_rate", "pension_employer_rate", "solidarity_threshold_mw", "weekly_hours",
             "overtime_day_rate", "overtime_night_rate", "night_rate", "holiday_rate",
-            "severance_rate", "vacation_rate", "bonus_rate",
+            "transport_allowance_max_wage_multiple", "overtime_daily_limit_hours", "overtime_weekly_limit_hours",
+            "ccf_rate", "sena_rate", "icbf_rate",
+            "severance_rate", "severance_interest_rate", "vacation_rate", "bonus_rate", "arl_rate_class_1", "arl_rate_class_2",
+            "arl_rate_class_3", "arl_rate_class_4", "arl_rate_class_5",
+            "employer_health_exempt", "employer_sena_exempt", "employer_icbf_exempt",
+            "withholding_enabled", "withholding_procedure", "pension_regime_mode",
         )}
+        social = self.env["l10n.co.payroll.social"].get_for_employee(payslip.employee_id, payslip.date_from) if payslip else self.env["l10n.co.payroll.social"]
+        if social:
+            legal["arl_rate"] = parameter.get_arl_rate(social.risk_class)
         values = {
             "basic_wage": categories.get("BASIC", 0.0),
             "gross_wage": categories.get("GROSS", 0.0),
@@ -93,18 +119,26 @@ class CoPayrollSalaryRuleNative(models.Model):
             "transport_allowance": legal["transport_allowance"],
             "uvt_value": legal["uvt_value"],
             "employee_count": 1,
+            "salary_mode": social.salary_mode if social else "ordinary",
+            "solidarity_rate": parameter.get_solidarity_rate(categories.get("BASIC", 0.0)),
             "rule": get_rule,
             "source": get_source,
             "legal": lambda code, default=0.0: legal.get(str(code), default),
         }
+        values["solidarity_rate"] = parameter.get_solidarity_rate(previous.get("IBC_BASE", values["ibc_base"]) or 0.0)
+        legal["withholding_value"] = parameter.calculate_withholding(values.get("gross_wage", 0.0)) if parameter.withholding_enabled else 0.0
         condition = bool(_evaluate_formula(self.condition, values))
         amount = float(_evaluate_formula(self.amount_expression, values)) if condition else 0.0
+        if self.concept_type in ("ibc", "social_base"):
+            amount = parameter.normalize_ibc(amount, values.get("worked_days", 30.0), values.get("salary_mode", "ordinary"))
         previous[self.code.upper()] = amount
         if self.concept_type == "earning":
             delta = amount if self.impact == "add" else amount - values["gross_wage"]
-        elif self.concept_type == "deduction":
+        elif self.concept_type in ("deduction", "employee_contribution"):
             current = -values["deduction_total"]
             delta = -amount if self.impact == "add" else -amount - current
+        elif self.concept_type in ("ibc", "social_base", "provision"):
+            delta = 0.0
         else:
             delta = amount if self.impact == "add" else amount - values["employer_cost"]
         return delta, 1.0, 100.0
@@ -168,6 +202,11 @@ class HrPayslipCoPayroll(models.Model):
                 for line in base_lines:
                     base_by_code[line.code.upper()] += line.total or 0.0
                     base_categories[(line.category_id.code or "").upper()] += line.total or 0.0
+                for input_line in payslip.input_line_ids:
+                    input_code = input_line.input_type_id.code if input_line.input_type_id else False
+                    if input_code:
+                        base_by_code[input_code.upper()] += input_line.amount or 0.0
+                social = self.env["l10n.co.payroll.social"].get_for_employee(payslip.employee_id, payslip.date_from)
                 values = {
                     "basic_wage": base_by_code.get("BASIC", 0.0),
                     "gross_wage": base_by_code.get("GROSS", base_categories.get("GROSS", 0.0)),
@@ -178,6 +217,8 @@ class HrPayslipCoPayroll(models.Model):
                     "worked_hours": sum(line.number_of_hours or 0.0 for line in payslip.worked_days_line_ids),
                     "ibc_base": base_by_code.get("BASIC", 0.0),
                     "employee_count": 1,
+                    "salary_mode": social.salary_mode if social else "ordinary",
+                    "risk_class": social.risk_class if social else "I",
                 }
                 values["net_wage"] = values["gross_wage"] - values["deduction_total"]
                 values = _evaluate_configured_rules(rules, values, base_by_code, parameter)

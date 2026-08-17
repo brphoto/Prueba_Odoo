@@ -1,3 +1,5 @@
+from dateutil.relativedelta import relativedelta
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
@@ -14,6 +16,29 @@ class CoPayrollDianPeriod(models.Model):
         ("none", "Sin generar"), ("draft", "Borrador"), ("generated", "Generados"),
         ("pending", "Pendientes"), ("accepted", "Aceptados"), ("rejected", "Con rechazos"),
     ], compute="_compute_dian_metrics", string="Estado DIAN")
+    dian_due_date = fields.Date(string="Vencimiento nómina electrónica", compute="_compute_dian_due_date", store=True,
+        help="Primeros diez días calendario del mes siguiente al periodo, según la regla parametrizada para nómina electrónica.")
+    dian_days_remaining = fields.Integer(string="Días para vencimiento DIAN", compute="_compute_dian_deadline_status")
+    dian_deadline_state = fields.Selection([
+        ("ok", "En plazo"), ("soon", "Próximo a vencer"), ("overdue", "Vencido"),
+    ], string="Estado de vencimiento DIAN", compute="_compute_dian_deadline_status")
+
+    @api.depends("date_to")
+    def _compute_dian_due_date(self):
+        today = fields.Date.context_today(self)
+        for period in self:
+            due_date = period.date_to + relativedelta(day=1, months=1, days=9) if period.date_to else False
+            period.dian_due_date = due_date
+            period.dian_days_remaining = 0
+            period.dian_deadline_state = "ok"
+
+    @api.depends("dian_due_date")
+    def _compute_dian_deadline_status(self):
+        today = fields.Date.context_today(self)
+        for period in self:
+            due_date = period.dian_due_date
+            period.dian_days_remaining = (due_date - today).days if due_date else 0
+            period.dian_deadline_state = "overdue" if due_date and due_date < today else ("soon" if due_date and (due_date - today).days <= 3 else "ok")
 
     @api.depends("dian_document_ids.state")
     def _compute_dian_metrics(self):

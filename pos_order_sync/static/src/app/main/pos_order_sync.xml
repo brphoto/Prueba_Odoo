@@ -1,0 +1,609 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright (c) 2016-Present Webkul Software Pvt. Ltd. (<https://webkul.com/>) -->
+<!-- See LICENSE file for full copyright and licensing details. -->
+<!-- License URL : <https://store.webkul.com/license.html/> -->
+<templates id="template" xml:space="preserve">
+	<t t-name="Navbar" t-inherit="point_of_sale.Navbar" t-inherit-mode="extension">
+		<xpath expr="//CashierName" position="after">
+			<div class="oe_status oe_icon cursor-pointer" style="color:rgb(94, 185, 55)" t-on-click="click_quote_history" id="quote_history">
+				<i class="fa fa-history" aria-hidden="true" style="margin-left: 0px;margin-botto,: -19px;margin-bottom: 0px;font-size: 21px;"/>
+			</div>
+
+			
+		</xpath>
+		<xpath expr="//div[hasclass('pos-leftheader')]" position="after">
+			<div id="save_order_quote" t-on-click="click_save_order_quote" class="order-button btn btn-secondary d-flex align-items-center justify-content-center gap-2" style="color: #7a6f6f;">
+				<i class="fa fa-paper-plane" aria-hidden="true"></i>Send
+			</div>
+			<div id="new_quote_notification" t-on-click="click_new_quote_notification" class="order-button d-flex btn btn-secondary mx-1 justify-content-center position-relative" style="cursor: pointer;background: white;color: rgb(58, 133, 141);">
+				<i class="fa fa-shopping-cart me-1" style="font-size:20px" aria-hidden="true"></i>
+				<i class="fa fa-fw fa-spin fa-spinner wk_loading" style="font-size:24px;display:none" aria-hidden="true"></i>
+				<span class="quotation_count position-absolute end-0 top-0 me-1 text-dark fw-bolder" />
+			</div>
+			<div id="order_quote_notification" style="font-size: large; color: rgb(84, 99, 199); width: 205px; padding:13px; text-align:center; font-weight: 500;background-color: rgb(110, 200, 155);z-index: 1;display:none;border-radius:5px;"></div>
+		</xpath>
+
+	</t>
+
+	<t t-name="pos_order_sync.QuoteSendPopupWidget" >
+		<Dialog size="'md'" title="'Quotation Saved'">
+				<div class="order_status" style="height: 80px;width: 80px;margin-top: 15px;border-color: rgb(92, 184, 92);/* text-align: center; *//* display: flex; *//* justify-content: center; */margin-left: 44%;">
+					<div class="show_tick draw"></div>
+				</div>
+				<h2 id="quote_status" style="color:#5cb85c;margin-left: 41%;">
+					<t t-esc="props.quote_status || &apos;Order Sent !!!!!&apos;"/>
+				</h2>
+			<t t-set-slot="footer">
+				<div class="d-none w-100 justify-content-start gap-2 ">
+					<button id='wk_save_order_quote' class="button confirm btn btn-lg btn-primary" t-on-click="click_wk_save_order_quote">
+						ok 
+					</button>
+				</div>
+			</t>
+		</Dialog>
+	</t>
+
+	<t t-name="pos_order_sync.WkErrorNotifyPopopWidget" >
+		<Dialog size="'md'" title="'Quotation History'" footer="false">
+				<center>
+					<div class="wk_mark">
+					</div>
+					<h2>
+						<t t-esc="props.title ||'Error !!!'"/>
+					</h2>
+					<p>
+						<t t-esc="props.body ||''"/>
+					</p>
+					<button id='wk_cancel' t-on-click="props.close" class="button cancel btn btn-lg btn-secondary">
+                            Close
+					</button>
+				</center>
+			<t t-set-slot="footer">
+				<div class="d-none w-100 justify-content-start gap-2 ">
+					<button id='wk_save_order_quote' class="button confirm btn btn-lg btn-primary" t-on-click="click_wk_save_order_quote">
+									ok 
+					</button>
+				</div>
+			</t>
+		</Dialog>
+	</t>
+
+	<t t-name="pos_order_sync.SaveAsOrderQuotePopupWidget" >
+		<Dialog size="'md'" title="'Quotation'">
+				<t t-set-slot="header">
+					<div class="d-flex justify-space-between w-100 align-items-center">
+						<div class="flex-grow-1 fw-bolder">
+								Send Order As Quotation
+						</div>
+						<div class="quote_title flex-grow-1">Quote ID : 
+							<span id="quote_id"></span>
+						</div>
+					</div>
+					</t>
+				<div id="active_session_div" style="height:40%;overflow-y: scroll;text-align: center;">
+					<t t-if="pos.other_active_session">
+						<t t-if="!(pos.other_active_session.length &gt; 0)">
+							<h3> No active session is available.</h3>
+						</t>
+						<t t-log="pos.other_active_session"/>
+						<t t-foreach="pos.other_active_session" t-as="session" t-key="session.id">
+							<span class="select_session p-2 shadow-sm" t-on-click="() =&gt; this.click_select_session(session.id)" t-key="session.id" t-att-id="session.id" style="">
+								<i class="fa fa-desktop" t-att-id="session.id" style="font-size:48px;color:#5c5c5c;margin-top:13px;"></i>
+								<t t-if="session.config_id and session.config_id[1]">
+									<p style="word-wrap: break-word;margin-top:3px">
+										<t t-esc="session.config_id[1]"/>
+									</p>
+									<p style="word-wrap: break-word;margin-top:-9px">
+										<t t-esc="session.user_id[1]"/>
+									</p>
+								</t>
+							</span>
+						</t>
+						
+					</t>
+				</div>
+				<div id="wk_floor_table" style="display: none;">
+								<div style="display: inline-block;width: 90%;margin-left: 100px;">
+									<div style="float:left; width: 50%;">
+										<span class="wk_floor">Floor : </span>
+										<select id="wk_change_floor" t-on-change="change_tables" style="width: 60%;">
+											<option value="">None</option>
+										</select>
+									</div>
+									<div style="float:right; width: 50%;">
+										<span class="wk_table">Table : </span>
+										<select id="wk_change_table" t-on-click="click_table" style="width: 60%;">
+											<option value="">None</option>
+										</select>
+									</div>
+								</div>
+								<p class="show_info">*Please select table.</p>
+				</div>
+				<div style="text-align:left">
+					<span class="wk_note fw-bolder">
+									Note:</span>
+					<br/>
+					<textarea rows="2" class="p-2" cols="45" id="quote_note" placeholder="Note For Internal Use"></textarea>
+				</div>
+				<div class="fa fa-warning" id="order_quote_id_input_error" style="color: rgb(82, 54, 21);font-size: initial;padding-top: 2%;text-align: justify;padding-right: 5%;height: 6%;padding-left: 18%;background-color: rgb(250, 235, 174); display:none;"></div>
+				<t t-set-slot="footer">
+					<div class="d-flex w-100 justify-content-start gap-2">
+							<button id='wk_save_order_quote' class="button confirm btn btn-lg btn-primary" t-on-click="click_wk_save_order_quote">
+									Send 
+							</button>
+							<button id='wk_print_and_save' class="button confirm btn btn-lg btn-primary" t-on-click="click_wk_print_and_save" >
+									Send and Print
+							</button>
+							<button id='wk_cancel' class="button cancel btn btn-lg btn-secondary" t-on-click="props.close">
+									Cancel
+							</button>
+					</div>
+				</t>
+		</Dialog>
+	</t>
+
+	<t t-name="pos_order_sync.MyMessagePopup" >
+		<Dialog size="'md'" title="'Message'">
+			<div class="popup popup-textinput">
+				<t t-set-slot="header">
+					<t t-esc=" props.title || &apos;Message&apos; "/>
+				</t>
+				<div class="form-floating" style="display: flex;justify-content: center;gap: 85px;">
+					<t t-esc="props.body || &apos;&apos; "/>
+				</div>
+				<t t-set-slot="footer">
+					<div class="button cancel" t-on-click="props.close">
+                        OK
+					</div>
+				</t>
+			</div>
+		</Dialog>
+	</t>
+
+	<t t-name="pos_order_sync.AllQuotesListScreenWidget" >
+		<div class="partnerlist-screen screen h-100 d-flex flex-column bg-100">
+			<div class="top-content d-flex align-items-center p-2 border-bottom text-center">
+				<span class="button back btn btn-lg btn-secondary mx-2"  t-on-click="click_back">
+					<i class="fa fa-angle-double-left"></i>
+						Cancel
+				</span>
+				<div class="searchbox-client top-content-center" style="padding: 3px 13px;margin-top: 12px;margin-bottom: 12px;">
+					<input class="quotation_search" style="width: 231px;border: 1px solid #cecbcb;padding: 10px 20px;padding-left: 38px;padding-right: 13px;background-color: white;border-radius: 20px;font-family: 'Lato','Lucida Grande', Helvetica, Verdana, Arial;font-size: 13px;margin-left: 186%;" placeholder="Search Quotation" size="1" t-on-keyup="updateQuoteList" />
+					<span class="search-clear-client"></span>
+				</div>
+			</div>
+			<section class="overflow-auto">
+				<section class='subwindow collapsed'>
+					<div class='wk_subwindow-container collapsed'>
+						<div class='subwindow-container-fix quotation-details-contents'>
+						</div>
+					</div>
+				</section>
+				<table class='wk_quotation_table'>
+					<thead>
+						<tr class="wk_quotation_table_header" style="background-color: rgb(188, 214, 216);">
+							<th class="all_quotation_table_data" >Quote Id</th>
+							<th class="all_quotation_table_data">Customer</th>
+							<th class="all_quotation_table_data">Total Amount</th>
+							<th class="all_quotation_table_data">From session</th>
+						</tr>
+					</thead>
+					<tbody class='quotation-list-contents'>
+						<t t-foreach="quoteline" t-as="quote" t-key="quote.quote_obj_id">
+							<t t-log="quote"/>
+							<t t-if="quote.state == 'draft'">
+								<tr class="wk-qoute-line" style="cursor:pointer" t-att-id="quote.quote_id" t-on-click="() => this.qoute_line(quote.quote_id)">
+									<td class="all_quotation_table_data"> 
+										<t t-esc="quote.quote_id"/>
+									</td >
+									<td class="all_quotation_table_data">
+										<t t-esc="quote.partner_id[1]|| &apos;-&apos;"/>
+									</td >
+									<td class="all_quotation_table_data">
+										<t t-esc="env.utils.formatCurrency(quote.amount_total)"/>
+									</td>
+									<td class="all_quotation_table_data">
+										<t t-esc="quote.from_session_id"/>
+									</td>
+								</tr>
+							</t>
+						</t>
+					</tbody>
+				</table>
+			</section>
+		</div>
+	</t>
+
+	<t t-name="pos_order_sync.QuoteHistoryPopupWidget" >
+		<Dialog size="'md'" title="'Message'" bodyClass="" >
+			<t t-set-slot="header">
+				Quotation History
+			</t>
+			<div class="overflow-y-auto" style="max-height: 35vh;">
+				<table class="history">
+					<thead  class="border-bottom fw-bolder">
+						<tr>
+							<th>Quote Id</th>
+							<th>Customer</th>
+							<th>Total Amount</th>
+							<th>To POS session</th>
+							<th>State</th>
+						</tr>
+					</thead>
+					<tbody>
+					<t t-log="props"/>
+						<t t-foreach="props.qoutes" t-as="quote" t-key="quote.quote_id">
+							<tr>
+								<td class="fst-normal">
+									<t t-esc="quote.quote_id"/>
+								</td>
+								<td class="fst-normal">
+									<t t-esc="quote.partner_id"/>
+								</td>
+								<td class="fst-normal">
+									<t t-esc="env.utils.formatCurrency(quote.amount_total)"/>
+								</td>
+								<td class="fst-normal">
+									<t t-esc="quote.to_session_id"/>
+								</td>
+								<td class="fst-normal">
+									<t t-esc="quote.state"/>
+								</td>
+							</tr>
+						</t>
+					</tbody>
+				</table>
+			
+			</div>
+			<t t-set-slot="footer">
+				<button id='cancel' class="button confirm btn btn-lg btn-primary" t-on-click="props.close">
+					ok 
+				</button>
+			</t>
+		</Dialog>
+	</t>
+
+	<t t-name="pos_order_sync.OrderSyncOrderReceipt">
+		<div class="pos-receipt">
+			<t t-if="receipt.company.logo">
+				<img class="pos-receipt-logo" t-att-src="receipt.company.logo" alt="Logo"/>
+				<br/>
+			</t>
+			<t t-if="!receipt.company.logo">
+				<h2 class="pos-receipt-center-align">
+					<t t-esc="receipt.company.name"/>
+				</h2>
+				<br/>
+			</t>
+			<div class="pos-receipt-contact">
+				<t t-if="receipt.company.contact_address">
+					<div>
+						<t t-esc="receipt.company.contact_address"/>
+					</div>
+				</t>
+				<t t-if="receipt.company.phone">
+					<div>Tel:<t t-esc="receipt.company.phone"/>
+					</div>
+				</t>
+				<t t-if="receipt.company.vat">
+					<div>VAT:<t t-esc="receipt.company.vat"/>
+					</div>
+				</t>
+				<t t-if="receipt.company.email">
+					<div>
+						<t t-esc="receipt.company.email"/>
+					</div>
+				</t>
+				<t t-if="receipt.company.website">
+					<div>
+						<t t-esc="receipt.company.website"/>
+					</div>
+				</t>
+				<t t-if="receipt.header_html">
+					<t t-raw="receipt.header_html"/>
+				</t>
+				<t t-if="!receipt.header_html and receipt.header">
+					<div>
+						<t t-esc="receipt.header"/>
+					</div>
+				</t>
+				<t t-if="quote.quote_id">
+					<div>Quote:
+						<h3>
+							<t t-esc="quote.quote_id"/>
+						</h3>
+					</div>
+				</t>
+				<t t-if="receipt.cashier">
+					<div class="cashier">
+						<div>--------------------------------</div>
+						<div>Served by <t t-esc="receipt.cashier"/>
+						</div>
+					</div>
+				</t>
+			</div>
+			<br/>
+			<br/>
+			<!-- Orderlines -->
+			<div class="orderlines">
+				<t t-foreach="receipt.orderlines" t-as="line">
+					<t t-set="simple" t-value="(line.discount === 0 and line.unit_name === &quot;Units&quot; and line.quantity === 1 and !discount_to_show and !(line.display_discount_policy == &quot;without_discount&quot; &amp;&amp; line.price != line.price_lst))"/>
+					<t t-if="simple">
+						<div>
+							<t t-esc="line.product_name_wrapped[0]"/>
+							<span t-esc="widget.format_currency_no_symbol(line.price_display)" class="price_display pos-receipt-right-align"/>
+						</div>
+						<t t-call="OrderReceiptWrappedProductNameLines"/>
+					</t>
+					<t t-if="!simple">
+						<div t-esc="line.product_name_wrapped[0]"/>
+						<t t-call="OrderReceiptWrappedProductNameLines"/>
+						<t t-if="line.display_discount_policy == &apos;without_discount&apos; &amp;&amp; line.price != line.price_lst">
+							<div class="pos-receipt-left-padding">
+								<t t-esc="widget.format_currency_no_symbol(line.price_lst)"/>
+                                -&gt;
+								<t t-esc="widget.format_currency_no_symbol(line.price)"/>
+							</div>
+						</t>
+						<t t-elif="line.discount !== 0">
+							<div class="pos-receipt-left-padding">
+								<t t-if="pos.config.iface_tax_included === &apos;total&apos;">
+									<t t-esc="widget.format_currency_no_symbol(line.price_with_tax_before_discount)"/>
+								</t>
+								<t t-else="">
+									<t t-esc="widget.format_currency_no_symbol(line.price)"/>
+								</t>
+							</div>
+						</t>
+						<t t-if="line.discount !== 0">
+							<div class="pos-receipt-left-padding">
+                                Discount: <t t-esc="line.discount"/>
+%
+							</div>
+						</t>
+						<div class="pos-receipt-left-padding">
+							<t t-esc="Math.round(line.quantity * Math.pow(10, pos.dp[&apos;Product Unit of Measure&apos;])) / Math.pow(10, pos.dp[&apos;Product Unit of Measure&apos;])"/>
+							<t t-if="line.unit_name !== &quot;Units&quot;" t-esc="line.unit_name"/>
+                            x
+							<t t-esc="widget.format_currency_no_symbol(line.price_display_one)"/>
+							<span class="price_display pos-receipt-right-align">
+								<t t-esc="widget.format_currency_no_symbol(line.price_display)"/>
+							</span>
+						</div>
+					</t>
+				</t>
+			</div>			<!-- Subtotal -->
+			<t t-set="taxincluded" t-value="Math.abs(receipt.subtotal - receipt.total_with_tax) &lt;= 0.000001"/>
+			<t t-if="!taxincluded">
+				<div class="pos-receipt-right-align">--------</div>
+				<br/>
+				<div>Subtotal<span t-esc="widget.format_currency_no_symbol(receipt.subtotal)" class="pos-receipt-right-align"/>
+				</div>
+				<t t-foreach="receipt.tax_details" t-as="tax">
+					<div>
+						<t t-esc="tax.name"/>
+						<span t-esc="widget.format_currency_no_symbol(tax.amount)" class="pos-receipt-right-align"/>
+					</div>
+				</t>
+			</t>			<!-- Total -->
+			<div class="pos-receipt-right-align">--------</div>
+			<br/>
+			<div class="pos-receipt-amount">
+                TOTAL
+				<span t-esc="widget.format_currency_no_symbol(receipt.total_with_tax)" class="pos-receipt-right-align"/>
+			</div>
+			<br/>
+			<br/>
+			<!-- Payment Lines -->
+			<t t-foreach="paymentlines" t-as="line">
+				<div>
+					<t t-esc="line.name"/>
+					<span t-esc="widget.format_currency_no_symbol(line.get_amount())" class="pos-receipt-right-align"/>
+				</div>
+			</t>
+			<br/>
+			<div class="pos-receipt-amount receipt-change">
+                CHANGE
+				<span t-esc="widget.format_currency_no_symbol(receipt.change)" class="pos-receipt-right-align"/>
+			</div>
+			<br/>
+			<!-- Extra Payment Info -->
+			<t t-if="receipt.total_discount">
+				<div>
+                    Discounts
+					<span t-esc="widget.format_currency_no_symbol(receipt.total_discount)" class="pos-receipt-right-align"/>
+				</div>
+			</t>
+			<t t-if="taxincluded">
+				<t t-foreach="receipt.tax_details" t-as="tax">
+					<div>
+						<t t-esc="tax.name"/>
+						<span t-esc="widget.format_currency_no_symbol(tax.amount)" class="pos-receipt-right-align"/>
+					</div>
+				</t>
+				<div>
+                    Total Taxes
+					<span t-esc="widget.format_currency_no_symbol(receipt.total_tax)" class="pos-receipt-right-align"/>
+				</div>
+			</t>
+			<div class="before-footer"/>
+			<!-- Footer -->
+			<div t-if="receipt.footer_html" class="pos-receipt-center-align">
+				<t t-raw="receipt.footer_html"/>
+			</div>
+			<div t-if="!receipt.footer_html and receipt.footer" class="pos-receipt-center-align">
+				<br/>
+				<t t-esc="receipt.footer"/>
+				<br/>
+				<br/>
+			</div>
+			<div class="after-footer">
+				<t t-foreach="paymentlines" t-as="line">
+					<t t-if="line.ticket">
+						<br/>
+						<div class="pos-payment-terminal-receipt">
+							<t t-raw="line.ticket"/>
+						</div>
+					</t>
+				</t>
+			</div>
+			<br/>
+			<div class="pos-receipt-order-data">
+				<div>
+					<t t-esc="receipt.name"/>
+				</div>
+				<div>
+					<t t-esc="receipt.date.localestring"/>
+				</div>
+			</div>
+		</div>
+	</t>
+	
+	<t t-name="pos_order_sync.OrderSyncXmlReceipt">
+		<receipt align="center" width="40" value-thousands-separator="">
+			<t t-if="receipt.company.name">
+				<h1>
+					<t t-esc="receipt.company.name"/>
+				</h1>
+				<br/>
+			</t>
+			<t t-if="quote.quote_id">
+				<div>Quote:
+					<h3>
+						<t t-esc="quote.quote_id"/>
+					</h3>
+				</div>
+			</t>
+			<div font="b">
+				<t t-if="receipt.company.contact_address">
+					<div>
+						<t t-esc="receipt.company.contact_address"/>
+					</div>
+				</t>
+				<t t-if="receipt.company.phone">
+					<div>Tel:
+						<t t-esc="receipt.company.phone"/>
+					</div>
+				</t>
+				<t t-if="receipt.company.vat">
+					<div>VAT:
+						<t t-esc="receipt.company.company.vat"/>
+					</div>
+				</t>
+				<t t-if="receipt.company.email">
+					<div>
+						<t t-esc="receipt.company.email"/>
+					</div>
+				</t>
+				<t t-if="receipt.company.website">
+					<div>
+						<t t-esc="receipt.company.website"/>
+					</div>
+				</t>
+				<t t-if="receipt.date">
+					<div>
+						<t t-esc="receipt.date.localestring"/>
+					</div>
+				</t>
+				<t t-if="receipt.header">
+					<div>
+						<t t-esc="receipt.header"/>
+					</div>
+				</t>
+				<t t-if="receipt.cashier">
+					<div class="cashier">
+						<div>--------------------------------</div>
+						<div>User
+							<t t-esc="receipt.cashier"/>
+						</div>
+					</div>
+				</t>
+				<t t-if="quote.from_session">
+					<div>From POS:
+						<t t-esc="quote.from_session"/>
+					</div>
+				</t>
+				<t t-if="quote.to_session">
+					<div>To POS:
+						<t t-esc="quote.to_session"/>
+					</div>
+				</t>
+			</div>
+			<br/>
+			<br/>
+			<!-- Orderlines -->
+			<div>
+				<t t-foreach="orderlines" t-as="line">
+					<t t-set="simple" t-value="line.discount === 0 and line.product.uom_id[1] === &quot;Unit(s)&quot; and line.quantity === 1"/>
+					<t t-if="simple">
+						<line>
+							<left>
+								<t t-esc="line.product.display_name"/>
+							</left>
+							<right>
+								<value>
+									<t t-esc="line.price"/>
+								</value>
+							</right>
+						</line>
+					</t>
+					<t t-if="!simple">
+						<line>
+							<left>
+								<t t-esc="line.product.display_name"/>
+							</left>
+						</line>
+						<t t-if="line.discount !== 0">
+							<line indent="1">
+								<left>Discount:
+									<t t-esc="line.discount"/>
+%</left>
+							</line>
+						</t>
+						<line indent="1">
+							<left>
+								<value value-decimals="3" value-autoint="on">
+									<t t-esc="line.quantity"/>
+								</value>
+								<t t-if="line.product.uom_id[1] !== &quot;Unit(s)&quot;">
+									<t t-esc="line.product.uom_id[1]"/>
+								</t>
+								x
+								<value value-decimals="2">
+									<t t-esc="line.price"/>
+								</value>
+							</left>
+							<right>
+								<value>
+									<t t-esc="line.get_display_price()"/>
+								</value>
+							</right>
+						</line>
+					</t>
+				</t>
+			</div>
+			<div>------------------------------------------------</div>
+			<div line-ratio="0">
+				<line>
+					<right>
+						<div align="right">TAX:<value>
+							<t t-esc="receipt.total_tax"/>
+						</value>
+					</div>
+				</right>
+			</line>
+		</div>
+		<div line-ratio="0" bold="on">
+			<line>
+				<right>
+					<div align="right">TOTAL:<value>
+						<t t-esc="receipt.total_amount"/>
+					</value>
+				</div>
+			</right>
+		</line>
+	</div>
+		</receipt>
+	</t>
+	
+</templates>

@@ -1,6 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_co_payroll_portal_request_list" model="ir.ui.view"><field name="name">l10n.co.payroll.portal.request.list</field><field name="model">l10n.co.payroll.portal.request</field><field name="arch" type="xml"><list string="Solicitudes de empleados" decoration-success="state == 'approved'" decoration-danger="state == 'rejected'"><field name="name"/><field name="employee_id"/><field name="request_type"/><field name="date_from"/><field name="date_to"/><field name="applied_record" optional="hide"/><field name="state" widget="badge"/></list></field></record>
-    <record id="view_co_payroll_portal_request_form" model="ir.ui.view"><field name="name">l10n.co.payroll.portal.request.form</field><field name="model">l10n.co.payroll.portal.request</field><field name="arch" type="xml"><form string="Solicitud de empleado"><header><button name="action_submit" type="object" string="Enviar" invisible="state != 'draft'"/><button name="action_approve" type="object" string="Aprobar y aplicar" class="oe_highlight" invisible="state != 'submitted'" groups="l10n_co_payroll.group_co_payroll_manager"/><button name="action_reject" type="object" string="Rechazar" invisible="state != 'submitted'" groups="l10n_co_payroll.group_co_payroll_manager"/><field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,rejected,cancelled"/></header><sheet><div class="oe_title"><h1><field name="name"/></h1></div><group><group><field name="company_id"/><field name="employee_id"/><field name="requested_by"/><field name="request_type"/><field name="date_from"/><field name="date_to"/></group><group><field name="leave_type_id" invisible="request_type != 'vacation'"/><field name="bank_account_number" invisible="request_type != 'bank_change'"/><field name="bank_name" invisible="request_type != 'bank_change'"/><field name="applied_record"/></group></group><field name="description"/><field name="review_notes"/><group string="Auditoría"><field name="reviewed_by"/><field name="reviewed_at"/></group></sheet><chatter/></form></field></record>
-    <record id="action_co_payroll_portal_request" model="ir.actions.act_window"><field name="name">Solicitudes de empleados</field><field name="res_model">l10n.co.payroll.portal.request</field><field name="view_mode">list,form</field><field name="context">{'search_default_state_submitted': 1}</field></record>
-    <menuitem id="menu_co_payroll_portal_request" name="Solicitudes empleados" parent="l10n_co_payroll.menu_co_payroll_configuration" action="action_co_payroll_portal_request" sequence="45" groups="l10n_co_payroll.group_co_payroll_manager"/>
+    <record id="view_co_payroll_portal_request_list" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.portal.request.list</field>
+        <field name="model">l10n.co.payroll.portal.request</field>
+        <field name="arch" type="xml">
+            <list string="Solicitudes de colaboradores" decoration-success="state == 'approved'" decoration-danger="state == 'rejected'">
+                <field name="name"/><field name="employee_id"/><field name="request_type"/><field name="requested_amount" optional="show"/><field name="installment_count" optional="hide"/><field name="date_from"/><field name="date_to"/><field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_co_payroll_portal_request_form" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.portal.request.form</field>
+        <field name="model">l10n.co.payroll.portal.request</field>
+        <field name="arch" type="xml">
+            <form string="Solicitud de colaborador">
+                <header><button name="action_submit" type="object" string="Enviar" invisible="state != 'draft'"/><button name="action_approve" type="object" string="Aprobar y aplicar" class="oe_highlight" invisible="state != 'submitted'" groups="l10n_co_payroll.group_co_payroll_manager"/><button name="action_reject" type="object" string="Rechazar" invisible="state != 'submitted'" groups="l10n_co_payroll.group_co_payroll_manager"/><field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,rejected,cancelled"/></header>
+                <sheet><div class="oe_title"><h1><field name="name"/></h1></div><group><group><field name="company_id"/><field name="employee_id"/><field name="requested_by"/><field name="request_type"/><field name="requested_amount" invisible="request_type not in ['advance', 'loan']"/><field name="installment_count" invisible="request_type != 'loan'"/></group><group><field name="date_from"/><field name="date_to"/><field name="leave_type_id" invisible="request_type != 'vacation'"/><field name="bank_account_number" invisible="request_type != 'bank_change'"/><field name="bank_name" invisible="request_type != 'bank_change'"/><field name="applied_record"/></group></group><field name="description"/><field name="review_notes"/><group string="Auditoría"><field name="reviewed_by"/><field name="reviewed_at"/></group></sheet><chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="action_co_payroll_portal_request" model="ir.actions.act_window"><field name="name">Solicitudes de colaboradores</field><field name="res_model">l10n.co.payroll.portal.request</field><field name="view_mode">list,form</field><field name="context">{'search_default_state_submitted': 1}</field></record>
+    <menuitem id="menu_co_payroll_portal_request" name="Solicitudes de colaboradores" parent="l10n_co_payroll.menu_co_payroll_configuration" action="action_co_payroll_portal_request" sequence="45" groups="l10n_co_payroll.group_co_payroll_manager"/>
 </odoo>

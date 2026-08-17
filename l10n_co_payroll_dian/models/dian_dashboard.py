@@ -40,7 +40,7 @@ class CoPayrollDianDashboard(models.TransientModel):
             dashboard.error_count = len(documents.filtered(lambda record: record.state == "error"))
             dashboard.attention_count = len(documents.filtered(lambda record: record.attention_level in ("warning", "danger")))
             dashboard.stale_pending_count = len(documents.filtered("is_stale_pending"))
-            checked = documents.mapped("last_checked_at")
+            checked = [value for value in documents.mapped("last_checked_at") if value]
             dashboard.last_sync = max(checked) if checked else False
 
     def _document_domain(self, state=False):

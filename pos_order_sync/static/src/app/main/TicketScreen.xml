@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-name="TicketScreen"
+       t-inherit="point_of_sale.TicketScreen"
+       t-inherit-mode="extension"
+       owl="1">
+
+        <!-- Odoo 19 no longer has the old header-row markup. Add the quote
+             reference next to the order reference in both layouts. -->
+        <xpath expr="//table[contains(@class, 'table-striped')]//tr[contains(@class, 'order-row')]/td[2]"
+               position="after">
+            <td class="align-middle">
+                <div class="small text-muted" t-esc="order.quote_name or ''"/>
+            </td>
+        </xpath>
+        <xpath expr="//div[contains(@class, 'mobileOrderList')]//div[contains(@class, 'small text-muted')][2]"
+               position="after">
+            <div class="small text-muted" t-esc="order.quote_name or ''"/>
+        </xpath>
+
+    </t>
+
+</templates>

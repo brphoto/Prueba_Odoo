@@ -6,7 +6,7 @@
             <list string="Periodos de nómina" decoration-muted="state == 'cancelled'" decoration-success="state == 'closed'" decoration-warning="blocking_issue_count &gt; 0">
                 <field name="name"/>
                 <field name="company_id" groups="base.group_multi_company"/>
-                <field name="period_type"/>
+                <field name="period_type" string="Tipo / frecuencia"/>
                 <field name="date_from"/>
                 <field name="date_to"/>
                 <field name="employee_count"/>
@@ -27,7 +27,7 @@
             <kanban class="o_kanban_small_column" default_group_by="state">
                 <field name="name"/><field name="state"/><field name="date_from"/><field name="date_to"/>
                 <field name="employee_count"/><field name="payslip_count"/><field name="issue_count"/><field name="blocking_issue_count"/>
-                <field name="net_total"/><field name="currency_id"/><field name="period_type"/>
+                <field name="net_total"/><field name="currency_id"/><field name="period_type" string="Tipo / frecuencia"/>
                 <templates>
                     <t t-name="card">
                         <div class="oe_kanban_global_click">
@@ -55,7 +55,7 @@
         <field name="model">l10n.co.payroll.period</field>
         <field name="arch" type="xml">
             <search string="Buscar periodos">
-                <field name="name"/><field name="company_id"/><field name="date_from"/><field name="date_to"/><field name="state"/><field name="period_type"/><field name="approval_mode"/><field name="approval_state"/>
+                <field name="name"/><field name="company_id"/><field name="date_from"/><field name="date_to"/><field name="state"/><field name="period_type" string="Tipo / frecuencia"/><field name="approval_mode"/><field name="approval_state"/>
                 <separator/>
                 <filter name="filter_open" string="Abiertos" domain="[('state', 'in', ['draft', 'ready'])]"/>
                 <filter name="filter_closed" string="Cerrados" domain="[('state', '=', 'closed')]"/>
@@ -64,7 +64,7 @@
                     <filter name="group_state" string="Estado" domain="[]" context="{'group_by': 'state'}"/>
                     <filter name="group_approval" string="Aprobación" domain="[]" context="{'group_by': 'approval_state'}"/>
                     <filter name="group_company" string="Compañía" domain="[]" context="{'group_by': 'company_id'}"/>
-                    <filter name="group_period_type" string="Frecuencia" domain="[]" context="{'group_by': 'period_type'}"/>
+                    <filter name="group_period_type" string="Tipo / frecuencia" domain="[]" context="{'group_by': 'period_type'}"/>
                 </group>
             </search>
         </field>
@@ -108,7 +108,7 @@
                     <group>
                         <group string="Periodo">
                             <field name="company_id" options="{'no_create': True}" readonly="state != 'draft'"/>
-                            <field name="period_type" readonly="state != 'draft'"/>
+                            <field name="period_type" string="Tipo de nómina / frecuencia" readonly="state != 'draft'"/>
                             <field name="date_from" readonly="state != 'draft'"/>
                             <field name="date_to" readonly="state != 'draft'"/>
                             <field name="payment_date" readonly="state == 'closed'"/>
@@ -136,7 +136,7 @@
                         <field name="employee_ids" widget="many2many_tags" options="{'no_create': True}" readonly="state != 'draft'"/>
                         <field name="department_ids" widget="many2many_tags" options="{'no_create': True}" readonly="state != 'draft'"/>
                         <field name="job_ids" widget="many2many_tags" options="{'no_create': True}" readonly="state != 'draft'"/>
-                        <field name="structure_ids" widget="many2many_tags" options="{'no_create': True}" readonly="state != 'draft'"/>
+                        <field name="structure_ids" widget="many2many_tags" options="{'no_create': True}" domain="[('active', '=', True)]" readonly="state != 'draft'"/>
                         <field name="payslip_run_ids" widget="many2many_tags" options="{'no_create': True}" readonly="state != 'draft'"/>
                     </group>
                     <notebook>

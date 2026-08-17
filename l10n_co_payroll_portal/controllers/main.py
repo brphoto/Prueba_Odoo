@@ -10,7 +10,36 @@ class CoPayrollPortalController(http.Controller):
 
     @http.route("/my/payroll", type="http", auth="user", website=True)
     def payroll_home(self, **kwargs):
-        return request.redirect("/my/payroll/payslips")
+        employee = self._employee()
+        payslips = request.env["hr.payslip"].sudo().search([("employee_id", "=", employee.id), ("state", "in", ["validated", "paid"])], order="date_to desc, id desc", limit=60) if employee else request.env["hr.payslip"]
+        requests = request.env["l10n.co.payroll.portal.request"].sudo().search([("employee_id", "=", employee.id)], order="create_date desc") if employee else request.env["l10n.co.payroll.portal.request"]
+        documents = request.env["l10n.co.payroll.employee.document"].sudo().search([("employee_id", "=", employee.id), ("state", "=", "published"), ("portal_visible", "=", True)], order="document_date desc, id desc") if employee and "l10n.co.payroll.employee.document" in request.env.registry.models else request.env["hr.payslip"].browse()
+        return request.render("l10n_co_payroll_portal.portal_payroll_dashboard", {"employee": employee, "payslips": payslips, "requests": requests, "documents": documents})
+
+    @http.route("/my/payroll/profile", type="http", auth="user", website=True)
+    def payroll_profile(self, **kwargs):
+        return request.render("l10n_co_payroll_portal.portal_payroll_profile", {"employee": self._employee()})
+
+    @http.route("/my/payroll/profile/update", type="http", auth="user", website=True, methods=["POST"], csrf=True)
+    def payroll_profile_update(self, **post):
+        employee = self._employee()
+        if employee:
+            details = [
+                "Correo: %s" % (post.get("work_email") or "Sin cambio"),
+                "Teléfono: %s" % (post.get("work_phone") or "Sin cambio"),
+                "Celular: %s" % (post.get("mobile_phone") or "Sin cambio"),
+                "Dirección: %s" % (post.get("address") or "Sin cambio"),
+            ]
+            request.env["l10n.co.payroll.portal.request"].sudo().create({"company_id": employee.company_id.id, "employee_id": employee.id, "request_type": "data_change", "description": "Solicitud de actualización de información personal.\n" + "\n".join(details), "state": "submitted"})
+        return request.redirect("/my/payroll/requests")
+
+    @http.route("/my/payroll/advance", type="http", auth="user", website=True)
+    def payroll_advance(self, **kwargs):
+        return request.render("l10n_co_payroll_portal.portal_payroll_financial_request", {"employee": self._employee(), "request_type": "advance", "title": "Solicitar anticipo", "subtitle": "Envía una solicitud de anticipo de nómina para revisión de gestión humana.", "button": "Enviar solicitud de anticipo"})
+
+    @http.route("/my/payroll/loan", type="http", auth="user", website=True)
+    def payroll_loan(self, **kwargs):
+        return request.render("l10n_co_payroll_portal.portal_payroll_financial_request", {"employee": self._employee(), "request_type": "loan", "title": "Solicitar préstamo", "subtitle": "Registra el valor y el plazo deseado. La aprobación queda sujeta a las políticas de la empresa.", "button": "Enviar solicitud de préstamo"})
 
     @http.route("/my/payroll/payslips", type="http", auth="user", website=True)
     def payroll_payslips(self, **kwargs):
@@ -36,7 +65,7 @@ class CoPayrollPortalController(http.Controller):
         if not payslip:
             return request.not_found()
         request.env["l10n.co.payroll.portal.access.log"].sudo().create({"company_id": employee.company_id.id, "employee_id": employee.id, "payslip_id": payslip.id, "action": "download", "ip_address": request.httprequest.remote_addr})
-        pdf, _ = request.env["ir.actions.report"].sudo()._render_qweb_pdf("hr_payroll.report_payslip_lang", payslip.ids)
+        pdf, _ = request.env["ir.actions.report"].sudo()._render_qweb_pdf("l10n_co_payroll_portal.action_report_portal_payslip", payslip.ids)
         return request.make_response(pdf, headers=[("Content-Type", "application/pdf"), ("Content-Disposition", content_disposition("Desprendible-%s.pdf" % payslip.name))])
 
     @http.route("/my/payroll/requests", type="http", auth="user", website=True)
@@ -79,5 +108,7 @@ class CoPayrollPortalController(http.Controller):
     def payroll_request_create(self, **post):
         employee = self._employee()
         if employee and post.get("description"):
-            request.env["l10n.co.payroll.portal.request"].sudo().create({"company_id": employee.company_id.id, "employee_id": employee.id, "request_type": post.get("request_type", "other"), "date_from": post.get("date_from") or False, "date_to": post.get("date_to") or False, "description": post.get("description"), "bank_account_number": post.get("bank_account_number") or False, "bank_name": post.get("bank_name") or False})
+            amount = float(post.get("requested_amount") or 0)
+            installments = int(post.get("installment_count") or 0)
+            request.env["l10n.co.payroll.portal.request"].sudo().create({"company_id": employee.company_id.id, "employee_id": employee.id, "request_type": post.get("request_type", "other"), "date_from": post.get("date_from") or False, "date_to": post.get("date_to") or False, "description": post.get("description"), "bank_account_number": post.get("bank_account_number") or False, "bank_name": post.get("bank_name") or False, "requested_amount": amount, "installment_count": installments, "state": "submitted"})
         return request.redirect("/my/payroll/requests")

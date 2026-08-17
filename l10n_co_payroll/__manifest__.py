@@ -8,7 +8,7 @@
     """,
     "author": "Bryan Cando",
     "category": "Human Resources/Payroll",
-    "version": "19.0.6.0.0",
+    "version": "19.0.9.0.0",
     "license": "OPL-1",
     "depends": ["hr_payroll", "account"],
     "data": [
@@ -16,6 +16,7 @@
         "security/ir.model.access.csv",
         "data/ir_sequence.xml",
         "views/co_payroll_parameter_views.xml",
+        "views/co_payroll_parameter_legal_fields_views.xml",
         "views/co_payroll_parameter_enterprise_views.xml",
         "views/co_payroll_novelty_views.xml",
         "views/co_payroll_social_views.xml",

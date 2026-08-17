@@ -1,0 +1,288 @@
+/* Copyright (c) 2016-Present Webkul Software Pvt. Ltd. (<https://webkul.com/>) */
+/* See LICENSE file for full copyright and licensing details. */
+/* License URL : <https://store.webkul.com/license.html/> */
+.pos .pos-branding .username{
+    max-width: 100px;
+}
+#quote_id{
+    color:#707070;
+}
+#wk_change_table{
+  padding: 4px;
+  border-radius: 3px;
+  border: solid 1px #cecbcb;
+  margin-bottom: 4px;
+  background: white;
+  font-family: "Lato","Lucida Grande", Helvetica, Verdana, Arial;
+  color: #555555;
+  width: 340px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+#wk_change_floor{
+  padding: 4px;
+  border-radius: 3px;
+  border: solid 1px #cecbcb;
+  margin-bottom: 4px;
+  background: white;
+  font-family: "Lato","Lucida Grande", Helvetica, Verdana, Arial;
+  color: #555555;
+  width: 340px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+.show_info{
+  font-size:16px;
+  color:red;
+  margin-top: 1%;
+  margin-bottom: 1%;
+  display: none;
+}
+.wk_floor{
+  font-size:17px;
+  color:#4C4B4B;
+}
+.wk_table{
+  font-size:17px;
+  color:#4C4B4B;
+}
+.wk_note{
+    font-size:16px;
+    color:#4C4B4B;
+}
+#quote_note{
+  font-size: 14px;
+  color: #4C4B4B;
+  border: 1px solid #e5e5e5;
+  background-color: #fff;
+  resize: none;
+  overflow: hidden;
+  margin-top: 5px;
+  border-radius: 5px;
+}
+#wk_save_order_quote{
+    size:14px;
+    color:#FFFFFF;
+    background-color: #2ba339;
+    border-radius: 4px;
+}
+#wk_print_and_save{
+    size:14px;
+    color:#FFFFFF;
+    background-color: #3e66c1;
+    border-radius: 4px;  
+}
+
+#quotation_save{
+    font-size:  22px;
+    color: #FFFFFF;
+    background-color: #3e66c1;
+    overflow:hidden
+}
+.all_quotation_table_data{
+	padding-left: 15px;
+	text-align: left;
+}
+.wk_quotation_table_body{
+	margin-top: 65px;
+	overflow: scroll;
+	height: 83%;
+}
+.wk_quotation_table{
+	background: white;
+	font-size: 16px;
+	width: 100%;	
+	line-height: 40px;
+}
+.wk_quotation_table tr:nth-child(odd){ 
+	background: #E6E6E6;
+}
+.wk_quotation_table tr:nth-child(even){
+	background: white;
+}
+.quote_title {
+  color: #4C4B4B;
+  border: 1px solid #e5e5e5;
+  padding: 10px;
+  margin-top: 6px;
+}
+
+.mainselection {
+   overflow:hidden;
+   width:250px;
+   -moz-border-radius: 9px 9px 9px 9px;
+   -webkit-border-radius: 9px 9px 9px 9px;
+   border-radius: 9px 9px 9px 9px;
+   box-shadow: 1px 1px 11px #330033;
+   background: #6EC89B;
+   margin-left: 10px;
+
+}
+.mainselection select {
+   border: 0;
+   color:#efefef;
+   background: #6EC89B;
+   font-size: 20px;
+   font-weight: bold;
+
+   padding: 2px 10px;
+   background: #6EC89B;
+}
+
+
+
+.select_session {
+  font-size: 13px;
+  color: #4C4B4B;
+  box-shadow: 0px 1px 0.94px 0.06px rgba(0, 0, 0, 0.24), 0px 0px 0.98px 0.02px rgba(0, 0, 0, 0.16);
+  position: relative;
+  vertical-align: top;
+  display: inline-block;
+  margin: 14px !important;
+  width: 100px;
+  height: 119px;
+  border-radius: 3px;
+  border-bottom-width: 3px;
+  overflow: hidden;
+  cursor: pointer;
+}
+.history  {
+  width:100%;
+}
+
+.history tr:nth-child(even) {
+    background: rgb(247,247,247);
+}
+.history th{
+  padding: 10px 8px;
+  font-size: initial;
+}
+.history td {
+    padding: 10px 8px;
+    font-size: initial;
+    font-weight: normal;
+
+}
+.order_done {
+   -webkit-animation: none; 
+    background-color: white;
+    border-color: #5cb85c;
+    animation: none;
+}
+
+.show_tick {
+    display: none;
+}
+
+.show_tick.draw:after {
+    animation-name: show_tick;
+    transform: scaleX(-1) rotate(135deg);
+    animation-duration: 1.2s;
+    animation-timing-function: ease; 
+}
+.wk-alert {
+  background-color: white;
+  padding: 20px;
+  border-radius: 5px;
+  text-align: center;
+  position: fixed;
+  left: 33%;
+  top: 21%;
+  width: 500px;
+  }
+  
+.wk-alert button.cancel:hover {
+    background-color: #7ecff4;
+}
+
+.wk-alert button.cancel {
+    background-color: #8CD4F5;
+    color: white;
+    font-size: 20px;
+    border-radius: 5px;
+    padding: 10px 32px;
+    margin-top: 26px;
+    cursor: pointer;
+}
+div.wk_mark {
+    height: 85px;
+    width: 85px;
+    border-radius: 100px;
+    border:3px solid #ff8d8d;
+}
+
+div.wk_mark:after {
+    content: "\d7";
+    font-size: 100px;
+    color: #ff8d8d;
+    top: -37px;
+    position: relative;
+}
+
+.wk-alert h2 {
+  color: #575757;
+  font-size: 30px;
+  margin-top:10px;
+  }
+  .wk-alert p {
+  color: #797979;
+  font-size: 16px;
+  margin-top:0px;
+}
+
+.order_status {
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    border-left-color: #5cb85c;
+    animation-name: load_order;
+    animation-duration: .5s;
+    display: inline-block;
+}
+
+.order_status,
+.order_status:after {
+    border-radius: 50%;
+}
+
+.show_tick:after {
+    opacity: 1;
+    height: 40px;
+    width: 20px;
+    transform-origin: left top;
+    border-right: 3px solid #5cb85c;
+    border-top: 3px solid #5cb85c;
+    content: '';
+    top: 74px;
+    right: 50%;
+    position: absolute;
+}
+
+@keyframes load_order {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+@keyframes show_tick {
+  0% {
+    height: 0;
+    width: 0;
+    opacity: 1;
+  }
+  20% {
+    height: 0;
+    width: 20px;
+    opacity: 1;
+  }
+  40% {
+    height: 40px;
+    width: 20px;
+    opacity: 1;
+  }
+  100% {
+    height: 40px;
+    width: 20px;
+    opacity: 1;
+  }
+}

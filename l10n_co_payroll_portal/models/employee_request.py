@@ -4,15 +4,15 @@ from odoo.exceptions import UserError, ValidationError
 
 class CoPayrollPortalRequest(models.Model):
     _name = "l10n.co.payroll.portal.request"
-    _description = "Solicitud del portal de empleados"
+    _description = "Solicitud del portal de colaboradores"
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "create_date desc"
     _check_company_auto = True
 
-    name = fields.Char(required=True, default=lambda self: _("Solicitud de empleado"), tracking=True)
+    name = fields.Char(required=True, default=lambda self: _("Solicitud de colaborador"), tracking=True)
     company_id = fields.Many2one("res.company", required=True, default=lambda self: self.env.company, index=True)
-    employee_id = fields.Many2one("hr.employee", required=True, index=True)
-    request_type = fields.Selection([("vacation", "Vacaciones"), ("permission", "Permiso"), ("data_change", "Cambio de datos"), ("bank_change", "Cambio de cuenta bancaria"), ("certificate", "Certificado"), ("other", "Otra")], required=True, default="other")
+    employee_id = fields.Many2one("hr.employee", string="Colaborador", required=True, index=True)
+    request_type = fields.Selection([("vacation", "Vacaciones"), ("permission", "Permiso"), ("data_change", "Cambio de datos"), ("bank_change", "Cambio de cuenta bancaria"), ("certificate", "Certificado"), ("advance", "Anticipo de nómina"), ("loan", "Préstamo"), ("other", "Otra")], required=True, default="other")
     leave_type_id = fields.Many2one("hr.leave.type", string="Tipo de ausencia", domain="[('company_id', '=', company_id)]")
     bank_account_number = fields.Char(string="Nueva cuenta bancaria", copy=False)
     bank_name = fields.Char(string="Banco", copy=False)
@@ -21,6 +21,9 @@ class CoPayrollPortalRequest(models.Model):
     date_from = fields.Date()
     date_to = fields.Date()
     description = fields.Text(required=True)
+    requested_amount = fields.Monetary(string="Valor solicitado", currency_field="currency_id", copy=False)
+    installment_count = fields.Integer(string="Número de cuotas", copy=False)
+    currency_id = fields.Many2one(related="company_id.currency_id", store=True, readonly=True)
     state = fields.Selection([("draft", "Borrador"), ("submitted", "Enviada"), ("approved", "Aprobada"), ("rejected", "Rechazada"), ("cancelled", "Cancelada")], default="draft", required=True, tracking=True)
     requested_by = fields.Many2one("res.users", required=True, default=lambda self: self.env.user, readonly=True)
     reviewed_by = fields.Many2one("res.users", readonly=True)
@@ -48,6 +51,10 @@ class CoPayrollPortalRequest(models.Model):
                 account = "".join((record.bank_account_number or "").split())
                 if not account.isdigit() or len(account) < 4:
                     raise ValidationError(_("La cuenta bancaria debe contener únicamente números y al menos cuatro dígitos."))
+            if record.request_type in ("advance", "loan") and record.requested_amount <= 0:
+                raise ValidationError(_("El valor solicitado debe ser mayor que cero."))
+            if record.request_type == "loan" and record.installment_count < 1:
+                raise ValidationError(_("Un préstamo debe indicar al menos una cuota."))
 
     def action_submit(self):
         self.write({"state": "submitted"})
@@ -66,7 +73,7 @@ class CoPayrollPortalRequest(models.Model):
                     vals["applied_record"] = "hr.leave,%s" % leave.id
             elif record.request_type == "bank_change" and record.bank_account_number and "res.partner.bank" in self.env.registry.models:
                 if not record.employee_id.address_home_id:
-                    raise UserError(_("El empleado debe tener una dirección privada antes de aplicar el cambio bancario."))
+                    raise UserError(_("El colaborador debe tener una dirección privada antes de aplicar el cambio bancario."))
                 bank = self.env["res.bank"].sudo().search([("name", "ilike", record.bank_name)], limit=1) if record.bank_name else self.env["res.bank"]
                 account = self.env["res.partner.bank"].sudo().create({"acc_number": "".join(record.bank_account_number.split()), "bank_id": bank.id if bank else False, "partner_id": record.employee_id.address_home_id.id, "allow_out_payment": True})
                 if "bank_account_ids" in record.employee_id._fields:
