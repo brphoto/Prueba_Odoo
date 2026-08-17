@@ -1,0 +1,18 @@
+<odoo>
+    <record id="view_co_payroll_dian_rule_mapping_list" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.dian.rule.mapping.list</field>
+        <field name="model">l10n.co.payroll.rule.mapping</field>
+        <field name="inherit_id" ref="l10n_co_payroll.view_co_payroll_rule_mapping_list"/>
+        <field name="arch" type="xml">
+            <field name="concept_type" position="after"><field name="dian_concept"/></field>
+        </field>
+    </record>
+    <record id="view_co_payroll_dian_rule_mapping_form" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.dian.rule.mapping.form</field>
+        <field name="model">l10n.co.payroll.rule.mapping</field>
+        <field name="inherit_id" ref="l10n_co_payroll.view_co_payroll_rule_mapping_form"/>
+        <field name="arch" type="xml">
+            <field name="concept_type" position="after"><field name="dian_concept"/><field name="dian_notes"/></field>
+        </field>
+    </record>
+</odoo>

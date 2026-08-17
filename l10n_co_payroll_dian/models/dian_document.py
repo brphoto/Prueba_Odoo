@@ -1,11 +1,12 @@
 import base64
+import csv
 import hashlib
 import io
 import json
 import re
 import unicodedata
 import zipfile
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -78,8 +79,52 @@ class CoPayrollDianDocument(models.Model):
         [("1", "Producción"), ("2", "Habilitación")],
         string="Ambiente de envío", copy=False, readonly=True,
     )
+    preflight_state = fields.Selection([
+        ("pending", "Pendiente"), ("ok", "Listo"), ("warning", "Con advertencias"), ("error", "Con errores"),
+    ], string="Prevalidación", default="pending", copy=False, readonly=True, tracking=True)
+    preflight_message = fields.Text(string="Resultado de prevalidación", copy=False, readonly=True)
+    preflight_at = fields.Datetime(string="Fecha de prevalidación", copy=False, readonly=True)
+    retry_count = fields.Integer(string="Reintentos", copy=False, readonly=True)
+    next_retry_at = fields.Datetime(string="Próximo reintento", copy=False, readonly=True)
+    last_retry_at = fields.Datetime(string="Último reintento", copy=False, readonly=True)
+    approval_state = fields.Selection([
+        ("not_required", "No requerida"), ("pending", "Pendiente"), ("first_approved", "Primera aprobación"),
+        ("approved", "Aprobada"), ("rejected", "Rechazada"),
+    ], string="Aprobación de envío", default="not_required", copy=False, readonly=True, tracking=True)
+    approval_by = fields.Many2one("res.users", string="Aprobado por", copy=False, readonly=True)
+    approval_at = fields.Datetime(string="Fecha de aprobación", copy=False, readonly=True)
+    second_approval_by = fields.Many2one("res.users", string="Segunda aprobación", copy=False, readonly=True)
+    second_approval_at = fields.Datetime(string="Fecha segunda aprobación", copy=False, readonly=True)
+    source_gross = fields.Monetary(string="Devengado fuente", currency_field="currency_id", compute="_compute_reconciliation")
+    source_deductions = fields.Monetary(string="Deducciones fuente", currency_field="currency_id", compute="_compute_reconciliation")
+    source_net = fields.Monetary(string="Neto fuente", currency_field="currency_id", compute="_compute_reconciliation")
+    transmitted_net = fields.Monetary(string="Neto transmitido", currency_field="currency_id", compute="_compute_reconciliation")
+    mapping_summary = fields.Char(string="Mapeo DIAN", compute="_compute_mapping_summary")
     attempt_ids = fields.One2many("l10n.co.payroll.dian.attempt", "document_id", string="Trazabilidad", readonly=True)
     currency_id = fields.Many2one(related="company_id.currency_id", readonly=True)
+
+    @api.depends("period_line_id", "period_line_id.gross_wage", "period_line_id.deduction_total", "reconciliation_difference")
+    def _compute_reconciliation(self):
+        for document in self:
+            line = document.period_line_id
+            document.source_gross = line.gross_wage if line else 0.0
+            document.source_deductions = line.deduction_total if line else 0.0
+            document.source_net = document.source_gross - document.source_deductions
+            document.transmitted_net = document.source_net - (document.reconciliation_difference or 0.0)
+
+    @api.depends("period_id", "period_id.parameter_id", "period_line_id")
+    def _compute_mapping_summary(self):
+        for document in self:
+            if not document.period_id or not document.period_id.parameter_id:
+                document.mapping_summary = _("Sin versión legal")
+                continue
+            mappings = self.env["l10n.co.payroll.rule.mapping"].search([
+                ("company_id", "=", document.company_id.id),
+                ("parameter_id", "=", document.period_id.parameter_id.id),
+                ("active", "=", True),
+            ])
+            mapped = len(mappings.filtered("dian_concept"))
+            document.mapping_summary = _("%s reglas DIAN configuradas") % mapped
 
     _co_dian_document_number_unique = models.Constraint(
         "unique(company_id, name)",
@@ -155,6 +200,41 @@ class CoPayrollDianDocument(models.Model):
                     total += line.total or 0.0
         return abs(total)
 
+    def _explicit_dian_totals(self):
+        """Read DIAN concepts from configured payroll-rule mappings.
+
+        The heuristic name matching remains available for backwards compatibility,
+        but an explicit mapping can override every supported concept and exposes
+        unmapped payroll rules before transmission.
+        """
+        totals = {"devengados": {}, "deducciones": {}, "unmapped": []}
+        parameter = self.period_id.parameter_id
+        if not parameter:
+            return totals
+        mappings = self.env["l10n.co.payroll.rule.mapping"].search([
+            ("company_id", "=", self.company_id.id),
+            ("parameter_id", "=", parameter.id),
+            ("active", "=", True),
+            ("dian_concept", "!=", False),
+        ])
+        by_code = {mapping.code.upper(): mapping for mapping in mappings if mapping.code}
+        for payslip in self.period_line_id.source_payslip_ids:
+            for line in payslip.line_ids:
+                salary_rule = getattr(line, "salary_rule_id", False)
+                native_rule = getattr(salary_rule, "co_payroll_rule_id", False)
+                code = getattr(native_rule, "code", False) or getattr(salary_rule, "code", False)
+                if not code or not line.total:
+                    continue
+                mapping = by_code.get(str(code).upper())
+                if not mapping:
+                    totals["unmapped"].append(str(code).upper())
+                    continue
+                target = "deducciones" if mapping.concept_type in ("deduction", "employee_contribution") else "devengados"
+                key = mapping.dian_concept
+                totals[target][key] = totals[target].get(key, 0.0) + abs(line.total or 0.0)
+        totals["unmapped"] = sorted(set(totals["unmapped"]))
+        return totals
+
     def _xml_categories(self):
         line = self.period_line_id
         def amount(*keys):
@@ -227,7 +307,10 @@ class CoPayrollDianDocument(models.Model):
             "embargo_fiscal": line.embargo_deduction,
             "deuda": line.loan_deduction,
         }
-        return {"devengados": dev, "deducciones": ded}
+        explicit = self._explicit_dian_totals()
+        dev.update(explicit["devengados"])
+        ded.update(explicit["deducciones"])
+        return {"devengados": dev, "deducciones": ded, "unmapped": explicit["unmapped"]}
 
     def _allocate_number(self):
         if self.name:
@@ -442,6 +525,9 @@ class CoPayrollDianDocument(models.Model):
             errors.append(_("El documento requiere fecha de pago."))
         if float(record.get("dias_trabajados") or 0.0) <= 0:
             errors.append(_("El documento requiere días trabajados mayores que cero."))
+        unmapped = data.get("xml_categories", {}).get("unmapped", [])
+        if self.company_id.co_dian_require_explicit_mapping and unmapped:
+            errors.append(_("Reglas salariales sin mapeo DIAN explícito: %s") % ", ".join(unmapped[:20]))
         return errors
 
     def _log_attempt(self, operation, status, message="", detail=None, response=None):
@@ -470,6 +556,64 @@ class CoPayrollDianDocument(models.Model):
         if "timeout" in text or "connection" in text or "red" in text:
             return "network"
         return "data"
+
+    def action_prevalidate(self):
+        """Run business checks without signing or transmitting the XML."""
+        for document in self:
+            try:
+                data = document._build_context()
+                errors = document._validate_context(data)
+                if errors:
+                    document.write({
+                        "preflight_state": "error",
+                        "preflight_message": "\n".join(errors),
+                        "preflight_at": fields.Datetime.now(),
+                    })
+                else:
+                    document.write({
+                        "preflight_state": "ok",
+                        "preflight_message": _("Los datos están listos para generar el XML."),
+                        "preflight_at": fields.Datetime.now(),
+                    })
+            except Exception as exc:
+                document.write({
+                    "preflight_state": "error",
+                    "preflight_message": str(exc),
+                    "preflight_at": fields.Datetime.now(),
+                })
+        return {"type": "ir.actions.client", "tag": "reload"}
+
+    def _prepare_send_approval(self):
+        self.ensure_one()
+        mode = self.company_id.co_dian_approval_mode
+        if mode == "none":
+            if self.approval_state != "not_required":
+                self.write({"approval_state": "not_required", "approval_by": False, "approval_at": False, "second_approval_by": False, "second_approval_at": False})
+            return
+        if self.approval_state == "not_required":
+            self.write({"approval_state": "pending"})
+        if self.approval_state != "approved":
+            raise UserError(_("El documento requiere aprobación antes de enviarse a la DIAN."))
+
+    def action_approve_send(self):
+        if not (self.env.su or self.env.user._is_admin() or self.env.user.has_group("l10n_co_payroll.group_co_payroll_manager")):
+            raise UserError(_("Solo un supervisor puede aprobar el envío DIAN."))
+        for document in self:
+            mode = document.company_id.co_dian_approval_mode
+            if mode == "none":
+                raise UserError(_("La compañía no tiene aprobación de envío configurada."))
+            if document.state not in ("validated", "generated"):
+                raise UserError(_("Solo se pueden aprobar documentos validados localmente."))
+            if document.approval_state in ("pending", "rejected", "not_required"):
+                document.write({"approval_state": "approved" if mode == "single" else "first_approved", "approval_by": self.env.user.id, "approval_at": fields.Datetime.now()})
+            elif mode == "double" and document.approval_state == "first_approved":
+                if document.approval_by == self.env.user:
+                    raise UserError(_("La segunda aprobación debe realizarla un supervisor diferente."))
+                document.write({"approval_state": "approved", "second_approval_by": self.env.user.id, "second_approval_at": fields.Datetime.now()})
+            else:
+                raise UserError(_("El documento ya tiene la aprobación completa."))
+            document._log_attempt("approve", "success", _("Aprobación de envío registrada."))
+        return {"type": "ir.actions.client", "tag": "reload"}
 
     def action_generate(self):
         for document in self:
@@ -504,6 +648,8 @@ class CoPayrollDianDocument(models.Model):
                     "state": "validated", "generated_by": self.env.user.id, "generated_at": fields.Datetime.now(),
                     "xml_validation_errors": False, "error_message": False,
                     "error_category": False, "reconciliation_difference": data.get("source_reconciliation_difference", 0.0),
+                    "preflight_state": "ok", "preflight_message": _("Validación de negocio y XML completada."),
+                    "preflight_at": fields.Datetime.now(),
                 })
                 document._log_attempt("generate", "success", _("XML firmado y validado localmente."))
             except Exception as exc:
@@ -570,6 +716,7 @@ class CoPayrollDianDocument(models.Model):
 
     def action_send(self):
         for document in self:
+            document.company_id.action_co_dian_validate_configuration()
             if document.state not in ("validated", "generated", "pending"):
                 raise UserError(_("Solo se puede enviar un documento validado localmente."))
             if document.state == "pending":
@@ -578,6 +725,12 @@ class CoPayrollDianDocument(models.Model):
                 raise UserError(_("Este documento ya tiene una referencia DIAN y no debe reenviarse. Consulta primero su estado."))
             if document.company_id.co_dian_environment == "1" and document.company_id.co_dian_require_habilitation and not document.company_id.co_dian_habilitation_ready:
                 raise UserError(_("La compañía aún no cumple la habilitación mínima configurada: se requieren 4 nóminas y 4 notas de ajuste aceptadas."))
+            document._prepare_send_approval()
+            if document.preflight_state != "ok":
+                document.action_prevalidate()
+                document.invalidate_recordset(["preflight_state", "preflight_message"])
+                if document.preflight_state != "ok":
+                    raise UserError(_("La prevalidación no permite enviar el documento:\n%s") % (document.preflight_message or ""))
             if not document.xml_file or not document.zip_file:
                 document.action_generate()
             try:
@@ -589,13 +742,55 @@ class CoPayrollDianDocument(models.Model):
                     response = client.send_test_set_async(document.zip_filename, zip_bytes, document.company_id.co_dian_test_set_id)
                 else:
                     response = client.send_nomina_sync(zip_bytes, document.zip_filename)
-                document.write({"sent_by": self.env.user.id, "sent_at": fields.Datetime.now(), "attempt_count": document.attempt_count + 1, "submission_environment": document.company_id.co_dian_environment, "request_log": json.dumps(response.get("request_xml") if isinstance(response, dict) else {}, ensure_ascii=False, default=str)})
+                document.write({"sent_by": self.env.user.id, "sent_at": fields.Datetime.now(), "attempt_count": document.attempt_count + 1, "submission_environment": document.company_id.co_dian_environment, "request_log": json.dumps(response.get("request_xml") if isinstance(response, dict) else {}, ensure_ascii=False, default=str), "next_retry_at": False})
                 document._apply_response(response, "send")
             except (DianSoapError, UserError) as exc:
-                document.write({"state": "error", "error_message": str(exc), "error_category": document._classify_error(exc), "attempt_count": document.attempt_count + 1})
+                category = document._classify_error(exc)
+                retry_count = document.retry_count + 1 if category in ("network", "soap") else document.retry_count
+                can_retry = category in ("network", "soap") and document.company_id.co_dian_retry_enabled and retry_count <= document.company_id.co_dian_max_retries and not document.zip_key and not document.xml_document_key
+                next_retry = fields.Datetime.now() + timedelta(minutes=document.company_id.co_dian_retry_delay_minutes) if can_retry else False
+                document.write({"state": "error", "error_message": str(exc), "error_category": category, "attempt_count": document.attempt_count + 1, "retry_count": retry_count, "next_retry_at": next_retry})
                 document._log_attempt("send", "error", str(exc))
                 raise UserError(_("No fue posible transmitir a la DIAN: %s") % exc) from exc
         return {"type": "ir.actions.client", "tag": "reload"}
+
+    def action_retry_send(self):
+        for document in self:
+            if document.state != "error" or document.error_category not in ("network", "soap"):
+                raise UserError(_("Solo se pueden reintentar errores temporales de red o SOAP."))
+            if document.zip_key or document.xml_document_key:
+                raise UserError(_("El documento ya tiene referencia DIAN; consulta su estado en lugar de reenviarlo."))
+            if document.retry_count >= document.company_id.co_dian_max_retries:
+                raise UserError(_("Se alcanzó el máximo de reintentos configurado."))
+            document.write({"state": "validated", "last_retry_at": fields.Datetime.now(), "next_retry_at": False})
+            document.action_send()
+        return {"type": "ir.actions.client", "tag": "reload"}
+
+    def action_export_csv(self):
+        if not self:
+            raise UserError(_("Selecciona al menos un documento DIAN."))
+        output = io.StringIO(newline="")
+        writer = csv.writer(output)
+        writer.writerow([
+            "Número", "Empleado", "Periodo", "Tipo", "Estado", "Ambiente", "CUNE", "ZipKey",
+            "Código DIAN", "Mensaje", "Intentos", "Prevalidación",
+        ])
+        for document in self:
+            writer.writerow([
+                document.name or "", document.employee_id.display_name or "", document.period_id.display_name or "",
+                "Nota de ajuste" if document.is_adjustment else "Nómina", document.state or "",
+                document.submission_environment or document.company_id.co_dian_environment or "",
+                document.cune or "", document.zip_key or "", document.status_code or "",
+                document.error_message or document.status_message or "", document.attempt_count,
+                document.preflight_state or "",
+            ])
+        attachment = self.env["ir.attachment"].sudo().create({
+            "name": "nomina_dian_%s.csv" % fields.Date.context_today(self),
+            "type": "binary",
+            "datas": base64.b64encode(output.getvalue().encode("utf-8-sig")),
+            "mimetype": "text/csv",
+        })
+        return {"type": "ir.actions.act_url", "url": "/web/content/%s?download=true" % attachment.id, "target": "self"}
 
     def action_check_status(self):
         for document in self:
@@ -639,14 +834,19 @@ class CoPayrollDianDocument(models.Model):
     @api.model
     def _cron_check_pending(self):
         documents = self.search([
-            ("state", "=", "pending"),
-            "|", ("zip_key", "!=", False), ("cune", "!=", False),
             ("company_id.co_dian_auto_check_pending", "=", True),
+            "|",
+            "&", ("state", "=", "pending"), "|", ("zip_key", "!=", False), ("cune", "!=", False),
+            "&", ("state", "=", "error"), ("error_category", "in", ["network", "soap"]),
+            ("next_retry_at", "<=", fields.Datetime.now()),
         ], order="last_checked_at asc, id asc", limit=200)
         for document in documents:
             try:
                 with self.env.cr.savepoint():
-                    document.with_context(co_dian_cron=True).action_check_status()
+                    if document.state == "error":
+                        document.with_context(co_dian_cron=True).action_retry_send()
+                    else:
+                        document.with_context(co_dian_cron=True).action_check_status()
             except Exception:
                 # Un documento con un error inesperado no debe detener la consulta
                 # de los demás pendientes.
@@ -662,7 +862,7 @@ class CoPayrollDianAttempt(models.Model):
 
     document_id = fields.Many2one("l10n.co.payroll.dian.document", required=True, ondelete="cascade", index=True)
     company_id = fields.Many2one(related="document_id.company_id", store=True, readonly=True)
-    operation = fields.Selection([("generate", "Generación"), ("send", "Envío"), ("check_status", "Consulta"), ("fetch_response", "Respuesta")], required=True)
+    operation = fields.Selection([("generate", "Generación"), ("approve", "Aprobación"), ("send", "Envío"), ("check_status", "Consulta"), ("fetch_response", "Respuesta")], required=True)
     status = fields.Selection([("success", "Exitoso"), ("rejected", "Rechazado"), ("error", "Error")], required=True)
     message = fields.Text()
     technical_detail = fields.Text()

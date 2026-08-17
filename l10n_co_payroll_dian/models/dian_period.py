@@ -56,6 +56,29 @@ class CoPayrollDianPeriod(models.Model):
             documents.action_send()
         return {"type": "ir.actions.client", "tag": "reload"}
 
+    def action_prevalidate_dian_documents(self):
+        for period in self:
+            documents = period.dian_document_ids.filtered(lambda doc: not doc.is_adjustment and doc.state in ("draft", "error", "validated", "generated"))
+            if not documents:
+                raise UserError(_("No hay documentos DIAN disponibles para prevalidar."))
+            documents.action_prevalidate()
+        return {"type": "ir.actions.client", "tag": "reload"}
+
+    def action_approve_dian_documents(self):
+        for period in self:
+            documents = period.dian_document_ids.filtered(lambda doc: doc.state in ("validated", "generated") and doc.company_id.co_dian_approval_mode != "none")
+            if not documents:
+                raise UserError(_("No hay documentos que requieran aprobación DIAN."))
+            documents.action_approve_send()
+        return {"type": "ir.actions.client", "tag": "reload"}
+
+    def action_export_dian_csv(self):
+        self.ensure_one()
+        documents = self.dian_document_ids
+        if not documents:
+            raise UserError(_("El periodo no tiene documentos DIAN."))
+        return documents.action_export_csv()
+
     def action_check_dian_status(self):
         for period in self:
             period.dian_document_ids.filtered(lambda doc: doc.state == "pending" and (doc.zip_key or doc.cune)).action_check_status()

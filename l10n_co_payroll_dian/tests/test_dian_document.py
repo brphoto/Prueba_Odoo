@@ -102,3 +102,35 @@ class TestCoPayrollDianDocument(TransactionCase):
         xml = build_nomina_xml(context)
         self.assertIn(b"NominaIndividual", xml)
         self.assertIn(context["cune"].encode(), xml)
+
+    def test_prevalidation_and_single_approval(self):
+        company = self.env.company
+        company.write({
+            "vat": "900123456", "co_dian_payroll_enabled": True,
+            "co_dian_software_id": "software-test", "co_dian_software_pin": "pin-test",
+            "co_dian_approval_mode": "single",
+        })
+        employee = self.env["hr.employee"].create({"name": "Empleado Aprobación", "company_id": company.id, "identification_id": "123456789"})
+        period = self.env["l10n.co.payroll.period"].create({
+            "company_id": company.id, "date_from": "2026-05-01", "date_to": "2026-05-15",
+            "payment_date": "2026-05-15", "state": "ready",
+        })
+        line = self.env["l10n.co.payroll.period.line"].create({
+            "period_id": period.id, "employee_id": employee.id, "basic_wage": 2500000,
+            "gross_wage": 2500000, "deduction_total": 0, "worked_days": 15,
+        })
+        document = self.env["l10n.co.payroll.dian.document"].create({"company_id": company.id, "period_id": period.id, "period_line_id": line.id})
+        document.action_prevalidate()
+        self.assertEqual(document.preflight_state, "ok")
+        document.write({"state": "validated"})
+        document.action_approve_send()
+        self.assertEqual(document.approval_state, "approved")
+
+    def test_dashboard_counts_documents(self):
+        dashboard = self.env["l10n.co.payroll.dian.dashboard"].create({"company_id": self.env.company.id})
+        self.assertGreaterEqual(dashboard.total_count, 0)
+        self.assertGreaterEqual(dashboard.accepted_count, 0)
+        self.assertGreaterEqual(dashboard.pending_count, 0)
+
+    def test_pending_cron_domain_is_safe_without_documents(self):
+        self.assertTrue(self.env["l10n.co.payroll.dian.document"]._cron_check_pending())

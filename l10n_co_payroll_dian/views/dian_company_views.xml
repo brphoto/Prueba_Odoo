@@ -6,6 +6,8 @@
         <field name="arch" type="xml">
             <field name="vat" position="after">
                 <separator string="Nómina electrónica DIAN"/>
+                <button name="action_open_co_dian_dashboard" type="object" string="Abrir panel DIAN" class="oe_link" invisible="not co_dian_payroll_enabled"/>
+                <button name="action_open_co_dian_setup" type="object" string="Asistente de configuración" class="oe_link"/>
                 <field name="co_dian_payroll_enabled"/>
                 <field name="co_dian_environment" invisible="not co_dian_payroll_enabled"/>
                 <field name="co_dian_software_id" invisible="not co_dian_payroll_enabled"/>
@@ -18,6 +20,14 @@
                 <field name="co_dian_request_timeout" invisible="not co_dian_payroll_enabled"/>
                 <field name="co_dian_auto_check_pending" invisible="not co_dian_payroll_enabled"/>
                 <field name="co_dian_require_habilitation" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_require_explicit_mapping" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_approval_mode" invisible="not co_dian_payroll_enabled"/>
+                <separator string="Reintentos y alertas" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_retry_enabled" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_max_retries" invisible="not co_dian_payroll_enabled or not co_dian_retry_enabled"/>
+                <field name="co_dian_retry_delay_minutes" invisible="not co_dian_payroll_enabled or not co_dian_retry_enabled"/>
+                <field name="co_dian_certificate_alert_days" invisible="not co_dian_payroll_enabled"/>
+                <button name="action_co_dian_validate_configuration" type="object" string="Validar configuración" class="oe_link" invisible="not co_dian_payroll_enabled"/>
                 <button name="action_co_dian_validate_certificate" type="object" string="Validar certificado" class="oe_link" invisible="not co_dian_payroll_enabled"/>
                 <field name="co_dian_certificate_status" invisible="not co_dian_payroll_enabled"/>
                 <field name="co_dian_certificate_expiration" invisible="not co_dian_payroll_enabled"/>
@@ -25,6 +35,12 @@
                 <field name="co_dian_certificate_issuer" invisible="not co_dian_payroll_enabled or not co_dian_certificate_status"/>
                 <field name="co_dian_certificate_serial" invisible="not co_dian_payroll_enabled or not co_dian_certificate_status"/>
                 <field name="co_dian_certificate_fingerprint" invisible="not co_dian_payroll_enabled or not co_dian_certificate_status"/>
+                <separator string="Indicadores" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_document_count" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_accepted_count" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_pending_count" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_rejected_count" invisible="not co_dian_payroll_enabled"/>
+                <field name="co_dian_error_count" invisible="not co_dian_payroll_enabled"/>
                 <field name="co_dian_test_payroll_count" invisible="not co_dian_payroll_enabled"/>
                 <field name="co_dian_test_adjustment_count" invisible="not co_dian_payroll_enabled"/>
                 <field name="co_dian_habilitation_ready" invisible="not co_dian_payroll_enabled"/>

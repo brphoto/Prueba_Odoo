@@ -1,32 +1,62 @@
 <odoo>
+    <record id="view_co_payroll_dian_document_search" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.dian.document.search</field>
+        <field name="model">l10n.co.payroll.dian.document</field>
+        <field name="arch" type="xml">
+            <search string="Buscar documentos DIAN">
+                <field name="name"/><field name="employee_id"/><field name="period_id"/><field name="cune"/><field name="zip_key"/><field name="status_code"/>
+                <filter name="pending" string="Pendientes" domain="[('state', '=', 'pending')]"/>
+                <filter name="accepted" string="Aceptados" domain="[('state', '=', 'accepted')]"/>
+                <filter name="rejected" string="Rechazados" domain="[('state', '=', 'rejected')]"/>
+                <filter name="errors" string="Errores" domain="[('state', '=', 'error')]"/>
+                <filter name="preflight_errors" string="Prevalidación con errores" domain="[('preflight_state', '=', 'error')]"/>
+                <filter name="adjustments" string="Notas de ajuste" domain="[('is_adjustment', '=', True)]"/>
+                <separator/>
+                <filter name="habilitation" string="Habilitación" domain="[('submission_environment', '=', '2')]"/>
+                <filter name="production" string="Producción" domain="[('submission_environment', '=', '1')]"/>
+                <group>
+                    <filter name="group_period" string="Periodo" context="{'group_by': 'period_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_environment" string="Ambiente" context="{'group_by': 'submission_environment'}"/>
+                    <filter name="group_error" string="Categoría de error" context="{'group_by': 'error_category'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="view_co_payroll_dian_document_list" model="ir.ui.view">
         <field name="name">l10n.co.payroll.dian.document.list</field>
         <field name="model">l10n.co.payroll.dian.document</field>
         <field name="arch" type="xml">
             <list string="Nómina electrónica DIAN" decoration-success="state == 'accepted'" decoration-danger="state in ('rejected', 'error')" decoration-warning="state == 'pending'">
-                <field name="name"/>
-                <field name="period_id"/>
-                <field name="employee_id" widget="many2one_avatar_employee"/>
-                <field name="is_adjustment"/>
-                <field name="cune" optional="hide"/>
-                <field name="state" widget="badge"/>
-                <field name="status_code" optional="hide"/>
-                <field name="zip_key" optional="hide"/>
-                <field name="generated_at" optional="hide"/>
-                <field name="sent_at" optional="hide"/>
+                <header>
+                    <button name="action_prevalidate" type="object" string="Prevalidar"/>
+                    <button name="action_send" type="object" string="Enviar seleccionados" class="oe_highlight"/>
+                    <button name="action_check_status" type="object" string="Consultar seleccionados"/>
+                    <button name="action_retry_send" type="object" string="Reintentar"/>
+                    <button name="action_export_csv" type="object" string="Exportar CSV"/>
+                </header>
+                <field name="name"/><field name="period_id"/><field name="employee_id" widget="many2one_avatar_employee"/><field name="is_adjustment"/>
+                <field name="submission_environment" optional="hide"/><field name="cune" optional="hide"/><field name="state" widget="badge"/>
+                <field name="preflight_state" widget="badge" optional="hide"/><field name="status_code" optional="hide"/><field name="error_category" optional="hide"/>
+                <field name="zip_key" optional="hide"/><field name="generated_at" optional="hide"/><field name="sent_at" optional="hide"/>
             </list>
         </field>
     </record>
+
     <record id="view_co_payroll_dian_document_form" model="ir.ui.view">
         <field name="name">l10n.co.payroll.dian.document.form</field>
         <field name="model">l10n.co.payroll.dian.document</field>
         <field name="arch" type="xml">
             <form string="Nómina electrónica DIAN">
                 <header>
+                    <button name="action_prevalidate" type="object" string="Prevalidar" invisible="state in ('accepted', 'cancelled')" groups="l10n_co_payroll.group_co_payroll_user"/>
                     <button name="action_generate" type="object" string="Generar y firmar" class="oe_highlight" invisible="state not in ('draft', 'error')" groups="l10n_co_payroll.group_co_payroll_user"/>
                     <button name="action_validate_xml" type="object" string="Validar XML" invisible="not xml_file or state == 'cancelled'" groups="l10n_co_payroll.group_co_payroll_user"/>
+                    <button name="action_approve_send" type="object" string="Aprobar envío" invisible="state not in ('validated', 'generated') or approval_state == 'approved' or company_id.co_dian_approval_mode == 'none'" groups="l10n_co_payroll.group_co_payroll_manager"/>
                     <button name="action_send" type="object" string="Enviar a la DIAN" class="oe_highlight" invisible="state not in ('validated', 'generated')" groups="l10n_co_payroll.group_co_payroll_user" confirm="Se transmitirá este documento al ambiente configurado de la DIAN. ¿Deseas continuar?"/>
-                    <button name="action_check_status" type="object" string="Consultar estado" invisible="state != 'pending' or not zip_key" groups="l10n_co_payroll.group_co_payroll_user"/>
+                    <button name="action_retry_send" type="object" string="Reintentar envío" invisible="state != 'error' or error_category not in ('network', 'soap')" groups="l10n_co_payroll.group_co_payroll_user"/>
+                    <button name="action_check_status" type="object" string="Consultar estado" invisible="state != 'pending' or (not zip_key and not cune)" groups="l10n_co_payroll.group_co_payroll_user"/>
                     <button name="action_fetch_application_response" type="object" string="Obtener respuesta" invisible="not xml_document_key" groups="l10n_co_payroll.group_co_payroll_user"/>
                     <button name="action_create_adjustment" type="object" string="Crear nota de ajuste" invisible="state != 'accepted' or is_adjustment" groups="l10n_co_payroll.group_co_payroll_user"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,validated,pending,accepted,rejected"/>
@@ -35,55 +65,29 @@
                     <div class="oe_title"><h1><field name="name" placeholder="Se asigna al generar"/></h1></div>
                     <div class="alert alert-danger" role="alert" invisible="not error_message"><field name="error_message" nolabel="1"/></div>
                     <div class="alert alert-warning" role="alert" invisible="not status_message"><field name="status_message" nolabel="1"/></div>
+                    <div class="alert alert-info" role="alert" invisible="preflight_state != 'error'"><field name="preflight_message" nolabel="1"/></div>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_export_csv" type="object" class="oe_stat_button" icon="fa-download"><div class="o_stat_info"><span class="o_stat_text">Exportar</span><span class="o_stat_text">CSV</span></div></button>
+                    </div>
                     <group>
-                        <group string="Origen">
-                            <field name="company_id" readonly="state != 'draft'"/>
-                            <field name="period_id" readonly="state != 'draft'"/>
-                            <field name="period_line_id" readonly="state != 'draft'"/>
-                            <field name="employee_id"/>
-                            <field name="is_adjustment"/>
-                            <field name="tipo_nota" invisible="not is_adjustment"/>
-                            <field name="predecessor_id" invisible="not is_adjustment"/>
-                        </group>
-                        <group string="Identificación DIAN">
-                            <field name="prefix"/>
-                            <field name="consecutive"/>
-                            <field name="cune"/>
-                            <field name="status_code"/>
-                            <field name="zip_key"/>
-                            <field name="xml_document_key"/>
-                            <field name="attempt_count"/>
-                            <field name="last_query_operation"/>
-                            <field name="submission_environment"/>
-                            <field name="reconciliation_difference" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                        </group>
+                        <group string="Origen"><field name="company_id" readonly="state != 'draft'"/><field name="period_id" readonly="state != 'draft'"/><field name="period_line_id" readonly="state != 'draft'"/><field name="employee_id"/><field name="is_adjustment"/><field name="tipo_nota" invisible="not is_adjustment"/><field name="predecessor_id" invisible="not is_adjustment"/></group>
+                        <group string="Estado operativo"><field name="preflight_state" widget="badge"/><field name="mapping_summary"/><field name="approval_state" widget="badge"/><field name="submission_environment"/><field name="retry_count"/><field name="next_retry_at" invisible="not next_retry_at"/></group>
+                        <group string="Identificación DIAN"><field name="prefix"/><field name="consecutive"/><field name="cune"/><field name="status_code"/><field name="zip_key"/><field name="xml_document_key"/><field name="attempt_count"/><field name="last_query_operation"/></group>
+                        <group string="Conciliación"><field name="source_gross"/><field name="source_deductions"/><field name="source_net"/><field name="transmitted_net"/><field name="reconciliation_difference" widget="monetary" options="{'currency_field': 'currency_id'}"/></group>
                     </group>
                     <notebook>
-                        <page name="files" string="Archivos">
-                            <group><field name="xml_filename"/><field name="xml_file" filename="xml_filename"/><field name="zip_filename"/><field name="zip_file" filename="zip_filename"/><field name="application_response_filename"/><field name="application_response_file" filename="application_response_filename"/></group>
-                        </page>
-                        <page name="validation" string="Validación">
-                            <field name="xml_validation_errors" nolabel="1" placeholder="Sin errores locales."/>
-                            <field name="cune_seed" placeholder="Semilla CUNE"/>
-                            <field name="error_category"/>
-                        </page>
-                        <page name="communication" string="Comunicación DIAN">
-                            <group><field name="generated_by"/><field name="generated_at"/><field name="sent_by"/><field name="sent_at"/><field name="last_checked_at"/></group>
-                            <field name="request_log" nolabel="1" placeholder="Solicitud SOAP"/>
-                            <field name="response_log" nolabel="1" placeholder="Respuesta SOAP"/>
-                        </page>
-                        <page name="attempts" string="Trazabilidad">
-                            <field name="attempt_ids" readonly="1"><list create="false" delete="false"><field name="create_date"/><field name="operation"/><field name="status" widget="badge"/><field name="message"/><field name="zip_key"/></list></field>
-                        </page>
+                        <page name="files" string="Archivos"><group><field name="xml_filename"/><field name="xml_file" filename="xml_filename"/><field name="zip_filename"/><field name="zip_file" filename="zip_filename"/><field name="application_response_filename"/><field name="application_response_file" filename="application_response_filename"/></group></page>
+                        <page name="validation" string="Validación"><field name="preflight_message" nolabel="1" placeholder="Sin observaciones de prevalidación."/><field name="xml_validation_errors" nolabel="1" placeholder="Sin errores locales."/><field name="cune_seed" placeholder="Semilla CUNE"/><field name="error_category"/></page>
+                        <page name="communication" string="Comunicación DIAN"><group><field name="generated_by"/><field name="generated_at"/><field name="sent_by"/><field name="sent_at"/><field name="last_checked_at"/><field name="approval_by"/><field name="approval_at"/><field name="second_approval_by"/><field name="second_approval_at"/></group><field name="request_log" nolabel="1" placeholder="Solicitud SOAP"/><field name="response_log" nolabel="1" placeholder="Respuesta SOAP"/></page>
+                        <page name="attempts" string="Trazabilidad"><field name="attempt_ids" readonly="1"><list create="false" delete="false"><field name="create_date"/><field name="operation"/><field name="status" widget="badge"/><field name="message"/><field name="zip_key"/></list></field></page>
                     </notebook>
                 </sheet>
                 <chatter/>
             </form>
         </field>
     </record>
+
     <record id="action_co_payroll_dian_document" model="ir.actions.act_window">
-        <field name="name">Nómina electrónica DIAN</field>
-        <field name="res_model">l10n.co.payroll.dian.document</field>
-        <field name="view_mode">list,form</field>
+        <field name="name">Nómina electrónica DIAN</field><field name="res_model">l10n.co.payroll.dian.document</field><field name="view_mode">list,form</field><field name="search_view_id" ref="view_co_payroll_dian_document_search"/>
     </record>
 </odoo>

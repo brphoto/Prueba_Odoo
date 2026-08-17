@@ -1,4 +1,12 @@
 <odoo>
     <menuitem id="menu_co_payroll_dian" name="Nómina electrónica DIAN" parent="l10n_co_payroll.menu_l10n_co_payroll" sequence="65" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <record id="action_co_payroll_dian_dashboard_server" model="ir.actions.server">
+        <field name="name">Panel DIAN</field>
+        <field name="model_id" ref="base.model_res_company"/>
+        <field name="state">code</field>
+        <field name="code">action = env.company.action_open_co_dian_dashboard()</field>
+    </record>
+    <menuitem id="menu_co_payroll_dian_dashboard" name="Panel operativo" parent="menu_co_payroll_dian" action="action_co_payroll_dian_dashboard_server" sequence="5" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
     <menuitem id="menu_co_payroll_dian_documents" name="Documentos y envíos" parent="menu_co_payroll_dian" action="action_co_payroll_dian_document" sequence="10" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_dian_mappings" name="Mapeo de reglas DIAN" parent="menu_co_payroll_dian" action="l10n_co_payroll.action_co_payroll_rule_mapping" sequence="20" groups="l10n_co_payroll.group_co_payroll_manager"/>
 </odoo>
