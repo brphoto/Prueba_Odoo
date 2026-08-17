@@ -1,0 +1,198 @@
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
+
+
+class CoPayrollDianPayslip(models.Model):
+    _inherit = "hr.payslip"
+
+    co_dian_document_ids = fields.Many2many(
+        "l10n.co.payroll.dian.document",
+        string="Documentos DIAN",
+        compute="_compute_co_dian_status",
+    )
+    co_dian_document_id = fields.Many2one(
+        "l10n.co.payroll.dian.document",
+        string="Documento DIAN principal",
+        compute="_compute_co_dian_status",
+    )
+    co_dian_document_count = fields.Integer(
+        string="Documentos DIAN",
+        compute="_compute_co_dian_status",
+    )
+    co_dian_state = fields.Selection([
+        ("none", "Sin documento"),
+        ("draft", "Borrador"),
+        ("generated", "Generado / validado"),
+        ("pending", "Pendiente de respuesta DIAN"),
+        ("accepted", "Aceptado por la DIAN"),
+        ("rejected", "Rechazado"),
+        ("error", "Error"),
+    ], string="Estado DIAN", compute="_compute_co_dian_status")
+    co_dian_attention_level = fields.Selection(
+        related="co_dian_document_id.attention_level",
+        string="Nivel de atención DIAN",
+        readonly=True,
+    )
+    co_dian_attention_message = fields.Char(
+        related="co_dian_document_id.attention_message",
+        string="Seguimiento DIAN",
+        readonly=True,
+    )
+    co_dian_number = fields.Char(
+        related="co_dian_document_id.name",
+        string="Número DIAN",
+        readonly=True,
+    )
+    co_dian_cune = fields.Char(
+        related="co_dian_document_id.cune",
+        string="CUNE",
+        readonly=True,
+    )
+    co_dian_status_code = fields.Char(
+        related="co_dian_document_id.status_code",
+        string="Código DIAN",
+        readonly=True,
+    )
+    co_dian_status_message = fields.Text(
+        related="co_dian_document_id.status_message",
+        string="Respuesta DIAN",
+        readonly=True,
+    )
+    co_dian_environment = fields.Selection(
+        related="co_dian_document_id.submission_environment",
+        string="Ambiente DIAN",
+        readonly=True,
+    )
+    co_dian_generated_at = fields.Datetime(
+        related="co_dian_document_id.generated_at",
+        string="Generado el",
+        readonly=True,
+    )
+    co_dian_sent_at = fields.Datetime(
+        related="co_dian_document_id.sent_at",
+        string="Enviado el",
+        readonly=True,
+    )
+    co_dian_last_checked_at = fields.Datetime(
+        related="co_dian_document_id.last_checked_at",
+        string="Última consulta DIAN",
+        readonly=True,
+    )
+    co_dian_zip_key = fields.Char(
+        related="co_dian_document_id.zip_key",
+        string="ZipKey / Track ID",
+        readonly=True,
+    )
+    co_dian_xml_document_key = fields.Char(
+        related="co_dian_document_id.xml_document_key",
+        string="XmlDocumentKey",
+        readonly=True,
+    )
+
+    @api.depends("employee_id", "date_from", "date_to")
+    def _compute_co_dian_status(self):
+        period_line_model = self.env["l10n.co.payroll.period.line"]
+        document_model = self.env["l10n.co.payroll.dian.document"]
+        for slip in self:
+            lines = period_line_model.search([
+                ("source_payslip_ids", "in", slip.id),
+            ])
+            documents = document_model.search([
+                ("period_line_id", "in", lines.ids),
+                ("is_adjustment", "=", False),
+            ], order="id desc") if lines else document_model
+            slip.co_dian_document_ids = documents
+            slip.co_dian_document_id = documents[:1].id if documents else False
+            slip.co_dian_document_count = len(documents)
+            if not documents:
+                slip.co_dian_state = "none"
+            elif documents.filtered(lambda doc: doc.state == "error"):
+                slip.co_dian_state = "error"
+            elif documents.filtered(lambda doc: doc.state == "rejected"):
+                slip.co_dian_state = "rejected"
+            elif documents.filtered(lambda doc: doc.state == "pending"):
+                slip.co_dian_state = "pending"
+            elif documents.filtered(lambda doc: doc.state in ("validated", "generated")):
+                slip.co_dian_state = "generated"
+            elif all(doc.state == "accepted" for doc in documents):
+                slip.co_dian_state = "accepted"
+            else:
+                slip.co_dian_state = "draft"
+
+    def _co_dian_find_documents(self):
+        self.ensure_one()
+        period_line_model = self.env["l10n.co.payroll.period.line"]
+        document_model = self.env["l10n.co.payroll.dian.document"]
+        lines = period_line_model.search([("source_payslip_ids", "in", self.id)])
+        if not lines:
+            raise UserError(_("Este recibo aún no está asociado a una línea de período de Nómina Colombia."))
+        return document_model.search([
+            ("period_line_id", "in", lines.ids),
+            ("is_adjustment", "=", False),
+        ], order="id desc")
+
+    def _co_dian_get_or_create_documents(self):
+        self.ensure_one()
+        documents = self._co_dian_find_documents()
+        if not documents:
+            period_line_model = self.env["l10n.co.payroll.period.line"]
+            document_model = self.env["l10n.co.payroll.dian.document"]
+            lines = period_line_model.search([("source_payslip_ids", "in", self.id)])
+            documents = document_model.create({
+                "period_id": lines[0].period_id.id,
+                "period_line_id": lines[0].id,
+                "company_id": lines[0].company_id.id,
+            })
+        return documents
+
+    def action_co_dian_open_document(self):
+        self.ensure_one()
+        documents = self._co_dian_find_documents()
+        if not documents:
+            raise UserError(_("Este recibo todavía no tiene un documento DIAN generado."))
+        if len(documents) == 1:
+            return {
+                "type": "ir.actions.act_window",
+                "name": _("Documento DIAN"),
+                "res_model": "l10n.co.payroll.dian.document",
+                "view_mode": "form",
+                "res_id": documents.id,
+            }
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Documentos DIAN del recibo"),
+            "res_model": "l10n.co.payroll.dian.document",
+            "view_mode": "list,form",
+            "domain": [("id", "in", documents.ids)],
+        }
+
+    def action_co_dian_generate_document(self):
+        for slip in self:
+            documents = slip._co_dian_get_or_create_documents()
+            documents.filtered(lambda doc: doc.state in ("draft", "error")).action_generate()
+        return {"type": "ir.actions.client", "tag": "reload"}
+
+    def action_co_dian_prevalidate_document(self):
+        for slip in self:
+            slip._co_dian_get_or_create_documents().action_prevalidate()
+        return {"type": "ir.actions.client", "tag": "reload"}
+
+    def action_co_dian_send_document(self):
+        for slip in self:
+            documents = slip._co_dian_find_documents().filtered(
+                lambda doc: doc.state in ("validated", "generated")
+            )
+            if not documents:
+                raise UserError(_("Este recibo no tiene un documento DIAN listo para enviar."))
+            documents.action_send()
+        return {"type": "ir.actions.client", "tag": "reload"}
+
+    def action_co_dian_check_document(self):
+        for slip in self:
+            documents = slip._co_dian_find_documents().filtered(
+                lambda doc: doc.state == "pending" and (doc.zip_key or doc.cune)
+            )
+            if not documents:
+                raise UserError(_("Este recibo no tiene un envío DIAN pendiente de consulta."))
+            documents.action_check_status()
+        return {"type": "ir.actions.client", "tag": "reload"}

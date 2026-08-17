@@ -1,0 +1,52 @@
+<odoo>
+    <record id="view_hr_payslip_co_payroll_dian" model="ir.ui.view">
+        <field name="name">hr.payslip.l10n.co.payroll.dian</field>
+        <field name="model">hr.payslip</field>
+        <field name="inherit_id" ref="l10n_co_payroll.view_hr_payslip_co_payroll"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='co_payroll_rules']" position="inside">
+                <separator string="Seguimiento de nómina electrónica DIAN"/>
+                <div class="alert alert-success" role="alert" invisible="co_dian_state != 'accepted'">
+                    <span class="fa fa-check-circle me-2" title="Aceptado"/>
+                    Este recibo fue aceptado por la DIAN.
+                </div>
+                <div class="alert alert-warning" role="alert" invisible="co_dian_state != 'pending'">
+                    <span class="fa fa-clock-o me-2" title="Pendiente"/>
+                    El documento fue enviado y está pendiente de respuesta de la DIAN.
+                </div>
+                <div class="alert alert-danger" role="alert" invisible="co_dian_state not in ('rejected', 'error')">
+                    <span class="fa fa-exclamation-triangle me-2" title="Requiere atención"/>
+                    <field name="co_dian_attention_message" nolabel="1"/>
+                </div>
+                <group string="Estado del envío">
+                    <group>
+                        <field name="co_dian_state" widget="badge"/>
+                        <field name="co_dian_document_count"/>
+                        <field name="co_dian_number"/>
+                        <field name="co_dian_environment"/>
+                        <field name="co_dian_attention_level" widget="badge"/>
+                    </group>
+                    <group>
+                        <field name="co_dian_generated_at"/>
+                        <field name="co_dian_sent_at"/>
+                        <field name="co_dian_last_checked_at"/>
+                        <field name="co_dian_status_code"/>
+                        <field name="co_dian_cune"/>
+                    </group>
+                </group>
+                <group string="Respuesta y trazabilidad" invisible="co_dian_state in ('none', 'draft')">
+                    <field name="co_dian_status_message" nolabel="1" placeholder="Sin mensaje de respuesta."/>
+                    <field name="co_dian_zip_key"/>
+                    <field name="co_dian_xml_document_key"/>
+                </group>
+                <group>
+                    <button name="action_co_dian_open_document" type="object" string="Ver documento DIAN" class="oe_link"/>
+                    <button name="action_co_dian_prevalidate_document" type="object" string="Prevalidar" invisible="co_dian_state in ('accepted', 'pending')"/>
+                    <button name="action_co_dian_generate_document" type="object" string="Generar y firmar" class="oe_highlight" invisible="co_dian_state not in ('none', 'draft', 'error')"/>
+                    <button name="action_co_dian_send_document" type="object" string="Enviar a la DIAN" class="oe_highlight" invisible="co_dian_state not in ('generated',)" confirm="Se transmitirá este documento al ambiente DIAN configurado. ¿Deseas continuar?"/>
+                    <button name="action_co_dian_check_document" type="object" string="Consultar estado DIAN" invisible="co_dian_state != 'pending'"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

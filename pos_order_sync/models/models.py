@@ -130,7 +130,13 @@ class PosOrder(models.Model):
     def _load_pos_data_fields(self, config):
         """Expose synchronization fields to Odoo 19's POS data loader."""
         result = super()._load_pos_data_fields(config)
-        result += ['quote_id', 'seller_name', 'cashier_name', 'quote_name']
+        # Odoo 19's PosOrder model computes prices from ``this.lines``.
+        # The relation must be part of the POS data definition; otherwise
+        # newly-created orders receive no ``lines`` property and the POS
+        # crashes in PosOrderAccounting._computeAllPrices().
+        for field_name in ['lines', 'quote_id', 'seller_name', 'cashier_name', 'quote_name']:
+            if field_name not in result:
+                result.append(field_name)
         return result
 
     @api.model_create_multi

@@ -23,6 +23,7 @@
         "views/dian_company_views.xml",
         "views/dian_document_views.xml",
         "views/dian_period_views.xml",
+        "views/dian_payslip_views.xml",
         "views/dian_dashboard_views.xml",
         "views/dian_rule_mapping_views.xml",
         "views/dian_menu.xml",
