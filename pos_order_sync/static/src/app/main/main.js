@@ -49,6 +49,14 @@ patch(PosOrder.prototype, {
 
 
 patch(PosStore.prototype, {
+    async setup(...args) {
+        await super.setup(...args);
+        this.all_quotes = Array.isArray(this.all_quotes) ? this.all_quotes : [];
+        this._quotePollingTimer = null;
+        this._quotePollingBusy = false;
+        this._startQuotePolling();
+    },
+
     get orders() {
         return this.models?.["pos.order"]?.getAll() || [];
     },
@@ -65,21 +73,17 @@ patch(PosStore.prototype, {
     async processServerData() {
         var self = this;
         await super.processServerData();
+        self.all_quotes = Array.isArray(self.all_quotes) ? self.all_quotes : [];
         const pos_sessions = await self.env.services.orm.searchRead(
             "pos.session",
             [["state", "=", "opened"], ["id", "!=", odoo.pos_session_id]]
         );
-        if (pos_sessions) {
-            var other_config_ids = [];
-            var other_active_session = pos_sessions;
-            var config_list = pos_sessions.map(function (el) {
-                return el.config_id[0];
-            });
-            other_config_ids = config_list;
-            self.other_config_ids = other_config_ids;
-            self.other_active_session = other_active_session;
-            self.all_quotes = [];
-        }
+        var other_active_session = Array.isArray(pos_sessions) ? pos_sessions : [];
+        var config_list = other_active_session
+            .map((el) => el.config_id?.[0])
+            .filter(Boolean);
+        self.other_config_ids = [...new Set(config_list)];
+        self.other_active_session = other_active_session;
         if (self.other_active_session) {
             const floors = await self.env.services.orm.silent.call(
                 "pos.config",
@@ -100,6 +104,71 @@ patch(PosStore.prototype, {
         }
     },
 
+    _updateQuoteIndicator() {
+        const quotes = Array.isArray(this.all_quotes) ? this.all_quotes : [];
+        const count = quotes.filter((quote) => !quote.loaded).length;
+        const indicator = document.getElementById("new_quote_notification");
+        const counter = document.querySelector("#new_quote_notification .quotation_count");
+        if (counter) counter.textContent = count ? String(count) : "";
+        if (indicator) {
+            indicator.style.color = count ? "rgb(79, 207, 228)" : "rgb(58, 133, 141)";
+            indicator.title = count
+                ? `${count} pedido(s) recibido(s). Abrir pedidos recibidos`
+                : "No hay pedidos recibidos";
+            indicator.setAttribute("aria-label", indicator.title);
+        }
+    },
+
+    markQuoteLoaded(quoteId) {
+        const quote = (this.all_quotes || []).find((item) => item.quote_id === quoteId);
+        if (quote) quote.loaded = true;
+        this._updateQuoteIndicator();
+    },
+
+    async refreshIncomingQuotes(showNotification = false) {
+        if (this._quotePollingBusy || !this.session?.id) return [];
+        this._quotePollingBusy = true;
+        try {
+            const knownQuotes = Array.isArray(this.all_quotes) ? this.all_quotes : [];
+            const knownIds = new Set(knownQuotes.map((quote) => quote.quote_id).filter(Boolean));
+            const result = await this.env.services.orm.silent.call(
+                "pos.quote",
+                "search_all_record",
+                [{
+                    quote_ids: [...knownIds],
+                    session_id: this.session.id,
+                }]
+            );
+            const incoming = Array.isArray(result?.quote_list) ? result.quote_list : [];
+            const fresh = incoming.filter((quote) => !knownIds.has(quote.quote_id));
+            if (fresh.length) {
+                this.all_quotes = [...fresh, ...knownQuotes];
+                if (showNotification && this.notification) {
+                    const message = fresh.length === 1
+                        ? `Nuevo pedido recibido desde ${fresh[0].from_session_id || "otra caja"}.`
+                        : `${fresh.length} pedidos nuevos recibidos.`;
+                    this.notification.add(message, { type: "info", title: "Pedido entre cajas" });
+                }
+            }
+            this._updateQuoteIndicator();
+            return fresh;
+        } catch (error) {
+            console.warn("No se pudieron consultar pedidos recibidos:", error);
+            return [];
+        } finally {
+            this._quotePollingBusy = false;
+        }
+    },
+
+    _startQuotePolling() {
+        if (this._quotePollingTimer) return;
+        this.refreshIncomingQuotes(false);
+        this._quotePollingTimer = window.setInterval(
+            () => this.refreshIncomingQuotes(true),
+            5000
+        );
+    },
+
     getSyncAllOrdersContext(orders, options = {}) {
         var self = this;
         var data = super.getSyncAllOrdersContext(...arguments);
@@ -109,7 +178,7 @@ patch(PosStore.prototype, {
             self.env.services.orm.write("pos.quote", [order.quote_id], { state: "done" });
             var quote_list = [];
             var result_list_length;
-            var all_quotes = self.all_quotes;
+            var all_quotes = Array.isArray(self.all_quotes) ? self.all_quotes : [];
             var session_id = self.session.id;
             all_quotes.forEach(function (quote) {
                 if (quote.quote_obj_id === order.quote_id) {
@@ -153,10 +222,11 @@ patch(ReceiptScreen.prototype, {
     },
     WkOnMounted() {
         var self = this;
-        var all_quotes = self.pos.all_quotes;
+        var all_quotes = (Array.isArray(self.pos.all_quotes) ? self.pos.all_quotes : [])
+            .filter((quote) => !quote.loaded);
         var index = null;
         var current_order = self.pos.get_order();
-        if (current_order.quote_name) {
+        if (current_order?.quote_name) {
             for (var i = 0; i < all_quotes.length; i++) {
                 if (all_quotes[i].quote_id == current_order.quote_name) {
                     index = i;
@@ -400,92 +470,52 @@ patch(Navbar.prototype, {
 
     async click_new_quote_notification() {
         var self = this;
-        self.update_new_quote_list();
-        setTimeout(async function () {
-            $(".quotation_count").show();
-            $(".fa-shopping-cart").show();
-            $(".wk_loading").hide();
-            var all_quotes_length = self.pos.all_quotes.length;
+        $(".wk_loading").show();
+        await self.pos.refreshIncomingQuotes(false);
+        $(".wk_loading").hide();
+        $(".quotation_count").show();
+        $(".fa-shopping-cart").show();
 
-            if (all_quotes_length == 0) {
-                $("#order_quote_notification").text("No quote available");
-                $("#order_quote_notification").fadeIn();
-                setTimeout(function () {
-                    $("#order_quote_notification").fadeOut();
-                }, 2000);
-            } else if (all_quotes_length == 1) {
+        var all_quotes = Array.isArray(self.pos.all_quotes) ? self.pos.all_quotes : [];
+        var all_quotes_length = all_quotes.length;
+        self.pos._updateQuoteIndicator();
+
+        if (all_quotes_length == 0) {
+            $("#order_quote_notification").text("No hay pedidos recibidos");
+            $("#order_quote_notification").fadeIn();
+            setTimeout(function () {
+                $("#order_quote_notification").fadeOut();
+            }, 2000);
+        } else if (all_quotes_length == 1) {
                 var all_pos_orders = self.pos.orders || [];
                 let already_loaded = false;
 
                 already_loaded = all_pos_orders.find(function (pos_order) {
-                    return pos_order.quote_name && pos_order.quote_name == self.pos.all_quotes[0].quote_id;
+                    return pos_order.quote_name && pos_order.quote_name == all_quotes[0].quote_id;
                 });
                 if (already_loaded) {
                     self.dialog.add(MyMessagePopup, {
-                        title: "Quotation is already loaded",
+                        title: "Pedido ya cargado",
                         body:
-                            "This quotation is already loaded & in progress. Please proceed with Order Reference " +
+                            "Este pedido ya está cargado. Continúe con la referencia " +
                             already_loaded.sequence_number,
                     });
                     return;
                 }
 
-                var quote_dict = self.pos.all_quotes[0];
-                var set = false;
-
-                if (self.pos.config.module_pos_restaurant && self.pos.config.floor_ids) {
-                    if (quote_dict.table_json) {
-                        var table_data = JSON.parse(quote_dict.table_json);
-                        if (table_data) {
-                            var table_id = table_data.table_json[0].table_id;
-                            var floor_id = table_data.table_json[1].floor_id;
-                            if (floor_id && table_id) {
-                                const floor = await self.env.services.orm.searchRead("restaurant.floor", [["id", "=", floor_id]], []);
-                                if (floor) {
-                                    floor.table_ids.forEach(async function (id) {
-                                        if (id == table_id) {
-                                            set = true;
-                                            const table = await self.env.services.orm.searchRead("restaurant.table", [["id", "=", id]], []);
-                                            self.pos.setTable(table);
-                                            self.pos.add_new_order();
-                                            var temp = await self.check_to_load(quote_dict);
-                                            if (temp) {
-                                                await self.set_order(quote_dict);
-                                            }
-                                        }
-                                    });
-                                }
-                            }
-                        }
-                    }
+                var quote_dict = all_quotes[0];
+                self.pos.add_new_order();
+                var temp = await self.check_to_load(quote_dict);
+                if (temp) {
+                    await self.set_order(quote_dict);
                 }
-
-                if (!set) {
-                    self.pos.add_new_order();
-                    var temp = await self.check_to_load(quote_dict);
-                    if (temp) {
-                        await self.set_order(quote_dict);
-                    }
-                }
+        } else {
+            if ($(".floor-screen.screen").is(":visible")) {
+                self.pos.showScreen("AllQuotesListScreenWidget");
             } else {
-                if ($(".floor-screen.screen").is(":visible")) {
-                    if (self.pos.config.floor_ids && self.pos.config.floor_ids.length) {
-                        let wkFloorId = self.pos.config.floor_ids[0];
-                        const floor = await self.env.services.orm.searchRead("restaurant.floor", [["id", "=", wkFloorId]], []);
-                        if (floor) {
-                            let wkTableId = floor.table_ids[0];
-                            const table = await self.env.services.orm.searchRead("restaurant.table", [["id", "=", wkTableId]], []);
-                            if (table) {
-                                self.pos.setTable(table);
-                                self.pos.showScreen("AllQuotesListScreenWidget");
-                            }
-                        }
-                    }
-                } else {
-                    self.pos.showScreen("AllQuotesListScreenWidget");
-                }
+                self.pos.showScreen("AllQuotesListScreenWidget");
             }
-        }, 1500);
+        }
     },
 
     // ============================================================
@@ -523,7 +553,7 @@ patch(Navbar.prototype, {
         var self = this;
 
         await self.dialog.add(QuoteSendPopupWidget, {
-            quote_status: "Order Loaded !!!",
+            quote_status: "Pedido recibido: listo para revisar",
         });
 
         var new_order = self.pos.get_order();
@@ -580,6 +610,7 @@ patch(Navbar.prototype, {
         new_order.quote_name = quote_dict.quote_id || "";
         new_order.seller_name = quote_dict.seller_name || "";
         new_order.setInternalNote(quote_dict.note || "");
+        self.pos.markQuoteLoaded(quote_dict.quote_id);
         //new_order.quote_name = quote_dict.quote_id || "";
 
         console.log("new_order.seller_name =", new_order.seller_name);
@@ -589,32 +620,7 @@ patch(Navbar.prototype, {
     },
 
     async update_new_quote_list() {
-        var self = this;
-        var session_id = self.pos.session.id;
-        var quote_list = [];
-        self.pos.all_quotes.forEach(function (quote) {
-            quote_list.push(quote.quote_id);
-        });
-
-        $(".quotation_count").hide();
-        $(".fa-shopping-cart").hide();
-        $(".wk_loading").show();
-
-        const result = await self.env.services.orm.silent.call("pos.quote", "search_all_record", [
-            {
-                quote_ids: quote_list,
-                session_id: session_id,
-            },
-        ]);
-
-        if (result) {
-            result.quote_list.forEach(function (quote) {
-                self.pos.all_quotes.unshift(quote);
-            });
-            if (self.pos.all_quotes.length) $("#new_quote_notification").css("color", "rgb(79, 207, 228)");
-            else $("#new_quote_notification").css("color", "rgb(58, 133, 141)");
-            $(".quotation_count").text(self.pos.all_quotes.length);
-        }
+        return this.pos.refreshIncomingQuotes(false);
     },
 });
 
@@ -624,13 +630,20 @@ patch(Navbar.prototype, {
 export class QuoteHistoryPopupWidget extends Component {
     static template = "pos_order_sync.QuoteHistoryPopupWidget";
     static components = { Dialog };
-    static props = ["close", "qoutes"];
+    static props = {
+        close: Function,
+        qoutes: { type: Array, optional: true },
+    };
 }
 
 export class MyMessagePopup extends Component {
     static template = "pos_order_sync.MyMessagePopup";
     static components = { Dialog };
-    static props = ["close", "title", "body"];
+    static props = {
+        close: Function,
+        title: { type: String, optional: true },
+        body: { type: String, optional: true },
+    };
 }
 
 export class QuoteSendPopupWidget extends Component {
@@ -679,7 +692,11 @@ export class QuoteSendPopupWidget extends Component {
 export class WkErrorNotifyPopopWidget extends Component {
     static template = "pos_order_sync.WkErrorNotifyPopopWidget";
     static components = { Dialog };
-    static props = ["close", "title", "body"];
+    static props = {
+        close: Function,
+        title: { type: String, optional: true },
+        body: { type: String, optional: true },
+    };
 }
 
 export class WkQuoteLine extends Component {
@@ -852,7 +869,7 @@ export class AllQuotesListScreenWidget extends Component {
 
     async qoute_line(quote_id) {
         var self = this;
-        var quotes = self.pos.all_quotes;
+        var quotes = Array.isArray(self.pos.all_quotes) ? self.pos.all_quotes : [];
         var clicked_quote_id = quote_id;
         var quote_dict;
         quotes.forEach(function (quote) {
@@ -860,6 +877,14 @@ export class AllQuotesListScreenWidget extends Component {
                 quote_dict = quote;
             }
         });
+
+        if (!quote_dict) {
+            self.dialog.add(MyMessagePopup, {
+                title: "Pedido no disponible",
+                body: "El pedido ya fue cargado o ya no está disponible.",
+            });
+            return;
+        }
 
         let already_loaded = false;
         var all_pos_orders = self.pos.orders || [];
@@ -952,7 +977,10 @@ export class AllQuotesListScreenWidget extends Component {
 
     get quoteline() {
         var self = this;
-        var all_quotations_for_customer = self.pos.all_quotes;
+        var all_quotations_for_customer = Array.isArray(self.pos.all_quotes)
+            ? self.pos.all_quotes
+            : [];
+        all_quotations_for_customer = all_quotations_for_customer.filter((quote) => !quote.loaded);
         var intput_txt = $(".quotation_search").val();
         if (intput_txt != undefined && intput_txt != "") {
             var new_quotation_data = [];
@@ -975,7 +1003,7 @@ export class AllQuotesListScreenWidget extends Component {
         var self = this;
 
         await self.dialog.add(QuoteSendPopupWidget, {
-            quote_status: "Order Loaded !!!",
+            quote_status: "Pedido recibido: listo para revisar",
         });
 
         var new_order = self.pos.get_order();
@@ -1027,6 +1055,7 @@ export class AllQuotesListScreenWidget extends Component {
         new_order.quote_name = quote_dict.quote_id || "";
         new_order.seller_name = quote_dict.seller_name || "";
         new_order.setInternalNote(quote_dict.note || "");
+        self.pos.markQuoteLoaded(quote_dict.quote_id);
 
         console.log("new_order.seller_name =", new_order.seller_name);
         console.log("new_order =", new_order);
@@ -1048,7 +1077,7 @@ registry.category("pos_pages").add("AllQuotesListScreenWidget", {
 export class SaveAsOrderQuotePopupWidget extends Component {
     static template = "pos_order_sync.SaveAsOrderQuotePopupWidget";
     static components = { Dialog };
-    static props = ["close"];
+    static props = { close: Function };
     setup() {
         this.dialog = useService("dialog");
         this.pos = usePos();
@@ -1315,7 +1344,9 @@ export class SaveAsOrderQuotePopupWidget extends Component {
                                 if (new_quote_id && current_order.get_partner()) {
                                     if (print_order_quote == true) self.pos.get_order().created_quote_id = new_quote_id;
                                     self.props.close();
-                                    self.dialog.add(QuoteSendPopupWidget, {});
+                                    self.dialog.add(QuoteSendPopupWidget, {
+                                        quote_status: "Pedido enviado a la caja destino",
+                                    });
                                 }
                             } catch {
                                 self.dialog.add(WkErrorNotifyPopopWidget, {
