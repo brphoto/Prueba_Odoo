@@ -340,6 +340,8 @@ class PosQuotes(models.Model):
                 orderline['price_unit'] = line.price_unit
                 orderline['qty'] = line.qty
                 orderline['discount'] = line.discount
+                orderline['note'] = line.note or '[]'
+                orderline['customer_note'] = line.customer_note or ''
                 orderline['so_reference'] = line.so_reference
                 orderline['sale_order_origin_id'] = [
                     line.sale_order_origin_id.id,
@@ -408,6 +410,8 @@ class PosQuoteLine(models.Model):
     so_reference = fields.Char("Referencia SO")
     sale_order_origin_id = fields.Many2one('sale.order', string="Linked Sale Order")
     notice = fields.Char('Discount Notice')
+    note = fields.Text('Nota interna de línea')
+    customer_note = fields.Text('Nota de línea')
 
     @api.model_create_multi
     def create(self, vals_list):

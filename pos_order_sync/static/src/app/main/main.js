@@ -680,6 +680,8 @@ patch(Navbar.prototype, {
                     product_id: product,
                     price_unit: line.price_unit,
                     qty: line.qty,
+                    note: normalizeInternalNote(line.note),
+                    customer_note: line.customer_note || "",
                     so_reference: line.so_reference,
                     sale_order_origin_id: sale_order_origin_id,
                 });
@@ -1144,6 +1146,8 @@ export class AllQuotesListScreenWidget extends Component {
                     product_id: product,
                     price_unit: line.price_unit,
                     qty: line.qty,
+                    note: normalizeInternalNote(line.note),
+                    customer_note: line.customer_note || "",
                     so_reference: line.so_reference,
                     sale_order_origin_id: sale_order_origin_id,
                 });
@@ -1393,6 +1397,12 @@ export class SaveAsOrderQuotePopupWidget extends Component {
                     order_line_vals.discount = orderline.discount;
                     order_line_vals.price_subtotal = orderline.priceExcl;
                     order_line_vals.price_subtotal_incl = orderline.priceIncl;
+                    order_line_vals.note = orderline.getNote
+                        ? orderline.getNote()
+                        : orderline.note || "[]";
+                    order_line_vals.customer_note = orderline.getCustomerNote
+                        ? orderline.getCustomerNote()
+                        : orderline.customer_note || "";
                     order_line_vals.so_reference = orderline.sale_order_origin_id?.name;
                     order_line_vals.sale_order_origin_id = orderline.sale_order_origin_id?.id;
                     var tax_ids = [];

@@ -64,6 +64,8 @@
 										<field name="tax_ids" widget="many2many_tags"/>
 										<field name="price_subtotal" widget="monetary"/>
 										<field name="price_subtotal_incl" widget="monetary"/>
+										<field name="note" optional="hide"/>
+										<field name="customer_note" optional="hide"/>
 									</list>
 									<form string="Líneas del pedido">
 										<group col="4">
@@ -75,6 +77,8 @@
 											<field name="price_subtotal_incl" invisible="1" widget="monetary"/>
 											<field name="tax_ids" widget="many2many_tags"/>
 											<field name="notice"/>
+											<field name="note"/>
+											<field name="customer_note"/>
 										</group>
 									</form>
 								</field>
