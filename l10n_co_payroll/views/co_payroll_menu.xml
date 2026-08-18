@@ -1,27 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_l10n_co_payroll" name="Nómina Colombia" parent="hr_payroll.menu_hr_payroll_payslips" sequence="15" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_dashboard" name="Panel" parent="menu_l10n_co_payroll" action="action_co_payroll_dashboard" sequence="5" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_period" name="Periodos" parent="menu_l10n_co_payroll" action="action_co_payroll_period" sequence="10" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_period_create" name="Crear periodo" parent="menu_l10n_co_payroll" action="action_co_payroll_period_wizard" sequence="15" groups="l10n_co_payroll.group_co_payroll_user"/>
-    <menuitem id="menu_co_payroll_period_line" name="Resumen por empleado" parent="menu_l10n_co_payroll" action="action_co_payroll_period_line" sequence="20" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_period_issue" name="Validaciones" parent="menu_l10n_co_payroll" action="action_co_payroll_period_issue" sequence="30" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_novelty" name="Novedades laborales" parent="menu_l10n_co_payroll" action="action_co_payroll_novelty" sequence="35" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_social" name="Perfiles PILA" parent="menu_l10n_co_payroll" action="action_co_payroll_social" sequence="40" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_adjustment" name="Ajustes" parent="menu_l10n_co_payroll" action="action_co_payroll_adjustment" sequence="45" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_settlement" name="Liquidaciones" parent="menu_l10n_co_payroll" action="action_co_payroll_settlement" sequence="50" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_payment" name="Pagos bancarios" parent="menu_l10n_co_payroll" action="action_co_payroll_payment_batch" sequence="55" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_pila" name="Archivos PILA" parent="menu_l10n_co_payroll" action="action_co_payroll_pila_file" sequence="60" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_configuration" name="Configuración" parent="menu_l10n_co_payroll" sequence="90" groups="l10n_co_payroll.group_co_payroll_manager"/>
-    <menuitem id="menu_co_payroll_parameter" name="Parámetros anuales" parent="menu_co_payroll_configuration" action="action_co_payroll_parameter" sequence="10" groups="l10n_co_payroll.group_co_payroll_manager"/>
-    <menuitem id="menu_co_payroll_pila_config" name="Configuración PILA" parent="menu_co_payroll_configuration" action="action_co_payroll_pila_config" sequence="20" groups="l10n_co_payroll.group_co_payroll_manager"/>
-    <menuitem id="menu_co_payroll_rule_mapping" name="Mapeo de conceptos" parent="menu_co_payroll_configuration" action="action_co_payroll_rule_mapping" sequence="30" groups="l10n_co_payroll.group_co_payroll_manager"/>
-    <menuitem id="menu_co_payroll_salary_rule" name="Reglas salariales" parent="menu_co_payroll_configuration" action="action_co_payroll_salary_rule" sequence="35" groups="l10n_co_payroll.group_co_payroll_manager"/>
-    <menuitem id="menu_co_payroll_task" name="Tareas pendientes" parent="menu_l10n_co_payroll" action="action_co_payroll_task" sequence="25" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_simulation" name="Simulador" parent="menu_l10n_co_payroll" action="action_co_payroll_simulation" sequence="27" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_salary_history" name="Historial salarial" parent="menu_l10n_co_payroll" action="action_co_payroll_salary_history" sequence="42" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_loan" name="Préstamos" parent="menu_l10n_co_payroll" action="action_co_payroll_loan" sequence="47" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_embargo" name="Embargos" parent="menu_l10n_co_payroll" action="action_co_payroll_embargo" sequence="48" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_reconciliation" name="Conciliación bancaria" parent="menu_l10n_co_payroll" action="action_co_payroll_reconciliation" sequence="57" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_calendar" name="Calendario" parent="menu_l10n_co_payroll" action="action_co_payroll_calendar" sequence="70" groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-    <menuitem id="menu_co_payroll_validation_rule" name="Reglas de validación" parent="menu_co_payroll_configuration" action="action_co_payroll_validation_rule" sequence="40" groups="l10n_co_payroll.group_co_payroll_manager"/>
+    <!-- Menú principal: las opciones se agrupan por momento del proceso. -->
+    <menuitem id="menu_l10n_co_payroll" name="Nómina Colombia"
+              parent="hr_payroll.menu_hr_payroll_payslips" sequence="15"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+
+    <menuitem id="menu_co_payroll_dashboard" name="Panel"
+              parent="menu_co_payroll_operations" action="action_co_payroll_dashboard" sequence="5"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+
+    <menuitem id="menu_co_payroll_operations" name="Operación"
+              parent="menu_l10n_co_payroll" sequence="10"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_period" name="Períodos"
+              parent="menu_co_payroll_operations" action="action_co_payroll_period" sequence="10"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_period_create" name="Crear período"
+              parent="menu_co_payroll_operations" action="action_co_payroll_period_wizard" sequence="20"
+              groups="l10n_co_payroll.group_co_payroll_user"/>
+    <menuitem id="menu_co_payroll_period_line" name="Resumen por colaborador"
+              parent="menu_co_payroll_operations" action="action_co_payroll_period_line" sequence="30"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_period_issue" name="Validaciones"
+              parent="menu_co_payroll_operations" action="action_co_payroll_period_issue" sequence="40"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_task" name="Tareas pendientes"
+              parent="menu_co_payroll_operations" action="action_co_payroll_task" sequence="50"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_simulation" name="Simulador"
+              parent="menu_co_payroll_operations" action="action_co_payroll_simulation" sequence="60"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+
+    <menuitem id="menu_co_payroll_novelties" name="Novedades"
+              parent="menu_l10n_co_payroll" sequence="20"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_novelty" name="Novedades laborales"
+              parent="menu_co_payroll_novelties" action="action_co_payroll_novelty" sequence="10"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_social" name="Perfiles PILA"
+              parent="menu_co_payroll_novelties" action="action_co_payroll_social" sequence="20"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_loan" name="Préstamos"
+              parent="menu_co_payroll_novelties" action="action_co_payroll_loan" sequence="30"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_embargo" name="Embargos"
+              parent="menu_co_payroll_novelties" action="action_co_payroll_embargo" sequence="40"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_salary_history" name="Historial salarial"
+              parent="menu_co_payroll_novelties" action="action_co_payroll_salary_history" sequence="50"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_calendar" name="Calendario laboral"
+              parent="menu_co_payroll_novelties" action="action_co_payroll_calendar" sequence="60"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+
+    <menuitem id="menu_co_payroll_settlement_group" name="Liquidación y pagos"
+              parent="menu_l10n_co_payroll" sequence="30"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_adjustment" name="Ajustes"
+              parent="menu_co_payroll_settlement_group" action="action_co_payroll_adjustment" sequence="10"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_settlement" name="Liquidaciones"
+              parent="menu_co_payroll_settlement_group" action="action_co_payroll_settlement" sequence="20"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_payment" name="Pagos bancarios"
+              parent="menu_co_payroll_settlement_group" action="action_co_payroll_payment_batch" sequence="30"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_reconciliation" name="Conciliación bancaria"
+              parent="menu_co_payroll_settlement_group" action="action_co_payroll_reconciliation" sequence="40"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+
+    <menuitem id="menu_co_payroll_reports" name="Reportes"
+              parent="menu_l10n_co_payroll" sequence="40"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_pila" name="Archivos PILA"
+              parent="hr_payroll.menu_hr_payroll_report" action="action_co_payroll_pila_file" sequence="45"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+
+    <menuitem id="menu_co_payroll_configuration" name="Parámetros de nómina"
+              parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" sequence="90"
+              groups="l10n_co_payroll.group_co_payroll_manager"/>
+    <menuitem id="menu_co_payroll_parameter" name="Parámetros anuales"
+              parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_parameter" sequence="45"
+              groups="l10n_co_payroll.group_co_payroll_manager"/>
+    <menuitem id="menu_co_payroll_pila_config" name="Configuración PILA"
+              parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_pila_config" sequence="50"
+              groups="l10n_co_payroll.group_co_payroll_manager"/>
+    <menuitem id="menu_co_payroll_rule_mapping" name="Mapeo de conceptos"
+              parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_rule_mapping" sequence="55"
+              groups="l10n_co_payroll.group_co_payroll_manager"/>
+    <menuitem id="menu_co_payroll_salary_rule" name="Reglas salariales"
+              parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_salary_rule" sequence="60"
+              groups="l10n_co_payroll.group_co_payroll_manager"/>
+    <menuitem id="menu_co_payroll_validation_rule" name="Reglas de validación"
+              parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_validation_rule" sequence="65"
+              groups="l10n_co_payroll.group_co_payroll_manager"/>
+
+    <!-- Estos grupos son menús principales para evitar un único desplegable interminable. -->
+    <record id="menu_l10n_co_payroll" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="menu_co_payroll_operations" model="ir.ui.menu">
+        <field name="parent_id" ref="hr_work_entry_enterprise.menu_hr_payroll_root"/>
+        <field name="sequence">72</field>
+    </record>
+    <record id="menu_co_payroll_novelties" model="ir.ui.menu">
+        <field name="parent_id" ref="hr_work_entry_enterprise.menu_hr_payroll_root"/>
+        <field name="sequence">73</field>
+    </record>
+    <record id="menu_co_payroll_settlement_group" model="ir.ui.menu">
+        <field name="parent_id" ref="hr_work_entry_enterprise.menu_hr_payroll_root"/>
+        <field name="sequence">74</field>
+    </record>
+    <record id="menu_co_payroll_reports" model="ir.ui.menu">
+        <field name="parent_id" ref="hr_payroll.menu_hr_payroll_report"/>
+        <field name="active" eval="False"/>
+    </record>
+    <record id="menu_co_payroll_configuration" model="ir.ui.menu">
+        <field name="parent_id" ref="hr_work_entry_enterprise.menu_hr_payroll_configuration"/>
+        <field name="active" eval="False"/>
+    </record>
+    <record id="hr_payroll.menu_hr_payroll_employees" model="ir.ui.menu">
+        <field name="name">Colaboradores</field>
+    </record>
 </odoo>

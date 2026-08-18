@@ -1,57 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="view_company_form_dian_payroll" model="ir.ui.view">
         <field name="name">res.company.form.dian.payroll</field>
         <field name="model">res.company</field>
         <field name="inherit_id" ref="base.view_company_form"/>
         <field name="arch" type="xml">
-            <field name="vat" position="after">
-                <separator string="Nómina electrónica DIAN"/>
-                <button name="action_open_co_dian_dashboard" type="object" string="Abrir panel DIAN" class="oe_link" invisible="not co_dian_payroll_enabled"/>
-                <button name="action_open_co_dian_setup" type="object" string="Asistente de configuración" class="oe_link"/>
-                <field name="co_dian_payroll_enabled"/>
-                <field name="co_dian_environment" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_software_id" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_software_pin" password="True" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_test_set_id" invisible="not co_dian_payroll_enabled or co_dian_environment != '2'"/>
-                <field name="co_dian_certificate" filename="co_dian_certificate_filename" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_certificate_filename" invisible="1"/>
-                <field name="co_dian_certificate_password" password="True" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_certificate_id" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_request_timeout" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_auto_check_pending" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_require_habilitation" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_require_explicit_mapping" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_approval_mode" invisible="not co_dian_payroll_enabled"/>
-                <separator string="Reintentos y alertas" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_retry_enabled" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_max_retries" invisible="not co_dian_payroll_enabled or not co_dian_retry_enabled"/>
-                <field name="co_dian_retry_delay_minutes" invisible="not co_dian_payroll_enabled or not co_dian_retry_enabled"/>
-                <field name="co_dian_certificate_alert_days" invisible="not co_dian_payroll_enabled"/>
-                <separator string="Avisos operativos" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_notifications_enabled" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_notify_errors" invisible="not co_dian_payroll_enabled or not co_dian_notifications_enabled"/>
-                <field name="co_dian_notify_pending" invisible="not co_dian_payroll_enabled or not co_dian_notifications_enabled"/>
-                <field name="co_dian_pending_alert_hours" invisible="not co_dian_payroll_enabled or not co_dian_notifications_enabled or not co_dian_notify_pending"/>
-                <field name="co_dian_notify_certificate" invisible="not co_dian_payroll_enabled or not co_dian_notifications_enabled"/>
-                <field name="co_dian_notify_user_ids" widget="many2many_tags" invisible="not co_dian_payroll_enabled or not co_dian_notifications_enabled"/>
-                <button name="action_co_dian_validate_configuration" type="object" string="Validar configuración" class="oe_link" invisible="not co_dian_payroll_enabled"/>
-                <button name="action_co_dian_validate_certificate" type="object" string="Validar certificado" class="oe_link" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_certificate_status" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_certificate_expiration" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_certificate_subject" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_certificate_issuer" invisible="not co_dian_payroll_enabled or not co_dian_certificate_status"/>
-                <field name="co_dian_certificate_serial" invisible="not co_dian_payroll_enabled or not co_dian_certificate_status"/>
-                <field name="co_dian_certificate_fingerprint" invisible="not co_dian_payroll_enabled or not co_dian_certificate_status"/>
-                <separator string="Indicadores" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_document_count" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_accepted_count" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_pending_count" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_rejected_count" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_error_count" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_test_payroll_count" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_test_adjustment_count" invisible="not co_dian_payroll_enabled"/>
-                <field name="co_dian_habilitation_ready" invisible="not co_dian_payroll_enabled"/>
-            </field>
+            <xpath expr="//sheet/notebook" position="inside">
+                <page name="co_dian_payroll" string="Nómina electrónica DIAN">
+                    <div class="o_dian_company_header">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <div>
+                                <h2 class="mb-1">Configuración de nómina electrónica</h2>
+                                <p class="text-muted mb-0">
+                                    Administra la conexión, el certificado y las reglas de transmisión a la DIAN.
+                                </p>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button name="action_open_co_dian_dashboard" type="object"
+                                        string="Abrir panel DIAN" class="btn-primary"
+                                        invisible="not co_dian_payroll_enabled"/>
+                                <button name="action_open_co_dian_setup" type="object"
+                                        string="Asistente de configuración" class="btn-secondary"/>
+                            </div>
+                        </div>
+                        <div class="alert alert-warning mt-3 mb-0"
+                             invisible="co_dian_payroll_enabled">
+                            Activa la nómina electrónica para habilitar la configuración y el envío de documentos.
+                        </div>
+                    </div>
+
+                    <group class="o_dian_activation_bar">
+                        <field name="co_dian_payroll_enabled" string="Activar nómina electrónica DIAN" widget="boolean_toggle"/>
+                    </group>
+
+                    <group class="o_dian_company_overview" invisible="not co_dian_payroll_enabled">
+                        <group string="Estado de conexión">
+                            <field name="co_dian_environment" string="Ambiente DIAN"/>
+                            <field name="co_dian_habilitation_ready" string="Listo para transmitir" widget="boolean_toggle"/>
+                        </group>
+                        <group string="Resumen operativo">
+                            <field name="co_dian_certificate_status" string="Estado del certificado" widget="badge"/>
+                            <field name="co_dian_certificate_expiration" string="Vencimiento del certificado"/>
+                            <field name="co_dian_document_count" string="Documentos enviados"/>
+                            <field name="co_dian_pending_count" string="Pendientes"/>
+                            <field name="co_dian_error_count" string="Con error"/>
+                        </group>
+                    </group>
+
+                    <notebook class="o_dian_company_tabs" invisible="not co_dian_payroll_enabled">
+                        <page name="co_dian_connection" string="Conexión DIAN">
+                            <group>
+                                <group string="Credenciales del software">
+                                    <field name="co_dian_software_id" string="ID del software"/>
+                                    <field name="co_dian_software_pin" string="PIN del software" password="True"/>
+                                    <field name="co_dian_test_set_id" string="Test Set ID"
+                                           invisible="co_dian_environment != '2'"/>
+                                </group>
+                                <group string="Validaciones de envío">
+                                    <field name="co_dian_require_habilitation" string="Exigir habilitación antes de producción"/>
+                                    <field name="co_dian_require_explicit_mapping" string="Exigir mapeo DIAN explícito"/>
+                                    <field name="co_dian_approval_mode" string="Aprobación de envío"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-info mt-3">
+                                Usa el ambiente de habilitación para realizar pruebas. Cambia a producción solo después de validar el proceso completo.
+                            </div>
+                        </page>
+
+                        <page name="co_dian_certificate" string="Certificado digital">
+                            <group>
+                                <group string="Certificado PKCS#12">
+                                    <field name="co_dian_certificate" string="Archivo .p12"
+                                           filename="co_dian_certificate_filename"/>
+                                    <field name="co_dian_certificate_filename" invisible="1"/>
+                                    <field name="co_dian_certificate_password" string="Contraseña del certificado" password="True"/>
+                                    <field name="co_dian_certificate_id" string="Certificado nativo de Odoo"/>
+                                </group>
+                                <group string="Estado y validación">
+                                    <field name="co_dian_certificate_status" string="Estado" widget="badge"/>
+                                    <field name="co_dian_certificate_expiration" string="Vencimiento"/>
+                                    <div class="d-flex gap-2 mt-2">
+                                        <button name="action_co_dian_validate_certificate" type="object"
+                                                string="Validar certificado" class="btn-secondary"/>
+                                        <button name="action_co_dian_validate_configuration" type="object"
+                                                string="Validar configuración" class="btn-primary"/>
+                                    </div>
+                                </group>
+                            </group>
+                            <group string="Detalles técnicos" groups="base.group_no_one" class="mt-3">
+                                <field name="co_dian_certificate_subject" string="Titular"/>
+                                <field name="co_dian_certificate_issuer" string="Emisor"
+                                       invisible="not co_dian_certificate_status"/>
+                                <field name="co_dian_certificate_serial" string="Serial"
+                                       invisible="not co_dian_certificate_status"/>
+                                <field name="co_dian_certificate_fingerprint" string="Huella digital"
+                                       invisible="not co_dian_certificate_status"/>
+                            </group>
+                        </page>
+
+                        <page name="co_dian_transmission" string="Transmisión">
+                            <group>
+                                <group string="Comportamiento de envío">
+                                    <field name="co_dian_request_timeout" string="Tiempo de espera (segundos)"/>
+                                    <field name="co_dian_auto_check_pending" string="Consultar pendientes automáticamente"/>
+                                </group>
+                                <group string="Reintentos automáticos">
+                                    <field name="co_dian_retry_enabled" string="Activar reintentos"/>
+                                    <field name="co_dian_max_retries" string="Máximo de reintentos"
+                                           invisible="not co_dian_retry_enabled"/>
+                                    <field name="co_dian_retry_delay_minutes" string="Espera entre reintentos (minutos)"
+                                           invisible="not co_dian_retry_enabled"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page name="co_dian_notifications" string="Alertas">
+                            <group>
+                                <group string="Avisos operativos">
+                                    <field name="co_dian_notifications_enabled" string="Activar avisos"/>
+                                    <field name="co_dian_notify_errors" string="Avisar errores"
+                                           invisible="not co_dian_notifications_enabled"/>
+                                    <field name="co_dian_notify_pending" string="Avisar documentos pendientes"
+                                           invisible="not co_dian_notifications_enabled"/>
+                                    <field name="co_dian_pending_alert_hours" string="Horas para alertar pendientes"
+                                           invisible="not co_dian_notifications_enabled or not co_dian_notify_pending"/>
+                                    <field name="co_dian_notify_certificate" string="Avisar vencimiento del certificado"
+                                           invisible="not co_dian_notifications_enabled"/>
+                                    <field name="co_dian_certificate_alert_days" string="Anticipación del aviso (días)"
+                                           invisible="not co_dian_notifications_enabled or not co_dian_notify_certificate"/>
+                                </group>
+                                <group string="Destinatarios">
+                                    <field name="co_dian_notify_user_ids" string="Usuarios que reciben avisos"
+                                           widget="many2many_tags" invisible="not co_dian_notifications_enabled"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page name="co_dian_indicators" string="Indicadores">
+                            <group>
+                                <group string="Resultado de transmisiones">
+                                    <field name="co_dian_document_count" string="Total de documentos"/>
+                                    <field name="co_dian_accepted_count" string="Aceptados"/>
+                                    <field name="co_dian_pending_count" string="Pendientes"/>
+                                    <field name="co_dian_rejected_count" string="Rechazados"/>
+                                    <field name="co_dian_error_count" string="Con error"/>
+                                </group>
+                                <group string="Pruebas de habilitación">
+                                    <field name="co_dian_test_payroll_count" string="Nóminas de prueba"/>
+                                    <field name="co_dian_test_adjustment_count" string="Ajustes de prueba"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-info mt-3">
+                                Para consultar el detalle de cada documento, abre el panel DIAN.
+                            </div>
+                        </page>
+                    </notebook>
+                </page>
+            </xpath>
         </field>
     </record>
 </odoo>

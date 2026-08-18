@@ -69,6 +69,60 @@
     .o_dian_alert_info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
 }
 
+.o_dian_company_header {
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 1.25rem;
+    border: 1px solid rgba(117, 226, 216, 0.35);
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, #173452 0%, #0f6f6b 100%);
+    color: #f8fafc;
+
+    h2 {
+        color: #ffffff;
+        font-weight: 700;
+    }
+
+    p { color: #d9f3f0 !important; }
+}
+
+.o_dian_activation_bar {
+    padding: 0.7rem 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid #405168;
+    border-radius: 0.6rem;
+    background: #202938;
+    color: #f8fafc;
+}
+
+.o_dian_company_overview {
+    padding: 0.9rem 1rem;
+    margin-bottom: 1.25rem;
+    border: 1px solid #405168;
+    border-radius: 0.75rem;
+    background: #202938;
+    color: #f8fafc;
+
+    .o_field_widget.o_field_badge {
+        font-weight: 700;
+    }
+
+    .o_form_label,
+    .o_horizontal_separator,
+    .o_field_widget,
+    .o_field_widget .o_input,
+    .o_field_widget input,
+    .o_field_widget textarea,
+    .o_field_widget a {
+        color: #f8fafc !important;
+    }
+
+    .o_horizontal_separator { border-color: #53637a; }
+}
+
+.o_dian_company_tabs {
+    margin-top: 0.25rem;
+}
+
 .o_dian_document_form {
     .o_dian_attention_banner {
         background: #fff7ed;
