@@ -46,6 +46,7 @@ class CoPayrollPeriod(models.Model):
     source_payslip_ids = fields.Many2many("hr.payslip", string="Recibos encontrados", compute="_compute_source_payslip_ids")
     line_ids = fields.One2many("l10n.co.payroll.period.line", "period_id", string="Resumen por empleado", copy=False)
     issue_ids = fields.One2many("l10n.co.payroll.period.issue", "period_id", string="Detalle de validaciones", copy=False)
+    diagnostic_ids = fields.One2many("l10n.co.payroll.period.diagnostic", "period_id", string="Diagnóstico integral", copy=False)
     novelty_ids = fields.One2many("l10n.co.payroll.novelty", "period_id", string="Detalle de novedades", copy=False)
     adjustment_ids = fields.One2many("l10n.co.payroll.adjustment", "period_id", string="Ajustes", copy=False)
     previous_period_id = fields.Many2one("l10n.co.payroll.period", string="Periodo anterior", compute="_compute_previous_period")
@@ -53,6 +54,11 @@ class CoPayrollPeriod(models.Model):
     is_sandbox = fields.Boolean(string="Modo sandbox", default=False, copy=False, index=True, help="Periodo de prueba aislado; no debe generar asientos ni pagos reales.")
     sandbox_source_id = fields.Many2one("l10n.co.payroll.period", string="Periodo origen", readonly=True, copy=False)
     sandbox_reason = fields.Char(string="Motivo sandbox", copy=False)
+    rectifies_period_id = fields.Many2one("l10n.co.payroll.period", string="Rectifica periodo", readonly=True, copy=False, ondelete="restrict")
+    rectification_ids = fields.One2many("l10n.co.payroll.period", "rectifies_period_id", string="Rectificaciones", readonly=True)
+    is_rectification = fields.Boolean(string="Es rectificación", compute="_compute_is_rectification", store=True)
+    rectification_reason = fields.Text(string="Motivo de rectificación", copy=False)
+    cost_center_id = fields.Many2one("l10n.co.payroll.cost.center", string="Centro de costo general", domain="[('company_id', '=', company_id), ('active', '=', True)]")
     note = fields.Text(string="Notas")
     currency_id = fields.Many2one(related="company_id.currency_id", readonly=True)
     payslip_count = fields.Integer(string="Recibos", compute="_compute_metrics")
@@ -61,6 +67,9 @@ class CoPayrollPeriod(models.Model):
     issue_count = fields.Integer(string="Hallazgos", compute="_compute_issue_metrics")
     blocking_issue_count = fields.Integer(string="Bloqueantes", compute="_compute_issue_metrics")
     warning_issue_count = fields.Integer(string="Advertencias", compute="_compute_issue_metrics")
+    diagnostic_count = fields.Integer(string="Diagnósticos", compute="_compute_diagnostic_metrics")
+    diagnostic_error_count = fields.Integer(string="Errores diagnóstico", compute="_compute_diagnostic_metrics")
+    diagnostic_warning_count = fields.Integer(string="Advertencias diagnóstico", compute="_compute_diagnostic_metrics")
     novelty_count = fields.Integer(string="Novedades", compute="_compute_novelty_metrics")
     pending_novelty_count = fields.Integer(string="Novedades pendientes", compute="_compute_novelty_metrics")
     basic_total = fields.Monetary(string="Salario básico", compute="_compute_totals", currency_field="currency_id")
@@ -82,6 +91,11 @@ class CoPayrollPeriod(models.Model):
     processing_seconds = fields.Float(string="Tiempo de preparación (s)", readonly=True, copy=False)
     last_run_count = fields.Integer(string="Recibos procesados", readonly=True, copy=False)
     audit_event_ids = fields.One2many("l10n.co.payroll.audit", "period_id", string="Trazabilidad", readonly=True)
+
+    @api.depends("rectifies_period_id")
+    def _compute_is_rectification(self):
+        for period in self:
+            period.is_rectification = bool(period.rectifies_period_id)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -110,7 +124,7 @@ class CoPayrollPeriod(models.Model):
             if period.date_from and period.date_to and period.date_from > period.date_to:
                 raise ValidationError(_("La fecha inicial no puede ser posterior a la fecha final."))
             duplicate = self.search([("id", "!=", period.id), ("company_id", "=", period.company_id.id), ("date_from", "=", period.date_from), ("date_to", "=", period.date_to), ("state", "!=", "cancelled"), ("is_sandbox", "=", period.is_sandbox)], limit=1)
-            if duplicate:
+            if duplicate and duplicate.id != period.rectifies_period_id.id:
                 raise ValidationError(_("Ya existe el periodo %s para estas fechas en la compañía.") % duplicate.display_name)
 
     @api.onchange("parameter_id")
@@ -165,6 +179,13 @@ class CoPayrollPeriod(models.Model):
             period.issue_count = len(period.issue_ids)
             period.blocking_issue_count = len(period.issue_ids.filtered(lambda issue: issue.severity == "error"))
             period.warning_issue_count = len(period.issue_ids.filtered(lambda issue: issue.severity == "warning"))
+
+    @api.depends("diagnostic_ids.severity", "diagnostic_ids.resolved")
+    def _compute_diagnostic_metrics(self):
+        for period in self:
+            period.diagnostic_count = len(period.diagnostic_ids)
+            period.diagnostic_error_count = len(period.diagnostic_ids.filtered(lambda item: item.severity == "error" and not item.resolved))
+            period.diagnostic_warning_count = len(period.diagnostic_ids.filtered(lambda item: item.severity == "warning" and not item.resolved))
 
     @api.depends("novelty_ids.state")
     def _compute_novelty_metrics(self):
@@ -343,8 +364,15 @@ class CoPayrollPeriod(models.Model):
                     vals_list.append({"period_id": period.id, "severity": "warning", "code": "NOVELTY_REJECTED", "message": _("La novedad %s de %s fue rechazada.") % (novelty.novelty_type.upper(), novelty.employee_id.name), "employee_id": novelty.employee_id.id})
             for slip in current_payslips:
                 employee = slip.employee_id
-                if not self.env["l10n.co.payroll.social"].get_for_employee(employee, period.date_from):
-                    vals_list.append({"period_id": period.id, "severity": "warning", "code": "NO_SOCIAL_PROFILE", "message": _("%s no tiene un perfil PILA vigente para el periodo.") % employee.name, "employee_id": employee.id, "payslip_id": slip.id})
+                social = self.env["l10n.co.payroll.social"].get_for_employee(employee, period.date_from)
+                if not social:
+                    policy = period.parameter_id.social_profile_policy if period.parameter_id else "warn"
+                    if policy != "optional":
+                        vals_list.append({"period_id": period.id, "severity": "error" if policy == "strict" else "warning", "code": "NO_SOCIAL_PROFILE", "message": _("%s no tiene un perfil PILA vigente para el periodo.") % employee.name, "employee_id": employee.id, "payslip_id": slip.id})
+                elif social.coverage_mode == "full" and social.get_missing_administrators():
+                    vals_list.append({"period_id": period.id, "severity": "error", "code": "MISSING_ADMINISTRATORS", "message": _("%s tiene administradoras PILA incompletas: %s.") % (employee.name, ", ".join(social.get_missing_administrators())), "employee_id": employee.id, "payslip_id": slip.id})
+                elif social.coverage_mode in ("manual", "not_applicable") and not social.manual_reference:
+                    vals_list.append({"period_id": period.id, "severity": "error", "code": "MISSING_COVERAGE_REFERENCE", "message": _("%s necesita una referencia para su modo PILA %s.") % (employee.name, social.coverage_mode), "employee_id": employee.id, "payslip_id": slip.id})
                 if not employee.identification_id:
                     vals_list.append({"period_id": period.id, "severity": "warning", "code": "NO_IDENTIFICATION", "message": _("%s no tiene identificación configurada.") % employee.name, "employee_id": employee.id, "payslip_id": slip.id})
                 if slip.state not in VALID_PAYSLIP_STATES:
@@ -384,6 +412,19 @@ class CoPayrollPeriod(models.Model):
             if not payslips:
                 period._run_validation(payslips)
                 raise UserError(_("No se encontraron recibos de nómina en las fechas seleccionadas."))
+            duplicate_lines = self.env["l10n.co.payroll.period.line"].search([
+                ("period_id", "!=", period.id),
+                ("period_id.state", "in", ("ready", "closed")),
+                ("source_payslip_ids", "in", payslips.ids),
+            ])
+            if period.rectifies_period_id:
+                duplicate_lines = duplicate_lines.filtered(lambda line: line.period_id != period.rectifies_period_id)
+            if duplicate_lines:
+                reused = duplicate_lines.mapped("source_payslip_ids")
+                raise UserError(_(
+                    "No se puede preparar porque %s recibo(s) ya pertenecen a un consolidado activo: %s. "
+                    "Crea una rectificación del periodo original si corresponde."
+                ) % (len(reused), ", ".join(reused.mapped("name")[:5])))
             period.line_ids.sudo().unlink()
             by_employee = defaultdict(lambda: self.env["hr.payslip"])
             for payslip in payslips:
@@ -401,9 +442,27 @@ class CoPayrollPeriod(models.Model):
                 novelties = period.novelty_ids.filtered(lambda novelty: novelty.employee_id == employee and novelty.state in ("approved", "applied"))
                 adjustments = period.adjustment_ids.filtered(lambda adjustment: adjustment.employee_id == employee and adjustment.state in ("approved", "applied"))
                 line = line_model.create({"period_id": period.id, "employee_id": employee_id, "contract_id": employee_payslips[0].version_id.id if employee_payslips[0].version_id else False, "source_payslip_ids": [(6, 0, employee_payslips.ids)], "social_profile_id": social.id, "pila_type": social.contributor_type if social else "01", "pila_subtype": social.contributor_subtype if social else "0", "eps_code": social.eps_code if social else False, "pension_code": social.pension_code if social else False, "arl_code": social.arl_code if social else False, "ccf_code": social.ccf_code if social else False, "risk_class": social.risk_class if social else False, "novelty_count": len(novelties), "novelty_days": sum(novelties.mapped("days")), "pila_novelty_codes": ",".join(sorted(set(novelties.mapped("novelty_type")))) if novelties else False, "adjustment_total": sum(adjustments.mapped("amount")), "pila_status": "pending", "previous_net_wage": previous_net, "net_variation": variation, "comparison_state": "new" if not previous else ("changed" if abs(variation) > 0.01 else "unchanged"), **summary})
+                cost_center = period.cost_center_id or self.env["l10n.co.payroll.cost.center"].get_for_employee(employee)
+                if cost_center:
+                    line.cost_center_id = cost_center.id
+                line.write({
+                    "pila_reporting_mode": social.coverage_mode if social else "missing",
+                    "pila_manual_reference": social.manual_reference if social else False,
+                })
+                if social:
+                    assignment_model = self.env["l10n.co.payroll.administrator.assignment"]
+                    for administrator_field, code_field, kind in (("eps_id", "eps_code", "eps"), ("pension_id", "pension_code", "pension"), ("arl_id", "arl_code", "arl"), ("ccf_id", "ccf_code", "ccf")):
+                        base_administrator = getattr(social, administrator_field, False)
+                        assignment = assignment_model.get_for(period.company_id, employee, kind, base_administrator)
+                        if assignment:
+                            line[code_field] = assignment.administrator_id.code
                 if rule_results:
                     self.env["l10n.co.payroll.period.rule.result"].sudo().create([dict(result, period_line_id=line.id) for result in rule_results])
+                detail_values = self._get_consolidated_detail_values(employee_payslips, line)
+                if detail_values:
+                    self.env["l10n.co.payroll.period.detail"].sudo().create(detail_values)
             period._run_validation(payslips)
+            period.action_run_diagnostics()
             period.novelty_ids.filtered(lambda novelty: novelty.state == "approved").write({"state": "applied"})
             period.write({"state": "ready", "approval_state": "not_required" if period.approval_mode == "none" else "pending", "approval_by": False, "approval_at": False, "second_approval_by": False, "second_approval_at": False, "rejection_reason": False, "prepared_by": self.env.user.id, "prepared_at": fields.Datetime.now(), "processing_seconds": time.monotonic() - started_at, "last_run_count": len(payslips)})
             self.env["l10n.co.payroll.audit"].sudo().create({"company_id": period.company_id.id, "res_model": period._name, "res_id": period.id, "action": "prepare", "description": _("Periodo preparado con %s recibos.") % len(payslips)})
@@ -411,8 +470,86 @@ class CoPayrollPeriod(models.Model):
 
     def action_run_checks(self):
         self._run_validation()
+        self.action_run_diagnostics()
         self.env["l10n.co.payroll.audit"].sudo().create([{"company_id": period.company_id.id, "period_id": period.id, "res_model": period._name, "res_id": period.id, "action": "validate", "description": _("Validaciones ejecutadas.")} for period in self])
         return self._reload_form()
+
+    def action_run_diagnostics(self):
+        """Run one checklist across payroll, PILA, accounting and DIAN."""
+        Diagnostic = self.env["l10n.co.payroll.period.diagnostic"].sudo()
+        for period in self:
+            Diagnostic.search([("period_id", "=", period.id)]).unlink()
+            values = []
+
+            def add(kind, severity, code, message, line=False, payslip=False):
+                values.append({
+                    "period_id": period.id,
+                    "period_line_id": line.id if line else False,
+                    "employee_id": line.employee_id.id if line else (payslip.employee_id.id if payslip else False),
+                    "payslip_id": payslip.id if payslip else False,
+                    "diagnostic_type": kind,
+                    "severity": severity,
+                    "code": code,
+                    "message": message,
+                })
+
+            if not period.line_ids:
+                add("payroll", "error", "NO_CONSOLIDATED_LINES", _("El periodo todavía no tiene consolidado por empleado."))
+
+            for line in period.line_ids:
+                employee = line.employee_id
+                if not employee.identification_id:
+                    add("payroll", "warning", "NO_IDENTIFICATION", _("%s no tiene identificación configurada.") % employee.name, line=line)
+                if not line.source_payslip_ids:
+                    add("payroll", "error", "NO_SOURCE_PAYSLIP", _("%s no tiene recibos fuente en el consolidado.") % employee.name, line=line)
+                if line.net_wage < 0:
+                    add("payroll", "error", "NEGATIVE_NET", _("El neto consolidado de %s es negativo.") % employee.name, line=line)
+                if line.worked_days < 0 or line.worked_days > 31:
+                    add("payroll", "error", "INVALID_WORKED_DAYS", _("Los días trabajados de %s están fuera del rango permitido.") % employee.name, line=line)
+                parameter = period.parameter_id
+                if parameter and parameter.deduction_limit_ratio and line.gross_wage and line.deduction_total / line.gross_wage * 100 > parameter.deduction_limit_ratio:
+                    add("payroll", "warning", "DEDUCTION_LIMIT", _("Las deducciones de %s superan el %s%% parametrizado.") % (employee.name, parameter.deduction_limit_ratio), line=line)
+                if not employee.bank_account_ids:
+                    add("payment", "warning", "NO_BANK_ACCOUNT", _("%s no tiene cuenta bancaria para pago.") % employee.name, line=line)
+
+                if line.pila_reporting_mode == "missing":
+                    policy = period.parameter_id.social_profile_policy if period.parameter_id else "warn"
+                    if policy != "optional":
+                        add("pila", "error" if policy == "strict" else "warning", "NO_SOCIAL_PROFILE", _("%s no tiene perfil PILA vigente.") % employee.name, line=line)
+                elif line.pila_reporting_mode == "full":
+                    missing = line.social_profile_id.get_missing_administrators() if line.social_profile_id else [_("Perfil PILA")]
+                    if missing:
+                        add("pila", "error", "MISSING_ADMINISTRATORS", _("%s tiene administradoras PILA incompletas: %s.") % (employee.name, ", ".join(missing)), line=line)
+                    if line.social_ibc_base <= 0 and line.worked_days > 0:
+                        add("pila", "error", "ZERO_LEGAL_IBC", _("El IBC legal de %s es cero.") % employee.name, line=line)
+                elif not line.pila_manual_reference:
+                    add("pila", "error", "MISSING_COVERAGE_REFERENCE", _("%s requiere referencia para su modo PILA.") % employee.name, line=line)
+
+            if hasattr(period, "_get_accounting_accounts"):
+                accounts = period._get_accounting_accounts()
+                missing_accounts = [label for key, label in (("journal", "diario"), ("expense", "gasto"), ("payable", "por pagar"), ("deductions", "deducciones"), ("employer", "aportes empresa")) if not accounts.get(key)]
+                if missing_accounts:
+                    add("accounting", "warning", "ACCOUNTING_SETUP", _("Falta parametrizar contabilidad: %s.") % ", ".join(missing_accounts))
+
+            if "l10n.co.payroll.dian.document" in self.env.registry.models and getattr(period.company_id, "co_dian_payroll_enabled", False):
+                DianDocument = self.env["l10n.co.payroll.dian.document"]
+                for line in period.line_ids.filtered(lambda item: item.pila_reporting_mode == "full"):
+                    documents = DianDocument.search([("period_line_id", "=", line.id), ("is_adjustment", "=", False)])
+                    if not documents:
+                        add("dian", "warning", "DIAN_NOT_GENERATED", _("%s no tiene documento DIAN generado.") % line.employee_id.name, line=line)
+                    else:
+                        failed = documents.filtered(lambda doc: doc.state in ("error", "rejected"))[:1]
+                        if failed:
+                            add("dian", "error", "DIAN_ERROR", _("El documento DIAN de %s está en estado %s.") % (line.employee_id.name, failed.state), line=line)
+
+            if values:
+                Diagnostic.create(values)
+            period.last_check_at = fields.Datetime.now()
+        return self._reload_form()
+
+    def action_open_diagnostics(self):
+        self.ensure_one()
+        return {"type": "ir.actions.act_window", "name": _("Diagnóstico integral"), "res_model": "l10n.co.payroll.period.diagnostic", "view_mode": "list,form", "domain": [("period_id", "=", self.id)], "context": {"create": False, "delete": False}}
 
     def action_approve(self):
         if not (self.env.su or self.env.user._is_admin() or self.env.user.has_group("l10n_co_payroll.group_co_payroll_manager")):
@@ -480,7 +617,7 @@ class CoPayrollPeriod(models.Model):
 
     def action_open_lines(self):
         self.ensure_one()
-        return {"type": "ir.actions.act_window", "name": _("Resumen por empleado"), "res_model": "l10n.co.payroll.period.line", "view_mode": "list,form", "domain": [("period_id", "=", self.id)], "context": {"create": False, "delete": False}}
+        return {"type": "ir.actions.act_window", "name": _("Consolidado por empleado"), "res_model": "l10n.co.payroll.period.line", "view_mode": "list,form", "domain": [("period_id", "=", self.id)], "context": {"create": False, "delete": False}}
 
     def action_open_issues(self):
         self.ensure_one()
@@ -495,6 +632,56 @@ class CoPayrollPeriod(models.Model):
         if not self.previous_period_id:
             raise UserError(_("No hay un periodo anterior cerrado para comparar."))
         return {"type": "ir.actions.act_window", "name": _("Periodo anterior"), "res_model": self._name, "view_mode": "form", "res_id": self.previous_period_id.id}
+
+    def action_create_rectification(self):
+        self.ensure_one()
+        if self.state != "closed":
+            raise UserError(_("Solo puedes crear una rectificación desde un periodo cerrado."))
+        existing = self.search([("rectifies_period_id", "=", self.id), ("state", "!=", "cancelled")], limit=1)
+        if existing:
+            return {"type": "ir.actions.act_window", "res_model": self._name, "view_mode": "form", "res_id": existing.id}
+        rectification = self.create({
+            "name": _("Rectificación de %s") % self.name,
+            "company_id": self.company_id.id,
+            "period_type": self.period_type,
+            "date_from": self.date_from,
+            "date_to": self.date_to,
+            "payment_date": self.payment_date,
+            "parameter_id": self.parameter_id.id,
+            "rectifies_period_id": self.id,
+            "rectification_reason": _("Rectificación creada desde el periodo cerrado %s.") % self.name,
+        })
+        self.env["l10n.co.payroll.audit"].sudo().create({"company_id": self.company_id.id, "period_id": self.id, "res_model": rectification._name, "res_id": rectification.id, "action": "other", "description": _("Rectificación %s creada.") % rectification.name})
+        return {"type": "ir.actions.act_window", "res_model": self._name, "view_mode": "form", "res_id": rectification.id}
+
+    @api.model
+    def _get_consolidated_detail_values(self, payslips, period_line):
+        grouped = {}
+        for slip in payslips:
+            for result in slip.line_ids:
+                rule = getattr(result, "salary_rule_id", False)
+                code = (rule.code if rule else "") or getattr(result.category_id, "code", "") or "CONCEPTO"
+                key = ("rule", code)
+                item = grouped.setdefault(key, {"detail_type": "rule", "code": code, "name": rule.name if rule else result.name, "quantity": 0.0, "amount": 0.0, "source_payslip_ids": set()})
+                item["quantity"] += getattr(result, "quantity", 0.0) or 0.0
+                item["amount"] += result.total or 0.0
+                item["source_payslip_ids"].add(slip.id)
+            for worked in slip.worked_days_line_ids:
+                work_type = getattr(worked, "work_entry_type_id", False)
+                code = (work_type.code if work_type else "") or "JORNADA"
+                key = ("worked_day", code)
+                item = grouped.setdefault(key, {"detail_type": "worked_day", "code": code, "name": work_type.name if work_type else code, "quantity": 0.0, "amount": 0.0, "source_payslip_ids": set()})
+                item["quantity"] += worked.number_of_days or 0.0
+                item["source_payslip_ids"].add(slip.id)
+            for input_line in slip.input_line_ids:
+                input_type = input_line.input_type_id
+                code = (input_type.code if input_type else "") or "NOVEDAD"
+                key = ("input", code)
+                item = grouped.setdefault(key, {"detail_type": "input", "code": code, "name": input_type.name if input_type else code, "quantity": 0.0, "amount": 0.0, "source_payslip_ids": set()})
+                item["quantity"] += 1.0
+                item["amount"] += input_line.amount or 0.0
+                item["source_payslip_ids"].add(slip.id)
+        return [{"period_line_id": period_line.id, "detail_type": item["detail_type"], "code": item["code"], "name": item["name"], "quantity": item["quantity"], "amount": item["amount"], "source_payslip_ids": [(6, 0, list(item["source_payslip_ids"]))]} for item in grouped.values()]
 
     def action_export_csv(self):
         self.ensure_one()
@@ -516,10 +703,10 @@ class CoPayrollPeriod(models.Model):
         output = io.StringIO(newline="")
         writer = csv.writer(output)
         writer.writerow(["Identificación", "Empleado", "Tipo cotizante", "Subtipo", "Días", "IBC referencia", "Novedades", "Estado PILA"])
-        for line in self.line_ids:
+        for line in self.line_ids.filtered(lambda item: item.pila_reporting_mode == "full"):
             writer.writerow([line.employee_id.identification_id or "", line.employee_id.name, line.pila_type or "", line.pila_subtype or "", line.worked_days, line.ibc_base, ",".join(line.source_payslip_ids.mapped("name")), line.pila_status])
         attachment = self.env["ir.attachment"].create({"name": "%s_PILA.csv" % self.name, "type": "binary", "datas": base64.b64encode(output.getvalue().encode("utf-8-sig")), "res_model": self._name, "res_id": self.id, "mimetype": "text/csv"})
-        self.line_ids.sudo().write({"pila_status": "exported"})
+        self.line_ids.filtered(lambda item: item.pila_reporting_mode == "full").sudo().write({"pila_status": "exported"})
         self.env["l10n.co.payroll.audit"].sudo().create({"company_id": self.company_id.id, "period_id": self.id, "res_model": self._name, "res_id": self.id, "action": "pila", "description": _("Exportación PILA CSV generada.")})
         return {"type": "ir.actions.act_url", "url": "/web/content/%s?download=true" % attachment.id, "target": "self"}
 
@@ -556,6 +743,7 @@ class CoPayrollPeriodLine(models.Model):
     job_id = fields.Many2one("hr.job", related="employee_id.job_id", readonly=True)
     contract_id = fields.Many2one("hr.version", string="Contrato", readonly=True)
     source_payslip_ids = fields.Many2many("hr.payslip", "co_payroll_period_line_payslip_rel", "line_id", "payslip_id", string="Recibos fuente", readonly=True)
+    detail_ids = fields.One2many("l10n.co.payroll.period.detail", "period_line_id", string="Detalle consolidado", readonly=True)
     rule_result_ids = fields.One2many("l10n.co.payroll.period.rule.result", "period_line_id", string="Cálculo por reglas", readonly=True)
     payslip_count = fields.Integer(compute="_compute_payslip_count", string="Recibos")
     currency_id = fields.Many2one(related="period_id.currency_id", readonly=True)
@@ -599,6 +787,13 @@ class CoPayrollPeriodLine(models.Model):
     net_after_deductions = fields.Monetary(string="Neto real a pagar", compute="_compute_additional_deductions", currency_field="currency_id", readonly=True)
     absence_days = fields.Float(string="Días de ausencia", readonly=True)
     pila_status = fields.Selection([("pending", "Pendiente"), ("reviewed", "Revisado"), ("exported", "Exportado")], string="Estado PILA", default="pending", readonly=True)
+    pila_reporting_mode = fields.Selection([
+        ("full", "Reportar PILA"),
+        ("manual", "Reporte externo"),
+        ("not_applicable", "No aplica"),
+        ("missing", "Sin perfil"),
+    ], string="Cobertura PILA", default="missing", readonly=True)
+    pila_manual_reference = fields.Char(string="Referencia PILA externa", readonly=True)
     pila_type = fields.Char(string="Tipo cotizante PILA", default="01", readonly=True)
     pila_subtype = fields.Char(string="Subtipo PILA", default="0", readonly=True)
     social_profile_id = fields.Many2one("l10n.co.payroll.social", string="Perfil PILA", readonly=True)
@@ -608,6 +803,7 @@ class CoPayrollPeriodLine(models.Model):
     ccf_code = fields.Char(string="Caja", readonly=True)
     risk_class = fields.Selection([("I", "I"), ("II", "II"), ("III", "III"), ("IV", "IV"), ("V", "V")], string="Riesgo", readonly=True)
     previous_net_wage = fields.Monetary(string="Neto anterior", currency_field="currency_id", readonly=True)
+    cost_center_id = fields.Many2one("l10n.co.payroll.cost.center", string="Centro de costo", readonly=True)
     net_variation = fields.Monetary(string="Variación neto", currency_field="currency_id", readonly=True)
     net_variation_pct = fields.Float(string="Variación %", compute="_compute_variation", readonly=True)
     comparison_state = fields.Selection([("new", "Nuevo"), ("changed", "Cambió"), ("unchanged", "Sin cambio")], string="Comparación", readonly=True)
@@ -633,6 +829,27 @@ class CoPayrollPeriodLine(models.Model):
         return {"type": "ir.actions.act_window", "name": _("Recibos de %s") % self.employee_id.name, "res_model": "hr.payslip", "view_mode": "list,form", "domain": [("id", "in", self.source_payslip_ids.ids)], "context": {"create": False}}
 
 
+class CoPayrollPeriodDetail(models.Model):
+    _name = "l10n.co.payroll.period.detail"
+    _description = "Detalle agrupado del consolidado"
+    _order = "detail_type, code, id"
+    _check_company_auto = True
+
+    period_line_id = fields.Many2one("l10n.co.payroll.period.line", required=True, ondelete="cascade", index=True)
+    company_id = fields.Many2one(related="period_line_id.company_id", store=True, readonly=True)
+    detail_type = fields.Selection([
+        ("rule", "Concepto salarial"),
+        ("worked_day", "Día trabajado"),
+        ("input", "Novedad / entrada"),
+    ], string="Tipo", required=True, readonly=True)
+    code = fields.Char(string="Código", required=True, readonly=True)
+    name = fields.Char(string="Detalle", required=True, readonly=True)
+    quantity = fields.Float(string="Cantidad", readonly=True)
+    amount = fields.Monetary(string="Valor", currency_field="currency_id", readonly=True)
+    currency_id = fields.Many2one(related="period_line_id.currency_id", readonly=True)
+    source_payslip_ids = fields.Many2many("hr.payslip", "co_payroll_period_detail_payslip_rel", "detail_id", "payslip_id", string="Recibos fuente", readonly=True)
+
+
 class CoPayrollPeriodIssue(models.Model):
     _name = "l10n.co.payroll.period.issue"
     _description = "Hallazgo de validación de nómina"
@@ -647,3 +864,27 @@ class CoPayrollPeriodIssue(models.Model):
     employee_id = fields.Many2one("hr.employee", string="Empleado", readonly=True)
     payslip_id = fields.Many2one("hr.payslip", string="Recibo", readonly=True)
     resolved = fields.Boolean(string="Revisado")
+
+
+class CoPayrollPeriodDiagnostic(models.Model):
+    _name = "l10n.co.payroll.period.diagnostic"
+    _description = "Diagnóstico integral del periodo de nómina"
+    _order = "resolved, severity desc, id"
+    _check_company_auto = True
+
+    period_id = fields.Many2one("l10n.co.payroll.period", required=True, ondelete="cascade", index=True)
+    company_id = fields.Many2one(related="period_id.company_id", store=True, readonly=True)
+    period_line_id = fields.Many2one("l10n.co.payroll.period.line", string="Línea consolidada", readonly=True, ondelete="cascade")
+    employee_id = fields.Many2one("hr.employee", string="Empleado", readonly=True)
+    payslip_id = fields.Many2one("hr.payslip", string="Recibo", readonly=True)
+    diagnostic_type = fields.Selection([
+        ("payroll", "Nómina"), ("pila", "PILA"), ("dian", "DIAN"), ("accounting", "Contabilidad"), ("payment", "Pagos"),
+    ], string="Área", required=True, readonly=True)
+    severity = fields.Selection([
+        ("error", "Bloqueante"), ("warning", "Advertencia"), ("info", "Información"),
+    ], string="Nivel", required=True, default="warning", readonly=True)
+    code = fields.Char(string="Código", required=True, readonly=True)
+    message = fields.Text(string="Detalle", required=True, readonly=True)
+    resolved = fields.Boolean(string="Revisado")
+    resolution_notes = fields.Text(string="Notas de resolución")
+    created_at = fields.Datetime(string="Generado el", default=fields.Datetime.now, readonly=True)

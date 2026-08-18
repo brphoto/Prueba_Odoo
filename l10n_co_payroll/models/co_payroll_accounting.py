@@ -43,6 +43,87 @@ class CoPayrollPeriodAccounting(models.Model):
         if any(period.is_sandbox for period in self):
             raise UserError(_("Los periodos sandbox no pueden generar asientos contables."))
 
+    def _administrator_accounting_lines(self, accounts):
+        """Build detailed third-party lines when the PILA catalog is configured.
+
+        The summarized accounting remains the fallback. This method only uses
+        administrators with an explicit debit/credit account, so adopting the
+        catalog never makes an existing company configuration fail silently.
+        """
+        self.ensure_one()
+        contributions = {}
+        social_employee_total = sum(self.line_ids.mapped("social_employee_total"))
+        fallback_employee = social_employee_total
+        fallback_employer_debit = self.employer_total
+        fallback_employer_credit = self.employer_total
+
+        for period_line in self.line_ids:
+            social = period_line.social_profile_id
+            if not social:
+                continue
+            components = (
+                (social.eps_id, _("Salud"), period_line.health_employee, period_line.health_employer),
+                (social.pension_id, _("Pensión y solidaridad"), period_line.pension_employee + period_line.solidarity_employee, period_line.pension_employer),
+                (social.arl_id, _("ARL"), 0.0, period_line.arl_employer),
+                (social.ccf_id, _("Caja de compensación"), 0.0, period_line.ccf_employer),
+            )
+            for administrator, label, employee_amount, employer_amount in components:
+                employee_amount = employee_amount or 0.0
+                employer_amount = employer_amount or 0.0
+                if not administrator:
+                    continue
+                assignment = self.env["l10n.co.payroll.administrator.assignment"].get_for(
+                    period.company_id, period_line.employee_id, administrator.kind, administrator
+                )
+                resolved = assignment.administrator_id if assignment else administrator
+                debit_account = (assignment.debit_account_id if assignment and assignment.debit_account_id else resolved.debit_account_id)
+                credit_account = (assignment.credit_account_id if assignment and assignment.credit_account_id else resolved.credit_account_id)
+                partner = (assignment.partner_id if assignment and assignment.partner_id else resolved.partner_id)
+                analytic_account = (assignment.analytic_account_id if assignment and assignment.analytic_account_id else period_line.cost_center_id.analytic_account_id if period_line.cost_center_id else accounts["analytic"])
+                key = (resolved.id, analytic_account.id if analytic_account else False)
+                bucket = contributions.setdefault(key, {
+                    "administrator": resolved,
+                    "label": label,
+                    "employee": 0.0,
+                    "employer": 0.0,
+                    "debit_account": debit_account,
+                    "credit_account": credit_account,
+                    "partner": partner,
+                    "analytic": analytic_account,
+                })
+                if credit_account:
+                    bucket["employee"] += employee_amount
+                    bucket["employer"] += employer_amount
+                    fallback_employee -= employee_amount
+                    fallback_employer_credit -= employer_amount
+                if debit_account:
+                    bucket["debit_employer"] = bucket.get("debit_employer", 0.0) + employer_amount
+                    fallback_employer_debit -= employer_amount
+
+        line_vals = []
+        analytic = {str(accounts["analytic"].id): 100} if accounts["analytic"] else False
+
+        def add_line(account, debit, credit, label, partner=False, analytic_override=False):
+            if account and (debit or credit):
+                line_vals.append({
+                    "name": "%s - %s" % (self.name, label),
+                    "account_id": account.id,
+                    "partner_id": partner.id if partner else False,
+                    "debit": max(debit, 0.0),
+                    "credit": max(credit, 0.0),
+                    "analytic_distribution": ({str(analytic_override.id): 100} if analytic_override else analytic),
+                })
+
+        add_line(accounts["expense"], self.gross_total, 0.0, _("Devengado de nómina"))
+        add_line(accounts["payable"], 0.0, self.payable_net_total or self.net_total, _("Neto por pagar"))
+        add_line(accounts["deductions"], 0.0, max(self.deduction_total - social_employee_total, 0.0) + max(fallback_employee, 0.0) + self.additional_deduction_total, _("Deducciones y aportes empleado"))
+        add_line(accounts["employer"], max(fallback_employer_debit, 0.0), max(fallback_employer_credit, 0.0), _("Aportes empresa no distribuidos"))
+
+        for values in contributions.values():
+            add_line(values["debit_account"], values.get("debit_employer", 0.0), 0.0, values["label"], values["partner"], values["analytic"])
+            add_line(values["credit_account"], 0.0, values["employee"] + values["employer"], values["label"], values["partner"], values["analytic"])
+        return line_vals
+
     def action_create_accounting_move(self):
         self._ensure_not_sandbox()
         for period in self:
@@ -54,18 +135,30 @@ class CoPayrollPeriodAccounting(models.Model):
             missing = [label for label, key in ((_("diario"), "journal"), (_("gasto"), "expense"), (_("por pagar"), "payable"), (_("deducciones"), "deductions"), (_("aportes empresa"), "employer")) if not accounts[key]]
             if missing:
                 raise UserError(_("Configura las cuentas de %s antes de contabilizar.") % ", ".join(missing))
-            line_vals = []
-            analytic = {str(accounts["analytic"].id): 100} if accounts["analytic"] else False
-            for account, debit, credit, label in [
-                (accounts["expense"], period.gross_total, 0.0, _("Devengado de nómina")),
-                (accounts["employer"], period.employer_total, 0.0, _("Aportes empresa")),
-                (accounts["payable"], 0.0, period.payable_net_total or period.net_total, _("Neto por pagar")),
-                (accounts["deductions"], 0.0, period.deduction_total + period.additional_deduction_total, _("Deducciones y terceros")),
-            ]:
-                if debit or credit:
-                    line_vals.append((0, 0, {"name": "%s - %s" % (period.name, label), "account_id": account.id, "debit": debit, "credit": credit, "analytic_distribution": analytic}))
-            if period.employer_total and accounts["employer"]:
-                line_vals.append((0, 0, {"name": "%s - %s" % (period.name, _("Contrapartida aportes empresa")), "account_id": accounts["employer"].id, "debit": 0.0, "credit": period.employer_total, "analytic_distribution": analytic}))
+            administrator_configured = self.env["l10n.co.payroll.administrator"].search_count([
+                ("company_id", "=", period.company_id.id),
+                ("active", "=", True),
+                "|", ("debit_account_id", "!=", False), ("credit_account_id", "!=", False),
+            ])
+            administrator_configured = administrator_configured or self.env["l10n.co.payroll.administrator.assignment"].search_count([
+                ("company_id", "=", period.company_id.id), ("active", "=", True),
+                "|", ("debit_account_id", "!=", False), ("credit_account_id", "!=", False),
+            ])
+            if administrator_configured:
+                line_vals = [(0, 0, values) for values in period._administrator_accounting_lines(accounts)]
+            else:
+                line_vals = []
+                analytic = {str(accounts["analytic"].id): 100} if accounts["analytic"] else False
+                for account, debit, credit, label in [
+                    (accounts["expense"], period.gross_total, 0.0, _("Devengado de nómina")),
+                    (accounts["employer"], period.employer_total, 0.0, _("Aportes empresa")),
+                    (accounts["payable"], 0.0, period.payable_net_total or period.net_total, _("Neto por pagar")),
+                    (accounts["deductions"], 0.0, period.deduction_total + period.additional_deduction_total, _("Deducciones y terceros")),
+                ]:
+                    if debit or credit:
+                        line_vals.append((0, 0, {"name": "%s - %s" % (period.name, label), "account_id": account.id, "debit": debit, "credit": credit, "analytic_distribution": analytic}))
+                if period.employer_total and accounts["employer"]:
+                    line_vals.append((0, 0, {"name": "%s - %s" % (period.name, _("Contrapartida aportes empresa")), "account_id": accounts["employer"].id, "debit": 0.0, "credit": period.employer_total, "analytic_distribution": analytic}))
             move = self.env["account.move"].create({"move_type": "entry", "date": period.payment_date or period.date_to, "journal_id": accounts["journal"].id, "ref": period.name, "line_ids": line_vals})
             if abs(sum(move.line_ids.mapped("debit")) - sum(move.line_ids.mapped("credit"))) > 0.01:
                 move.unlink()

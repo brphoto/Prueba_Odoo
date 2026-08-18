@@ -7,7 +7,7 @@ class CoPayrollDianPayslip(models.Model):
 
     co_dian_document_ids = fields.Many2many(
         "l10n.co.payroll.dian.document",
-        string="Documentos DIAN",
+        string="Detalle de documentos DIAN",
         compute="_compute_co_dian_status",
     )
     co_dian_document_id = fields.Many2one(
@@ -16,7 +16,7 @@ class CoPayrollDianPayslip(models.Model):
         compute="_compute_co_dian_status",
     )
     co_dian_document_count = fields.Integer(
-        string="Documentos DIAN",
+        string="Cantidad de documentos DIAN",
         compute="_compute_co_dian_status",
     )
     co_dian_state = fields.Selection([
@@ -83,11 +83,11 @@ class CoPayrollDianPayslip(models.Model):
     )
     co_dian_attempt_ids = fields.Many2many(
         "l10n.co.payroll.dian.attempt",
-        string="Intentos DIAN",
+        string="Detalle de intentos DIAN",
         compute="_compute_co_dian_status",
     )
     co_dian_attempt_count = fields.Integer(
-        string="Intentos DIAN",
+        string="Cantidad de intentos DIAN",
         compute="_compute_co_dian_status",
     )
     co_dian_last_attempt_at = fields.Datetime(

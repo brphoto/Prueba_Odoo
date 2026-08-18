@@ -13,6 +13,8 @@ class CoPayrollSettlement(models.Model):
     company_id = fields.Many2one("res.company", required=True, default=lambda self: self.env.company, index=True)
     employee_id = fields.Many2one("hr.employee", required=True, index=True, tracking=True)
     period_id = fields.Many2one("l10n.co.payroll.period", string="Periodo de salida", ondelete="restrict")
+    variable_average = fields.Monetary(string="Promedio variable", currency_field="currency_id", readonly=True, copy=False)
+    average_source_count = fields.Integer(string="Recibos usados en promedio", readonly=True, copy=False)
     termination_date = fields.Date(string="Fecha de retiro", required=True, default=fields.Date.context_today, tracking=True)
     reason = fields.Selection([("resignation", "Renuncia"), ("dismissal", "Terminación"), ("mutual", "Mutuo acuerdo"), ("retirement", "Pensión"), ("other", "Otro")], string="Motivo", required=True, default="other")
     base_salary = fields.Monetary(string="Salario base", required=True, currency_field="currency_id")
@@ -54,13 +56,16 @@ class CoPayrollSettlement(models.Model):
                     ("company_id", "=", record.company_id.id), ("status", "=", "active"),
                     ("effective_from", "<=", record.termination_date), ("effective_to", ">=", record.termination_date),
                 ], order="version desc", limit=1)
-                benefit_base = record.base_salary + record.transport_allowance
+                variable_average, source_count = parameter.get_variable_average(record.employee_id, record.termination_date) if parameter else (0.0, 0)
+                benefit_base = record.base_salary + record.transport_allowance + variable_average
                 severance_days = parameter.severance_days_per_year if parameter else 30.0
                 vacation_days = parameter.vacation_days_per_year if parameter else 15.0
                 bonus_days = parameter.bonus_days_per_year if parameter else 30.0
                 interest_rate = parameter.severance_interest_rate if parameter else 12.0
                 record.write({
                     "parameter_id": parameter.id if parameter else False,
+                    "variable_average": variable_average,
+                    "average_source_count": source_count,
                     "severance": benefit_base * (severance_days / 30.0) * record.service_days / 360.0,
                     "severance_interest": benefit_base * (severance_days / 30.0) * record.service_days / 360.0 * interest_rate / 100.0 * record.service_days / 360.0,
                     "vacation": record.base_salary * vacation_days * record.service_days / 36000.0,

@@ -3,6 +3,7 @@ from . import co_payroll_parameter
 from . import co_payroll_novelty
 from . import co_payroll_audit
 from . import co_payroll_social
+from . import co_payroll_administrator
 from . import co_payroll_adjustment
 from . import co_payroll_settlement
 from . import co_payroll_pila
@@ -12,3 +13,5 @@ from . import co_payroll_rule_mapping
 from . import co_payroll_salary_rule
 from . import co_payroll_payslip
 from . import co_payroll_enterprise
+from . import co_payroll_structure
+from . import co_payroll_product

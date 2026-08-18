@@ -1,0 +1,37 @@
+<odoo>
+    <record id="view_co_payroll_setup_wizard_form" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.setup.wizard.form</field>
+        <field name="model">l10n.co.payroll.setup.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Parametrizar nómina Colombia">
+                <sheet>
+                    <div class="oe_title"><h1>Parametrizar nómina Colombia</h1><p class="text-muted">Completa los valores básicos. El sistema conserva reglas, catálogos y controles colombianos.</p></div>
+                    <group string="Compañía y vigencia">
+                        <field name="company_id"/>
+                        <field name="year"/>
+                        <field name="parameter_id"/>
+                        <field name="pila_config_id"/>
+                    </group>
+                    <group string="Valores legales básicos">
+                        <field name="currency_id" invisible="1"/>
+                        <field name="minimum_wage" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                        <field name="transport_allowance" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                        <field name="uvt_value" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                        <field name="weekly_hours"/>
+                    </group>
+                    <div class="alert alert-info" role="status">Después de guardar, crea el periodo desde Nómina Colombia &gt; Operación &gt; Crear período.</div>
+                </sheet>
+                <footer>
+                    <button name="action_apply" type="object" string="Guardar y empezar" class="oe_highlight"/>
+                    <button special="cancel" string="Cancelar"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_co_payroll_setup_wizard" model="ir.actions.act_window">
+        <field name="name">Parametrización inicial</field>
+        <field name="res_model">l10n.co.payroll.setup.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

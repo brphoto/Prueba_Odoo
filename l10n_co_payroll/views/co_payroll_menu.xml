@@ -5,12 +5,11 @@
               parent="hr_payroll.menu_hr_payroll_payslips" sequence="15"
               groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
 
-    <menuitem id="menu_co_payroll_dashboard" name="Panel"
-              parent="menu_co_payroll_operations" action="action_co_payroll_dashboard" sequence="5"
-              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
-
     <menuitem id="menu_co_payroll_operations" name="Operación"
               parent="menu_l10n_co_payroll" sequence="10"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
+    <menuitem id="menu_co_payroll_dashboard" name="Panel"
+              parent="menu_co_payroll_operations" action="action_co_payroll_dashboard" sequence="5"
               groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
     <menuitem id="menu_co_payroll_period" name="Períodos"
               parent="menu_co_payroll_operations" action="action_co_payroll_period" sequence="10"
@@ -18,7 +17,7 @@
     <menuitem id="menu_co_payroll_period_create" name="Crear período"
               parent="menu_co_payroll_operations" action="action_co_payroll_period_wizard" sequence="20"
               groups="l10n_co_payroll.group_co_payroll_user"/>
-    <menuitem id="menu_co_payroll_period_line" name="Resumen por colaborador"
+    <menuitem id="menu_co_payroll_period_line" name="Consolidado de nómina"
               parent="menu_co_payroll_operations" action="action_co_payroll_period_line" sequence="30"
               groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_auditor"/>
     <menuitem id="menu_co_payroll_period_issue" name="Validaciones"
@@ -82,8 +81,26 @@
     <menuitem id="menu_co_payroll_parameter" name="Parámetros anuales"
               parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_parameter" sequence="45"
               groups="l10n_co_payroll.group_co_payroll_manager"/>
+    <menuitem id="menu_co_payroll_setup" name="Parametrización inicial"
+              parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_setup_wizard" sequence="40"
+              groups="l10n_co_payroll.group_co_payroll_manager"/>
     <menuitem id="menu_co_payroll_pila_config" name="Configuración PILA"
               parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_pila_config" sequence="50"
+              groups="l10n_co_payroll.group_co_payroll_manager"/>
+    <menuitem id="menu_co_payroll_employee_setup" name="Vincular empleado a PILA"
+              parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_employee_setup_wizard" sequence="51"
+              groups="l10n_co_payroll.group_co_payroll_user,l10n_co_payroll.group_co_payroll_manager"/>
+    <menuitem id="menu_co_payroll_administrator" name="Administradoras PILA"
+              parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_administrator" sequence="52"
+              groups="l10n_co_payroll.group_co_payroll_manager"/>
+    <menuitem id="menu_co_payroll_cost_center" name="Centros de costo"
+              parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_cost_center" sequence="53"
+              groups="l10n_co_payroll.group_co_payroll_manager"/>
+    <menuitem id="menu_co_payroll_admin_assignment" name="Prioridades contables"
+              parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_admin_assignment" sequence="54"
+              groups="l10n_co_payroll.group_co_payroll_manager"/>
+    <menuitem id="menu_co_payroll_payment_allocation" name="Distribuciones bancarias"
+              parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_payment_allocation" sequence="55"
               groups="l10n_co_payroll.group_co_payroll_manager"/>
     <menuitem id="menu_co_payroll_rule_mapping" name="Conceptos de nómina"
               parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_rule_mapping" sequence="55"

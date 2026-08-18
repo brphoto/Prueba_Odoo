@@ -3,6 +3,8 @@ import csv
 import io
 from datetime import date
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
@@ -98,7 +100,14 @@ class CoPayrollParameter(models.Model):
     integral_salary_min_multiple = fields.Float(string="Salario integral mínimo (SMLMV)", default=13.0)
     integral_ibc_ratio = fields.Float(string="IBC salario integral (%)", default=70.0)
     transport_allowance_max_wage_multiple = fields.Float(string="Tope auxilio (SMLMV)", default=2.0)
+    variable_average_months = fields.Integer(string="Meses para promedio variable", default=3, help="Meses históricos para promediar conceptos variables en liquidaciones.")
+    variable_average_include_transport = fields.Boolean(string="Incluir auxilio en promedio", default=False)
     legal_validation_required = fields.Boolean(string="Exigir controles legales", default=True)
+    social_profile_policy = fields.Selection([
+        ("strict", "Exigir perfil PILA"),
+        ("warn", "Advertir y permitir continuar"),
+        ("optional", "No exigir perfil PILA"),
+    ], string="Política de perfil PILA", default="warn", required=True, help="Controla qué ocurre si un empleado no tiene perfil PILA vigente.")
     source_reference = fields.Char(string="Fuente / norma de referencia")
     withholding_notes = fields.Text(string="Notas tributarias")
     active = fields.Boolean(default=True)
@@ -106,6 +115,37 @@ class CoPayrollParameter(models.Model):
     rule_mapping_ids = fields.One2many("l10n.co.payroll.rule.mapping", "parameter_id", string="Conceptos de nómina")
     salary_rule_ids = fields.One2many("l10n.co.payroll.salary.rule", "parameter_id", string="Reglas salariales")
     withholding_bracket_ids = fields.One2many("l10n.co.payroll.withholding.bracket", "parameter_id", string="Tabla de retención")
+
+    def init(self):
+        """Retire vistas nav_nomina obsoletas durante la actualización."""
+        self.env.cr.execute(
+            """
+            UPDATE ir_ui_view AS view
+               SET active = FALSE
+             WHERE view.id IN (
+                SELECT data.res_id
+                  FROM ir_model_data AS data
+                 WHERE data.model = 'ir.ui.view'
+                   AND data.module = 'l10n_co_payroll'
+                   AND data.name IN ('view_hr_payslip_nav_nomina', 'report_payslip_nav_nomina')
+             )
+            """
+        )
+
+        # Repair old databases where mappings were created before the
+        # parametrizable salary rules and kept salary_rule_id empty.
+        mappings = self.env["l10n.co.payroll.rule.mapping"].sudo().search([
+            ("salary_rule_id", "=", False),
+            ("parameter_id", "!=", False),
+        ])
+        for mapping in mappings:
+            rule = self.env["l10n.co.payroll.salary.rule"].sudo().search([
+                ("parameter_id", "=", mapping.parameter_id.id),
+                ("company_id", "=", mapping.company_id.id),
+                ("code", "=", mapping.code),
+            ], limit=1)
+            if rule:
+                mapping.write({"salary_rule_id": rule.id, "is_system_default": True})
 
     def get_solidarity_rate(self, ibc):
         """Return the progressive FSP rate for an IBC expressed in pesos."""
@@ -170,6 +210,29 @@ class CoPayrollParameter(models.Model):
             return 0.0
         result_uvt = max(income_uvt - bracket.from_uvt, 0.0) * bracket.marginal_rate / 100.0 + bracket.fixed_uvt
         return round(max(result_uvt, 0.0) * self.uvt_value)
+
+    def get_variable_average(self, employee, end_date, months=None):
+        """Return the average variable payroll amount and the source count."""
+        self.ensure_one()
+        months = months or self.variable_average_months or 3
+        end_date = fields.Date.to_date(end_date)
+        start_date = end_date - relativedelta(months=months)
+        slips = self.env["hr.payslip"].search([
+            ("employee_id", "=", employee.id),
+            ("company_id", "=", self.company_id.id),
+            ("state", "in", ("validated", "paid", "done")),
+            ("date_to", "<", end_date),
+            ("date_from", ">=", start_date),
+        ], order="date_to desc")
+        values = []
+        for slip in slips:
+            gross = getattr(slip, "gross_wage", 0.0) or sum(line.total or 0.0 for line in slip.line_ids if getattr(line.category_id, "code", "") in ("GROSS", "BASIC"))
+            basic = getattr(slip, "basic_wage", 0.0) or 0.0
+            variable = max(gross - basic, 0.0)
+            if self.variable_average_include_transport:
+                variable += getattr(slip, "transport_allowance", 0.0) or 0.0
+            values.append(variable)
+        return (round(sum(values) / len(values), 2) if values else 0.0, len(values))
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -330,6 +393,7 @@ class CoPayrollParameterImport(models.Model):
         "minimum_ibc": float, "minimum_ibc_multiple": float, "maximum_ibc_multiple": float,
         "integral_salary_min_multiple": float, "integral_ibc_ratio": float,
         "transport_allowance_max_wage_multiple": float,
+        "variable_average_months": int, "variable_average_include_transport": bool,
         "health_employer_rate": float, "pension_employer_rate": float,
         "solidarity_rate_1": float, "solidarity_rate_2": float, "solidarity_rate_3": float,
         "solidarity_rate_4": float, "solidarity_rate_5": float, "solidarity_rate_6": float,
@@ -368,6 +432,8 @@ class CoPayrollParameterImport(models.Model):
                         vals[field_name] = converter(self._parse_number(value))
                     elif converter is int:
                         vals[field_name] = converter(float(self._parse_number(value)))
+                    elif converter is bool:
+                        vals[field_name] = str(value).lower() in ("1", "true", "yes", "si", "sí")
                     else:
                         vals[field_name] = value
                 if "year" not in vals:

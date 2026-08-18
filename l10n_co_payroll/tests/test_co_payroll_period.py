@@ -1,3 +1,5 @@
+import base64
+
 from odoo import fields
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
@@ -55,6 +57,100 @@ class TestCoPayrollPeriod(TransactionCase):
         pdf, file_type = report._render_qweb_pdf(report.report_name, period.ids)
         self.assertIn(file_type, ("pdf", "html"))
         self.assertTrue(pdf)
+
+    def test_period_consolidates_multiple_payrolls_for_one_employee(self):
+        first = self._create_payslip("2099-10-01", "2099-10-15")
+        second = self._create_payslip("2099-10-16", "2099-10-31")
+        first.write({"name": "REC-PRUEBA-QUINCENA-1", "state": "validated", "done_date": fields.Datetime.now()})
+        second.write({"name": "REC-PRUEBA-QUINCENA-2", "state": "validated", "done_date": fields.Datetime.now()})
+        period = self._create_period("2099-10-01", "2099-10-31")
+
+        period.action_prepare()
+
+        self.assertEqual(len(period.line_ids), 1)
+        self.assertEqual(period.line_ids.payslip_count, 2)
+        self.assertEqual(set(period.line_ids.source_payslip_ids.ids), {first.id, second.id})
+
+    def test_administrator_catalog_fills_pila_code(self):
+        administrator = self.env["l10n.co.payroll.administrator"].create({
+            "name": "EPS de prueba",
+            "company_id": self.company.id,
+            "kind": "eps",
+            "code": "EPS-TEST",
+        })
+        social = self.env["l10n.co.payroll.social"].create({
+            "employee_id": self.employee.id,
+            "effective_from": "2099-11-01",
+            "eps_id": administrator.id,
+        })
+
+        self.assertEqual(social.eps_code, "EPS-TEST")
+
+    def test_social_coverage_modes_keep_external_cases_traceable(self):
+        manual = self.env["l10n.co.payroll.social"].create({
+            "employee_id": self.employee.id,
+            "effective_from": "2099-06-01",
+            "coverage_mode": "manual",
+            "manual_reference": "Operador externo 2029-06",
+        })
+        manual.action_activate()
+        self.assertFalse(manual.is_pila_reportable)
+        self.assertEqual(manual.get_missing_administrators(), [])
+
+        payslip = self._create_payslip("2099-06-01", "2099-06-30")
+        payslip.write({"state": "validated", "done_date": fields.Datetime.now()})
+        period = self._create_period("2099-06-01", "2099-06-30")
+        period.action_prepare()
+        self.assertEqual(period.line_ids.pila_reporting_mode, "manual")
+        self.assertEqual(period.line_ids.pila_manual_reference, "Operador externo 2029-06")
+        self.assertGreater(period.diagnostic_count, 0)
+        self.assertEqual(period.action_open_diagnostics()["res_model"], "l10n.co.payroll.period.diagnostic")
+
+    def test_client_import_loads_reusable_catalogs(self):
+        content = "tipo;codigo;nombre\neps;EPS-IMPORT;EPS importada\n"
+        wizard = self.env["l10n.co.payroll.client.import.wizard"].create({
+            "import_type": "administrator",
+            "company_id": self.company.id,
+            "import_file": base64.b64encode(content.encode("utf-8-sig")),
+            "filename": "administradoras.csv",
+        })
+        wizard.action_import()
+        self.assertEqual(wizard.state, "imported")
+        self.assertTrue(self.env["l10n.co.payroll.administrator"].search([("code", "=", "EPS-IMPORT"), ("company_id", "=", self.company.id)]))
+
+    def test_period_wizard_can_prepare_without_manual_open_step(self):
+        payslip = self._create_payslip("2099-07-01", "2099-07-31")
+        payslip.write({"state": "validated", "done_date": fields.Datetime.now()})
+        wizard = self.env["l10n.co.payroll.period.wizard"].create({
+            "company_id": self.company.id,
+            "date_from": "2099-07-01",
+            "date_to": "2099-07-31",
+            "prepare_now": True,
+        })
+        action = wizard.action_create_period()
+        period = self.env["l10n.co.payroll.period"].browse(action["res_id"])
+        self.assertEqual(period.state, "ready")
+        self.assertEqual(len(period.line_ids), 1)
+
+    def test_closed_period_creates_linked_rectification(self):
+        payslip = self._create_payslip("2099-12-01", "2099-12-31")
+        payslip.write({"state": "validated", "done_date": fields.Datetime.now()})
+        period = self._create_period("2099-12-01", "2099-12-31")
+        period.action_prepare()
+        period.action_close()
+
+        rectification = period.action_create_rectification()
+        rectified = self.env["l10n.co.payroll.period"].browse(rectification["res_id"])
+        self.assertEqual(rectified.rectifies_period_id, period)
+        self.assertTrue(rectified.is_rectification)
+
+    def test_cost_center_priority_is_employee_then_department_then_company(self):
+        company_center = self.env["l10n.co.payroll.cost.center"].create({"name": "General", "code": "GEN"})
+        employee_center = self.env["l10n.co.payroll.cost.center"].create({"name": "Empleado", "code": "EMP"})
+        company_center.default_for_company = True
+        self.assertEqual(self.env["l10n.co.payroll.cost.center"].get_for_employee(self.employee), company_center)
+        self.employee.co_payroll_cost_center_id = employee_center
+        self.assertEqual(self.env["l10n.co.payroll.cost.center"].get_for_employee(self.employee), employee_center)
 
     def test_double_approval_and_novelty_configuration(self):
         self.env["l10n.co.payroll.parameter"].create({

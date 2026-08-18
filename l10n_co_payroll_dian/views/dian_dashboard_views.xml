@@ -11,8 +11,8 @@
                 <sheet>
                     <div class="oe_title"><h1>Panel de nómina electrónica DIAN</h1><p class="o_dian_subtitle">Controla generación, transmisión y respuesta desde un solo lugar.</p></div>
                     <div class="o_dian_context_bar"><field name="company_id"/><field name="environment"/><field name="date_from"/><field name="date_to"/></div>
-                    <div class="o_dian_alert o_dian_alert_warning" invisible="attention_count == 0"><span class="fa fa-exclamation-triangle" title="Requiere atención"/><strong><field name="attention_count"/> documentos requieren atención.</strong><button name="action_open_attention" type="object" string="Revisar ahora" class="btn btn-link"/></div>
-                    <div class="o_dian_alert o_dian_alert_info" invisible="stale_pending_count == 0"><span class="fa fa-clock-o" title="Pendientes antiguos"/><strong><field name="stale_pending_count"/> documentos llevan demasiado tiempo pendientes.</strong><button name="action_open_pending" type="object" string="Consultar pendientes" class="btn btn-link"/></div>
+                    <div class="o_dian_alert o_dian_alert_warning" role="alert" invisible="attention_count == 0"><span class="fa fa-exclamation-triangle" title="Requiere atención"/><strong><field name="attention_count"/> documentos requieren atención.</strong><button name="action_open_attention" type="object" string="Revisar ahora" class="btn btn-link"/></div>
+                    <div class="o_dian_alert o_dian_alert_info" role="status" invisible="stale_pending_count == 0"><span class="fa fa-clock-o" title="Pendientes antiguos"/><strong><field name="stale_pending_count"/> documentos llevan demasiado tiempo pendientes.</strong><button name="action_open_pending" type="object" string="Consultar pendientes" class="btn btn-link"/></div>
                     <div class="o_dian_kpi_grid">
                         <button name="action_open_documents" type="object" class="o_dian_kpi_card o_dian_kpi_total"><span class="fa fa-files-o" title="Total documentos"/><small>Total documentos</small><field name="total_count"/></button>
                         <button name="action_open_accepted" type="object" class="o_dian_kpi_card o_dian_kpi_success"><span class="fa fa-check-circle" title="Aceptados"/><small>Aceptados</small><field name="accepted_count"/></button>
@@ -31,15 +31,62 @@
         <field name="name">l10n.co.payroll.dian.setup.wizard.form</field>
         <field name="model">l10n.co.payroll.dian.setup.wizard</field>
         <field name="arch" type="xml">
-            <form string="Asistente de configuración DIAN">
+            <form string="Configurar nómina electrónica DIAN">
                 <sheet>
-                    <div class="oe_title"><h1>Configuración DIAN</h1></div>
-                    <group string="Empresa"><field name="company_id" readonly="1"/><field name="enabled"/><field name="environment"/><field name="software_id"/><field name="software_pin" password="True"/><field name="test_set_id" invisible="environment != '2'"/></group>
-                    <group string="Certificado"><field name="certificate" filename="certificate_filename"/><field name="certificate_filename" invisible="1"/><field name="certificate_password" password="True"/><field name="native_certificate_id"/></group>
-                    <group string="Operación"><field name="auto_check"/><field name="require_habilitation"/><field name="require_explicit_mapping"/><field name="approval_mode"/></group>
-                    <group string="Avisos"><field name="notifications_enabled"/><field name="notify_errors" invisible="not notifications_enabled"/><field name="notify_pending" invisible="not notifications_enabled"/><field name="pending_alert_hours" invisible="not notifications_enabled or not notify_pending"/><field name="notify_certificate" invisible="not notifications_enabled"/><field name="notify_user_ids" widget="many2many_tags" invisible="not notifications_enabled"/></group>
+                    <div class="oe_title"><h1>Configurar nómina DIAN</h1><p class="text-muted">Completa la configuración básica. Las opciones avanzadas son opcionales y tienen valores seguros.</p></div>
+                    <notebook>
+                        <page string="Configuración básica">
+                            <group string="Empresa y ambiente">
+                                <field name="company_id" readonly="1"/>
+                                <field name="enabled"/>
+                                <field name="environment"/>
+                                <field name="software_id"/>
+                                <field name="software_pin" password="True"/>
+                                <field name="test_set_id" invisible="environment != '2'"/>
+                            </group>
+                            <group string="Certificado de firma">
+                                <field name="certificate_mode" widget="radio" options="{'horizontal': True}"/>
+                                <field name="certificate" filename="certificate_filename" invisible="certificate_mode != 'pkcs12'"/>
+                                <field name="certificate_filename" invisible="1"/>
+                                <field name="certificate_password" password="True" invisible="certificate_mode != 'pkcs12'"/>
+                                <field name="native_certificate_id" invisible="certificate_mode != 'native'"/>
+                            </group>
+                            <div class="alert alert-info" role="status">Usa Habilitación para probar. Selecciona un solo método de certificado y no mezcles ambas fuentes.</div>
+                        </page>
+                        <page string="Opciones avanzadas">
+                            <group string="Al validar la nómina">
+                                <field name="auto_generate"/>
+                                <field name="auto_send"/>
+                                <field name="request_timeout"/>
+                                <field name="auto_check"/>
+                            </group>
+                            <group string="Controles de seguridad">
+                                <field name="require_habilitation"/>
+                                <field name="require_explicit_mapping"/>
+                                <field name="approval_mode"/>
+                            </group>
+                            <group string="Reintentos">
+                                <field name="retry_enabled"/>
+                                <field name="max_retries" invisible="not retry_enabled"/>
+                                <field name="retry_delay_minutes" invisible="not retry_enabled"/>
+                            </group>
+                            <group string="Avisos">
+                                <field name="notifications_enabled"/>
+                                <field name="notify_errors" invisible="not notifications_enabled"/>
+                                <field name="notify_pending" invisible="not notifications_enabled"/>
+                                <field name="pending_alert_hours" invisible="not notifications_enabled or not notify_pending"/>
+                                <field name="notify_certificate" invisible="not notifications_enabled"/>
+                                <field name="certificate_alert_days" invisible="not notifications_enabled or not notify_certificate"/>
+                                <field name="notify_user_ids" widget="many2many_tags" invisible="not notifications_enabled"/>
+                            </group>
+                        </page>
+                    </notebook>
                 </sheet>
-                <footer><button name="action_apply_and_validate" type="object" string="Guardar y validar" class="oe_highlight"/><button name="action_apply" type="object" string="Guardar"/><button special="cancel" string="Cancelar"/></footer>
+                <footer>
+                    <button name="action_apply_and_validate" type="object" string="Guardar y validar" class="oe_highlight"/>
+                    <button name="action_apply" type="object" string="Guardar"/>
+                    <button special="cancel" string="Cancelar"/>
+                </footer>
             </form>
         </field>
     </record>

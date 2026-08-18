@@ -24,6 +24,13 @@ class CoPayrollDianCompany(models.Model):
         default="2",
         required=True,
     )
+    co_dian_certificate_mode = fields.Selection(
+        [("native", "Certificado nativo de Odoo"), ("pkcs12", "Archivo PKCS#12 (.p12/.pfx)")],
+        string="Método de certificado",
+        default="native",
+        required=True,
+        help="Selecciona una sola fuente de firma. El sistema usará únicamente el método elegido.",
+    )
     co_dian_software_id = fields.Char(string="ID del software DIAN")
     co_dian_software_pin = fields.Char(string="PIN del software DIAN")
     co_dian_test_set_id = fields.Char(string="Test Set ID")
@@ -154,6 +161,7 @@ class CoPayrollDianCompany(models.Model):
     def action_co_dian_validate_configuration(self):
         for company in self:
             errors = []
+            certificate_mode = company.co_dian_certificate_mode or ("native" if company.co_dian_certificate_id else "pkcs12")
             if not company.vat:
                 errors.append(_("Configura el NIT de la compañía."))
             if not company.co_dian_software_id:
@@ -162,6 +170,10 @@ class CoPayrollDianCompany(models.Model):
                 errors.append(_("Configura el PIN del software DIAN."))
             if company.co_dian_environment == "2" and not company.co_dian_test_set_id:
                 errors.append(_("Configura el Test Set ID para habilitación."))
+            if certificate_mode == "native" and not company.co_dian_certificate_id:
+                errors.append(_("Selecciona el certificado nativo de Odoo."))
+            if certificate_mode == "pkcs12" and not company.co_dian_certificate:
+                errors.append(_("Carga el archivo de certificado PKCS#12."))
             if company.co_dian_max_retries < 0:
                 errors.append(_("El máximo de reintentos no puede ser negativo."))
             if company.co_dian_retry_delay_minutes < 1:
@@ -221,14 +233,15 @@ class CoPayrollDianCompany(models.Model):
 
     def _co_dian_signing_material(self):
         self.ensure_one()
-        certificate = self.co_dian_certificate_id
+        certificate_mode = self.co_dian_certificate_mode or ("native" if self.co_dian_certificate_id else "pkcs12")
+        certificate = self.co_dian_certificate_id if certificate_mode == "native" else False
         if certificate and certificate.pem_certificate and certificate.private_key_id and certificate.private_key_id.pem_key:
             return {
                 "pem_certificate": certificate.pem_certificate,
                 "pem_key": certificate.private_key_id.pem_key,
                 "password": certificate.private_key_id.password or "",
             }
-        if self.co_dian_certificate:
+        if certificate_mode == "pkcs12" and self.co_dian_certificate:
             return {
                 "certificate_data": self.co_dian_certificate,
                 "password": self.co_dian_certificate_password or "",

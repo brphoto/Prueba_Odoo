@@ -1,0 +1,29 @@
+<odoo>
+    <record id="view_co_payroll_bank_format_list" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.bank.format.list</field><field name="model">l10n.co.payroll.bank.format</field>
+        <field name="arch" type="xml"><list string="Formatos bancarios"><field name="name"/><field name="company_id"/><field name="operator"/><field name="delimiter"/><field name="encoding"/><field name="active"/></list></field>
+    </record>
+    <record id="view_co_payroll_bank_format_form" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.bank.format.form</field><field name="model">l10n.co.payroll.bank.format</field>
+        <field name="arch" type="xml"><form string="Formato bancario"><sheet><div class="oe_title"><h1><field name="name"/></h1></div><group><group><field name="company_id"/><field name="operator"/><field name="filename_prefix"/><field name="active"/></group><group><field name="delimiter"/><field name="encoding"/><field name="line_ending"/><field name="include_header"/></group></group><field name="technical_reference" placeholder="Versión, especificaciones y contacto del banco..."/></sheet></form></field>
+    </record>
+    <record id="action_co_payroll_bank_format" model="ir.actions.act_window"><field name="name">Formatos bancarios</field><field name="res_model">l10n.co.payroll.bank.format</field><field name="view_mode">list,form</field></record>
+
+    <record id="view_co_payroll_client_import_wizard_form" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.client.import.wizard.form</field><field name="model">l10n.co.payroll.client.import.wizard</field>
+        <field name="arch" type="xml"><form string="Carga masiva de nómina"><sheet><div class="oe_title"><h1>Carga masiva</h1></div><div class="alert alert-info" role="alert">Puedes cargar CSV separado por punto y coma o un archivo Excel (.xlsx). Primero usa <strong>Solo validar</strong> para revisar el archivo sin modificar datos.</div><group><field name="import_type"/><field name="company_id"/><field name="import_file" filename="filename"/><field name="filename" invisible="1"/><field name="validate_only"/></group><group><field name="imported_count"/><field name="state" widget="badge"/></group><field name="error_message"/></sheet><footer><button name="action_import" type="object" string="Validar / importar" class="oe_highlight"/><button string="Cancelar" special="cancel"/></footer></form></field>
+    </record>
+    <record id="action_co_payroll_client_import_wizard" model="ir.actions.act_window"><field name="name">Carga masiva</field><field name="res_model">l10n.co.payroll.client.import.wizard</field><field name="view_mode">form</field><field name="target">new</field></record>
+
+    <menuitem id="menu_co_payroll_client_import" name="Carga masiva" parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_client_import_wizard" sequence="35" groups="l10n_co_payroll.group_co_payroll_manager"/>
+    <menuitem id="menu_co_payroll_bank_format" name="Formatos bancarios" parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_bank_format" sequence="56" groups="l10n_co_payroll.group_co_payroll_manager"/>
+
+    <record id="view_co_payroll_payment_batch_product_extension" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.payment.batch.product.extension</field><field name="model">l10n.co.payroll.payment.batch</field><field name="inherit_id" ref="l10n_co_payroll.view_co_payroll_payment_batch_form"/>
+        <field name="arch" type="xml"><xpath expr="//field[@name='journal_id']" position="after"><field name="bank_format_id"/></xpath></field>
+    </record>
+    <record id="view_co_payroll_period_product_extension" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.period.product.extension</field><field name="model">l10n.co.payroll.period</field><field name="inherit_id" ref="l10n_co_payroll.view_co_payroll_period_form"/>
+        <field name="arch" type="xml"><xpath expr="//header/field[@name='state']" position="before"><button name="action_prepare_and_validate" type="object" string="Ejecutar ciclo" class="oe_highlight" invisible="state in ('closed', 'cancelled')" groups="l10n_co_payroll.group_co_payroll_user"/><button name="action_create_payment_batch" type="object" string="Crear pagos" invisible="state not in ('ready', 'closed')" groups="l10n_co_payroll.group_co_payroll_user"/></xpath><xpath expr="//field[@name='approval_state']" position="after"><field name="workflow_stage" widget="badge"/></xpath></field>
+    </record>
+</odoo>

@@ -99,6 +99,10 @@ class CoPayrollDianSetupWizard(models.TransientModel):
     company_id = fields.Many2one("res.company", required=True, default=lambda self: self.env.company)
     enabled = fields.Boolean(string="Activar nómina electrónica", default=True)
     environment = fields.Selection([("1", "Producción"), ("2", "Habilitación")], string="Ambiente", required=True)
+    certificate_mode = fields.Selection(
+        [("native", "Certificado nativo de Odoo"), ("pkcs12", "Archivo PKCS#12 (.p12/.pfx)")],
+        string="Método de certificado", required=True, default="native",
+    )
     software_id = fields.Char(string="ID del software")
     software_pin = fields.Char(string="PIN del software")
     test_set_id = fields.Char(string="Test Set ID")
@@ -106,12 +110,19 @@ class CoPayrollDianSetupWizard(models.TransientModel):
     certificate_filename = fields.Char(string="Nombre del certificado")
     certificate_password = fields.Char(string="Contraseña del certificado")
     native_certificate_id = fields.Many2one("certificate.certificate", string="Certificado nativo Odoo")
+    request_timeout = fields.Integer(string="Tiempo de espera DIAN (segundos)", default=90)
+    auto_generate = fields.Boolean(string="Generar XML al validar la nómina", default=True)
+    auto_send = fields.Boolean(string="Enviar automáticamente después de validar", default=False)
     auto_check = fields.Boolean(string="Consultar pendientes automáticamente", default=False)
     require_habilitation = fields.Boolean(string="Exigir habilitación antes de producción", default=False)
     require_explicit_mapping = fields.Boolean(string="Exigir mapeo DIAN explícito", default=False)
     approval_mode = fields.Selection([
         ("none", "Sin aprobación"), ("single", "Una aprobación"), ("double", "Doble aprobación"),
     ], string="Aprobación de envío", required=True, default="none")
+    retry_enabled = fields.Boolean(string="Reintentar errores temporales", default=True)
+    max_retries = fields.Integer(string="Máximo de reintentos", default=3)
+    retry_delay_minutes = fields.Integer(string="Espera entre reintentos (minutos)", default=15)
+    certificate_alert_days = fields.Integer(string="Avisar certificado antes de vencer (días)", default=30)
     notifications_enabled = fields.Boolean(string="Avisos operativos", default=True)
     notify_errors = fields.Boolean(string="Avisar errores", default=True)
     notify_pending = fields.Boolean(string="Avisar pendientes antiguos", default=True)
@@ -126,6 +137,7 @@ class CoPayrollDianSetupWizard(models.TransientModel):
         values.update({
             "enabled": company.co_dian_payroll_enabled,
             "environment": company.co_dian_environment or "2",
+            "certificate_mode": company.co_dian_certificate_mode or ("native" if company.co_dian_certificate_id else "pkcs12"),
             "software_id": company.co_dian_software_id,
             "software_pin": company.co_dian_software_pin,
             "test_set_id": company.co_dian_test_set_id,
@@ -133,10 +145,17 @@ class CoPayrollDianSetupWizard(models.TransientModel):
             "certificate_filename": company.co_dian_certificate_filename,
             "certificate_password": company.co_dian_certificate_password,
             "native_certificate_id": company.co_dian_certificate_id.id,
+            "request_timeout": company.co_dian_request_timeout,
+            "auto_generate": company.co_dian_auto_generate_on_validate,
+            "auto_send": company.co_dian_auto_send_on_validate,
             "auto_check": company.co_dian_auto_check_pending,
             "require_habilitation": company.co_dian_require_habilitation,
             "require_explicit_mapping": company.co_dian_require_explicit_mapping,
             "approval_mode": company.co_dian_approval_mode,
+            "retry_enabled": company.co_dian_retry_enabled,
+            "max_retries": company.co_dian_max_retries,
+            "retry_delay_minutes": company.co_dian_retry_delay_minutes,
+            "certificate_alert_days": company.co_dian_certificate_alert_days,
             "notifications_enabled": company.co_dian_notifications_enabled,
             "notify_errors": company.co_dian_notify_errors,
             "notify_pending": company.co_dian_notify_pending,
@@ -151,6 +170,7 @@ class CoPayrollDianSetupWizard(models.TransientModel):
         return {
             "co_dian_payroll_enabled": self.enabled,
             "co_dian_environment": self.environment,
+            "co_dian_certificate_mode": self.certificate_mode,
             "co_dian_software_id": self.software_id,
             "co_dian_software_pin": self.software_pin,
             "co_dian_test_set_id": self.test_set_id,
@@ -158,10 +178,17 @@ class CoPayrollDianSetupWizard(models.TransientModel):
             "co_dian_certificate_filename": self.certificate_filename,
             "co_dian_certificate_password": self.certificate_password,
             "co_dian_certificate_id": self.native_certificate_id.id,
+            "co_dian_request_timeout": self.request_timeout,
+            "co_dian_auto_generate_on_validate": self.auto_generate,
+            "co_dian_auto_send_on_validate": self.auto_send,
             "co_dian_auto_check_pending": self.auto_check,
             "co_dian_require_habilitation": self.require_habilitation,
             "co_dian_require_explicit_mapping": self.require_explicit_mapping,
             "co_dian_approval_mode": self.approval_mode,
+            "co_dian_retry_enabled": self.retry_enabled,
+            "co_dian_max_retries": self.max_retries,
+            "co_dian_retry_delay_minutes": self.retry_delay_minutes,
+            "co_dian_certificate_alert_days": self.certificate_alert_days,
             "co_dian_notifications_enabled": self.notifications_enabled,
             "co_dian_notify_errors": self.notify_errors,
             "co_dian_notify_pending": self.notify_pending,

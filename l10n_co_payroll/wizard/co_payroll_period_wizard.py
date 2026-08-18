@@ -17,6 +17,7 @@ class CoPayrollPeriodWizard(models.TransientModel):
     job_ids = fields.Many2many("hr.job", string="Cargos")
     structure_ids = fields.Many2many("hr.payroll.structure", string="Estructuras salariales", domain=[("active", "=", True)])
     note = fields.Text(string="Notas")
+    prepare_now = fields.Boolean(string="Preparar y validar automáticamente", default=True, help="Crea el periodo, consolida los recibos encontrados y ejecuta las validaciones.")
 
     @api.onchange("date_from", "period_type")
     def _onchange_dates(self):
@@ -43,4 +44,6 @@ class CoPayrollPeriodWizard(models.TransientModel):
             "structure_ids": [(6, 0, self.structure_ids.ids)],
             "note": self.note,
         })
+        if self.prepare_now:
+            period.action_prepare_and_validate()
         return {"type": "ir.actions.act_window", "name": _("Periodo de nómina"), "res_model": "l10n.co.payroll.period", "view_mode": "form", "res_id": period.id, "target": "current"}

@@ -16,7 +16,7 @@ class CoPayrollPilaConfig(models.Model):
 
     name = fields.Char(string="Nombre", required=True)
     company_id = fields.Many2one("res.company", required=True, default=lambda self: self.env.company, index=True)
-    operator = fields.Selection([("generic", "Archivo configurable"), ("soporte", "Operador / soporte"), ("other", "Otro")], string="Operador", required=True, default="generic")
+    operator = fields.Selection([("generic", "Archivo configurable"), ("simple", "Simple"), ("soi", "SOI"), ("aportesenlinea", "Aportes en Línea"), ("mi_planilla", "Mi Planilla"), ("soporte", "Operador / soporte"), ("other", "Otro")], string="Operador", required=True, default="generic")
     file_format = fields.Selection([("csv", "CSV delimitado"), ("fixed", "Ancho fijo")], string="Formato", required=True, default="csv")
     delimiter = fields.Char(string="Separador", required=True, default=";")
     encoding = fields.Selection([("utf-8-sig", "UTF-8 con BOM"), ("cp1252", "ANSI / Windows-1252")], string="Codificación", required=True, default="cp1252")
@@ -38,7 +38,18 @@ class CoPayrollPilaFile(models.Model):
     name = fields.Char(string="Referencia", required=True, copy=False, default=lambda self: _("Archivo PILA"), tracking=True)
     company_id = fields.Many2one("res.company", required=True, default=lambda self: self.env.company, index=True)
     period_id = fields.Many2one("l10n.co.payroll.period", required=True, ondelete="restrict", index=True, tracking=True)
-    config_id = fields.Many2one("l10n.co.payroll.pila.config", string="Configuración", required=True, domain="[('company_id', '=', company_id), ('active', '=', True)]")
+    config_id = fields.Many2one(
+        "l10n.co.payroll.pila.config",
+        string="Configuración",
+        required=True,
+        default=lambda self: self.env["l10n.co.payroll.pila.config"].search(
+            [("company_id", "=", self.env.company.id), ("active", "=", True)],
+            order="id",
+            limit=1,
+        ),
+        domain="[('company_id', '=', company_id), ('active', '=', True)]",
+        help="Se selecciona automáticamente la configuración PILA activa de la compañía.",
+    )
     state = fields.Selection([("draft", "Borrador"), ("validated", "Validado"), ("generated", "Generado"), ("exported", "Exportado"), ("cancelled", "Cancelado")], default="draft", required=True, tracking=True)
     attachment_id = fields.Many2one("ir.attachment", string="Archivo", readonly=True, copy=False)
     datas = fields.Binary(related="attachment_id.datas", readonly=True)
@@ -59,6 +70,10 @@ class CoPayrollPilaFile(models.Model):
         self.ensure_one()
         errors = []
         for line in self.period_id.line_ids:
+            if line.pila_reporting_mode in ("manual", "not_applicable"):
+                if not line.pila_manual_reference:
+                    errors.append(_("%s: falta referencia del reporte externo o motivo de no aplicación.") % line.employee_id.name)
+                continue
             if not line.employee_id.identification_id:
                 errors.append(_("%s: falta identificación.") % line.employee_id.name)
             if not line.social_profile_id:
@@ -67,13 +82,13 @@ class CoPayrollPilaFile(models.Model):
                 errors.append(_("%s: falta tipo de cotizante.") % line.employee_id.name)
             if line.pila_type and line.pila_type not in ("01", "02", "03", "04", "12", "19", "23", "40", "51", "52"):
                 errors.append(_("%s: el tipo de cotizante PILA no está en el catálogo configurado.") % line.employee_id.name)
-            if line.social_profile_id and not line.eps_code:
+            if line.pila_reporting_mode == "full" and line.social_profile_id and line.social_profile_id.require_eps and not line.eps_code:
                 errors.append(_("%s: falta código EPS.") % line.employee_id.name)
-            if line.social_profile_id and not line.pension_code:
+            if line.pila_reporting_mode == "full" and line.social_profile_id and line.social_profile_id.require_pension and not line.pension_code:
                 errors.append(_("%s: falta código AFP.") % line.employee_id.name)
-            if line.social_profile_id and not line.arl_code:
+            if line.pila_reporting_mode == "full" and line.social_profile_id and line.social_profile_id.require_arl and not line.arl_code:
                 errors.append(_("%s: falta código ARL.") % line.employee_id.name)
-            if line.social_profile_id and not line.ccf_code:
+            if line.pila_reporting_mode == "full" and line.social_profile_id and line.social_profile_id.require_ccf and not line.ccf_code:
                 errors.append(_("%s: falta código de caja de compensación.") % line.employee_id.name)
             if line.worked_days < 0 or line.worked_days > 31:
                 errors.append(_("%s: los días PILA deben estar entre 0 y 31.") % line.employee_id.name)
@@ -94,7 +109,7 @@ class CoPayrollPilaFile(models.Model):
         self.ensure_one()
         headers = ["tipo_documento", "numero_documento", "empleado", "tipo_cotizante", "subtipo", "dias", "ibc", "novedades", "eps", "afp", "arl", "caja", "clase_riesgo", "salud_empleado", "salud_empleador", "pension_empleado", "pension_empleador", "solidaridad", "arl_empleador", "caja_empleador"]
         rows = []
-        for line in self.period_id.line_ids:
+        for line in self.period_id.line_ids.filtered(lambda item: item.pila_reporting_mode == "full"):
             rows.append([line.social_profile_id.identification_type if line.social_profile_id else "CC", line.employee_id.identification_id or "", line.employee_id.name, line.pila_type or "", line.pila_subtype or "", round(line.worked_days or 0), round(line.ibc_base or 0), line.pila_novelty_codes or "", line.eps_code or "", line.pension_code or "", line.arl_code or "", line.ccf_code or "", line.risk_class or "", round(line.health_employee or 0), round(line.health_employer or 0), round(line.pension_employee or 0), round(line.pension_employer or 0), round(line.solidarity_employee or 0), round(line.arl_employer or 0), round(line.ccf_employer or 0)])
         if self.config_id.file_format == "fixed":
             widths = [4, 20, 60, 4, 4, 3, 15, 20, 12, 12, 12, 12, 4, 15, 15, 15, 15, 15, 15, 15]
@@ -117,7 +132,7 @@ class CoPayrollPilaFile(models.Model):
             encoded = content.encode(record.config_id.encoding or "cp1252", errors="replace")
             filename = "%s_%s.%s" % (record.config_id.filename_prefix or "PILA", record.period_id.name.replace("/", "-"), "csv" if record.config_id.file_format == "csv" else "txt")
             attachment = self.env["ir.attachment"].create({"name": filename, "type": "binary", "datas": base64.b64encode(encoded), "res_model": record._name, "res_id": record.id, "mimetype": "text/csv"})
-            record.write({"attachment_id": attachment.id, "state": "generated", "generated_by": self.env.user.id, "generated_at": fields.Datetime.now(), "record_count": len(record.period_id.line_ids), "checksum": hashlib.sha256(encoded).hexdigest()})
+            record.write({"attachment_id": attachment.id, "state": "generated", "generated_by": self.env.user.id, "generated_at": fields.Datetime.now(), "record_count": len(record.period_id.line_ids.filtered(lambda item: item.pila_reporting_mode == "full")), "checksum": hashlib.sha256(encoded).hexdigest()})
             self.env["l10n.co.payroll.audit"].sudo().create({"company_id": record.company_id.id, "period_id": record.period_id.id, "res_model": record._name, "res_id": record.id, "action": "pila", "description": _("Archivo PILA configurable generado: %s.") % filename})
         return True
 

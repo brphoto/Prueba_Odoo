@@ -1,0 +1,34 @@
+<odoo>
+    <record id="view_co_payroll_employee_setup_wizard_form" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.employee.setup.wizard.form</field>
+        <field name="model">l10n.co.payroll.employee.setup.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Vincular empleado a PILA">
+                <sheet>
+                    <div class="oe_title"><h1>Vincular empleado a PILA</h1></div>
+                    <div class="alert alert-info" role="alert">Usa <strong>Afiliación completa</strong> para generar PILA desde este sistema. Usa <strong>Reporte externo</strong> o <strong>No aplica</strong> cuando la gestión esté documentada fuera de este módulo.</div>
+                    <group>
+                        <group string="Empleado"><field name="employee_id"/><field name="company_id"/><field name="effective_from"/><field name="cost_center_id"/></group>
+                        <group string="Tipo de cotizante"><field name="salary_mode"/><field name="contributor_type"/><field name="contributor_subtype"/><field name="risk_class"/></group>
+                    </group>
+                    <group string="Cobertura PILA">
+                        <field name="coverage_mode"/>
+                        <field name="manual_reference" invisible="coverage_mode == 'full'" required="coverage_mode != 'full'" placeholder="Ej. Operador externo / motivo legal"/>
+                    </group>
+                    <group string="Administradoras" invisible="coverage_mode != 'full'">
+                        <field name="eps_id"/><field name="pension_id"/><field name="arl_id"/><field name="ccf_id"/>
+                        <field name="require_eps"/><field name="require_pension"/><field name="require_arl"/><field name="require_ccf"/>
+                    </group>
+                    <field name="replace_active"/>
+                </sheet>
+                <footer><button name="action_apply" type="object" string="Crear perfil" class="oe_highlight"/><button string="Cancelar" special="cancel" class="btn-secondary"/></footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_co_payroll_employee_setup_wizard" model="ir.actions.act_window">
+        <field name="name">Vincular empleado a PILA</field>
+        <field name="res_model">l10n.co.payroll.employee.setup.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

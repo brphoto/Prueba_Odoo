@@ -1,0 +1,117 @@
+<odoo>
+    <record id="view_co_payroll_cost_center_list" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.cost.center.list</field>
+        <field name="model">l10n.co.payroll.cost.center</field>
+        <field name="arch" type="xml">
+            <list string="Centros de costo">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="analytic_account_id"/>
+                <field name="default_for_company" widget="boolean_toggle"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_co_payroll_cost_center_form" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.cost.center.form</field>
+        <field name="model">l10n.co.payroll.cost.center</field>
+        <field name="arch" type="xml">
+            <form string="Centro de costo">
+                <sheet><group><field name="company_id"/><field name="code"/><field name="name"/><field name="analytic_account_id"/><field name="default_for_company"/><field name="active"/></group><field name="notes"/></sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_co_payroll_cost_center" model="ir.actions.act_window"><field name="name">Centros de costo</field><field name="res_model">l10n.co.payroll.cost.center</field><field name="view_mode">list,form</field></record>
+
+    <record id="view_co_payroll_admin_assignment_list" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.administrator.assignment.list</field>
+        <field name="model">l10n.co.payroll.administrator.assignment</field>
+        <field name="arch" type="xml">
+            <list string="Prioridades contables">
+                <field name="name"/><field name="administrator_id"/><field name="scope_type"/><field name="employee_id"/><field name="department_id"/><field name="priority"/><field name="active"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_co_payroll_admin_assignment_form" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.administrator.assignment.form</field>
+        <field name="model">l10n.co.payroll.administrator.assignment</field>
+        <field name="arch" type="xml">
+            <form string="Prioridad contable">
+                <sheet>
+                    <div class="alert alert-info" role="alert">La prioridad aplicada es empleado, departamento y luego compañía.</div>
+                    <group><field name="name"/><field name="company_id"/><field name="administrator_id"/><field name="scope_type"/><field name="priority"/><field name="active"/></group>
+                    <group invisible="scope_type != 'employee'"><field name="employee_id"/></group>
+                    <group invisible="scope_type != 'department'"><field name="department_id"/></group>
+                    <group string="Contabilidad alternativa"><field name="debit_account_id"/><field name="credit_account_id"/><field name="partner_id"/><field name="analytic_account_id"/></group>
+                    <field name="notes"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_co_payroll_admin_assignment" model="ir.actions.act_window"><field name="name">Prioridades contables</field><field name="res_model">l10n.co.payroll.administrator.assignment</field><field name="view_mode">list,form</field></record>
+
+    <record id="view_co_payroll_payment_allocation_list" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.payment.allocation.list</field>
+        <field name="model">l10n.co.payroll.payment.allocation</field>
+        <field name="arch" type="xml"><list string="Distribuciones bancarias"><field name="employee_id"/><field name="bank_account_id"/><field name="percentage"/><field name="sequence"/><field name="active"/></list></field>
+    </record>
+    <record id="view_co_payroll_payment_allocation_form" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.payment.allocation.form</field>
+        <field name="model">l10n.co.payroll.payment.allocation</field>
+        <field name="arch" type="xml"><form string="Distribución bancaria"><sheet><div class="alert alert-info" role="alert">Para usar varias cuentas, registra porcentajes que sumen exactamente 100%.</div><group><field name="name"/><field name="company_id"/><field name="employee_id"/><field name="bank_account_id"/><field name="percentage"/><field name="sequence"/><field name="active"/></group><field name="notes"/></sheet></form></field>
+    </record>
+    <record id="action_co_payroll_payment_allocation" model="ir.actions.act_window"><field name="name">Distribuciones bancarias</field><field name="res_model">l10n.co.payroll.payment.allocation</field><field name="view_mode">list,form</field></record>
+
+    <record id="view_co_payroll_period_detail_list" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.period.detail.list</field>
+        <field name="model">l10n.co.payroll.period.detail</field>
+        <field name="arch" type="xml"><list string="Detalle consolidado" create="false" delete="false"><field name="period_line_id"/><field name="detail_type" widget="badge"/><field name="code"/><field name="name"/><field name="quantity"/><field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}" sum="Total"/></list></field>
+    </record>
+    <record id="action_co_payroll_period_detail" model="ir.actions.act_window"><field name="name">Detalle consolidado</field><field name="res_model">l10n.co.payroll.period.detail</field><field name="view_mode">list</field></record>
+
+    <record id="view_co_payroll_settlement_average_inherit" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.settlement.average.inherit</field>
+        <field name="model">l10n.co.payroll.settlement</field>
+        <field name="inherit_id" ref="l10n_co_payroll.view_co_payroll_settlement_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='transport_allowance']" position="after">
+                <field name="variable_average"/>
+                <field name="average_source_count"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_co_payroll_period_line_detail_inherit" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.period.line.detail.inherit</field>
+        <field name="model">l10n.co.payroll.period.line</field>
+        <field name="inherit_id" ref="l10n_co_payroll.view_co_payroll_period_line_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='net_wage']" position="after">
+                <field name="cost_center_id"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <group string="Detalle consolidado"><field name="detail_ids" readonly="1"><list create="false" delete="false"><field name="detail_type" widget="badge"/><field name="code"/><field name="name"/><field name="quantity"/><field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}"/></list></field></group>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_co_payroll_payment_line_allocation_inherit" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.payment.line.allocation.inherit</field>
+        <field name="model">l10n.co.payroll.payment.batch</field>
+        <field name="inherit_id" ref="l10n_co_payroll.view_co_payroll_payment_batch_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='bank_account_id']" position="after"><field name="allocation_id" optional="hide"/></xpath>
+        </field>
+    </record>
+    <record id="view_hr_employee_cost_center_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.payroll.cost.center</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml"><xpath expr="//field[@name='department_id']" position="after"><field name="co_payroll_cost_center_id" optional="hide"/></xpath></field>
+    </record>
+    <record id="view_hr_department_cost_center_inherit" model="ir.ui.view">
+        <field name="name">hr.department.payroll.cost.center</field>
+        <field name="model">hr.department</field>
+        <field name="inherit_id" ref="hr.view_department_form"/>
+        <field name="arch" type="xml"><xpath expr="//field[@name='name']" position="after"><field name="co_payroll_cost_center_id" optional="hide"/></xpath></field>
+    </record>
+</odoo>

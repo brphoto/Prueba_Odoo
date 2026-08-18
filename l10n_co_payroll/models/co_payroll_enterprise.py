@@ -23,6 +23,7 @@ class CoPayrollCalendar(models.Model):
     date_to = fields.Date(required=True)
     payment_date = fields.Date(required=True)
     cutoff_date = fields.Date(string="Fecha de corte")
+    prepare_now = fields.Boolean(string="Preparar y validar automáticamente", default=True)
     state = fields.Selection([("planned", "Planeado"), ("processed", "Procesado"), ("cancelled", "Cancelado")], default="planned", required=True)
     notes = fields.Text()
 
@@ -45,6 +46,8 @@ class CoPayrollCalendar(models.Model):
                 "date_to": record.date_to,
                 "payment_date": record.payment_date,
             })
+            if record.prepare_now:
+                period.action_prepare_and_validate()
             record.write({"period_id": period.id, "state": "processed"})
             self.env["l10n.co.payroll.audit"].sudo().create({"company_id": record.company_id.id, "period_id": period.id, "res_model": record._name, "res_id": record.id, "action": "other", "description": _("Periodo creado desde calendario.")})
         return True
