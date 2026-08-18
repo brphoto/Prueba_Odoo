@@ -23,9 +23,13 @@ class TestColombianLegalControls(TransactionCase):
         })
         settlement.action_calculate()
         base = 2249095
-        self.assertAlmostEqual(settlement.severance, base * 365 / 360, places=2)
-        self.assertAlmostEqual(settlement.bonus, base * 365 / 360, places=2)
-        self.assertAlmostEqual(settlement.severance_interest, base * 365 / 360 * .12 * 365 / 360, places=2)
+        currency = self.company.currency_id
+        self.assertEqual(settlement.severance, currency.round(base * 365 / 360))
+        self.assertEqual(settlement.bonus, currency.round(base * 365 / 360))
+        self.assertEqual(
+            settlement.severance_interest,
+            currency.round(base * 365 / 360 * .12 * 365 / 360),
+        )
 
     def test_incapacity_tranches_and_dian_deadline(self):
         period = self.env["l10n.co.payroll.period"].create({

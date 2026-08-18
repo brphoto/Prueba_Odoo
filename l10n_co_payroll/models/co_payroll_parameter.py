@@ -103,7 +103,7 @@ class CoPayrollParameter(models.Model):
     withholding_notes = fields.Text(string="Notas tributarias")
     active = fields.Boolean(default=True)
     currency_id = fields.Many2one(related="company_id.currency_id", readonly=True)
-    rule_mapping_ids = fields.One2many("l10n.co.payroll.rule.mapping", "parameter_id", string="Mapeo de conceptos")
+    rule_mapping_ids = fields.One2many("l10n.co.payroll.rule.mapping", "parameter_id", string="Conceptos de nómina")
     salary_rule_ids = fields.One2many("l10n.co.payroll.salary.rule", "parameter_id", string="Reglas salariales")
     withholding_bracket_ids = fields.One2many("l10n.co.payroll.withholding.bracket", "parameter_id", string="Tabla de retención")
 
