@@ -136,6 +136,154 @@
     .o_field_widget.o_field_badge { font-weight: 600; }
 }
 
+.o_dian_payslip_state_card,
+.o_dian_payslip_history_header,
+.o_dian_history_kpi,
+.o_dian_history_last_result {
+    color: #f8fafc;
+    background: #202938;
+    border-color: #405168;
+
+    .o_form_label,
+    .o_field_widget,
+    .o_field_widget input,
+    .o_field_widget textarea,
+    .o_field_widget a,
+    .o_horizontal_separator {
+        color: #f8fafc !important;
+    }
+}
+
+.o_dian_payslip_state_card {
+    padding: 1rem 1.15rem;
+    margin-bottom: 1rem;
+    border: 1px solid #405168;
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, #202938 0%, #172337 100%);
+}
+
+.o_dian_payslip_state_head,
+.o_dian_payslip_state_actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.o_dian_payslip_state_head h3 {
+    margin: 0.15rem 0 0;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.o_dian_payslip_state_meta {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(130px, 1fr));
+    gap: 0.75rem;
+    margin: 1rem 0;
+
+    > div {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        min-width: 0;
+        padding: 0.65rem 0.75rem;
+        border: 1px solid #405168;
+        border-radius: 0.55rem;
+        background: rgba(15, 23, 42, 0.42);
+    }
+
+    small { color: #9fb0c6; }
+    .o_field_widget { overflow-wrap: anywhere; }
+}
+
+.o_dian_payslip_state_alert,
+.o_dian_payslip_state_message {
+    padding: 0.65rem 0.75rem;
+    margin: 0.7rem 0;
+    border-radius: 0.5rem;
+    background: rgba(15, 23, 42, 0.42);
+    border: 1px solid #405168;
+}
+
+.o_dian_payslip_state_alert { color: #fecaca; border-color: #7f1d1d; }
+.o_dian_payslip_state_message { color: #cbd5e1; }
+
+.o_dian_payslip_state_message small,
+.o_dian_history_last_result span { display: block; margin-bottom: 0.25rem; color: #9fb0c6; }
+
+.o_dian_payslip_state_actions {
+    justify-content: flex-start;
+    margin-top: 0.75rem;
+}
+
+.o_dian_payslip_state_actions .btn,
+.o_dian_payslip_state_actions button { margin: 0; }
+
+.o_dian_payslip_history_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 1rem;
+    border: 1px solid #405168;
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, #202938 0%, #172337 100%);
+
+    .o_dian_kicker {
+        display: block;
+        color: #087f8c;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    h3 { margin: 0.15rem 0 0.25rem; color: #ffffff; font-weight: 700; }
+    p { margin: 0; color: #b5c3d4; }
+}
+
+.o_dian_payslip_history_kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(130px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.o_dian_history_kpi {
+    min-height: 78px;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid #405168;
+    border-radius: 0.65rem;
+    background: #202938;
+
+    > span { display: block; margin-bottom: 0.35rem; color: #9fb0c6; font-size: 0.78rem; }
+    .o_field_widget { color: #f8fafc; font-weight: 700; }
+}
+
+.o_dian_history_last_result {
+    padding: 0.8rem 1rem;
+    border: 1px solid #405168;
+    border-radius: 0.65rem;
+    background: #202938;
+
+    .o_form_label,
+    .o_field_widget,
+    .o_field_widget input,
+    .o_field_widget textarea,
+    .o_field_widget a { color: #f8fafc !important; }
+
+    > span { color: #9fb0c6; }
+}
+
+@media (max-width: 800px) {
+    .o_dian_payslip_state_meta { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+    .o_dian_payslip_history_header { align-items: flex-start; flex-direction: column; }
+    .o_dian_payslip_history_kpis { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+}
+
 @media (max-width: 900px) {
     .o_dian_dashboard .o_dian_kpi_grid { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
 }

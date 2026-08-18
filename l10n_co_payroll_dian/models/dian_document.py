@@ -244,23 +244,23 @@ class CoPayrollDianDocument(models.Model):
         parameter = self.period_id.parameter_id
         if not parameter:
             return totals
-        mappings = self.env["l10n.co.payroll.rule.mapping"].search([
+        Mapping = self.env["l10n.co.payroll.rule.mapping"]
+        mappings = Mapping.search([
             ("company_id", "=", self.company_id.id),
             ("parameter_id", "=", parameter.id),
             ("active", "=", True),
-            ("dian_concept", "!=", False),
         ])
-        by_code = {mapping.code.upper(): mapping for mapping in mappings if mapping.code}
         for payslip in self.period_line_id.source_payslip_ids:
             for line in payslip.line_ids:
-                salary_rule = getattr(line, "salary_rule_id", False)
-                native_rule = getattr(salary_rule, "co_payroll_rule_id", False)
-                code = getattr(native_rule, "code", False) or getattr(salary_rule, "code", False)
+                code = getattr(getattr(line, "salary_rule_id", False), "code", False) or getattr(line, "code", False)
                 if not code or not line.total:
                     continue
-                mapping = by_code.get(str(code).upper())
-                if not mapping:
+                mapping = Mapping._resolve_for_payroll_line(line, mappings=mappings)
+                if not mapping or not mapping.dian_concept:
                     totals["unmapped"].append(str(code).upper())
+                    continue
+                mapping = mapping[0]
+                if mapping.concept_type not in ("earning", "deduction", "employee_contribution"):
                     continue
                 target = "deducciones" if mapping.concept_type in ("deduction", "employee_contribution") else "devengados"
                 key = mapping.dian_concept
@@ -614,7 +614,7 @@ class CoPayrollDianDocument(models.Model):
                     "preflight_message": str(exc),
                     "preflight_at": fields.Datetime.now(),
                 })
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
 
     def _prepare_send_approval(self):
         self.ensure_one()
@@ -646,7 +646,7 @@ class CoPayrollDianDocument(models.Model):
             else:
                 raise UserError(_("El documento ya tiene la aprobación completa."))
             document._log_attempt("approve", "success", _("Aprobación de envío registrada."))
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
 
     def action_generate(self):
         for document in self:
@@ -679,6 +679,17 @@ class CoPayrollDianDocument(models.Model):
                     "zip_file": base64.b64encode(zip_bytes), "zip_filename": f"{document.name}.zip",
                     "cune": data["cune"], "cune_seed": data["cune_seed"],
                     "state": "validated", "generated_by": self.env.user.id, "generated_at": fields.Datetime.now(),
+                    # A regenerated XML is a new local transmission candidate.
+                    # Keep the attempt log, but do not display response identifiers
+                    # belonging to the previous XML/document submission.
+                    "sent_by": False, "sent_at": False, "last_checked_at": False,
+                    "submission_environment": False, "zip_key": False, "xml_document_key": False,
+                    "status_code": False, "status_message": False,
+                    "request_log": False, "response_log": False,
+                    "application_response_file": False, "application_response_filename": False,
+                    "approval_state": "not_required", "approval_by": False, "approval_at": False,
+                    "second_approval_by": False, "second_approval_at": False,
+                    "retry_count": 0, "next_retry_at": False, "last_retry_at": False,
                     "xml_validation_errors": False, "error_message": False,
                     "error_category": False, "reconciliation_difference": data.get("source_reconciliation_difference", 0.0),
                     "preflight_state": "ok", "preflight_message": _("Validación de negocio y XML completada."),
@@ -691,7 +702,7 @@ class CoPayrollDianDocument(models.Model):
                 if isinstance(exc, (UserError, ValidationError)):
                     raise
                 raise UserError(_("No fue posible generar el documento DIAN: %s") % exc) from exc
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
 
     def action_validate_xml(self):
         for document in self:
@@ -703,7 +714,7 @@ class CoPayrollDianDocument(models.Model):
             document.write({"state": "validated" if valid else "error", "xml_validation_errors": "\n".join(errors) if errors else False})
             if not valid:
                 raise UserError(_("El XML no es válido:\n%s") % "\n".join(errors))
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
 
     def _apply_response(self, response, operation):
         response = response if isinstance(response, dict) else {}
@@ -711,18 +722,40 @@ class CoPayrollDianDocument(models.Model):
         if isinstance(dian, dict):
             dian = [dian]
         first = dian[0] if dian else {}
-        zip_key = response.get("ZipKey") or response.get("track_id") or first.get("ZipKey")
-        xml_key = response.get("XmlDocumentKey") or first.get("XmlDocumentKey")
+        # DIAN no siempre repite las referencias en respuestas intermedias
+        # (por ejemplo, cuando el lote todavía está en validación). Nunca
+        # debemos perder el ZipKey/XmlDocumentKey ya recibido porque son las
+        # referencias necesarias para continuar la trazabilidad.
+        zip_key = response.get("ZipKey") or response.get("track_id") or first.get("ZipKey") or self.zip_key
+        xml_key = response.get("XmlDocumentKey") or first.get("XmlDocumentKey") or self.xml_document_key
         status_code = response.get("StatusCode") or response.get("status_code") or first.get("StatusCode")
         errors = response.get("ErrorMessageList") or first.get("ErrorMessageList") or []
-        message = response.get("StatusMessage") or response.get("status_message") or response.get("ErrorMessage") or response.get("error") or first.get("StatusDescription") or ("; ".join(errors) if errors else "")
+        message = (
+            response.get("StatusMessage")
+            or response.get("status_message")
+            or response.get("StatusDescription")
+            or response.get("status_description")
+            or response.get("ErrorMessage")
+            or response.get("error")
+            or first.get("StatusDescription")
+            or first.get("StatusMessage")
+            or ("; ".join(errors) if errors else "")
+        )
         is_valid = response.get("IsValid") if "IsValid" in response else first.get("IsValid")
+        normalized_message = self._normalize(message)
+        is_processing = any(marker in normalized_message for marker in (
+            "en proceso", "procesando", "pendiente", "processing", "in progress",
+        ))
         values = {"response_log": json.dumps(response, ensure_ascii=False, indent=2, default=str), "zip_key": zip_key, "xml_document_key": xml_key, "status_code": status_code, "status_message": message or False, "error_message": False if is_valid else (message or False)}
         application_response = response.get("XmlBase64Bytes") or first.get("XmlBase64Bytes")
         if application_response:
             values.update({"application_response_file": application_response, "application_response_filename": f"{self.name}_ApplicationResponse.xml"})
         if is_valid is True:
             values["state"] = "accepted"
+        elif is_processing:
+            values["state"] = "pending"
+            values["error_message"] = False
+            values["error_category"] = False
         elif is_valid is False or response.get("error"):
             values["state"] = "rejected"
         elif zip_key:
@@ -785,7 +818,7 @@ class CoPayrollDianDocument(models.Model):
                 document.write({"state": "error", "error_message": str(exc), "error_category": category, "attempt_count": document.attempt_count + 1, "retry_count": retry_count, "next_retry_at": next_retry})
                 document._log_attempt("send", "error", str(exc))
                 raise UserError(_("No fue posible transmitir a la DIAN: %s") % exc) from exc
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
 
     def action_retry_send(self):
         for document in self:
@@ -797,7 +830,7 @@ class CoPayrollDianDocument(models.Model):
                 raise UserError(_("Se alcanzó el máximo de reintentos configurado."))
             document.write({"state": "validated", "last_retry_at": fields.Datetime.now(), "next_retry_at": False})
             document.action_send()
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
 
     def action_export_csv(self):
         if not self:
@@ -844,7 +877,7 @@ class CoPayrollDianDocument(models.Model):
                 if document.env.context.get("co_dian_cron"):
                     continue
                 raise UserError(_("No fue posible consultar el estado DIAN: %s") % exc) from exc
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
 
     def action_fetch_application_response(self):
         for document in self:
@@ -855,7 +888,7 @@ class CoPayrollDianDocument(models.Model):
             if encoded:
                 document.write({"application_response_file": encoded, "application_response_filename": f"{document.name}_ApplicationResponse.xml"})
             document._apply_response(response, "fetch_response")
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
 
     def action_create_adjustment(self):
         self.ensure_one()

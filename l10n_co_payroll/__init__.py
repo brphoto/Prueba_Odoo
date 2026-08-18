@@ -198,6 +198,7 @@ def _ensure_colombian_rules(env, parameter, structures):
 
 def _ensure_colombian_mappings(env, parameter):
     Mapping = env["l10n.co.payroll.rule.mapping"].sudo()
+    Rule = env["l10n.co.payroll.salary.rule"].sudo()
     definitions = [
         ("BASIC", "Salario básico", "earning", "SAL", True, "basico"),
         ("GROSS", "Devengado base", "earning", "DEV", False, False),
@@ -230,6 +231,7 @@ def _ensure_colombian_mappings(env, parameter):
     ]
     has_dian = "dian_concept" in Mapping._fields
     for code, name, concept_type, pila_code, include_in_ibc, dian_concept in definitions:
+        salary_rule = Rule.search([("parameter_id", "=", parameter.id), ("code", "=", code)], limit=1)
         mapping = Mapping.search([("parameter_id", "=", parameter.id), ("code", "=", code), ("concept_type", "=", concept_type)], limit=1)
         if not mapping:
             values = {
@@ -241,12 +243,20 @@ def _ensure_colombian_mappings(env, parameter):
                 "pila_code": pila_code,
                 "include_in_ibc": include_in_ibc,
                 "notes": "Catálogo inicial colombiano; revisa el anexo técnico y el operador PILA antes de producción.",
+                "salary_rule_id": salary_rule.id if salary_rule else False,
+                "is_system_default": True,
             }
             if has_dian and dian_concept:
                 values["dian_concept"] = dian_concept
             Mapping.create(values)
-        elif has_dian and dian_concept and not mapping.dian_concept:
-            mapping.write({"dian_concept": dian_concept})
+        else:
+            values = {}
+            if salary_rule and not mapping.salary_rule_id:
+                values.update({"salary_rule_id": salary_rule.id, "is_system_default": True})
+            if has_dian and dian_concept and not mapping.dian_concept:
+                values["dian_concept"] = dian_concept
+            if values:
+                mapping.write(values)
 
 
 def _ensure_colombian_pila(env, company):

@@ -73,7 +73,7 @@ class CoPayrollDianPeriod(models.Model):
                 if not existing.filtered(lambda doc, line=line: doc.period_line_id == line):
                     document_model.create({"period_id": period.id, "period_line_id": line.id, "company_id": period.company_id.id})
             period.dian_document_ids.filtered(lambda doc: doc.state in ("draft", "error") and not doc.is_adjustment).action_generate()
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
 
     def action_send_dian_documents(self):
         for period in self:
@@ -81,7 +81,7 @@ class CoPayrollDianPeriod(models.Model):
             if not documents:
                 raise UserError(_("No hay documentos DIAN validados localmente para enviar."))
             documents.action_send()
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
 
     def action_prevalidate_dian_documents(self):
         for period in self:
@@ -89,7 +89,7 @@ class CoPayrollDianPeriod(models.Model):
             if not documents:
                 raise UserError(_("No hay documentos DIAN disponibles para prevalidar."))
             documents.action_prevalidate()
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
 
     def action_approve_dian_documents(self):
         for period in self:
@@ -97,7 +97,7 @@ class CoPayrollDianPeriod(models.Model):
             if not documents:
                 raise UserError(_("No hay documentos que requieran aprobación DIAN."))
             documents.action_approve_send()
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
 
     def action_export_dian_csv(self):
         self.ensure_one()
@@ -109,7 +109,7 @@ class CoPayrollDianPeriod(models.Model):
     def action_check_dian_status(self):
         for period in self:
             period.dian_document_ids.filtered(lambda doc: doc.state == "pending" and (doc.zip_key or doc.cune)).action_check_status()
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
 
     def action_open_dian_documents(self):
         self.ensure_one()

@@ -106,6 +106,7 @@ class TestColombianCatalog(TransactionCase):
             ("code", "in", list(direct_codes)),
         ])
         self.assertEqual(set(mappings.mapped("code")), direct_codes)
+        self.assertTrue(all(mapping.salary_rule_id for mapping in mappings))
         self.assertTrue(all(mapping.dian_concept for mapping in mappings if "dian_concept" in mapping._fields))
 
     def test_period_type_catalog_is_complete(self):

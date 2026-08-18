@@ -101,6 +101,8 @@
                         <page name="co_dian_transmission" string="Transmisión">
                             <group>
                                 <group string="Comportamiento de envío">
+                                    <field name="co_dian_auto_generate_on_validate" string="Generar XML al confirmar la nómina"/>
+                                    <field name="co_dian_auto_send_on_validate" string="Enviar automáticamente al confirmar"/>
                                     <field name="co_dian_request_timeout" string="Tiempo de espera (segundos)"/>
                                     <field name="co_dian_auto_check_pending" string="Consultar pendientes automáticamente"/>
                                 </group>

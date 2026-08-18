@@ -89,7 +89,7 @@ class CoPayrollDianDashboard(models.TransientModel):
         return action
 
     def action_refresh(self):
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
 
 
 class CoPayrollDianSetupWizard(models.TransientModel):

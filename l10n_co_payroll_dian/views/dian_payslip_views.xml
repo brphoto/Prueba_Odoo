@@ -4,48 +4,138 @@
         <field name="model">hr.payslip</field>
         <field name="inherit_id" ref="l10n_co_payroll.view_hr_payslip_co_payroll"/>
         <field name="arch" type="xml">
-            <xpath expr="//page[@name='co_payroll_rules']/*[1]" position="before">
-                <separator string="Seguimiento de nómina electrónica DIAN"/>
-                <div class="alert alert-success" role="alert" invisible="co_dian_state != 'accepted'">
+            <xpath expr="//header/field[@name='state']" position="after">
+                <field name="co_dian_state" widget="statusbar"
+                       statusbar_visible="none,draft,generated,pending,accepted,rejected"
+                       string="DIAN" invisible="co_dian_state == 'none'"/>
+            </xpath>
+            <xpath expr="//header/button[@name='action_payslip_done']" position="after">
+                <button name="action_co_dian_generate_document" type="object"
+                        string="Generar XML DIAN" class="oe_highlight"
+                        invisible="state not in ('validated', 'paid') or co_dian_state not in ('none', 'draft', 'error')"
+                        groups="l10n_co_payroll.group_co_payroll_user"/>
+                <button name="action_co_dian_send_document" type="object"
+                        string="Enviar a la DIAN" class="oe_highlight"
+                        invisible="co_dian_state not in ('generated',)"
+                        groups="l10n_co_payroll.group_co_payroll_user"
+                        confirm="Se transmitirá este documento al ambiente DIAN configurado. ¿Deseas continuar?"/>
+                <button name="action_co_dian_check_document" type="object"
+                        string="Consultar estado DIAN"
+                        invisible="co_dian_state != 'pending'"
+                        groups="l10n_co_payroll.group_co_payroll_user"/>
+            </xpath>
+            <xpath expr="//header" position="after">
+                <div class="alert alert-success d-flex align-items-center px-3 py-2" role="alert"
+                     invisible="co_dian_state != 'accepted'">
                     <span class="fa fa-check-circle me-2" title="Aceptado"/>
-                    Este recibo fue aceptado por la DIAN.
+                    <span><strong>Documento aceptado por la DIAN.</strong><span class="ms-2">CUNE: <field name="co_dian_cune" class="d-inline fw-bold" readonly="1"/></span></span>
                 </div>
-                <div class="alert alert-warning" role="alert" invisible="co_dian_state != 'pending'">
-                    <span class="fa fa-clock-o me-2" title="Pendiente"/>
-                    El documento fue enviado y está pendiente de respuesta de la DIAN.
+                <div class="alert alert-info d-flex align-items-center px-3 py-2" role="alert"
+                     invisible="co_dian_state not in ('generated', 'pending')">
+                    <span class="fa fa-file-code-o me-2" title="Documento DIAN"/>
+                    <span><strong invisible="co_dian_state != 'generated'">XML DIAN generado y validado localmente.</strong><strong invisible="co_dian_state != 'pending'">Envío recibido; pendiente de respuesta de la DIAN.</strong><span class="ms-2">El detalle y los archivos están en la pestaña Nómina Colombia.</span></span>
                 </div>
-                <div class="alert alert-danger" role="alert" invisible="co_dian_state not in ('rejected', 'error')">
+                <div class="alert alert-danger d-flex align-items-center px-3 py-2" role="alert"
+                     invisible="co_dian_state not in ('rejected', 'error')">
                     <span class="fa fa-exclamation-triangle me-2" title="Requiere atención"/>
-                    <field name="co_dian_attention_message" nolabel="1"/>
+                    <span><strong>El documento DIAN requiere atención.</strong><span class="ms-2"><field name="co_dian_attention_message" class="d-inline" readonly="1" nolabel="1"/></span></span>
                 </div>
-                <group string="Estado del envío">
-                    <group>
+            </xpath>
+            <xpath expr="//page[@name='co_payroll_rules']/*[1]" position="before">
+                <div class="o_dian_payslip_state_card">
+                    <div class="o_dian_payslip_state_head">
+                        <div>
+                            <span class="o_dian_kicker">NÓMINA ELECTRÓNICA DIAN</span>
+                            <h3>Estado del documento</h3>
+                        </div>
                         <field name="co_dian_state" widget="badge"/>
-                        <field name="co_dian_document_count"/>
-                        <field name="co_dian_number"/>
-                        <field name="co_dian_environment"/>
-                        <field name="co_dian_attention_level" widget="badge"/>
-                    </group>
-                    <group>
-                        <field name="co_dian_generated_at"/>
-                        <field name="co_dian_sent_at"/>
-                        <field name="co_dian_last_checked_at"/>
-                        <field name="co_dian_status_code"/>
-                        <field name="co_dian_cune"/>
-                    </group>
-                </group>
-                <group string="Respuesta y trazabilidad" invisible="co_dian_state in ('none', 'draft')">
-                    <field name="co_dian_status_message" nolabel="1" placeholder="Sin mensaje de respuesta."/>
-                    <field name="co_dian_zip_key"/>
-                    <field name="co_dian_xml_document_key"/>
-                </group>
-                <group>
+                    </div>
+                    <div class="o_dian_payslip_state_meta">
+                        <div><small>Número DIAN</small><field name="co_dian_number" nolabel="1"/></div>
+                        <div><small>Ambiente</small><field name="co_dian_environment" nolabel="1"/></div>
+                        <div><small>Generado el</small><field name="co_dian_generated_at" nolabel="1"/></div>
+                        <div><small>Última consulta</small><field name="co_dian_last_checked_at" nolabel="1"/></div>
+                    </div>
+                    <div class="o_dian_payslip_state_alert" invisible="co_dian_state not in ('rejected', 'error')">
+                        <span class="fa fa-exclamation-triangle me-2" title="Requiere atención"/>
+                        <field name="co_dian_attention_message" nolabel="1"/>
+                    </div>
+                    <div class="o_dian_payslip_state_message" invisible="not co_dian_status_message">
+                        <small>Última respuesta</small>
+                        <field name="co_dian_status_message" nolabel="1"/>
+                    </div>
+                    <div class="o_dian_payslip_state_actions">
                     <button name="action_co_dian_open_document" type="object" string="Ver documento DIAN" class="oe_link"/>
                     <button name="action_co_dian_prevalidate_document" type="object" string="Prevalidar" invisible="co_dian_state in ('accepted', 'pending')"/>
                     <button name="action_co_dian_generate_document" type="object" string="Generar y firmar" class="oe_highlight" invisible="co_dian_state not in ('none', 'draft', 'error')"/>
-                    <button name="action_co_dian_send_document" type="object" string="Enviar a la DIAN" class="oe_highlight" invisible="co_dian_state not in ('generated',)" confirm="Se transmitirá este documento al ambiente DIAN configurado. ¿Deseas continuar?"/>
-                    <button name="action_co_dian_check_document" type="object" string="Consultar estado DIAN" invisible="co_dian_state != 'pending'"/>
-                </group>
+                    </div>
+                </div>
+            </xpath>
+            <xpath expr="//page[@name='co_payroll_rules']" position="after">
+                <page name="co_dian_history" string="Historial DIAN">
+                    <div class="o_dian_payslip_history_header">
+                        <div>
+                            <span class="o_dian_kicker">TRAZABILIDAD DEL DOCUMENTO</span>
+                            <h3>Intentos, respuestas y errores</h3>
+                            <p>Consulta en orden cronológico todo lo ocurrido con este documento DIAN.</p>
+                        </div>
+                        <button name="action_co_dian_open_document" type="object"
+                                string="Abrir documento DIAN" class="btn-secondary"
+                                invisible="co_dian_state == 'none'"/>
+                    </div>
+                    <div class="o_dian_payslip_history_kpis">
+                        <div class="o_dian_history_kpi">
+                            <span>Estado actual</span>
+                            <field name="co_dian_state" widget="badge"/>
+                        </div>
+                        <div class="o_dian_history_kpi">
+                            <span>Intentos registrados</span>
+                            <field name="co_dian_attempt_count"/>
+                        </div>
+                        <div class="o_dian_history_kpi">
+                            <span>Última operación</span>
+                            <field name="co_dian_last_operation"/>
+                        </div>
+                        <div class="o_dian_history_kpi">
+                            <span>Resultado</span>
+                            <field name="co_dian_last_attempt_status" widget="badge"/>
+                        </div>
+                    </div>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="co_dian_state not in ('error', 'rejected')">
+                        <div class="fw-bold mb-1">El documento requiere atención</div>
+                        <field name="co_dian_attention_message" nolabel="1"/>
+                        <div class="mt-2" invisible="not co_dian_last_attempt_message">
+                            <span class="fw-bold">Último mensaje técnico: </span>
+                            <field name="co_dian_last_attempt_message" nolabel="1"/>
+                        </div>
+                    </div>
+                    <div class="o_dian_history_last_result" invisible="not co_dian_last_attempt_message">
+                        <span>Último mensaje</span>
+                        <field name="co_dian_last_attempt_message" nolabel="1"/>
+                    </div>
+                    <separator string="Registro cronológico"/>
+                    <field name="co_dian_attempt_ids" nolabel="1" readonly="1">
+                        <list create="false" edit="false" delete="false" open_form_view="1"
+                              default_order="create_date desc, id desc"
+                              decoration-success="status == 'success'"
+                              decoration-warning="status == 'rejected'"
+                              decoration-danger="status == 'error'">
+                            <field name="create_date" string="Fecha"/>
+                            <field name="operation" string="Operación" widget="badge"/>
+                            <field name="status" string="Resultado" widget="badge"
+                                   decoration-success="status == 'success'"
+                                   decoration-warning="status == 'rejected'"
+                                   decoration-danger="status == 'error'"/>
+                            <field name="message" string="Mensaje"/>
+                            <field name="cune" string="CUNE" optional="hide"/>
+                            <field name="zip_key" string="ZipKey" optional="show"/>
+                        </list>
+                    </field>
+                    <div class="alert alert-info mt-3" role="alert" invisible="co_dian_attempt_count != 0">
+                        Todavía no hay intentos registrados para este documento DIAN.
+                    </div>
+                </page>
             </xpath>
         </field>
     </record>

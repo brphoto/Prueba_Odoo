@@ -1,5 +1,6 @@
 import base64
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -38,6 +39,22 @@ class TestCoPayrollDianDocument(TransactionCase):
         self.assertIn("GetStatusZip", DianSoapClient.ACTIONS)
         self.assertNotEqual(DianSoapClient.ACTIONS["GetStatus"], DianSoapClient.ACTIONS["GetStatusZip"])
 
+    def test_mapping_resolves_by_rule_when_native_code_changes(self):
+        mapping = self.env["l10n.co.payroll.rule.mapping"].search([
+            ("code", "=", "AUX_TRANSP"),
+            ("parameter_id", "=", self.env["l10n.co.payroll.parameter"].search([
+                ("company_id", "=", self.env.company.id),
+                ("active", "=", True),
+            ], limit=1).id),
+        ], limit=1)
+        self.assertTrue(mapping.salary_rule_id)
+        native = mapping.salary_rule_id.native_rule_ids[:1]
+        self.assertTrue(native)
+        native.write({"code": "CO_AUX_CUSTOM"})
+        line = SimpleNamespace(salary_rule_id=native, code="CO_AUX_CUSTOM")
+        resolved = mapping._resolve_for_payroll_line(line, mappings=mapping)
+        self.assertEqual(resolved, mapping)
+
     def test_send_nomina_sync_uses_only_content_file(self):
         client = object.__new__(DianSOAPClient)
         client.build_envelope = lambda operation, body: body
@@ -54,6 +71,50 @@ class TestCoPayrollDianDocument(TransactionCase):
         body = client.get_status("cune-96")
         self.assertEqual(body.tag, "{%s}GetStatus" % client.DIAN_NS)
         self.assertEqual(body.find("{%s}trackId" % client.DIAN_NS).text, "cune-96")
+
+    def test_intermediate_response_preserves_zip_key_and_status_description(self):
+        company = self.env.company
+        company.write({
+            "vat": "900123432-1",
+            "co_dian_payroll_enabled": True,
+            "co_dian_software_id": "software-test",
+            "co_dian_software_pin": "pin-test",
+        })
+        employee = self.env["hr.employee"].create({
+            "name": "Colaborador Trazabilidad",
+            "company_id": company.id,
+            "identification_id": "123456789",
+        })
+        period = self.env["l10n.co.payroll.period"].create({
+            "company_id": company.id,
+            "date_from": "2026-06-01",
+            "date_to": "2026-06-15",
+            "payment_date": "2026-06-15",
+            "state": "ready",
+        })
+        line = self.env["l10n.co.payroll.period.line"].create({
+            "period_id": period.id,
+            "employee_id": employee.id,
+            "basic_wage": 2500000,
+            "gross_wage": 2500000,
+            "deduction_total": 0,
+            "worked_days": 15,
+        })
+        document = self.env["l10n.co.payroll.dian.document"].create({
+            "company_id": company.id,
+            "period_id": period.id,
+            "period_line_id": line.id,
+            "state": "pending",
+            "zip_key": "track-123",
+        })
+        document._apply_response({
+            "IsValid": False,
+            "StatusCode": "2",
+            "StatusDescription": "Set de prueba rechazado.",
+        }, "check_status")
+        self.assertEqual(document.zip_key, "track-123")
+        self.assertEqual(document.status_message, "Set de prueba rechazado.")
+        self.assertEqual(document.state, "rejected")
 
     def test_unmapped_earning_is_explicitly_sent_as_other_concept(self):
         company = self.env.company

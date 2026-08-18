@@ -1,5 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_co_payroll_rule_mapping_list" model="ir.ui.view"><field name="name">l10n.co.payroll.rule.mapping.list</field><field name="model">l10n.co.payroll.rule.mapping</field><field name="arch" type="xml"><list string="Mapeo de conceptos"><field name="name"/><field name="parameter_id"/><field name="code"/><field name="concept_type"/><field name="pila_code"/><field name="include_in_ibc"/><field name="active"/></list></field></record>
-    <record id="view_co_payroll_rule_mapping_form" model="ir.ui.view"><field name="name">l10n.co.payroll.rule.mapping.form</field><field name="model">l10n.co.payroll.rule.mapping</field><field name="arch" type="xml"><form string="Mapeo de concepto"><sheet><div class="oe_title"><h1><field name="name"/></h1></div><group><group><field name="company_id"/><field name="parameter_id"/><field name="code"/><field name="priority"/></group><group><field name="concept_type"/><field name="pila_code"/><field name="include_in_ibc"/><field name="active"/></group></group><field name="notes"/></sheet></form></field></record>
-    <record id="action_co_payroll_rule_mapping" model="ir.actions.act_window"><field name="name">Mapeo de conceptos</field><field name="res_model">l10n.co.payroll.rule.mapping</field><field name="view_mode">list,form</field></record>
+    <record id="view_co_payroll_rule_mapping_list" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.rule.mapping.list</field>
+        <field name="model">l10n.co.payroll.rule.mapping</field>
+        <field name="arch" type="xml">
+            <list string="Conceptos de nómina">
+                <field name="name" string="Concepto"/>
+                <field name="parameter_id" string="Vigencia legal"/>
+                <field name="salary_rule_id" string="Regla salarial"/>
+                <field name="concept_type" string="Tratamiento" widget="badge"/>
+                <field name="pila_code" string="PILA" optional="hide"/>
+                <field name="include_in_ibc" string="Incluye en IBC" optional="hide"/>
+                <field name="active" string="Activo"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_co_payroll_rule_mapping_form" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.rule.mapping.form</field>
+        <field name="model">l10n.co.payroll.rule.mapping</field>
+        <field name="arch" type="xml">
+            <form string="Concepto de nómina">
+                <sheet>
+                    <field name="company_id" invisible="1"/>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Nombre del concepto"/></h1>
+                    </div>
+                    <div class="alert alert-info" role="alert">
+                        <strong>Configuración sencilla.</strong>
+                        <span class="ms-1">Selecciona la regla salarial y cómo debe reportarse. Los códigos técnicos se gestionan automáticamente.</span>
+                    </div>
+                    <group string="Regla salarial">
+                        <field name="parameter_id" string="Vigencia legal"/>
+                        <field name="salary_rule_id" string="Regla salarial" required="1"/>
+                    </group>
+                    <group string="Reporte">
+                        <field name="concept_type" string="Tratamiento"/>
+                        <field name="include_in_ibc" string="Incluye en IBC"/>
+                        <field name="active" string="Activo"/>
+                    </group>
+                    <field name="code" invisible="1"/>
+                    <field name="priority" invisible="1"/>
+                    <field name="native_rule_id" invisible="1"/>
+                    <field name="is_system_default" invisible="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_co_payroll_rule_mapping" model="ir.actions.act_window">
+        <field name="name">Conceptos de nómina</field>
+        <field name="res_model">l10n.co.payroll.rule.mapping</field>
+        <field name="view_mode">list,form</field>
+    </record>
 </odoo>

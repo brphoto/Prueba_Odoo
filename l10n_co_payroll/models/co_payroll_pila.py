@@ -2,6 +2,7 @@ import base64
 import csv
 import hashlib
 import io
+from urllib.parse import quote
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -129,4 +130,9 @@ class CoPayrollPilaFile(models.Model):
         if not self.attachment_id:
             raise UserError(_("Genera el archivo antes de descargarlo."))
         self.action_mark_exported()
-        return {"type": "ir.actions.act_url", "url": "/web/content/%s?download=true" % self.attachment_id.id, "target": "self"}
+        filename = quote(self.attachment_id.name or "archivo_pila.csv")
+        return {
+            "type": "ir.actions.act_url",
+            "url": "/web/content/%s?download=true&filename=%s" % (self.attachment_id.id, filename),
+            "target": "download",
+        }

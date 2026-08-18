@@ -41,6 +41,16 @@ class CoPayrollDianCompany(models.Model):
         default=False,
         help="Permite que la tarea programada consulte estados pendientes sin intervención manual.",
     )
+    co_dian_auto_generate_on_validate = fields.Boolean(
+        string="Generar XML al confirmar la nómina",
+        default=True,
+        help="Al confirmar un recibo de nómina validado por Odoo, crea, firma y valida localmente su XML DIAN.",
+    )
+    co_dian_auto_send_on_validate = fields.Boolean(
+        string="Enviar automáticamente al confirmar",
+        default=False,
+        help="Envía el XML a la DIAN después de confirmarlo. Si hay aprobación simple o doble, se respetará ese control.",
+    )
     co_dian_require_habilitation = fields.Boolean(
         string="Exigir habilitación antes de producción",
         default=False,

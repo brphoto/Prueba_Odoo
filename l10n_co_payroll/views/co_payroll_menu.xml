@@ -85,13 +85,13 @@
     <menuitem id="menu_co_payroll_pila_config" name="Configuración PILA"
               parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_pila_config" sequence="50"
               groups="l10n_co_payroll.group_co_payroll_manager"/>
-    <menuitem id="menu_co_payroll_rule_mapping" name="Mapeo de conceptos"
+    <menuitem id="menu_co_payroll_rule_mapping" name="Conceptos de nómina"
               parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_rule_mapping" sequence="55"
               groups="l10n_co_payroll.group_co_payroll_manager"/>
     <menuitem id="menu_co_payroll_salary_rule" name="Reglas salariales"
               parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_salary_rule" sequence="60"
               groups="l10n_co_payroll.group_co_payroll_manager"/>
-    <menuitem id="menu_co_payroll_validation_rule" name="Reglas de validación"
+    <menuitem id="menu_co_payroll_validation_rule" name="Controles de nómina"
               parent="hr_work_entry_enterprise.menu_hr_payroll_configuration" action="action_co_payroll_validation_rule" sequence="65"
               groups="l10n_co_payroll.group_co_payroll_manager"/>
 

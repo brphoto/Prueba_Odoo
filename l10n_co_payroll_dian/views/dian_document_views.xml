@@ -46,6 +46,40 @@
         </field>
     </record>
 
+    <record id="view_co_payroll_dian_attempt_form" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.dian.attempt.form</field>
+        <field name="model">l10n.co.payroll.dian.attempt</field>
+        <field name="arch" type="xml">
+            <form string="Detalle del intento DIAN" create="false" edit="false" delete="false">
+                <sheet>
+                    <div class="oe_title"><h1><field name="operation" widget="badge"/></h1></div>
+                    <group string="Resultado">
+                        <group>
+                            <field name="create_date" string="Fecha"/>
+                            <field name="status" widget="badge"/>
+                            <field name="document_id"/>
+                        </group>
+                        <group>
+                            <field name="cune"/>
+                            <field name="zip_key" invisible="not zip_key"/>
+                        </group>
+                    </group>
+                    <group string="Mensaje" invisible="not message">
+                        <field name="message" nolabel="1"/>
+                    </group>
+                    <notebook>
+                        <page string="Detalle técnico" invisible="not technical_detail">
+                            <field name="technical_detail" nolabel="1"/>
+                        </page>
+                        <page string="Respuesta DIAN" invisible="not response">
+                            <field name="response" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <record id="view_co_payroll_dian_document_form" model="ir.ui.view">
         <field name="name">l10n.co.payroll.dian.document.form</field>
         <field name="model">l10n.co.payroll.dian.document</field>
