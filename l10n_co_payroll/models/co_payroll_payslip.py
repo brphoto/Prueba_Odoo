@@ -2,6 +2,7 @@ from collections import defaultdict
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.tools import float_is_zero
 
 from .co_payroll_salary_rule import _evaluate_configured_rules, _evaluate_formula
 
@@ -147,6 +148,12 @@ class CoPayrollSalaryRuleNative(models.Model):
 class HrPayslipCoPayroll(models.Model):
     _inherit = "hr.payslip"
 
+    visible_line_ids = fields.Many2many(
+        "hr.payslip.line",
+        compute="_compute_visible_line_ids",
+        string="Líneas con resultado",
+        readonly=True,
+    )
     co_formula_applied = fields.Boolean(string="Reglas CO aplicadas", copy=False, readonly=True)
     co_formula_parameter_id = fields.Many2one("l10n.co.payroll.parameter", string="Versión legal aplicada", copy=False, readonly=True)
     co_formula_gross_wage = fields.Monetary(string="Devengado CO", currency_field="currency_id", copy=False, readonly=True)
@@ -156,6 +163,14 @@ class HrPayslipCoPayroll(models.Model):
     co_formula_ibc_base = fields.Monetary(string="IBC CO", currency_field="currency_id", copy=False, readonly=True)
     co_formula_breakdown = fields.Json(string="Detalle reglas CO", copy=False, readonly=True)
     co_formula_error = fields.Char(string="Error reglas CO", copy=False, readonly=True)
+
+    @api.depends("line_ids.total", "line_ids.appears_on_payslip")
+    def _compute_visible_line_ids(self):
+        for payslip in self:
+            rounding = payslip.currency_id.rounding if payslip.currency_id else 0.01
+            payslip.visible_line_ids = payslip.line_ids.filtered(
+                lambda line: not float_is_zero(line.total or 0.0, precision_rounding=rounding)
+            )
 
     def _co_parameters(self):
         Parameter = self.env["l10n.co.payroll.parameter"]
@@ -182,6 +197,28 @@ class HrPayslipCoPayroll(models.Model):
         result = super().compute_sheet()
         self._co_finalize_rules()
         return result
+
+    def _get_payslip_lines(self):
+        """Keep zero-result rules out of the generated payslip lines.
+
+        Odoo evaluates ``condition_python`` before calculating the amount, so
+        a condition cannot reliably use the final result of the same rule.
+        We therefore let the complete engine calculate first and remove only
+        zero-result lines from the generated records. The intermediate values
+        remain available to subsequent rules during the calculation.
+        """
+        line_values = super()._get_payslip_lines()
+        roundings = {
+            payslip.id: (payslip.currency_id.rounding or 0.01)
+            for payslip in self
+        }
+        return [
+            line for line in line_values
+            if not float_is_zero(
+                line.get("total") or 0.0,
+                precision_rounding=roundings.get(line.get("slip_id"), 0.01),
+            )
+        ]
 
     def action_co_recompute_rules(self):
         self.filtered(lambda slip: slip.state == "draft").compute_sheet()
