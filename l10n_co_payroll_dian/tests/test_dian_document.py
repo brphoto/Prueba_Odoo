@@ -23,7 +23,7 @@ class TestCoPayrollDianDocument(TransactionCase):
         subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Prueba DIAN")])
         certificate = x509.CertificateBuilder().subject_name(subject).issuer_name(issuer).public_key(key.public_key()).serial_number(x509.random_serial_number()).not_valid_before(datetime.utcnow() - timedelta(days=1)).not_valid_after(datetime.utcnow() + timedelta(days=30)).sign(key, hashes.SHA256())
         p12 = pkcs12.serialize_key_and_certificates(b"test", key, certificate, None, serialization.NoEncryption())
-        company.write({"vat": "900123432-1", "co_dian_payroll_enabled": True, "co_dian_software_id": "software-test", "co_dian_software_pin": "pin-test", "co_dian_certificate": base64.b64encode(p12), "co_dian_certificate_password": ""})
+        company.write({"vat": "900123432-1", "co_dian_payroll_enabled": True, "co_dian_software_id": "software-test", "co_dian_software_pin": "pin-test", "co_dian_certificate_mode": "pkcs12", "co_dian_certificate": base64.b64encode(p12), "co_dian_certificate_password": ""})
         employee = self.env["hr.employee"].create({"name": "Empleado Firmado", "company_id": company.id, "identification_id": "123456789"})
         period = self.env["l10n.co.payroll.period"].create({"company_id": company.id, "date_from": "2026-06-01", "date_to": "2026-06-15", "payment_date": "2026-06-15", "state": "ready"})
         line = self.env["l10n.co.payroll.period.line"].create({"period_id": period.id, "employee_id": employee.id, "basic_wage": 2500000, "gross_wage": 2500000, "deduction_total": 0, "worked_days": 15})
@@ -195,3 +195,71 @@ class TestCoPayrollDianDocument(TransactionCase):
 
     def test_pending_cron_domain_is_safe_without_documents(self):
         self.assertTrue(self.env["l10n.co.payroll.dian.document"]._cron_check_pending())
+
+    def test_two_quincenas_create_one_document_from_consolidated_rules(self):
+        company = self.env.company
+        company.write({
+            "vat": "900123432-1",
+            "co_dian_payroll_enabled": True,
+            "co_dian_software_id": "software-test",
+            "co_dian_software_pin": "pin-test",
+        })
+        employee = self.env["hr.employee"].create({
+            "name": "Empleado Consolidado DIAN",
+            "company_id": company.id,
+            "identification_id": "123456789",
+        })
+        period = self.env["l10n.co.payroll.period"].create({
+            "company_id": company.id,
+            "date_from": "2026-07-01",
+            "date_to": "2026-07-31",
+            "payment_date": "2026-07-31",
+            "state": "ready",
+        })
+        first = self.env["hr.payslip"].create({
+            "name": "Q1-CONSOLIDADA",
+            "employee_id": employee.id,
+            "company_id": company.id,
+            "date_from": "2026-07-01",
+            "date_to": "2026-07-15",
+        })
+        second = self.env["hr.payslip"].create({
+            "name": "Q2-CONSOLIDADA",
+            "employee_id": employee.id,
+            "company_id": company.id,
+            "date_from": "2026-07-16",
+            "date_to": "2026-07-31",
+        })
+        line = self.env["l10n.co.payroll.period.line"].create({
+            "period_id": period.id,
+            "employee_id": employee.id,
+            "source_payslip_ids": [(6, 0, [first.id, second.id])],
+            "basic_wage": 2500000,
+            "gross_wage": 2700000,
+            "deduction_total": 100000,
+            "net_wage": 2600000,
+            "worked_days": 30,
+        })
+        mapping = self.env["l10n.co.payroll.rule.mapping"].search([
+            ("parameter_id", "=", period.parameter_id.id),
+            ("salary_rule_id", "!=", False),
+            ("dian_concept", "!=", False),
+        ], order="id", limit=1)
+        self.assertTrue(mapping.salary_rule_id)
+        self.env["l10n.co.payroll.period.rule.result"].create({
+            "period_line_id": line.id,
+            "rule_id": mapping.salary_rule_id.id,
+            "amount": 2700000,
+            "condition_met": True,
+        })
+
+        first_documents = first._co_dian_get_or_create_documents()
+        second_documents = second._co_dian_get_or_create_documents()
+
+        self.assertEqual(first_documents, second_documents)
+        self.assertEqual(len(first_documents), 1)
+        self.assertEqual(first_documents.period_line_id, line)
+        self.assertEqual(line.dian_document_count, 1)
+        context = first_documents._build_context()
+        category = "deducciones" if mapping.concept_type in ("deduction", "employee_contribution") else "devengados"
+        self.assertEqual(context["xml_categories"][category][mapping.dian_concept], 2700000.0)

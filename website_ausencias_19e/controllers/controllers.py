@@ -1,4 +1,5 @@
 import logging
+from html import escape as _html_escape
 
 from odoo import http
 from odoo.http import request
@@ -50,6 +51,12 @@ class PartnerForm(http.Controller):
         mail = request.env['mail.mail'].sudo().create(mail_values)
         mail.send(raise_exception=True)
         return mail
+
+    def _esc(self, value):
+        """Escapa texto de empleado/usuario antes de insertarlo en un
+        body_html armado a mano, para evitar que un nombre, motivo u otro
+        campo libre inyecte HTML en el correo que recibe RRHH."""
+        return _html_escape(str(value or ''))
 
     def _get_vacation_summary(self, empleado):
         """Resumen de saldos (self care day + vacaciones) del empleado, para el
@@ -266,11 +273,11 @@ class PartnerForm(http.Controller):
             if admin_emails:
                 mail_content = (
                     "<h2>Nueva solicitud de anticipo/préstamo</h2>"
-                    "Solicitante: " + str(empleado.name) + "<br/>"
-                    "Área: " + str(empleado.department_id.name or '') + "<br/>"
+                    "Solicitante: " + self._esc(empleado.name) + "<br/>"
+                    "Área: " + self._esc(empleado.department_id.name) + "<br/>"
                     "Monto solicitado: $ " + ("%.2f" % amount) + "<br/>"
                     "Cuotas: " + str(dues) + "<br/>"
-                    "Motivo: " + motivo
+                    "Motivo: " + self._esc(motivo)
                 )
                 self._send_mail({
                     'subject': 'Nueva solicitud de anticipo - %s' % empleado.name,
@@ -376,8 +383,8 @@ class PartnerForm(http.Controller):
                         if not employee_email:
                             raise Exception('El empleado no tiene un correo de trabajo valido')
                         # ADMIN DE RRHH
-                        mail_content_admin = "<h1><center>SOLICITUD DE AUSENCIAS</center></h1> <br/>"+"Ha recibido una solicitud de ausencia <br/> "+"Solicitante:"+str(employee_id.name)+"<br/>"+"Area:"+str(employee_id.department_id.name)+"<br/>"+"Tipo de permiso:"+str(leave_type.name)+"<br/>"+"De: "+str(post.get(
-                            'De'))+"<br/>"+"Hasta: "+str(post.get('Hasta'))+"<br/>" + "Motivo: "+str(post.get('Motivo Permiso'))+"<br/>"+"Atentamente,<br/>"+"<br/>"+"<center>Sistema de Ausencias <br/><a href='"+str(base)+"' class='btn btn-default'>APROBAR/NEGAR</a></center>"
+                        mail_content_admin = "<h1><center>SOLICITUD DE AUSENCIAS</center></h1> <br/>"+"Ha recibido una solicitud de ausencia <br/> "+"Solicitante:"+self._esc(employee_id.name)+"<br/>"+"Area:"+self._esc(employee_id.department_id.name)+"<br/>"+"Tipo de permiso:"+self._esc(leave_type.name)+"<br/>"+"De: "+self._esc(post.get(
+                            'De'))+"<br/>"+"Hasta: "+self._esc(post.get('Hasta'))+"<br/>" + "Motivo: "+self._esc(post.get('Motivo Permiso'))+"<br/>"+"Atentamente,<br/>"+"<br/>"+"<center>Sistema de Ausencias <br/><a href='"+str(base)+"' class='btn btn-default'>APROBAR/NEGAR</a></center>"
                         main_content_admin = {
                             'subject': "Solicitud de Ausencia ",
                             'author_id': request.env.user.partner_id.id,
@@ -385,8 +392,8 @@ class PartnerForm(http.Controller):
                             'email_to': ','.join(admin_emails),
                         }
 
-                        mail_content = " <h1><center>SOLICITUD DE AUSENCIAS</center></h1> <br/>"+ "<br/> "+"Solicitante:"+str(employee_id.name)+"<br/>"+"Area:"+str(employee_id.department_id.name)+"<br/>"+"Tipo de permiso:"+str(leave_type.name)+"<br/>"+"De: "+str(post.get(
-                            'De'))+"<br/>"+"Hasta: "+str(post.get('Hasta'))+"<br/>" + "Motivo: "+str(post.get('Motivo Permiso'))+"<br/>"+"Atentamente,<br/>"+"<br/>"+"<center>Sistema de Ausencias</center>"
+                        mail_content = " <h1><center>SOLICITUD DE AUSENCIAS</center></h1> <br/>"+ "<br/> "+"Solicitante:"+self._esc(employee_id.name)+"<br/>"+"Area:"+self._esc(employee_id.department_id.name)+"<br/>"+"Tipo de permiso:"+self._esc(leave_type.name)+"<br/>"+"De: "+self._esc(post.get(
+                            'De'))+"<br/>"+"Hasta: "+self._esc(post.get('Hasta'))+"<br/>" + "Motivo: "+self._esc(post.get('Motivo Permiso'))+"<br/>"+"Atentamente,<br/>"+"<br/>"+"<center>Sistema de Ausencias</center>"
                         main_content = {
                             'subject': "Solicitud de Ausencia enviada Exitosamente  ",
                             'author_id': request.env.user.partner_id.id,

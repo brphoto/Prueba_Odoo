@@ -2,6 +2,29 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 
+class CoPayrollAccountMoveLine(models.Model):
+    _inherit = "account.move.line"
+
+    co_payroll_administrator_id = fields.Many2one(
+        "l10n.co.payroll.administrator",
+        string="Administradora de nómina",
+        readonly=True,
+        copy=False,
+        index=True,
+    )
+    co_payroll_period_line_id = fields.Many2one(
+        "l10n.co.payroll.period.line",
+        string="Línea consolidada de nómina",
+        readonly=True,
+        copy=False,
+        index=True,
+    )
+    co_payroll_component = fields.Selection([
+        ("employee", "Aporte empleado"),
+        ("employer", "Aporte empleador"),
+    ], string="Componente nómina", readonly=True, copy=False)
+
+
 class CoPayrollPeriodAccounting(models.Model):
     _inherit = "l10n.co.payroll.period"
 
@@ -73,14 +96,23 @@ class CoPayrollPeriodAccounting(models.Model):
                 if not administrator:
                     continue
                 assignment = self.env["l10n.co.payroll.administrator.assignment"].get_for(
-                    period.company_id, period_line.employee_id, administrator.kind, administrator
+                    self.company_id, period_line.employee_id, administrator.kind, administrator
                 )
                 resolved = assignment.administrator_id if assignment else administrator
                 debit_account = (assignment.debit_account_id if assignment and assignment.debit_account_id else resolved.debit_account_id)
                 credit_account = (assignment.credit_account_id if assignment and assignment.credit_account_id else resolved.credit_account_id)
                 partner = (assignment.partner_id if assignment and assignment.partner_id else resolved.partner_id)
                 analytic_account = (assignment.analytic_account_id if assignment and assignment.analytic_account_id else period_line.cost_center_id.analytic_account_id if period_line.cost_center_id else accounts["analytic"])
-                key = (resolved.id, analytic_account.id if analytic_account else False)
+                # Keep account/third-party overrides in the grouping key. Two
+                # employee or department assignments may point to the same
+                # administrator but to different accounting destinations.
+                key = (
+                    resolved.id,
+                    debit_account.id if debit_account else False,
+                    credit_account.id if credit_account else False,
+                    partner.id if partner else False,
+                    analytic_account.id if analytic_account else False,
+                )
                 bucket = contributions.setdefault(key, {
                     "administrator": resolved,
                     "label": label,
@@ -103,7 +135,7 @@ class CoPayrollPeriodAccounting(models.Model):
         line_vals = []
         analytic = {str(accounts["analytic"].id): 100} if accounts["analytic"] else False
 
-        def add_line(account, debit, credit, label, partner=False, analytic_override=False):
+        def add_line(account, debit, credit, label, partner=False, analytic_override=False, administrator=False, component=False, period_line=False):
             if account and (debit or credit):
                 line_vals.append({
                     "name": "%s - %s" % (self.name, label),
@@ -112,6 +144,9 @@ class CoPayrollPeriodAccounting(models.Model):
                     "debit": max(debit, 0.0),
                     "credit": max(credit, 0.0),
                     "analytic_distribution": ({str(analytic_override.id): 100} if analytic_override else analytic),
+                    "co_payroll_administrator_id": administrator.id if administrator else False,
+                    "co_payroll_period_line_id": period_line.id if period_line else False,
+                    "co_payroll_component": component or False,
                 })
 
         add_line(accounts["expense"], self.gross_total, 0.0, _("Devengado de nómina"))
@@ -120,8 +155,23 @@ class CoPayrollPeriodAccounting(models.Model):
         add_line(accounts["employer"], max(fallback_employer_debit, 0.0), max(fallback_employer_credit, 0.0), _("Aportes empresa no distribuidos"))
 
         for values in contributions.values():
-            add_line(values["debit_account"], values.get("debit_employer", 0.0), 0.0, values["label"], values["partner"], values["analytic"])
-            add_line(values["credit_account"], 0.0, values["employee"] + values["employer"], values["label"], values["partner"], values["analytic"])
+            administrator_label = "%s (%s)" % (values["administrator"].display_name, values["administrator"].code)
+            label = "%s - %s" % (administrator_label, values["label"])
+            add_line(
+                values["debit_account"], values.get("debit_employer", 0.0), 0.0,
+                "%s - %s" % (label, _("empleador")), values["partner"], values["analytic"],
+                values["administrator"], "employer",
+            )
+            add_line(
+                values["credit_account"], 0.0, values["employee"],
+                "%s - %s" % (label, _("empleado")), values["partner"], values["analytic"],
+                values["administrator"], "employee",
+            )
+            add_line(
+                values["credit_account"], 0.0, values["employer"],
+                "%s - %s" % (label, _("empleador")), values["partner"], values["analytic"],
+                values["administrator"], "employer",
+            )
         return line_vals
 
     def action_create_accounting_move(self):

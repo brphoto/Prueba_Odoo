@@ -170,6 +170,12 @@ class CoPayrollDianDocument(models.Model):
             if record.period_line_id.company_id != record.company_id:
                 raise ValidationError(_("El resumen de nómina y el documento DIAN deben pertenecer a la misma compañía."))
 
+    @api.constrains("period_id", "period_line_id")
+    def _check_period_line_period(self):
+        for record in self:
+            if record.period_line_id.period_id != record.period_id:
+                raise ValidationError(_("El documento DIAN debe usar la línea consolidada del mismo periodo."))
+
     @staticmethod
     def _digits(value):
         return re.sub(r"\D+", "", str(value or ""))
@@ -250,21 +256,44 @@ class CoPayrollDianDocument(models.Model):
             ("parameter_id", "=", parameter.id),
             ("active", "=", True),
         ])
-        for payslip in self.period_line_id.source_payslip_ids:
-            for line in payslip.line_ids:
-                code = getattr(getattr(line, "salary_rule_id", False), "code", False) or getattr(line, "code", False)
-                if not code or not line.total:
+        # A prepared period has already aggregated every quincena into one
+        # rule result per employee. Use that ledger as the DIAN source so the
+        # electronic document cannot accidentally report only the last
+        # payslip. The payslip fallback keeps manually-created consolidates
+        # and old databases readable while they are being completed.
+        consolidated_rules = self.period_line_id.rule_result_ids
+        if consolidated_rules:
+            for result in consolidated_rules:
+                code = result.code or (result.rule_id and result.rule_id.code)
+                if not code or not result.amount:
                     continue
-                mapping = Mapping._resolve_for_payroll_line(line, mappings=mappings)
+                mapping = mappings.filtered(lambda item, result=result: item.salary_rule_id == result.rule_id)[:1]
+                if not mapping:
+                    mapping = mappings.filtered(lambda item, code=code: item.code and item.code.upper() == code.upper())[:1]
                 if not mapping or not mapping.dian_concept:
                     totals["unmapped"].append(str(code).upper())
                     continue
-                mapping = mapping[0]
                 if mapping.concept_type not in ("earning", "deduction", "employee_contribution"):
                     continue
                 target = "deducciones" if mapping.concept_type in ("deduction", "employee_contribution") else "devengados"
                 key = mapping.dian_concept
-                totals[target][key] = totals[target].get(key, 0.0) + abs(line.total or 0.0)
+                totals[target][key] = totals[target].get(key, 0.0) + abs(result.amount or 0.0)
+        else:
+            for payslip in self.period_line_id.source_payslip_ids:
+                for line in payslip.line_ids:
+                    code = getattr(getattr(line, "salary_rule_id", False), "code", False) or getattr(line, "code", False)
+                    if not code or not line.total:
+                        continue
+                    mapping = Mapping._resolve_for_payroll_line(line, mappings=mappings)
+                    if not mapping or not mapping.dian_concept:
+                        totals["unmapped"].append(str(code).upper())
+                        continue
+                    mapping = mapping[0]
+                    if mapping.concept_type not in ("earning", "deduction", "employee_contribution"):
+                        continue
+                    target = "deducciones" if mapping.concept_type in ("deduction", "employee_contribution") else "devengados"
+                    key = mapping.dian_concept
+                    totals[target][key] = totals[target].get(key, 0.0) + abs(line.total or 0.0)
         totals["unmapped"] = sorted(set(totals["unmapped"]))
         return totals
 

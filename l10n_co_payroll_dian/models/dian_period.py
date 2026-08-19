@@ -75,6 +75,10 @@ class CoPayrollDianPeriod(models.Model):
             period.dian_document_ids.filtered(lambda doc: doc.state in ("draft", "error") and not doc.is_adjustment).action_generate()
         return {"type": "ir.actions.client", "tag": "soft_reload"}
 
+
+class CoPayrollDianPeriodActions(models.Model):
+    _inherit = "l10n.co.payroll.period"
+
     def action_send_dian_documents(self):
         for period in self:
             documents = period.dian_document_ids.filtered(lambda doc: not doc.is_adjustment and doc.state in ("validated", "generated"))
@@ -114,3 +118,40 @@ class CoPayrollDianPeriod(models.Model):
     def action_open_dian_documents(self):
         self.ensure_one()
         return {"type": "ir.actions.act_window", "name": _("Nómina electrónica DIAN"), "res_model": "l10n.co.payroll.dian.document", "view_mode": "list,form", "domain": [("period_id", "=", self.id)], "context": {"default_period_id": self.id, "create": False}}
+
+
+class CoPayrollDianPeriodLine(models.Model):
+    _inherit = "l10n.co.payroll.period.line"
+
+    dian_document_ids = fields.One2many(
+        "l10n.co.payroll.dian.document",
+        "period_line_id",
+        string="Documentos DIAN del consolidado",
+        readonly=True,
+    )
+    dian_document_count = fields.Integer(string="Documentos DIAN", compute="_compute_dian_line_metrics")
+    dian_document_id = fields.Many2one(
+        "l10n.co.payroll.dian.document",
+        string="Documento DIAN consolidado",
+        compute="_compute_dian_line_metrics",
+    )
+
+    @api.depends("dian_document_ids", "dian_document_ids.is_adjustment", "dian_document_ids.state")
+    def _compute_dian_line_metrics(self):
+        for line in self:
+            documents = line.dian_document_ids.filtered(lambda doc: not doc.is_adjustment)
+            line.dian_document_count = len(documents)
+            line.dian_document_id = documents.sorted(key=lambda doc: doc.id, reverse=True)[:1].id if documents else False
+
+    def action_open_dian_document(self):
+        self.ensure_one()
+        document = self.dian_document_id
+        if not document:
+            raise UserError(_("Este consolidado todavía no tiene documento DIAN."))
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Documento DIAN consolidado"),
+            "res_model": "l10n.co.payroll.dian.document",
+            "view_mode": "form",
+            "res_id": document.id,
+        }

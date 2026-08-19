@@ -86,6 +86,69 @@ class TestCoPayrollPeriod(TransactionCase):
 
         self.assertEqual(social.eps_code, "EPS-TEST")
 
+    def test_administrator_accounting_lines_keep_third_party_traceability(self):
+        partner = self.env["res.partner"].create({"name": "EPS contable prueba"})
+        debit_account = self.env["account.account"].create({
+            "name": "Gasto salud prueba",
+            "code": "519901",
+            "account_type": "expense",
+            "company_ids": [(6, 0, [self.company.id])],
+        })
+        credit_account = self.env["account.account"].create({
+            "name": "EPS por pagar prueba",
+            "code": "237001",
+            "account_type": "liability_current",
+            "company_ids": [(6, 0, [self.company.id])],
+        })
+        administrator = self.env["l10n.co.payroll.administrator"].create({
+            "name": "EPS contable",
+            "company_id": self.company.id,
+            "kind": "eps",
+            "code": "EPS-CONT",
+            "partner_id": partner.id,
+            "debit_account_id": debit_account.id,
+            "credit_account_id": credit_account.id,
+        })
+        social = self.env["l10n.co.payroll.social"].create({
+            "employee_id": self.employee.id,
+            "effective_from": "2099-08-01",
+            "coverage_mode": "full",
+            "eps_id": administrator.id,
+        })
+        period = self._create_period("2099-08-01", "2099-08-31")
+        line = self.env["l10n.co.payroll.period.line"].create({
+            "period_id": period.id,
+            "employee_id": self.employee.id,
+            "social_profile_id": social.id,
+            "pila_reporting_mode": "full",
+            "gross_wage": 1000,
+            "deduction_total": 40,
+            "net_wage": 960,
+            "employer_cost": 120,
+            "social_employee_total": 40,
+            "health_employee": 40,
+            "health_employer": 120,
+        })
+        accounts = {
+            "expense": debit_account,
+            "payable": credit_account,
+            "deductions": credit_account,
+            "employer": debit_account,
+            "analytic": False,
+            "journal": False,
+        }
+
+        values = period._administrator_accounting_lines(accounts)
+        administrator_lines = [value for value in values if value.get("co_payroll_administrator_id")]
+
+        self.assertEqual(line.social_profile_id, social)
+        self.assertEqual(sum(value["debit"] for value in values), sum(value["credit"] for value in values))
+        self.assertEqual(sum(value["credit"] for value in administrator_lines if value["co_payroll_component"] == "employee"), 40)
+        self.assertEqual(sum(value["credit"] for value in administrator_lines if value["co_payroll_component"] == "employer"), 120)
+        self.assertEqual(sum(value["debit"] for value in administrator_lines), 120)
+        self.assertTrue(all(value["partner_id"] == partner.id for value in administrator_lines))
+        self.assertTrue(all("EPS contable" in value["name"] for value in administrator_lines))
+
     def test_social_coverage_modes_keep_external_cases_traceable(self):
         manual = self.env["l10n.co.payroll.social"].create({
             "employee_id": self.employee.id,

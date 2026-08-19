@@ -525,6 +525,31 @@ class CoPayrollPeriod(models.Model):
                 elif not line.pila_manual_reference:
                     add("pila", "error", "MISSING_COVERAGE_REFERENCE", _("%s requiere referencia para su modo PILA.") % employee.name, line=line)
 
+                # The administrator catalog is also the accounting routing
+                # table. Keep this as a warning because the summarized
+                # fallback accounts still allow a period to be posted, but
+                # make the missing third-party setup visible before posting.
+                if line.social_profile_id and line.pila_reporting_mode == "full":
+                    administrator_model = self.env["l10n.co.payroll.administrator.assignment"]
+                    social = line.social_profile_id
+                    for administrator, label in (
+                        (social.eps_id, _("EPS")),
+                        (social.pension_id, _("AFP")),
+                        (social.arl_id, _("ARL")),
+                        (social.ccf_id, _("Caja")),
+                    ):
+                        if not administrator:
+                            continue
+                        assignment = administrator_model.get_for(period.company_id, employee, administrator.kind, administrator)
+                        resolved = assignment.administrator_id if assignment else administrator
+                        debit_account = (assignment.debit_account_id if assignment and assignment.debit_account_id else resolved.debit_account_id)
+                        credit_account = (assignment.credit_account_id if assignment and assignment.credit_account_id else resolved.credit_account_id)
+                        partner = (assignment.partner_id if assignment and assignment.partner_id else resolved.partner_id)
+                        if not debit_account and not credit_account:
+                            add("accounting", "warning", "ADMINISTRATOR_ACCOUNTS", _("%s de %s no tiene cuenta débito ni crédito; se usará el resumen contable general.") % (label, employee.name), line=line)
+                        if not partner:
+                            add("accounting", "warning", "ADMINISTRATOR_PARTNER", _("%s de %s no tiene tercero contable configurado.") % (label, employee.name), line=line)
+
             if hasattr(period, "_get_accounting_accounts"):
                 accounts = period._get_accounting_accounts()
                 missing_accounts = [label for key, label in (("journal", "diario"), ("expense", "gasto"), ("payable", "por pagar"), ("deductions", "deducciones"), ("employer", "aportes empresa")) if not accounts.get(key)]
@@ -538,6 +563,8 @@ class CoPayrollPeriod(models.Model):
                     if not documents:
                         add("dian", "warning", "DIAN_NOT_GENERATED", _("%s no tiene documento DIAN generado.") % line.employee_id.name, line=line)
                     else:
+                        if len(documents) > 1:
+                            add("dian", "error", "DIAN_MULTIPLE_DOCUMENTS", _("%s tiene %s documentos DIAN normales; el consolidado debe tener uno solo.") % (line.employee_id.name, len(documents)), line=line)
                         failed = documents.filtered(lambda doc: doc.state in ("error", "rejected"))[:1]
                         if failed:
                             add("dian", "error", "DIAN_ERROR", _("El documento DIAN de %s está en estado %s.") % (line.employee_id.name, failed.state), line=line)

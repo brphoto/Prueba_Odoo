@@ -24,4 +24,31 @@
             </xpath>
         </field>
     </record>
+
+    <record id="view_co_payroll_period_line_form_dian" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.period.line.form.dian</field>
+        <field name="model">l10n.co.payroll.period.line</field>
+        <field name="inherit_id" ref="l10n_co_payroll.view_co_payroll_period_line_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_dian_document" type="object" class="oe_stat_button" icon="fa-cloud-upload" invisible="dian_document_count == 0">
+                    <field name="dian_document_count" widget="statinfo" string="DIAN"/>
+                </button>
+            </xpath>
+            <xpath expr="//field[@name='pila_status']" position="after">
+                <field name="dian_document_id" readonly="1" invisible="dian_document_count == 0"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_co_payroll_period_line_list_dian" model="ir.ui.view">
+        <field name="name">l10n.co.payroll.period.line.list.dian</field>
+        <field name="model">l10n.co.payroll.period.line</field>
+        <field name="inherit_id" ref="l10n_co_payroll.view_co_payroll_period_line_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='pila_status']" position="after">
+                <field name="dian_document_count" optional="hide" string="Docs. DIAN"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>

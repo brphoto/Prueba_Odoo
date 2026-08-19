@@ -2,10 +2,21 @@ from datetime import datetime, time
 from datetime import datetime
 from typing import DefaultDict
 from datetime import datetime, date as dt
+from html import escape as _html_escape
+import logging
 from odoo import _, api, exceptions, fields, models
 from odoo.exceptions import UserError, ValidationError
 from datetime import timedelta
 from math import floor
+
+_logger = logging.getLogger(__name__)
+
+
+def _esc(value):
+    """Escapa texto de empleado/usuario antes de insertarlo en un body_html
+    armado a mano, para evitar que un nombre, motivo u otro campo libre
+    inyecte HTML en el correo de notificación."""
+    return _html_escape(str(value or ''))
 
 class HrDepartment(models.Model):
     _inherit = "hr.department"
@@ -77,12 +88,12 @@ class HrManagerLeave(models.Model):
             base_url += '/web#id=%d&view_type=form&model=%s' % (a.leave_id.id, admin._name)
             mail_content = (
                 " <h1><center>SOLICITUD DE AUSENCIAS</center></h1><br/> "
-                "La solicitud ha sido APROBADA por " + str(self.env.user.name or self.env.user.login or '') + "<br/>"
-                "<br/>Solicitante:" + str(a.employee_id.name) + "<br/>"
-                "Area:" + str(a.employee_id.department_id.name) + "<br/>"
-                "Fecha de Inicio:" + str(a.date_from) + "<br/>"
-                "Fecha de Fin:" + str(a.date_to) + "<br/>"
-                "Tipo de Ausencia:" + str(a.leave_type.name) + "<br/>"
+                "La solicitud ha sido APROBADA por " + _esc(self.env.user.name or self.env.user.login) + "<br/>"
+                "<br/>Solicitante:" + _esc(a.employee_id.name) + "<br/>"
+                "Area:" + _esc(a.employee_id.department_id.name) + "<br/>"
+                "Fecha de Inicio:" + _esc(a.date_from) + "<br/>"
+                "Fecha de Fin:" + _esc(a.date_to) + "<br/>"
+                "Tipo de Ausencia:" + _esc(a.leave_type.name) + "<br/>"
                 "Estado:APROBADO POR JEFE DE AREA<br/><br/>"
                 "<center><a href='" + str(base_url) + "'class='btn btn-default'>VALIDAR</a></center>"
             )
@@ -115,12 +126,12 @@ class HrManagerLeave(models.Model):
             base_url += '/web#id=%d&view_type=form&model=%s' % (a.leave_id.id, admin._name)
             mail_content = (
                 " <h1><center>SOLICITUD DE AUSENCIAS</center></h1> <br/> <br/> "
-                "La solicitud ha sido Rechazada  por " + str(self.env.user.name or self.env.user.login or '') + "<br/> "
-                "Solicitante:" + str(a.employee_id.name) + "<br/>"
-                "Area:" + str(a.employee_id.department_id.name) + "<br/>"
-                "Fecha de Inicio:" + str(a.date_from) + "<br/>"
-                "Fecha de Fin:" + str(a.date_to) + "<br/>"
-                "Tipo de Ausencia:" + str(a.leave_type.name) + "<br/>"
+                "La solicitud ha sido Rechazada  por " + _esc(self.env.user.name or self.env.user.login) + "<br/> "
+                "Solicitante:" + _esc(a.employee_id.name) + "<br/>"
+                "Area:" + _esc(a.employee_id.department_id.name) + "<br/>"
+                "Fecha de Inicio:" + _esc(a.date_from) + "<br/>"
+                "Fecha de Fin:" + _esc(a.date_to) + "<br/>"
+                "Tipo de Ausencia:" + _esc(a.leave_type.name) + "<br/>"
                 "Estado:NEGADO POR JEFE DE AREA<br/><br/>"
                 "<center><a href='" + str(base_url) + "'class='btn btn-default'>VER SOLICITUD</a></center>"
             )
@@ -142,13 +153,46 @@ class HrHolidays(models.Model):
     file = fields.Binary(string="Adjunto")
     attachment = fields.Many2one("ir.attachment", string="Adjunto")
 
+    def _notify_rrhh_no_manager(self):
+        """Política: cuando el empleado no tiene jefe inmediato (Manager Web)
+        configurado, la solicitud pasa directo a RRHH en vez de bloquear la
+        aprobación — antes esto lanzaba un error y la ausencia quedaba
+        atascada sin que nadie pudiera aprobarla ni notificarla. No crea un
+        hr.manager.leave (no hay jefe al que asignárselo); el aviso a RRHH
+        es solo informativo, la validación final ya la hacen ellos mismos
+        desde el módulo estándar de Ausencias."""
+        self.ensure_one()
+        admin_rhh = self.env['res.users'].sudo().search([('is_configured', '=', True)])
+        if not admin_rhh:
+            return
+        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        mail_content = (
+            " <h1><center>SOLICITUD DE AUSENCIAS</center></h1> <br/>"
+            "Solicitante:" + _esc(self.employee_id.name) + "<br/>"
+            "Area:" + _esc(self.employee_id.department_id.name) + "<br/>"
+            "Fecha de Inicio:" + _esc(self.date_from) + "<br/>"
+            "Fecha de Fin:" + _esc(self.date_to) + "<br/>"
+            "Tipo de Ausencia:" + _esc(self.holiday_status_id.name) + "<br/>"
+            "Este empleado no tiene jefe inmediato asignado, así que la solicitud pasa directo a RRHH.<br/><br/>"
+            "<center><a href='" + str(base_url) + "/odoo/time-off'class='btn btn-default'>REVISAR EN ODOO</a></center>"
+        )
+        try:
+            self.env['mail.mail'].sudo().create({
+                'subject': "Solicitud de Ausencia sin jefe inmediato: PARA REVISIÓN DE RRHH",
+                'body_html': mail_content,
+                'email_to': ','.join(admin_rhh.mapped('login')),
+            }).send()
+        except Exception:
+            # No bloquea la aprobación por un fallo de correo: el cron
+            # check_pending_leave_reminders ya avisa a diario si esta
+            # solicitud queda atascada sin resolver.
+            _logger.exception("Error al notificar a RRHH la ausencia %s (sin jefe inmediato)", self.id)
+
     def notificar(self):
         for a in self:
-            # Se valida ANTES de crear nada: antes, si faltaba el jefe
-            # inmediato, ya se había creado un hr.manager.leave "huérfano"
-            # (sin correo enviado) que quedaba dando vueltas sin limpiarse.
             if not a.employee_id.manager_id_web:
-                raise UserError(_("No se puede notificar: el empleado no tiene configurado un jefe inmediato (Manager Web)."))
+                a._notify_rrhh_no_manager()
+                continue
 
             leave = self.env['hr.manager.leave'].sudo().search([('leave_id', '=', a.id)], limit=1)
             created_now = False
@@ -173,11 +217,11 @@ class HrHolidays(models.Model):
                 base_url += '/web#id=%d&view_type=form&model=%s' % (leave.id, admin._name)
                 mail_content = (
                     " <h1><center>SOLICITUD DE AUSENCIAS</center></h1> <br/>"
-                    "Solicitante:" + str(a.employee_id.name) + "<br/>"
-                    "Area:" + str(a.employee_id.department_id.name) + "<br/>"
-                    "Fecha de Inicio:" + str(a.date_from) + "<br/>"
-                    "Fecha de Fin:" + str(a.date_to) + "<br/>"
-                    "Tipo de Ausencia:" + str(a.holiday_status_id.name) + "<br/>"
+                    "Solicitante:" + _esc(a.employee_id.name) + "<br/>"
+                    "Area:" + _esc(a.employee_id.department_id.name) + "<br/>"
+                    "Fecha de Inicio:" + _esc(a.date_from) + "<br/>"
+                    "Fecha de Fin:" + _esc(a.date_to) + "<br/>"
+                    "Tipo de Ausencia:" + _esc(a.holiday_status_id.name) + "<br/>"
                     "Estado:APROBADO POR RECURSOS HUMANOS<br/><br/>"
                     "<center><a href='" + str(base_url) + "'class='btn btn-default'>APROBAR/NEGAR</a></center>"
                 )
@@ -199,13 +243,12 @@ class HrHolidays(models.Model):
     def action_approve(self, context=None):
         """ This method is called when a holiday request is approved by manager. """
         self.ensure_one()
-        # Se valida ANTES de cambiar el estado: antes, self.state pasaba a
-        # 'validate1' de inmediato y, si esta comprobación fallaba más abajo,
-        # la solicitud quedaba atascada en ese estado sin notificación a
-        # nadie (el except solo revertía el registro hr.manager.leave, no el
-        # estado de la ausencia).
         if not self.employee_id.manager_id_web:
-            raise UserError(_("No se puede aprobar: el empleado no tiene configurado un jefe inmediato (Manager Web)."))
+            # Sin jefe inmediato: la solicitud pasa directo a RRHH en vez de
+            # bloquear la aprobación (ver _notify_rrhh_no_manager).
+            self.state = 'validate1'
+            self._notify_rrhh_no_manager()
+            return
 
         # Idempotencia: si ya existe un aviso al jefe de área para esta
         # misma ausencia (p. ej. porque action_approve() se disparó más de
@@ -237,11 +280,11 @@ class HrHolidays(models.Model):
             base_url += '/web#id=%d&view_type=form&model=%s' % (manager_registry.id, admin._name)
             mail_content = (
                 " <h1><center>SOLICITUD DE AUSENCIAS</center></h1> <br/>"
-                "Solicitante:" + str(self.employee_id.name) + "<br/>"
-                "Area:" + str(self.employee_id.department_id.name) + "<br/>"
-                "Fecha de Inicio:" + str(self.date_from) + "<br/>"
-                "Fecha de Fin:" + str(self.date_to) + "<br/>"
-                "Tipo de Ausencia:" + str(self.holiday_status_id.name) + "<br/>"
+                "Solicitante:" + _esc(self.employee_id.name) + "<br/>"
+                "Area:" + _esc(self.employee_id.department_id.name) + "<br/>"
+                "Fecha de Inicio:" + _esc(self.date_from) + "<br/>"
+                "Fecha de Fin:" + _esc(self.date_to) + "<br/>"
+                "Tipo de Ausencia:" + _esc(self.holiday_status_id.name) + "<br/>"
                 "Estado:APROBADO POR RECURSOS HUMANOS<br/><br/>"
                 "<center><a href='" + str(base_url) + "'class='btn btn-default'>APROBAR/NEGAR</a></center>"
             )
@@ -306,13 +349,13 @@ class HrHolidays(models.Model):
             # avisaba al empleado).
             mail_content = (
                 " <h1><center>SOLICITUD DE AUSENCIAS</center></h1> <br/> "
-                "La solicitud ha sido APROBADA por " + str(self.env.user.name or self.env.user.login or '') + "<br/>"
-                "Motivo:" + str(self.report_note or '') + "<br/>"
-                "Solicitante:" + str(self.employee_id.name) + "<br/>"
-                "Area:" + str(self.employee_id.department_id.name) + "<br/>"
-                "Fecha de Inicio:" + str(self.date_from) + "<br/>"
-                "Fecha de Fin:" + str(self.date_to) + "<br/>"
-                "Tipo de Ausencia:" + str(self.holiday_status_id.name) + "<br/>"
+                "La solicitud ha sido APROBADA por " + _esc(self.env.user.name or self.env.user.login) + "<br/>"
+                "Motivo:" + _esc(self.report_note) + "<br/>"
+                "Solicitante:" + _esc(self.employee_id.name) + "<br/>"
+                "Area:" + _esc(self.employee_id.department_id.name) + "<br/>"
+                "Fecha de Inicio:" + _esc(self.date_from) + "<br/>"
+                "Fecha de Fin:" + _esc(self.date_to) + "<br/>"
+                "Tipo de Ausencia:" + _esc(self.holiday_status_id.name) + "<br/>"
                 "Estado:APROBADO<br/>"
                 "<br/>Atentamente<br/>Sistema de Ausencias <br/> "
             )
@@ -334,13 +377,13 @@ class HrHolidays(models.Model):
             # al empleado, sin depender de quién hizo el rechazo.
             mail_content = (
                 " <h1><center>SOLICITUD DE AUSENCIAS</center></h1> <br/> "
-                "La solicitud ha sido Rechazada por " + str(self.env.user.name or self.env.user.login or '') + "<br/>"
-                "Motivo:" + str(self.report_note or '') + "<br/>"
-                "Solicitante:" + str(self.employee_id.name) + "<br/>"
-                "Area:" + str(self.employee_id.department_id.name) + "<br/>"
-                "Fecha de Inicio:" + str(self.date_from) + "<br/>"
-                "Fecha de Fin:" + str(self.date_to) + "<br/>"
-                "Tipo de Ausencia:" + str(self.holiday_status_id.name) + "<br/>"
+                "La solicitud ha sido Rechazada por " + _esc(self.env.user.name or self.env.user.login) + "<br/>"
+                "Motivo:" + _esc(self.report_note) + "<br/>"
+                "Solicitante:" + _esc(self.employee_id.name) + "<br/>"
+                "Area:" + _esc(self.employee_id.department_id.name) + "<br/>"
+                "Fecha de Inicio:" + _esc(self.date_from) + "<br/>"
+                "Fecha de Fin:" + _esc(self.date_to) + "<br/>"
+                "Tipo de Ausencia:" + _esc(self.holiday_status_id.name) + "<br/>"
                 "Estado:RECHAZADO<br/>"
                 "<br/>Atentamente<br/>Sistema de Ausencias <br/> "
             )
@@ -486,10 +529,10 @@ class HrHolidays(models.Model):
 
         rows = ''.join(
             "<tr>"
-            "<td>" + str(lv.employee_id.name) + "</td>"
-            "<td>" + str(lv.department_id.name or '') + "</td>"
-            "<td>" + str(lv.holiday_status_id.name) + "</td>"
-            "<td>" + str(lv.request_date_from) + " - " + str(lv.request_date_to) + "</td>"
+            "<td>" + _esc(lv.employee_id.name) + "</td>"
+            "<td>" + _esc(lv.department_id.name) + "</td>"
+            "<td>" + _esc(lv.holiday_status_id.name) + "</td>"
+            "<td>" + _esc(lv.request_date_from) + " - " + _esc(lv.request_date_to) + "</td>"
             "<td>" + (lv.state == 'confirm' and 'Pendiente 1ra aprobación' or 'Pendiente validación RRHH') + "</td>"
             "</tr>"
             for lv in pending
