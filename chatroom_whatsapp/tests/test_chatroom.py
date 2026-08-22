@@ -11,6 +11,30 @@ from ..controllers.whatsapp_webhook import WhatsAppWebhookController
 @tagged('post_install', '-at_install')
 class TestChatroomWhatsapp(TransactionCase):
 
+    def test_ai_boolean_parameters_and_approval_are_safe_by_default(self):
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp',
+            'external_id': '573009991111',
+        })
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.ai_enabled', 'False')
+        self.assertFalse(channel._ai_param_enabled('chatroom_whatsapp.ai_enabled'))
+        icp.set_param('chatroom_whatsapp.ai_enabled', 'True')
+        self.assertTrue(channel._ai_param_enabled('chatroom_whatsapp.ai_enabled'))
+        icp.set_param('chatroom_whatsapp.ai_require_approval', False)
+        self.assertTrue(channel._ai_requires_approval())
+        channel._ai_stage_or_send_reply('Respuesta preparada')
+        self.assertEqual(channel.ai_suggested_reply, 'Respuesta preparada')
+
+    def test_ai_approval_can_be_disabled_explicitly(self):
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp',
+            'external_id': '573009991112',
+        })
+        self.env['ir.config_parameter'].sudo().set_param(
+            'chatroom_whatsapp.ai_require_approval', 'False')
+        self.assertFalse(channel._ai_requires_approval())
+
     def test_find_or_create_dedupes_existing_partner_by_phone(self):
         """Un contacto ya existente con el mismo teléfono (importado de
         otra fuente, sin whatsapp_id todavía) no debe duplicarse."""

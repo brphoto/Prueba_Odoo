@@ -1954,16 +1954,39 @@ class ChatroomChannel(models.Model):
     # ------------------------------------------------------------------
     # Inteligencia Artificial: sugerencia, clasificación y automatización
     # ------------------------------------------------------------------
+    def _ai_param_enabled(self, key, default=False):
+        """Lee un parámetro booleano sin tratar la cadena 'False' como True."""
+        raw = self.env['ir.config_parameter'].sudo().get_param(key)
+        if raw in (False, None, ''):
+            return default
+        return str(raw).strip().lower() in ('1', 'true', 'yes', 'on')
+
     def _ai_get_credentials(self):
-        icp = self.env['ir.config_parameter'].sudo()
-        if not icp.get_param('chatroom_whatsapp.ai_enabled'):
+        if not self._ai_param_enabled('chatroom_whatsapp.ai_enabled'):
             return None
+        icp = self.env['ir.config_parameter'].sudo()
         api_url = icp.get_param('chatroom_whatsapp.ai_provider_url')
         api_key = icp.get_param('chatroom_whatsapp.ai_api_key')
         model = icp.get_param('chatroom_whatsapp.ai_model', 'gpt-4o-mini')
         if not api_url or not api_key:
             return None
         return api_url, api_key, model
+
+    def _ai_requires_approval(self):
+        return self._ai_param_enabled(
+            'chatroom_whatsapp.ai_require_approval', default=True)
+
+    def _ai_stage_or_send_reply(self, reply):
+        """Prepara una respuesta para el agente o la envía si se autorizó."""
+        self.ensure_one()
+        reply = (reply or '').strip()
+        if not reply:
+            return False
+        if self._ai_requires_approval():
+            self.ai_suggested_reply = reply
+            return False
+        self.action_send_text(reply)
+        return True
 
     def _ai_chat_completion(self, messages):
         """Llama al endpoint 'chat completions' configurado (cualquier
@@ -1981,7 +2004,18 @@ class ChatroomChannel(models.Model):
             timeout=30,
         )
         response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"]
+        try:
+            payload = response.json()
+            content = payload["choices"][0]["message"]["content"]
+        except (ValueError, TypeError, KeyError, IndexError) as exc:
+            _logger.error("Respuesta de IA con formato no compatible: %s", exc)
+            raise UserError(_(
+                "El proveedor de IA devolvió una respuesta no compatible "
+                "con el formato chat/completions.")) from exc
+        if not isinstance(content, str) or not content.strip():
+            raise UserError(_(
+                "El proveedor de IA no devolvió contenido utilizable."))
+        return content.strip()
 
     def _ai_build_conversation(self, extra_system=None):
         self.ensure_one()
@@ -2092,7 +2126,7 @@ class ChatroomChannel(models.Model):
             "arriba, respondé en español, breve y cordial, la consulta "
             "de precio del cliente.")
         reply = self._ai_chat_completion(self._ai_build_conversation(extra_system=system_prompt))
-        self.action_send_text(reply)
+        self._ai_stage_or_send_reply(reply)
 
     # ------------------------------------------------------------------
     # Vendedor automático: la IA arma un carrito charlando con el cliente
@@ -2233,7 +2267,7 @@ class ChatroomChannel(models.Model):
                 reply = _("Todavía no agregaste nada al carrito.")
 
         if reply:
-            self.action_send_text(reply)
+            self._ai_stage_or_send_reply(reply)
 
     def _ai_process_inbound_message(self, message):
         """Automatizaciones opcionales al recibir un mensaje: clasificar
@@ -2245,32 +2279,32 @@ class ChatroomChannel(models.Model):
         self.ensure_one()
         if self.ai_paused:
             return
-        icp = self.env['ir.config_parameter'].sudo()
-        if not icp.get_param('chatroom_whatsapp.ai_enabled'):
+        if not self._ai_param_enabled('chatroom_whatsapp.ai_enabled'):
             return
         try:
-            if icp.get_param('chatroom_whatsapp.ai_auto_classify'):
+            if self._ai_param_enabled('chatroom_whatsapp.ai_auto_classify'):
                 self.ai_intent = self._ai_classify_intent()
 
-            if (icp.get_param('chatroom_whatsapp.ai_auto_lead')
+            if (self._ai_param_enabled('chatroom_whatsapp.ai_auto_lead')
                     and self.ai_intent == 'venta' and not self.pinned_lead_id
                     and self.crm_installed and self.partner_id):
                 self.action_create_lead()
 
-            if icp.get_param('chatroom_whatsapp.ai_auto_order_reply') and message.body:
+            if self._ai_param_enabled('chatroom_whatsapp.ai_auto_order_reply') and message.body:
                 matched_products = self._ai_search_products_mentioned(message.body)
                 self._ai_run_order_assistant(matched_products)
                 return
 
-            if icp.get_param('chatroom_whatsapp.ai_auto_price_reply') and message.body:
+            if self._ai_param_enabled('chatroom_whatsapp.ai_auto_price_reply') and message.body:
                 matched_products = self._ai_search_products_mentioned(message.body)
                 if matched_products:
                     self._ai_reply_with_product_prices(matched_products)
                     return
 
-            if icp.get_param('chatroom_whatsapp.ai_auto_reply'):
+            if self._ai_param_enabled('chatroom_whatsapp.ai_auto_reply'):
                 self.action_ai_suggest_reply()
-                self.action_send_ai_suggestion()
+                if not self._ai_requires_approval():
+                    self.action_send_ai_suggestion()
         except UserError as exc:
             _logger.warning("Automatización de IA omitida en canal %s: %s", self.id, exc)
         except Exception:  # noqa: BLE001 - no debe romper la ingesta del webhook

@@ -170,6 +170,14 @@ class ResConfigSettings(models.TransientModel):
         help="Envía la sugerencia de IA sin intervención humana. "
              "Actívalo solo si confías en las respuestas del modelo/prompt "
              "configurado: no hay revisión previa de un agente.")
+    chatroom_ai_require_approval = fields.Boolean(
+        string="Requerir aprobación humana",
+        config_parameter='chatroom_whatsapp.ai_require_approval',
+        default=True,
+        help="Deja la respuesta de IA preparada en la conversación para "
+             "que un agente la revise y envíe. Es la opción recomendada; "
+             "desactívala solo cuando el flujo automático ya haya sido "
+             "validado.")
     chatroom_ai_auto_price_reply = fields.Boolean(
         string="Responder consultas de precio con datos reales",
         config_parameter='chatroom_whatsapp.ai_auto_price_reply',

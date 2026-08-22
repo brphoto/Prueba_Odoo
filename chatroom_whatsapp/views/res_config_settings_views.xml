@@ -184,6 +184,10 @@
                                  help="Envía la respuesta generada sin revisión de un agente. Úsalo con precaución">
                             <field name="chatroom_ai_auto_reply"/>
                         </setting>
+                        <setting id="chatroom_ai_require_approval_setting"
+                                 help="Deja la respuesta preparada para revisión humana antes de enviarla. Recomendado">
+                            <field name="chatroom_ai_require_approval"/>
+                        </setting>
                         <setting id="chatroom_ai_auto_price_reply_setting"
                                  help="Contesta con el precio real de Odoo cuando el cliente menciona un producto por su nombre; no inventa precios">
                             <field name="chatroom_ai_auto_price_reply"/>
