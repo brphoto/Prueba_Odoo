@@ -140,7 +140,9 @@ class ChatroomChannel(models.Model):
          ('red', "Vencido")],
         compute='_compute_first_response_sla', string="SLA 1ra respuesta")
     next_activity_id = fields.Integer(compute='_compute_next_activity')
-    next_activity_summary = fields.Char(compute='_compute_next_activity')
+    next_activity_summary = fields.Char(
+        string="Resumen de próxima actividad",
+        compute='_compute_next_activity')
     next_activity_date_deadline = fields.Date(compute='_compute_next_activity')
     next_activity_overdue = fields.Boolean(compute='_compute_next_activity')
     next_activity_user_id = fields.Many2one(

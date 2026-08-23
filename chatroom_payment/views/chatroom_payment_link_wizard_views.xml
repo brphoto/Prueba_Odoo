@@ -6,7 +6,7 @@
         <field name="arch" type="xml">
             <form string="Enviar Link de Pago" class="o_chatroom_payment_wizard">
                 <div class="o_chatroom_payment_intro">
-                    <i class="fa fa-credit-card"/>
+                    <i class="fa fa-credit-card" title="Pago seguro" aria-hidden="true"/>
                     <div>
                         <strong>Enviar un enlace de pago seguro</strong>
                         <div>El cliente recibirá el enlace directamente en esta conversación.</div>

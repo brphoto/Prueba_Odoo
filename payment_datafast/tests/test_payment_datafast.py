@@ -15,7 +15,7 @@ class TestPaymentDatafast(TransactionCase):
             'datafast_terminal_id': 'PD100406',
             'datafast_merchant_name': 'Odoo Test Commerce',
         })
-        cls.partner = cls.env['res.partner'].create({
+        partner_values = {
             'name': 'John Customer',
             'email': 'john.customer@example.com',
             'vat': '1234567890',
@@ -23,7 +23,13 @@ class TestPaymentDatafast(TransactionCase):
             'street': 'Av. Test 123',
             'zip': '170000',
             'country_id': cls.env.ref('base.ec').id,
-        })
+        }
+        # Algunas instalaciones comerciales agregan una columna obligatoria
+        # group_rfq a res.partner; otras no cargan ese módulo en el registro.
+        # El fixture debe funcionar en ambos escenarios.
+        if 'group_rfq' in cls.env['res.partner']._fields:
+            partner_values['group_rfq'] = 'default'
+        cls.partner = cls.env['res.partner'].create(partner_values)
         cls.currency = cls.env.ref('base.USD')
         cls.payment_method = cls.env.ref('payment.payment_method_card')
 

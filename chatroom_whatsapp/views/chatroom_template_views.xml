@@ -42,7 +42,7 @@
                            statusbar_visible="draft,pending,approved,rejected"/>
                 </header>
                 <sheet>
-                    <div class="alert alert-info" invisible="waba_template_id">
+                    <div class="alert alert-info" role="alert" invisible="waba_template_id">
                         Guarda el borrador y pulsa «Enviar a Meta» para solicitar su aprobación.
                     </div>
                     <field name="waba_template_id" invisible="1"/>

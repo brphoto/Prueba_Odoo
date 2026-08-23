@@ -10,6 +10,7 @@ _logger = logging.getLogger(__name__)
 
 
 class ResConfigSettings(models.TransientModel):
+    _name = 'res.config.settings'
     _inherit = ['res.config.settings', 'chatroom.meta.mixin']
 
     # -- Meta / WhatsApp Business Cloud API (conexión directa, sin BSP) --
