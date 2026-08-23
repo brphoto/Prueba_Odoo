@@ -22,6 +22,7 @@
     flex-direction: column;
     width: 340px;
     min-width: 280px;
+    min-height: 0;
     max-width: 40%;
     border-right: 1px solid var(--border-color, #dee2e6);
     background-color: var(--o-view-background-color, #fff);
@@ -143,12 +144,19 @@
 }
 
 .o_chatroom_app_filters {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
     padding: 0 14px 8px;
+    width: 100%;
+    box-sizing: border-box;
 
     .btn {
+        min-width: 0;
+        max-width: 100%;
         border-radius: 14px;
+        white-space: normal;
+        overflow-wrap: anywhere;
     }
 }
 
@@ -157,6 +165,8 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 6px;
     padding: 0 14px 8px;
+    width: 100%;
+    box-sizing: border-box;
 
     .o_chatroom_filter_select {
         min-width: 0;
@@ -198,7 +208,10 @@
 }
 
 .o_chatroom_filters_panel {
-    overflow: hidden;
+    flex: 0 0 auto;
+    min-width: 0;
+    overflow: visible;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
 }
 
 .o_chatroom_filter_tools {
@@ -220,7 +233,10 @@
 
 .o_chatroom_app_list {
     flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
     overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .o_chatroom_app_list_item {

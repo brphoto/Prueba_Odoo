@@ -121,6 +121,7 @@ export class ChatroomThreadCore extends Component {
 
         this._shouldScroll = true;
         this._onBusNotification = this._onBusNotification.bind(this);
+        this._onAiUseResponse = this._onAiUseResponse.bind(this);
         // Se actualiza de forma síncrona (no esperando a que Owl confirme
         // los nuevos props) para saber qué canal ya se está cargando: el
         // propio _loadForCurrentRecord dispara onMessagesLoaded, que hace
@@ -139,6 +140,7 @@ export class ChatroomThreadCore extends Component {
 
         onMounted(() => {
             this.busService.addEventListener("notification", this._onBusNotification);
+            window.addEventListener("chatroom-ai-use-response", this._onAiUseResponse);
             this._scrollToBottom();
         });
 
@@ -158,6 +160,7 @@ export class ChatroomThreadCore extends Component {
 
         onWillUnmount(() => {
             this.busService.removeEventListener("notification", this._onBusNotification);
+            window.removeEventListener("chatroom-ai-use-response", this._onAiUseResponse);
             this._unsubscribeBus();
             this._stopMediaStream();
             clearInterval(this._recordingInterval);
@@ -166,6 +169,15 @@ export class ChatroomThreadCore extends Component {
 
     get channelId() {
         return this.props.channelId;
+    }
+
+    _onAiUseResponse(ev) {
+        const detail = ev.detail || {};
+        if (detail.channelId !== this.channelId || !detail.text) {
+            return;
+        }
+        this.state.noteMode = false;
+        this.state.composerText = detail.text;
     }
 
     _subscribeBus(channelId) {

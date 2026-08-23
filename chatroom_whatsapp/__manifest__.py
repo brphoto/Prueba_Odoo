@@ -54,7 +54,7 @@ Requisitos
     'icon': '/chatroom_whatsapp/static/description/icon.png',
 
     'category': 'Discuss',
-    'version': '19.0.2.1.6',
+    'version': '19.0.2.1.9',
 
     # sale/purchase/crm/account eran opcionales hasta esta versión (el
     # módulo revisaba 'modelo' in self.env por todos lados para no

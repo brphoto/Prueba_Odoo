@@ -24,6 +24,24 @@
     color: #495057;
 }
 
+.o_chatroom_contact_commercial_snapshot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 10px;
+    padding: 6px 14px;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    color: var(--o-muted-color, #6c757d);
+    font-size: 0.72rem;
+
+    span {
+        white-space: nowrap;
+    }
+
+    i {
+        margin-right: 2px;
+    }
+}
+
 .o_chatroom_alert_dot {
     font-size: 0.7em;
     vertical-align: middle;
@@ -113,23 +131,15 @@
 }
 
 .o_chatroom_contact_intelligence {
-    padding: 10px 14px 0;
+    padding: 10px 14px;
     border-bottom: 1px solid var(--border-color, #dee2e6);
 
-    > button {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        gap: 6px;
-        min-height: 38px;
-        padding: 7px 12px;
-        border-radius: 8px;
-        font-weight: 600;
+    .o_chatroom_contact_section_header {
+        margin-bottom: 0;
     }
 
-    &.o_chatroom_contact_intelligence_open > button {
-        border-bottom-left-radius: 4px;
-        border-bottom-right-radius: 4px;
+    &.o_chatroom_contact_intelligence_open .o_chatroom_contact_section_header {
+        margin-bottom: 6px;
     }
 }
 

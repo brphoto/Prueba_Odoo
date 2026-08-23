@@ -48,7 +48,10 @@
                             </button>
                         </div>
                         <small class="text-muted o_chatroom_payment_meta">
-                            <t t-esc="paymentLink.provider_name"/> - <t t-esc="paymentLink.state"/>
+                            <span t-attf-class="o_chatroom_payment_state o_chatroom_payment_state_{{ paymentLink.state }}">
+                                <t t-esc="paymentStateLabel(paymentLink.state)"/>
+                            </span>
+                            <span t-if="paymentLink.provider_name"> · <t t-esc="paymentLink.provider_name"/></span>
                         </small>
                     </t>
                 </t>

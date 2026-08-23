@@ -148,6 +148,26 @@
     }
 }
 
+.o_chatroom_contact_actions_block {
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+
+    > .o_chatroom_contact_section_header {
+        padding: 10px 14px;
+        margin-bottom: 0;
+
+        h6 {
+            font-size: 0.8em;
+            text-transform: uppercase;
+            color: #667781;
+        }
+    }
+
+    > .o_chatroom_contact_actions {
+        border-bottom: 0;
+        padding-top: 0;
+    }
+}
+
 .o_chatroom_contact_docs {
     padding: 10px 14px;
     border-bottom: 1px solid var(--border-color, #dee2e6);

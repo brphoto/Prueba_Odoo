@@ -18,6 +18,7 @@
     .o_chatroom_app_sidebar {
         width: var(--chatroom-ui-sidebar-width, 360px);
         min-width: 320px;
+        min-height: 0;
         border-right: 1px solid var(--chatroom-ui-border);
         background: var(--chatroom-ui-surface);
         box-shadow: var(--chatroom-ui-shadow, 8px 0 24px rgba(15, 23, 42, 0.035));
@@ -146,10 +147,13 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 6px;
         padding: 4px 16px 12px;
+        width: 100%;
+        box-sizing: border-box;
 
         .btn {
             min-width: 0;
             min-height: 36px;
+            max-width: 100%;
             padding: 5px 4px;
             border: 1px solid var(--chatroom-ui-border);
             border-radius: 999px;
@@ -157,6 +161,7 @@
             font-weight: 600;
             line-height: 1.1;
             white-space: normal;
+            overflow-wrap: anywhere;
             transition: transform 160ms ease, box-shadow 160ms ease;
 
             &:hover {
@@ -169,6 +174,31 @@
                 box-shadow: 0 4px 10px color-mix(in srgb, var(--chatroom-ui-primary) 20%, transparent);
             }
         }
+    }
+
+    // El panel de filtros es contenido fijo del sidebar. Debe crecer con sus
+    // opciones y dejar que la lista ocupe el espacio restante sin solaparse.
+    .o_chatroom_filters_panel {
+        flex: 0 0 auto;
+        min-width: 0;
+        overflow: visible;
+        border-bottom: 1px solid var(--chatroom-ui-border);
+    }
+
+    .o_chatroom_secondary_filters {
+        width: 100%;
+        box-sizing: border-box;
+
+        .o_chatroom_filter_select {
+            min-width: 0;
+            max-width: 100%;
+        }
+    }
+
+    .o_chatroom_app_list {
+        min-height: 0;
+        min-width: 0;
+        overflow-x: hidden;
     }
 
     .o_chatroom_app_list_item {

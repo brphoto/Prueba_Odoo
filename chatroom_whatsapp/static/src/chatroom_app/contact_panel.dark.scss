@@ -20,8 +20,13 @@
 .o_chatroom_contact_info,
 .o_chatroom_contact_stats,
 .o_chatroom_contact_actions,
+.o_chatroom_contact_actions_block,
 .o_chatroom_contact_docs {
     border-color: #2a3942;
+}
+
+.o_chatroom_contact_actions_block > .o_chatroom_contact_section_header h6 {
+    color: #8696a0;
 }
 
 .o_chatroom_contact_header:hover,

@@ -15,6 +15,7 @@ patch(ContactPanel.prototype, {
             approvalRequired: true,
             summary: "",
             intent: "",
+            mode: "suggestion",
             knowledgeCount: 0,
             suggestion: false,
             error: "",
@@ -32,6 +33,7 @@ patch(ContactPanel.prototype, {
         this.aiAssistant.busy = false;
         this.aiAssistant.summary = "";
         this.aiAssistant.intent = "";
+        this.aiAssistant.mode = "suggestion";
         this.aiAssistant.suggestion = false;
         this.aiAssistant.error = "";
     },
@@ -67,6 +69,51 @@ patch(ContactPanel.prototype, {
         if (this.aiAssistant.open && !this.aiAssistant.providerReady && !this.aiAssistant.error) {
             await this._loadAiAssistant();
         }
+    },
+
+    onAiAssistantHeaderKeydown(ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            this.toggleAiAssistant();
+        }
+    },
+
+    onAiModeChange(ev) {
+        this.aiAssistant.mode = ev.target.value;
+    },
+
+    async runAiAction() {
+        if (this.aiAssistant.mode === "summary") {
+            return this.prepareAiSummary();
+        }
+        if (this.aiAssistant.mode === "intent") {
+            return this.classifyAiIntent();
+        }
+        return this.prepareAiSuggestion();
+    },
+
+    suggestionStateLabel() {
+        const labels = {
+            draft: "borrador",
+            approved: "aprobada",
+            sent: "enviada",
+            rejected: "rechazada",
+            error: "error",
+        };
+        return labels[this.aiAssistant.suggestion?.state] || "";
+    },
+
+    useAiSuggestion() {
+        const suggestion = this.aiAssistant.suggestion;
+        if (!suggestion?.text || !this.props.channelId) {
+            return;
+        }
+        window.dispatchEvent(new CustomEvent("chatroom-ai-use-response", {
+            detail: { channelId: this.props.channelId, text: suggestion.text },
+        }));
+        this.notification.add("Respuesta colocada en el compositor para revisarla.", {
+            type: "success",
+        });
     },
 
     async _runAiAssistant(callName, onResult) {

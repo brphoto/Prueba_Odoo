@@ -4,6 +4,16 @@ import { patch } from "@web/core/utils/patch";
 import { ContactPanel } from "@chatroom_whatsapp/chatroom_app/contact_panel";
 
 patch(ContactPanel.prototype, {
+    paymentStateLabel(state) {
+        return {
+            generated: 'Generado',
+            sent: 'Enviado',
+            paid: 'Pagado',
+            expired: 'Expirado',
+            error: 'Error',
+        }[state] || state || '';
+    },
+
     async sendOrderPaymentLink(order) {
         await this._sendPaymentLink(`order-pay-${order.id}`, "sale.order", order.id);
     },

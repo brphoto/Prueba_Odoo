@@ -153,6 +153,7 @@ export class ContactPanel extends Component {
 
     _getStoredCollapsedState() {
         const defaults = {
+            actions: true,
             activities: true,
             opportunities: true,
             orders: true,

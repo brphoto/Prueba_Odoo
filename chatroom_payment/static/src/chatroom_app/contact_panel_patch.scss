@@ -1,0 +1,23 @@
+.o_chatroom_payment_meta {
+    display: block;
+    margin: -1px 0 4px;
+    font-size: 0.72em;
+}
+
+.o_chatroom_payment_state {
+    font-weight: 600;
+}
+
+.o_chatroom_payment_state_paid {
+    color: #128c4a;
+}
+
+.o_chatroom_payment_state_error,
+.o_chatroom_payment_state_expired {
+    color: #c0392b;
+}
+
+.o_chatroom_payment_state_sent,
+.o_chatroom_payment_state_generated {
+    color: var(--o-brand-primary, #714b67);
+}

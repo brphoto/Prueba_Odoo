@@ -68,6 +68,15 @@ patch(ContactPanel.prototype, {
         });
     },
 
+    formatCommercialDate(value) {
+        if (!value) {
+            return '';
+        }
+        return new Date(`${value}T00:00:00`).toLocaleDateString('es-EC', {
+            day: '2-digit', month: 'short', year: 'numeric',
+        });
+    },
+
     async _loadCommercialIntelligence(channelId = this.props.channelId) {
         if (!channelId) {
             this.intel.data = false;
@@ -98,6 +107,13 @@ patch(ContactPanel.prototype, {
         this.intel.panelOpen = !this.intel.panelOpen;
         if (this.intel.panelOpen && !this.intel.data) {
             await this._loadCommercialIntelligence();
+        }
+    },
+
+    onIntelligenceHeaderKeydown(ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            this.toggleIntelligencePanel();
         }
     },
 

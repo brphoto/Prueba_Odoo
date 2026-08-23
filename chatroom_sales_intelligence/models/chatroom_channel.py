@@ -25,10 +25,24 @@ class ChatroomChannel(models.Model):
 
     def get_contact_panel_data(self):
         data = super().get_contact_panel_data()
+        partner = self.partner_id
+        category = self.env['crm.rfm.segment'].search([
+            ('definition_type', '=', 'category'),
+            ('code', '=', partner.rfm_category or 'none'),
+        ], limit=1) if partner else self.env['crm.rfm.segment']
+        data.update({
+            'rfm_category': partner.rfm_category if partner else False,
+            'rfm_category_label': category.name or partner.rfm_category if partner else False,
+            'rfm_score': partner.rfm_score if partner else False,
+            'commercial_total_sales': partner.commercial_total_sales if partner else 0.0,
+            'commercial_invoice_count': partner.commercial_invoice_count if partner else 0,
+            'commercial_last_sale_date': fields.Date.to_string(partner.commercial_last_sale_date)
+                if partner and partner.commercial_last_sale_date else False,
+        })
         active_opportunities = []
-        if self.partner_id:
+        if partner:
             leads = self.env['crm.lead'].search([
-                ('partner_id', '=', self.partner_id.id),
+                ('partner_id', '=', partner.id),
                 ('active', '=', True),
                 ('probability', '<', 100),
             ], order='priority desc, date_last_stage_update desc', limit=10)

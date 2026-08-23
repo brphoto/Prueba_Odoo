@@ -19,7 +19,7 @@
                 <t t-if="!state.collapsed.opportunities">
                     <t t-foreach="state.data.active_opportunities" t-as="lead" t-key="lead.id">
                         <div class="o_chatroom_contact_doc_row">
-                            <span class="o_chatroom_contact_doc_name text-truncate"
+                            <span class="o_chatroom_contact_doc_name text-truncate o_chatroom_contact_doc_link"
                                   t-on-click="() => this.openRecord('crm.lead', lead.id)"
                                   title="Abrir oportunidad" t-esc="lead.name"/>
                             <span class="badge"

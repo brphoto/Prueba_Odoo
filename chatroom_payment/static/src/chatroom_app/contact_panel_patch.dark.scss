@@ -1,0 +1,13 @@
+.o_chatroom_payment_state_paid {
+    color: #7ee2a8;
+}
+
+.o_chatroom_payment_state_error,
+.o_chatroom_payment_state_expired {
+    color: #ffb3bb;
+}
+
+.o_chatroom_payment_state_sent,
+.o_chatroom_payment_state_generated {
+    color: #d18bc5;
+}
