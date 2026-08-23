@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_notification_list" model="ir.ui.view">
+        <field name="name">chatroom.notification.list</field><field name="model">chatroom.notification</field>
+        <field name="arch" type="xml"><list string="Notificaciones">
+            <field name="create_date"/><field name="name"/><field name="notification_type" widget="badge"/>
+            <field name="priority" widget="badge"/><field name="state" widget="badge"/><field name="user_id"/>
+            <field name="channel_id" optional="show"/><field name="snoozed_until" optional="show"/>
+        </list></field>
+    </record>
+    <record id="view_chatroom_notification_form" model="ir.ui.view">
+        <field name="name">chatroom.notification.form</field><field name="model">chatroom.notification</field>
+        <field name="arch" type="xml"><form string="Notificación" create="false">
+            <header>
+                <button name="action_mark_read" type="object" string="Marcar como leída" class="btn-secondary" invisible="state != 'unread'"/>
+                <button name="action_snooze" type="object" string="Posponer 1 hora" class="btn-secondary" invisible="state in ('done', 'snoozed')"/>
+                <button name="action_resolve" type="object" string="Resolver" class="btn-primary" invisible="state == 'done'"/>
+                <button name="action_open_record" type="object" string="Abrir registro" class="btn-primary" invisible="not res_model or not res_id"/>
+                <field name="state" widget="statusbar" statusbar_visible="unread,read,done"/>
+            </header><sheet>
+                <div class="oe_title"><h1><field name="name"/></h1></div>
+                <group><group><field name="notification_type"/><field name="priority"/><field name="user_id"/></group>
+                    <group><field name="channel_id"/><field name="partner_id"/><field name="escalation_level"/></group></group>
+                <group string="Detalle"><field name="message" nolabel="1"/></group>
+                <group string="Auditoría"><field name="dedupe_key"/><field name="read_at"/><field name="snoozed_until"/><field name="resolved_at"/></group>
+            </sheet>
+        </form></field>
+    </record>
+    <record id="action_chatroom_notification" model="ir.actions.act_window">
+        <field name="name">Notificaciones</field><field name="res_model">chatroom.notification</field>
+        <field name="view_mode">list,form</field><field name="context">{'search_default_unread': 1}</field>
+    </record>
+    <record id="view_chatroom_notification_search" model="ir.ui.view">
+        <field name="name">chatroom.notification.search</field><field name="model">chatroom.notification</field>
+        <field name="arch" type="xml"><search string="Notificaciones"><field name="name"/><field name="channel_id"/><field name="user_id"/>
+            <filter name="unread" string="No leídas" domain="[('state', '=', 'unread')]"/>
+            <filter name="urgent" string="Urgentes" domain="[('priority', '=', '2')]"/>
+            <filter name="sla" string="SLA" domain="[('notification_type', '=', 'sla')]"/>
+            <group><filter name="group_type" string="Tipo" context="{'group_by': 'notification_type'}"/><filter name="group_state" string="Estado" context="{'group_by': 'state'}"/></group>
+        </search></field>
+    </record>
+    <menuitem id="menu_chatroom_notification" name="Notificaciones" parent="chatroom_whatsapp.menu_chatroom_operation" action="action_chatroom_notification" sequence="25" groups="chatroom_notifications.group_chatroom_notifications_user"/>
+</odoo>

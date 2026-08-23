@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_chatroom_ai_suggestion_user,chatroom.ai.suggestion.user,model_chatroom_ai_suggestion,chatroom_ai.group_chatroom_ai_user,1,1,1,0
+access_chatroom_ai_suggestion_manager,chatroom.ai.suggestion.manager,model_chatroom_ai_suggestion,chatroom_ai.group_chatroom_ai_manager,1,1,1,1
+access_chatroom_ai_suggestion_chatroom_user,chatroom.ai.suggestion.chatroom.user,model_chatroom_ai_suggestion,chatroom_whatsapp.group_chatroom_user,1,1,1,0

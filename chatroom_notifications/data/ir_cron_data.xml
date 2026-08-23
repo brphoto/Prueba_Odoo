@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="ir_cron_chatroom_sla_notifications" model="ir.cron">
+        <field name="name">Chatroom: alertas SLA</field>
+        <field name="model_id" ref="model_chatroom_notification"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_create_sla_notifications()</field>
+        <field name="interval_number">5</field><field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+    <record id="ir_cron_chatroom_reopen_snoozed" model="ir.cron">
+        <field name="name">Chatroom: reactivar alertas pospuestas</field>
+        <field name="model_id" ref="model_chatroom_notification"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_reopen_snoozed()</field>
+        <field name="interval_number">10</field><field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+</odoo>

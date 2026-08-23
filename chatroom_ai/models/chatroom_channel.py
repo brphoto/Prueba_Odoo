@@ -1,0 +1,95 @@
+# -*- coding: utf-8 -*-
+from odoo import _, models
+from odoo.exceptions import UserError
+
+
+class ChatroomChannel(models.Model):
+    _inherit = 'chatroom.channel'
+
+    def get_ai_assistant_data(self):
+        """Estado seguro que consume el panel lateral del agente.
+
+        Nunca devuelve el token ni la URL privada del proveedor; solo indica
+        si hay configuración suficiente y qué borrador auditable está activo.
+        """
+        self.ensure_one()
+        suggestion = self.env['chatroom.ai.suggestion'].search([
+            ('channel_id', '=', self.id), ('state', 'in', ('draft', 'approved')),
+        ], order='create_date desc, id desc', limit=1)
+        knowledge_count = 0
+        if 'ai.knowledge.base' in self.env:
+            knowledge_count = self.env['ai.knowledge.base'].sudo().search_count([
+                ('active', '=', True), ('state', '=', 'indexed'),
+            ])
+        return {
+            'provider_ready': bool(self._ai_get_credentials()),
+            'approval_required': self._ai_requires_approval(),
+            'summary': self.ai_summary or '',
+            'intent': self.ai_intent or '',
+            'knowledge_count': knowledge_count,
+            'suggestion': {
+                'id': suggestion.id,
+                'text': suggestion.suggested_text,
+                'state': suggestion.state,
+                'intent': suggestion.intent or '',
+                'confidence': suggestion.confidence,
+            } if suggestion else False,
+        }
+
+    def action_ai_prepare_suggestion(self):
+        self.ensure_one()
+        text = self._ai_chat_completion(self._ai_build_conversation())
+        suggestion = self.env['chatroom.ai.suggestion'].create_from_channel(self, text)
+        return {
+            'id': suggestion.id, 'text': suggestion.suggested_text,
+            'state': suggestion.state, 'intent': suggestion.intent or '',
+            'confidence': suggestion.confidence,
+        }
+
+    def action_ai_prepare_summary(self):
+        self.ensure_one()
+        self.action_ai_summarize()
+        return self.ai_summary or ''
+
+    def action_ai_classify_intent(self):
+        self.ensure_one()
+        self.ai_intent = self._ai_classify_intent()
+        return self.ai_intent
+
+    def _get_ai_suggestion_for_action(self, suggestion_id):
+        self.ensure_one()
+        suggestion = self.env['chatroom.ai.suggestion'].browse(int(suggestion_id)).exists()
+        if not suggestion or suggestion.channel_id != self:
+            raise UserError(_('La sugerencia no pertenece a esta conversación.'))
+        return suggestion
+
+    def action_ai_approve_suggestion(self, suggestion_id):
+        self._get_ai_suggestion_for_action(suggestion_id).action_approve()
+        return self.get_ai_assistant_data()
+
+    def action_ai_update_suggestion(self, suggestion_id, text):
+        suggestion = self._get_ai_suggestion_for_action(suggestion_id)
+        if suggestion.state != 'draft':
+            raise UserError(_('Solo se puede editar una sugerencia en borrador.'))
+        if not (text or '').strip():
+            raise UserError(_('La respuesta no puede quedar vacía.'))
+        suggestion.write({'suggested_text': text.strip()})
+        return self.get_ai_assistant_data()
+
+    def action_ai_discard_suggestion(self, suggestion_id):
+        self._get_ai_suggestion_for_action(suggestion_id).action_reject()
+        return self.get_ai_assistant_data()
+
+    def action_ai_send_suggestion(self, suggestion_id):
+        self._get_ai_suggestion_for_action(suggestion_id).action_send()
+        return self.get_ai_assistant_data()
+
+    def action_create_ai_suggestion(self):
+        self.ensure_one()
+        text = self._ai_chat_completion(self._ai_build_conversation())
+        suggestion = self.env['chatroom.ai.suggestion'].create_from_channel(self, text)
+        return {
+            'type': 'ir.actions.act_window', 'name': _('Sugerencia de IA'),
+            'res_model': 'chatroom.ai.suggestion', 'res_id': suggestion.id,
+            'views': [(False, 'form')], 'target': 'new',
+        }

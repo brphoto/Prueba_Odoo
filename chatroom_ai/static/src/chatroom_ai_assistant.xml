@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="chatroom_whatsapp.ContactPanel" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o_chatroom_contact_actions')]" position="after">
+            <div class="o_chatroom_ai_assistant">
+                <button type="button" class="btn btn-sm btn-outline-success w-100"
+                        t-att-aria-expanded="aiAssistant.open ? 'true' : 'false'"
+                        t-on-click.stop="toggleAiAssistant">
+                    <i class="fa fa-magic me-1"/> Asistente IA
+                    <span class="o_chatroom_ai_assistant_status" t-if="aiAssistant.suggestion">
+                        <t t-esc="aiAssistant.suggestion.state"/>
+                    </span>
+                    <i t-attf-class="fa ms-auto {{ aiAssistant.open ? 'fa-chevron-down' : 'fa-chevron-right' }}"/>
+                </button>
+                <div class="o_chatroom_ai_assistant_body" t-if="aiAssistant.open">
+                    <div class="o_chatroom_ai_assistant_intro">
+                        <strong>Prueba la IA desde este chat</strong>
+                        <span>Genera contenido, revísalo y decide si enviarlo.</span>
+                    </div>
+                    <div class="alert alert-warning py-2 px-2 mb-2" t-if="!aiAssistant.providerReady and !aiAssistant.loading">
+                        Configura el proveedor en Ajustes de Chatroom WhatsApp para consultar IA.
+                    </div>
+                    <div class="alert alert-danger py-2 px-2 mb-2" t-if="aiAssistant.error">
+                        <t t-esc="aiAssistant.error"/>
+                    </div>
+                    <div class="o_chatroom_ai_assistant_actions">
+                        <button type="button" class="btn btn-sm btn-primary"
+                                t-att-disabled="aiAssistant.busy || !aiAssistant.providerReady"
+                                t-on-click="prepareAiSuggestion">
+                            <i class="fa fa-comment-o"/> Respuesta
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary"
+                                t-att-disabled="aiAssistant.busy || !aiAssistant.providerReady"
+                                t-on-click="prepareAiSummary">
+                            <i class="fa fa-file-text-o"/> Resumen
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary"
+                                t-att-disabled="aiAssistant.busy || !aiAssistant.providerReady"
+                                t-on-click="classifyAiIntent">
+                            <i class="fa fa-tag"/> Intención
+                        </button>
+                    </div>
+                    <div class="o_chatroom_ai_assistant_result" t-if="aiAssistant.suggestion">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <strong>Respuesta preparada</strong>
+                            <span class="badge" t-esc="aiAssistant.suggestion.state"/>
+                        </div>
+                        <textarea class="form-control form-control-sm o_chatroom_ai_assistant_text"
+                                  t-if="aiAssistant.suggestion.state == 'draft'"
+                                  t-model="aiAssistant.suggestion.text" rows="4"/>
+                        <div class="o_chatroom_ai_assistant_text" t-else="" t-esc="aiAssistant.suggestion.text"/>
+                        <div class="o_chatroom_ai_assistant_actions mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    t-if="aiAssistant.suggestion.state == 'draft'"
+                                    t-att-disabled="aiAssistant.busy" t-on-click="saveAiSuggestion">
+                                Guardar cambios
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                    t-if="aiAssistant.suggestion.state == 'draft'"
+                                    t-att-disabled="aiAssistant.busy" t-on-click="approveAiSuggestion">
+                                Aprobar
+                            </button>
+                            <button type="button" class="btn btn-sm btn-success"
+                                    t-if="aiAssistant.suggestion.state == 'approved'"
+                                    t-att-disabled="aiAssistant.busy" t-on-click="sendAiSuggestion">
+                                Aprobar y enviar
+                            </button>
+                            <button type="button" class="btn btn-sm btn-link text-danger"
+                                    t-if="aiAssistant.suggestion.state == 'draft'"
+                                    t-att-disabled="aiAssistant.busy" t-on-click="discardAiSuggestion">
+                                Descartar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="o_chatroom_ai_assistant_result" t-if="aiAssistant.summary">
+                        <strong>Resumen</strong><div t-esc="aiAssistant.summary"/>
+                    </div>
+                    <div class="o_chatroom_ai_assistant_meta">
+                        <span t-if="aiAssistant.intent"><i class="fa fa-tag"/> Intención: <strong t-esc="aiAssistant.intent"/></span>
+                        <span><i class="fa fa-shield"/> Aprobación humana: <strong><t t-esc="aiAssistant.approvalRequired ? 'activa' : 'desactivada'"/></strong></span>
+                        <span t-if="aiAssistant.knowledgeCount"><i class="fa fa-book"/> Manuales indexados: <t t-esc="aiAssistant.knowledgeCount"/></span>
+                    </div>
+                </div>
+            </div>
+        </xpath>
+    </t>
+</templates>

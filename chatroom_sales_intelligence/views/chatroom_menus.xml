@@ -10,7 +10,7 @@
          el árbol de este menú es de este módulo, así que desinstalar
          lo saca completo. -->
     <menuitem id="menu_chatroom_commercial" name="Inteligencia comercial"
-              parent="chatroom_whatsapp.menu_chatroom_root" sequence="25"/>
+              parent="chatroom_whatsapp.menu_chatroom_root" sequence="25" active="False"/>
 
     <record id="action_my_followups_dashboard" model="ir.actions.client">
         <field name="name">Mis pendientes</field>

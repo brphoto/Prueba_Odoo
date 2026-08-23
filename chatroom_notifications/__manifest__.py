@@ -1,0 +1,21 @@
+{
+    'name': 'Chatroom Centro de notificaciones',
+    'summary': 'Alertas, SLA y escalamiento operativo de Chatroom',
+    'description': '''Centro modular de alertas internas para conversaciones con SLA,
+fallos operativos y seguimientos. Las notificaciones son registros propios,
+con destinatario, prioridad, deduplicación, lectura, pausa y resolución.''',
+    'version': '19.0.1.0.0',
+    'author': 'Bryan Cando',
+    'license': 'LGPL-3',
+    'category': 'Discuss',
+    'depends': ['chatroom_whatsapp', 'mail'],
+    'data': [
+        'security/chatroom_notifications_security.xml',
+        'security/ir.model.access.csv',
+        'data/ir_cron_data.xml',
+        'views/chatroom_notification_views.xml',
+    ],
+    'installable': True,
+    'application': False,
+    'auto_install': False,
+}
