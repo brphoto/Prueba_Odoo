@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="chatroom_whatsapp.ContactPanel" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o_chatroom_contact_actions')]" position="before">
+            <div t-attf-class="o_chatroom_contact_docs o_chatroom_ai_agent {{ aiAgent.open ? 'o_chatroom_ai_agent_open' : '' }}">
+                <div class="o_chatroom_contact_section_header" role="button" tabindex="0"
+                     t-att-aria-expanded="aiAgent.open ? 'true' : 'false'"
+                     t-on-click.stop="toggleAiAgent"
+                     t-on-keydown="onAiAgentHeaderKeydown">
+                    <h6 class="mb-0"><i class="fa fa-cogs"/> Agente IA
+                        <span class="o_chatroom_ai_agent_status" t-if="aiAgent.task">
+                            · <t t-esc="aiAgent.task.state_label"/>
+                        </span>
+                    </h6>
+                    <i t-attf-class="fa {{ aiAgent.open ? 'fa-chevron-down' : 'fa-chevron-right' }}"/>
+                </div>
+                <div class="o_chatroom_ai_agent_body" t-if="aiAgent.open">
+                    <p class="mb-2">Crea un plan de trabajo con contexto comercial, acciones autorizadas y trazabilidad.</p>
+                    <div class="alert alert-danger py-2 px-2 mb-2" t-if="aiAgent.error">
+                        <t t-esc="aiAgent.error"/>
+                    </div>
+                    <div class="o_chatroom_ai_agent_task" t-if="aiAgent.task">
+                        <strong t-esc="aiAgent.task.name"/>
+                        <span><t t-esc="aiAgent.task.action_count"/> acción(es) · <t t-esc="aiAgent.task.state_label"/></span>
+                        <small t-if="aiAgent.task.result_summary" t-esc="aiAgent.task.result_summary"/>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary w-100"
+                            t-att-disabled="aiAgent.busy"
+                            t-on-click="createAiAgentTask">
+                        <i t-if="aiAgent.busy" class="fa fa-spinner fa-spin"/>
+                        <i t-else="" class="fa fa-magic"/> Crear plan operativo
+                    </button>
+                </div>
+            </div>
+        </xpath>
+    </t>
+</templates>

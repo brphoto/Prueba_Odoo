@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="ir_cron_chatroom_ai_tasks" model="ir.cron">
+        <field name="name">Chatroom IA: ejecutar tareas aprobadas</field>
+        <field name="model_id" ref="model_chatroom_ai_task"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_run_pending()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+    <record id="ir_cron_chatroom_ai_automations" model="ir.cron">
+        <field name="name">Chatroom IA: revisar automatizaciones</field>
+        <field name="model_id" ref="model_chatroom_ai_automation"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_run_scheduled()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+</odoo>

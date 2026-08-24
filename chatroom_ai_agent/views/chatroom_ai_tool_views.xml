@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_ai_tool_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.tool.list</field><field name="model">chatroom.ai.tool</field>
+        <field name="arch" type="xml"><list string="Herramientas IA"><field name="sequence" widget="handle"/><field name="name"/><field name="key"/><field name="model_name"/><field name="operation"/><field name="requires_approval"/><field name="active"/></list></field>
+    </record>
+    <record id="view_chatroom_ai_tool_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.tool.form</field><field name="model">chatroom.ai.tool</field>
+        <field name="arch" type="xml"><form string="Herramienta IA"><sheet><group><group><field name="name"/><field name="key"/><field name="sequence"/><field name="active"/></group><group><field name="model_name"/><field name="operation"/><field name="requires_approval"/><field name="group_id"/></group></group><field name="description"/></sheet></form></field>
+    </record>
+    <record id="action_chatroom_ai_tool" model="ir.actions.act_window"><field name="name">Herramientas autorizadas</field><field name="res_model">chatroom.ai.tool</field><field name="view_mode">list,form</field></record>
+</odoo>

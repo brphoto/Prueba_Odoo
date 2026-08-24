@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.chatroom.ai.agent</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Agente IA" string="Agente IA" name="chatroom_ai_agent">
+                    <block title="Operación autónoma">
+                        <setting id="chatroom_ai_agent_enabled_setting"
+                                 help="Activa los ciclos automáticos definidos en el menú Agente IA &gt; Automatizaciones.">
+                            <field name="chatroom_ai_agent_enabled"/>
+                        </setting>
+                        <setting id="chatroom_ai_agent_approval_setting"
+                                 help="Recomendado: la IA puede preparar planes, pero un usuario autoriza cambios, cobros y envíos.">
+                            <field name="chatroom_ai_agent_require_approval"/>
+                        </setting>
+                        <setting id="chatroom_ai_agent_max_tasks_setting"
+                                 help="Límite de protección por cada ciclo del cron.">
+                            <field name="chatroom_ai_agent_max_tasks"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

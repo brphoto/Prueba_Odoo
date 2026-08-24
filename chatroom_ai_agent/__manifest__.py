@@ -1,0 +1,37 @@
+{
+    'name': 'Chatroom Agente IA Operativo',
+    'summary': 'Orquestación modular de tareas, herramientas, memoria y automatizaciones IA',
+    'description': '''Capa opcional para convertir Chatroom IA en un agente operativo.
+
+Organiza planes de trabajo, herramientas autorizadas, memoria empresarial,
+aprobaciones, automatizaciones y auditoría sin acoplar la lógica de ventas,
+pagos o WhatsApp a un único módulo.''',
+    'version': '19.0.1.0.3',
+    'author': 'Bryan Cando',
+    'license': 'LGPL-3',
+    'category': 'Productivity/Discuss',
+    'depends': ['chatroom_ai', 'mail'],
+    'data': [
+        'security/chatroom_ai_agent_security.xml',
+        'security/ir.model.access.csv',
+        'data/chatroom_ai_tool_data.xml',
+        'data/ir_cron_data.xml',
+        'views/chatroom_ai_task_views.xml',
+        'views/chatroom_ai_tool_views.xml',
+        'views/chatroom_ai_memory_views.xml',
+        'views/chatroom_ai_audit_views.xml',
+        'views/chatroom_ai_automation_views.xml',
+        'views/res_config_settings_views.xml',
+        'views/chatroom_ai_menus.xml',
+    ],
+    'assets': {
+        'web.assets_backend': [
+            'chatroom_ai_agent/static/src/chatroom_ai_agent.js',
+            'chatroom_ai_agent/static/src/chatroom_ai_agent.xml',
+            'chatroom_ai_agent/static/src/chatroom_ai_agent.scss',
+        ],
+    },
+    'installable': True,
+    'application': False,
+    'auto_install': False,
+}

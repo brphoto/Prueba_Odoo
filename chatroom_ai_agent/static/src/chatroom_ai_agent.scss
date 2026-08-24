@@ -1,0 +1,28 @@
+.o_chatroom_ai_agent {
+    .o_chatroom_ai_agent_status {
+        color: var(--chatroom-ui-text-muted, #667085);
+        font-size: .78em;
+        font-weight: 500;
+    }
+
+    .o_chatroom_ai_agent_body {
+        padding: 10px 12px 12px;
+        color: var(--chatroom-ui-text-muted, #667085);
+        font-size: .78rem;
+        line-height: 1.4;
+    }
+
+    .o_chatroom_ai_agent_task {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin-bottom: 8px;
+        padding: 8px 9px;
+        border: 1px solid var(--chatroom-ui-border, #e5e7eb);
+        border-radius: 8px;
+        background: var(--chatroom-ui-surface-muted, #f7f8fa);
+
+        strong { color: inherit; }
+        span, small { color: var(--chatroom-ui-text-muted, #667085); }
+    }
+}

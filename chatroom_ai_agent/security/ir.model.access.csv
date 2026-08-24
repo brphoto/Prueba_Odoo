@@ -1,0 +1,13 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_chatroom_ai_task_user,chatroom.ai.task user,model_chatroom_ai_task,chatroom_ai_agent.group_chatroom_ai_agent_user,1,1,1,0
+access_chatroom_ai_task_manager,chatroom.ai.task manager,model_chatroom_ai_task,chatroom_ai_agent.group_chatroom_ai_agent_manager,1,1,1,1
+access_chatroom_ai_task_action_user,chatroom.ai.task.action user,model_chatroom_ai_task_action,chatroom_ai_agent.group_chatroom_ai_agent_user,1,1,1,0
+access_chatroom_ai_task_action_manager,chatroom.ai.task.action manager,model_chatroom_ai_task_action,chatroom_ai_agent.group_chatroom_ai_agent_manager,1,1,1,1
+access_chatroom_ai_tool_user,chatroom.ai.tool user,model_chatroom_ai_tool,chatroom_ai_agent.group_chatroom_ai_agent_user,1,0,0,0
+access_chatroom_ai_tool_manager,chatroom.ai.tool manager,model_chatroom_ai_tool,chatroom_ai_agent.group_chatroom_ai_agent_manager,1,1,1,1
+access_chatroom_ai_memory_user,chatroom.ai.memory user,model_chatroom_ai_memory,chatroom_ai_agent.group_chatroom_ai_agent_user,1,1,1,0
+access_chatroom_ai_memory_manager,chatroom.ai.memory manager,model_chatroom_ai_memory,chatroom_ai_agent.group_chatroom_ai_agent_manager,1,1,1,1
+access_chatroom_ai_audit_user,chatroom.ai.audit user,model_chatroom_ai_audit,chatroom_ai_agent.group_chatroom_ai_agent_user,1,0,0,0
+access_chatroom_ai_audit_manager,chatroom.ai.audit manager,model_chatroom_ai_audit,chatroom_ai_agent.group_chatroom_ai_agent_manager,1,1,1,1
+access_chatroom_ai_automation_user,chatroom.ai.automation user,model_chatroom_ai_automation,chatroom_ai_agent.group_chatroom_ai_agent_user,1,0,0,0
+access_chatroom_ai_automation_manager,chatroom.ai.automation manager,model_chatroom_ai_automation,chatroom_ai_agent.group_chatroom_ai_agent_manager,1,1,1,1

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_ai_automation_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.automation.list</field><field name="model">chatroom.ai.automation</field>
+        <field name="arch" type="xml"><list string="Automatizaciones IA"><field name="sequence" widget="handle"/><field name="name"/><field name="trigger"/><field name="task_type"/><field name="approval_required"/><field name="last_run"/><field name="active"/></list></field>
+    </record>
+    <record id="view_chatroom_ai_automation_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.automation.form</field><field name="model">chatroom.ai.automation</field>
+        <field name="arch" type="xml"><form string="Automatización IA"><header><button name="action_run_now" type="object" string="Ejecutar ahora" class="btn-primary"/><field name="active" widget="boolean_toggle"/></header><sheet><div class="oe_title"><h1><field name="name"/></h1></div><group><group><field name="trigger"/><field name="task_type"/><field name="sequence"/></group><group><field name="approval_required"/><field name="max_tasks"/><field name="last_run" readonly="1"/><field name="company_id"/></group></group></sheet></form></field>
+    </record>
+    <record id="action_chatroom_ai_automation" model="ir.actions.act_window"><field name="name">Automatizaciones IA</field><field name="res_model">chatroom.ai.automation</field><field name="view_mode">list,form</field></record>
+</odoo>

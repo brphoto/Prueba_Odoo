@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_ai_task_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.task.list</field>
+        <field name="model">chatroom.ai.task</field>
+        <field name="arch" type="xml">
+            <list string="Tareas IA" decoration-danger="state == 'failed'" decoration-success="state == 'done'">
+                <field name="priority" widget="priority"/>
+                <field name="create_date"/>
+                <field name="name"/>
+                <field name="task_type"/>
+                <field name="partner_id"/>
+                <field name="channel_id"/>
+                <field name="state" widget="badge"/>
+                <field name="approval_required"/>
+                <field name="user_id"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_task_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.task.form</field>
+        <field name="model">chatroom.ai.task</field>
+        <field name="arch" type="xml">
+            <form string="Tarea IA">
+                <header>
+                    <button name="action_plan" type="object" string="Generar plan" class="btn-secondary" invisible="state not in ('draft', 'failed')"/>
+                    <button name="action_approve" type="object" string="Aprobar plan" class="btn-primary" invisible="state != 'awaiting_approval'"/>
+                    <button name="action_run" type="object" string="Ejecutar" class="btn-primary" invisible="state not in ('planned', 'failed')"/>
+                    <button name="action_retry" type="object" string="Reintentar" class="btn-secondary" invisible="state != 'failed'"/>
+                    <button name="action_cancel" type="object" string="Cancelar" class="btn-secondary" invisible="state in ('done', 'cancelled')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,awaiting_approval,planned,running,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="task_type"/>
+                            <field name="priority" widget="priority"/>
+                            <field name="approval_required"/>
+                            <field name="user_id"/>
+                        </group>
+                        <group>
+                            <field name="channel_id"/>
+                            <field name="partner_id"/>
+                            <field name="company_id"/>
+                            <field name="next_run_at"/>
+                        </group>
+                    </group>
+                    <group string="Solicitud"><field name="prompt" nolabel="1" placeholder="Describe qué debe resolver el agente..."/></group>
+                    <notebook>
+                        <page string="Plan y ejecución">
+                            <field name="action_ids" context="{'default_task_id': id}">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="key"/>
+                                    <field name="name"/>
+                                    <field name="requires_approval"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="error_message" optional="hide"/>
+                                </list>
+                            </field>
+                            <group>
+                                <field name="result_summary" readonly="1"/>
+                                <field name="error_message" readonly="1"/>
+                            </group>
+                        </page>
+                        <page string="Contexto técnico">
+                            <field name="input_context" nolabel="1" readonly="1" widget="text"/>
+                            <field name="plan_json" nolabel="1" readonly="1" widget="text"/>
+                            <field name="output_json" nolabel="1" readonly="1" widget="text"/>
+                        </page>
+                        <page string="Auditoría">
+                            <field name="audit_ids" readonly="1">
+                                <list>
+                                    <field name="create_date"/>
+                                    <field name="name"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="user_id"/>
+                                    <field name="message"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_task_search" model="ir.ui.view">
+        <field name="name">chatroom.ai.task.search</field>
+        <field name="model">chatroom.ai.task</field>
+        <field name="arch" type="xml">
+            <search string="Tareas IA">
+                <field name="name"/><field name="partner_id"/><field name="channel_id"/><field name="user_id"/>
+                <filter name="pending" string="Pendientes" domain="[('state', 'in', ('awaiting_approval', 'planned', 'running'))]"/>
+                <filter name="failed" string="Fallidas" domain="[('state', '=', 'failed')]"/>
+                <filter name="done" string="Completadas" domain="[('state', '=', 'done')]"/>
+                <group><filter name="group_state" string="Estado" context="{'group_by': 'state'}"/><filter name="group_type" string="Tipo" context="{'group_by': 'task_type'}"/></group>
+            </search>
+        </field>
+    </record>
+    <record id="action_chatroom_ai_task" model="ir.actions.act_window">
+        <field name="name">Tareas del agente IA</field><field name="res_model">chatroom.ai.task</field>
+        <field name="view_mode">list,form</field><field name="search_view_id" ref="view_chatroom_ai_task_search"/>
+        <field name="context">{'search_default_pending': 1}</field>
+    </record>
+</odoo>

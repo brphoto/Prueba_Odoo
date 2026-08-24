@@ -1,0 +1,334 @@
+# -*- coding: utf-8 -*-
+import json
+
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
+
+
+class ChatroomAiTaskAction(models.Model):
+    _name = 'chatroom.ai.task.action'
+    _description = 'Acción de una tarea IA'
+    _order = 'sequence, id'
+
+    task_id = fields.Many2one('chatroom.ai.task', string='Tarea', required=True, ondelete='cascade', index=True)
+    sequence = fields.Integer(default=10)
+    key = fields.Char(string='Clave', required=True)
+    name = fields.Char(string='Nombre', required=True)
+    state = fields.Selection([
+        ('pending', 'Pendiente'), ('running', 'Ejecutando'),
+        ('done', 'Completada'), ('skipped', 'Omitida'), ('error', 'Error'),
+    ], default='pending', required=True, index=True)
+    requires_approval = fields.Boolean(default=True)
+    input_json = fields.Text(string='Entrada')
+    output_json = fields.Text(string='Salida', readonly=True)
+    error_message = fields.Text(string='Error', readonly=True)
+
+
+class ChatroomAiTask(models.Model):
+    _name = 'chatroom.ai.task'
+    _description = 'Tarea operativa del agente IA'
+    _order = 'priority desc, create_date desc, id desc'
+
+    name = fields.Char(string='Tarea', required=True, default=lambda self: _('Nueva tarea IA'))
+    task_type = fields.Selection([
+        ('orchestrate', 'Orquestar solicitud'),
+        ('classify_customer', 'Clasificar cliente'),
+        ('qualify_lead', 'Calificar oportunidad'),
+        ('prepare_reply', 'Preparar respuesta'),
+        ('followup', 'Preparar seguimiento'),
+        ('collect_payment', 'Preparar cobranza'),
+        ('daily_review', 'Revisión diaria'),
+    ], string='Tipo de tarea', required=True, default='orchestrate', index=True)
+    state = fields.Selection([
+        ('draft', 'Borrador'), ('awaiting_approval', 'Esperando aprobación'),
+        ('planned', 'Planificada'), ('running', 'Ejecutando'),
+        ('done', 'Completada'), ('failed', 'Fallida'), ('cancelled', 'Cancelada'),
+    ], string='Estado', required=True, default='draft', index=True)
+    priority = fields.Selection([('0', 'Normal'), ('1', 'Alta'), ('2', 'Urgente')], default='0', required=True)
+    prompt = fields.Text(string='Solicitud')
+    plan_json = fields.Text(string='Plan técnico', readonly=True)
+    input_context = fields.Text(string='Contexto utilizado', readonly=True)
+    output_json = fields.Text(string='Resultado técnico', readonly=True)
+    result_summary = fields.Text(string='Resumen del resultado', readonly=True)
+    error_message = fields.Text(string='Detalle del error', readonly=True)
+    channel_id = fields.Many2one('chatroom.channel', string='Conversación', ondelete='cascade', index=True)
+    partner_id = fields.Many2one(related='channel_id.partner_id', string='Cliente', store=True, readonly=True)
+    user_id = fields.Many2one('res.users', string='Responsable', default=lambda self: self.env.user, index=True)
+    company_id = fields.Many2one('res.company', string='Empresa', default=lambda self: self.env.company, index=True)
+    approval_required = fields.Boolean(string='Requiere aprobación', default=True)
+    approved_by = fields.Many2one('res.users', readonly=True)
+    approved_at = fields.Datetime(readonly=True)
+    started_at = fields.Datetime(readonly=True)
+    completed_at = fields.Datetime(readonly=True)
+    next_run_at = fields.Datetime(default=fields.Datetime.now, index=True)
+    attempts = fields.Integer(default=0, readonly=True)
+    max_attempts = fields.Integer(default=3)
+    active = fields.Boolean(default=True)
+    action_ids = fields.One2many('chatroom.ai.task.action', 'task_id', string='Plan de acciones')
+    audit_ids = fields.One2many('chatroom.ai.audit', 'task_id', string='Auditoría')
+
+    @api.model
+    def _json(self, value):
+        return json.dumps(value, ensure_ascii=False, indent=2, default=str)
+
+    @api.model
+    def create_from_channel(self, channel, task_type='orchestrate', prompt=False, approval_required=None):
+        channel.ensure_one()
+        if approval_required is None:
+            approval_required = self.env['ir.config_parameter'].sudo().get_param(
+                'chatroom_ai_agent.require_approval', 'True') == 'True'
+        task = self.create({
+            'name': _('IA: %s') % channel.display_name,
+            'task_type': task_type,
+            'prompt': prompt or _('Analiza esta conversación y determina la siguiente acción útil.'),
+            'channel_id': channel.id,
+            'approval_required': approval_required,
+            'user_id': self.env.user.id,
+        })
+        return task
+
+    def _context(self):
+        self.ensure_one()
+        channel = self.channel_id
+        partner = self.partner_id
+        data = {
+            'task': self.prompt or '',
+            'task_type': self.task_type,
+            'channel': channel.display_name if channel else False,
+            'partner': partner.display_name if partner else False,
+            'messages': len(channel.message_ids) if channel and 'message_ids' in channel._fields else 0,
+        }
+        for field_name in ('rfm_category', 'rfm_score', 'rfm_total_amount', 'rfm_last_invoice_date'):
+            if partner and field_name in partner._fields:
+                data[field_name] = partner[field_name]
+        return data
+
+    def _fallback_plan(self):
+        self.ensure_one()
+        plans = {
+            'classify_customer': [('classify_customer', 'Leer clasificación comercial del cliente')],
+            'qualify_lead': [('classify_customer', 'Leer clasificación comercial del cliente'), ('create_lead', 'Crear o actualizar oportunidad')],
+            'prepare_reply': [('classify_intent', 'Identificar intención'), ('prepare_reply', 'Preparar respuesta sin enviarla')],
+            'followup': [('classify_intent', 'Identificar intención'), ('prepare_reply', 'Preparar seguimiento personalizado')],
+            'collect_payment': [('find_open_invoice', 'Consultar facturas pendientes'), ('send_payment_link', 'Generar y enviar link de pago')],
+            'daily_review': [('classify_customer', 'Revisar clasificación de clientes'), ('classify_intent', 'Revisar intención de conversaciones')],
+            'orchestrate': [('classify_customer', 'Revisar contexto comercial'), ('classify_intent', 'Identificar intención'), ('prepare_reply', 'Proponer siguiente acción')],
+        }
+        return [{'key': key, 'name': name} for key, name in plans.get(self.task_type, plans['orchestrate'])]
+
+    def _ai_plan(self, context):
+        self.ensure_one()
+        channel = self.channel_id
+        if not channel or not hasattr(channel, '_ai_get_credentials') or not channel._ai_get_credentials():
+            return False
+        prompt = _('''Devuelve únicamente JSON válido con esta forma: {"actions":[{"key":"...","name":"..."}]}.
+Usa solo estas herramientas: classify_customer, classify_intent, prepare_reply, create_lead,
+find_open_invoice, prepare_payment_link, create_activity. No envíes mensajes ni ejecutes pagos.
+Solicitud: %s
+Contexto: %s''') % (self.prompt or '', self._json(context))
+        try:
+            raw = channel._ai_chat_completion([{'role': 'user', 'content': prompt}])
+            parsed = json.loads(raw)
+            actions = parsed.get('actions', [])
+            allowed = {tool.key for tool in self.env['chatroom.ai.tool'].enabled_for_user()}
+            result = [a for a in actions if a.get('key') in allowed and a.get('name')]
+            return result or False
+        except Exception:
+            return False
+
+    def action_plan(self):
+        for task in self:
+            if task.state not in ('draft', 'failed'):
+                continue
+            context = task._context()
+            actions = task._ai_plan(context) or task._fallback_plan()
+            task.action_ids.sudo().unlink()
+            for index, action in enumerate(actions, 1):
+                tool = self.env['chatroom.ai.tool'].search([('key', '=', action['key']), ('active', '=', True)], limit=1)
+                task.env['chatroom.ai.task.action'].create({
+                    'task_id': task.id, 'sequence': index * 10,
+                    'key': action['key'], 'name': action['name'],
+                    'requires_approval': tool.requires_approval if tool else True,
+                    'input_json': task._json(context),
+                })
+            needs_approval = task.approval_required or any(
+                line.requires_approval for line in task.action_ids)
+            task.write({
+                'approval_required': needs_approval,
+                'state': 'awaiting_approval' if needs_approval else 'planned',
+                'plan_json': task._json({'actions': actions}),
+                'input_context': task._json(context),
+                'error_message': False,
+            })
+            task._audit('Plan generado', 'done', message=_('Se generó un plan de %s acción(es).') % len(actions))
+        return True
+
+    def _audit(self, name, state, action=False, message=False, output=False):
+        self.ensure_one()
+        return self.env['chatroom.ai.audit'].sudo().create({
+            'name': name, 'task_id': self.id,
+            'action_id': action.id if action else False,
+            'tool_id': self.env['chatroom.ai.tool'].search([('key', '=', action.key)], limit=1).id if action else False,
+            'state': state, 'message': message or False,
+            'input_json': action.input_json if action else self.input_context,
+            'output_json': output or (action.output_json if action else False),
+        })
+
+    def _execute_action(self, action):
+        self.ensure_one()
+        channel = self.channel_id
+        partner = self.partner_id
+        result = {'action': action.key, 'status': 'completed'}
+        if action.key == 'classify_customer':
+            result.update({
+                'category': partner.rfm_category if partner and 'rfm_category' in partner._fields else 'sin_historial',
+                'score': partner.rfm_score if partner and 'rfm_score' in partner._fields else 0,
+            })
+        elif action.key == 'classify_intent':
+            result['intent'] = channel.ai_intent if channel and 'ai_intent' in channel._fields and channel.ai_intent else 'otro'
+        elif action.key in ('prepare_reply',):
+            if channel and hasattr(channel, '_ai_get_credentials') and channel._ai_get_credentials():
+                result['reply'] = channel._ai_chat_completion(channel._ai_build_conversation(extra_system=self.prompt or _('Prepara una respuesta breve y profesional.')))
+            else:
+                result['reply'] = _('Se preparó la tarea. Configure el proveedor de IA para generar el texto personalizado.')
+        elif action.key == 'create_lead':
+            if 'crm.lead' not in self.env or not partner:
+                result['status'] = 'skipped'
+                result['reason'] = _('CRM o cliente no disponible.')
+            else:
+                lead = self.env['crm.lead'].search([('partner_id', '=', partner.id), ('type', '=', 'opportunity'), ('active', '=', True)], limit=1)
+                if not lead:
+                    lead = self.env['crm.lead'].create({'name': _('Oportunidad IA - %s') % partner.display_name, 'partner_id': partner.id, 'type': 'opportunity'})
+                result['lead_id'] = lead.id
+        elif action.key == 'find_open_invoice':
+            if 'account.move' not in self.env or not partner:
+                result['invoices'] = []
+            else:
+                invoices = self.env['account.move'].search([('partner_id', '=', partner.id), ('move_type', '=', 'out_invoice'), ('state', '=', 'posted'), ('payment_state', 'in', ('not_paid', 'partial'))], limit=20)
+                result['invoices'] = [{'id': inv.id, 'name': inv.name, 'amount_residual': inv.amount_residual} for inv in invoices]
+        elif action.key == 'prepare_payment_link':
+            result['status'] = 'ready_for_connector' if 'payment.link' in self.env or 'chatroom.payment.link' in self.env else 'requires_payment_module'
+            result['message'] = _('La generación final del link requiere el conector de pagos instalado y autorizado.')
+        elif action.key == 'send_payment_link':
+            if not channel or 'chatroom.payment.link' not in self.env or not hasattr(channel, 'action_send_payment_link'):
+                result['status'] = 'skipped'
+                result['reason'] = _('Instala Chatroom Payment para usar este conector.')
+            elif 'sale.order' not in self.env and 'account.move' not in self.env:
+                result['status'] = 'skipped'
+                result['reason'] = _('No existe un modelo de documento cobrable.')
+            else:
+                document = self.env['sale.order'].search([
+                    ('partner_id', '=', partner.id),
+                    ('state', 'in', ('draft', 'sent', 'sale')),
+                ], order='date_order desc, id desc', limit=1) if partner and 'sale.order' in self.env else self.env['account.move'].browse()
+                if not document and partner and 'account.move' in self.env:
+                    document = self.env['account.move'].search([
+                        ('partner_id', '=', partner.id),
+                        ('move_type', '=', 'out_invoice'),
+                        ('state', '=', 'posted'),
+                        ('payment_state', 'in', ('not_paid', 'partial')),
+                    ], order='invoice_date desc, id desc', limit=1)
+                if not document:
+                    result['status'] = 'skipped'
+                    result['reason'] = _('No hay un presupuesto, pedido o factura pendiente para cobrar.')
+                else:
+                    channel.action_send_payment_link(document._name, document.id)
+                    link = self.env['chatroom.payment.link'].search([
+                        ('channel_id', '=', channel.id),
+                    ], order='create_date desc, id desc', limit=1)
+                    result.update({
+                        'document': document.display_name,
+                        'provider': link.provider_id.display_name if link.provider_id else _('Pago en línea'),
+                        'link_id': link.id,
+                        'state': link.state,
+                    })
+        elif action.key == 'create_activity':
+            if 'mail.activity' not in self.env or not channel:
+                result['status'] = 'skipped'
+            else:
+                model = self.env['ir.model']._get('chatroom.channel')
+                activity_type = self.env['mail.activity.type'].search([], limit=1)
+                if model and activity_type:
+                    activity = self.env['mail.activity'].create({'res_model_id': model.id, 'res_id': channel.id, 'activity_type_id': activity_type.id, 'summary': self.name, 'user_id': self.user_id.id})
+                    result['activity_id'] = activity.id
+        elif action.key == 'send_whatsapp_reply':
+            if not channel or not hasattr(channel, 'action_send_text'):
+                result['status'] = 'skipped'
+            else:
+                reply = ''
+                previous = self.action_ids.filtered(
+                    lambda line: line.key == 'prepare_reply' and line.state == 'done')[-1:]
+                if previous and previous.output_json:
+                    try:
+                        reply = json.loads(previous.output_json).get('reply', '')
+                    except (TypeError, ValueError):
+                        reply = ''
+                if not reply:
+                    result['status'] = 'blocked'
+                    result['reason'] = _('No existe un texto aprobado para enviar.')
+                else:
+                    channel.action_send_text(reply)
+        return result
+
+    def action_approve(self):
+        for task in self:
+            if task.state != 'awaiting_approval':
+                continue
+            task.write({'state': 'planned', 'approved_by': self.env.user.id, 'approved_at': fields.Datetime.now(), 'error_message': False})
+            task._audit('Plan aprobado', 'done', message=_('Aprobado por %s.') % self.env.user.display_name)
+        return True
+
+    def action_run(self):
+        for task in self:
+            if task.state == 'draft':
+                task.action_plan()
+            if task.state == 'awaiting_approval':
+                raise UserError(_('Esta tarea necesita aprobación antes de ejecutarse.'))
+            if task.state not in ('planned', 'failed'):
+                continue
+            task.write({'state': 'running', 'started_at': fields.Datetime.now(), 'attempts': task.attempts + 1})
+            try:
+                outputs = []
+                for action in task.action_ids.filtered(lambda line: line.state in ('pending', 'error')):
+                    if action.requires_approval and not task.approved_by:
+                        raise UserError(_('La acción "%s" requiere aprobación humana.') % action.name)
+                    action.write({'state': 'running', 'error_message': False})
+                    try:
+                        output = task._execute_action(action)
+                        action.write({'state': 'done' if output.get('status') != 'skipped' else 'skipped', 'output_json': task._json(output)})
+                        task._audit(action.name, 'done', action=action, output=task._json(output))
+                        outputs.append(output)
+                    except Exception as exc:
+                        action.write({'state': 'error', 'error_message': str(exc)})
+                        task._audit(action.name, 'error', action=action, message=str(exc))
+                        raise
+                task.write({'state': 'done', 'completed_at': fields.Datetime.now(), 'output_json': task._json(outputs), 'result_summary': _('Se completaron %s acción(es).') % len(outputs), 'error_message': False})
+                if task.partner_id:
+                    self.env['chatroom.ai.memory'].sudo().remember(task.result_summary, partner=task.partner_id, channel=task.channel_id, memory_type='outcome', source='agent')
+            except Exception as exc:
+                task.write({'state': 'failed', 'error_message': str(exc)})
+                if task.attempts >= task.max_attempts:
+                    task._audit('Tarea bloqueada', 'blocked', message=_('Se alcanzó el máximo de intentos.'))
+                else:
+                    task._audit('Tarea fallida', 'error', message=str(exc))
+                raise UserError(_('La tarea IA falló: %s') % exc)
+        return True
+
+    def action_retry(self):
+        self.write({'state': 'planned', 'error_message': False, 'next_run_at': fields.Datetime.now()})
+        self.action_ids.filtered(lambda line: line.state == 'error').write({'state': 'pending', 'error_message': False})
+        return True
+
+    def action_cancel(self):
+        self.write({'state': 'cancelled'})
+        return True
+
+    @api.model
+    def _cron_run_pending(self):
+        tasks = self.sudo().search([('state', '=', 'planned'), ('active', '=', True), ('next_run_at', '<=', fields.Datetime.now()), ('attempts', '<', 3)], limit=20)
+        for task in tasks:
+            try:
+                task.action_run()
+            except UserError:
+                self.env.cr.rollback()
+        return len(tasks)

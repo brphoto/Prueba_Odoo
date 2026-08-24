@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="tool_classify_customer" model="chatroom.ai.tool">
+        <field name="name">Clasificar cliente</field><field name="key">classify_customer</field>
+        <field name="description">Consulta la categoría RFM/ABC y el score comercial.</field>
+        <field name="model_name">res.partner</field><field name="operation">read</field>
+        <field name="requires_approval">false</field>
+    </record>
+    <record id="tool_classify_intent" model="chatroom.ai.tool">
+        <field name="name">Identificar intención</field><field name="key">classify_intent</field>
+        <field name="description">Identifica si la conversación es consulta, venta, soporte o queja.</field>
+        <field name="model_name">chatroom.channel</field><field name="operation">analyze</field>
+        <field name="requires_approval">false</field>
+    </record>
+    <record id="tool_prepare_reply" model="chatroom.ai.tool">
+        <field name="name">Preparar respuesta</field><field name="key">prepare_reply</field>
+        <field name="description">Redacta una respuesta para revisión sin enviarla.</field>
+        <field name="model_name">chatroom.channel</field><field name="operation">draft</field>
+        <field name="requires_approval">false</field>
+    </record>
+    <record id="tool_create_lead" model="chatroom.ai.tool">
+        <field name="name">Crear oportunidad</field><field name="key">create_lead</field>
+        <field name="description">Crea o reutiliza una oportunidad del cliente.</field>
+        <field name="model_name">crm.lead</field><field name="operation">create</field>
+        <field name="requires_approval">true</field>
+    </record>
+    <record id="tool_find_open_invoice" model="chatroom.ai.tool">
+        <field name="name">Consultar facturas pendientes</field><field name="key">find_open_invoice</field>
+        <field name="description">Consulta facturas publicadas con saldo pendiente.</field>
+        <field name="model_name">account.move</field><field name="operation">read</field>
+        <field name="requires_approval">false</field>
+    </record>
+    <record id="tool_prepare_payment_link" model="chatroom.ai.tool">
+        <field name="name">Preparar link de pago</field><field name="key">prepare_payment_link</field>
+        <field name="description">Prepara el contexto para el conector de pagos instalado.</field>
+        <field name="model_name">payment.link</field><field name="operation">create</field>
+        <field name="requires_approval">true</field>
+    </record>
+    <record id="tool_send_payment_link" model="chatroom.ai.tool">
+        <field name="name">Generar y enviar link de pago</field><field name="key">send_payment_link</field>
+        <field name="description">Usa el conector de pagos instalado, incluido PayPhone, para cobrar un documento pendiente.</field>
+        <field name="model_name">chatroom.channel</field><field name="operation">send_payment</field>
+        <field name="requires_approval">true</field>
+    </record>
+    <record id="tool_create_activity" model="chatroom.ai.tool">
+        <field name="name">Crear actividad</field><field name="key">create_activity</field>
+        <field name="description">Agenda una actividad para el responsable.</field>
+        <field name="model_name">mail.activity</field><field name="operation">create</field>
+        <field name="requires_approval">true</field>
+    </record>
+    <record id="tool_send_whatsapp_reply" model="chatroom.ai.tool">
+        <field name="name">Enviar respuesta WhatsApp</field><field name="key">send_whatsapp_reply</field>
+        <field name="description">Envía un texto previamente aprobado al cliente.</field>
+        <field name="model_name">chatroom.channel</field><field name="operation">send</field>
+        <field name="requires_approval">true</field>
+    </record>
+</odoo>
