@@ -15,7 +15,18 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='chatroom_ai_agent.require_approval',
         help='Las acciones que cambian datos o envían mensajes siempre conservan su aprobación propia.',
     )
+    chatroom_ai_agent_mode = fields.Selection([
+        ('supervised', 'Supervisado: requiere aprobacion'),
+        ('automatic', 'Automatico: ejecuta tareas autorizadas'),
+        ('simulation', 'Simulacion: solo prepara planes'),
+    ], string='Modo de operacion del agente', default='supervised',
+        config_parameter='chatroom_ai_agent.mode',
+        help='El modo supervisado es el recomendado. El automatico no elimina las aprobaciones propias de cobros y envios.')
     chatroom_ai_agent_max_tasks = fields.Integer(
         string='Máximo de tareas por ciclo', default=20,
         config_parameter='chatroom_ai_agent.max_tasks',
+    )
+    chatroom_ai_agent_max_actions = fields.Integer(
+        string='Maximo de acciones por tarea', default=8,
+        config_parameter='chatroom_ai_agent.max_actions',
     )

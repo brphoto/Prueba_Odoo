@@ -15,6 +15,29 @@
                         <field name="chatroom_ai_model_id" options="{'no_create': True}"/>
                         <button name="action_sync_ai_models" type="object" string="Actualizar modelos" class="btn-secondary ms-2"/>
                     </setting>
+                    <setting id="chatroom_ai_model_profiles_setting"
+                             help="Permite usar un modelo economico para tareas rapidas y uno mas potente para el agente.">
+                        <div class="row mt-2">
+                            <label for="chatroom_ai_model_reply_id" class="col-lg-4 o_light_label"/>
+                            <field name="chatroom_ai_model_reply_id" options="{'no_create': True}"/>
+                        </div>
+                        <div class="row mt-2">
+                            <label for="chatroom_ai_model_summary_id" class="col-lg-4 o_light_label"/>
+                            <field name="chatroom_ai_model_summary_id" options="{'no_create': True}"/>
+                        </div>
+                        <div class="row mt-2">
+                            <label for="chatroom_ai_model_classification_id" class="col-lg-4 o_light_label"/>
+                            <field name="chatroom_ai_model_classification_id" options="{'no_create': True}"/>
+                        </div>
+                        <div class="row mt-2">
+                            <label for="chatroom_ai_model_agent_id" class="col-lg-4 o_light_label"/>
+                            <field name="chatroom_ai_model_agent_id" options="{'no_create': True}"/>
+                        </div>
+                        <div class="row mt-2">
+                            <label for="chatroom_ai_fallback_model_id" class="col-lg-4 o_light_label"/>
+                            <field name="chatroom_ai_fallback_model_id" options="{'no_create': True}"/>
+                        </div>
+                    </setting>
                     <setting id="chatroom_ai_admin_api_key_setting"
                              help="Clave administrativa separada para consultar uso y costos de la organizacion. Nunca se usa para responder mensajes.">
                         <field name="chatroom_ai_admin_api_key" password="True"/>
@@ -29,6 +52,10 @@
                     <setting id="chatroom_ai_refresh_usage_setting"
                              help="Consulta el costo oficial si hay Admin API Key; si no, muestra el consumo registrado localmente.">
                         <button name="action_refresh_ai_usage" type="object" string="Actualizar consumo" class="btn-primary"/>
+                    </setting>
+                    <setting id="chatroom_ai_usage_auto_refresh_setting"
+                             help="El resumen diario genera una actividad para los administradores cuando el presupuesto entra en alerta.">
+                        <field name="chatroom_ai_usage_auto_refresh"/>
                     </setting>
                 </block>
             </xpath>

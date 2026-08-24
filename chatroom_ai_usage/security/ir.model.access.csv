@@ -2,3 +2,5 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_chatroom_ai_provider_model_system,chatroom.ai.provider.model system,model_chatroom_ai_provider_model,base.group_system,1,1,1,1
 access_chatroom_ai_usage_event_system,chatroom.ai.usage.event system,model_chatroom_ai_usage_event,base.group_system,1,0,0,0
 access_chatroom_ai_usage_snapshot_system,chatroom.ai.usage.snapshot system,model_chatroom_ai_usage_snapshot,base.group_system,1,1,1,1
+access_chatroom_ai_quality_test_system,chatroom.ai.quality.test system,model_chatroom_ai_quality_test,base.group_system,1,1,1,1
+access_chatroom_ai_quality_result_system,chatroom.ai.quality.result system,model_chatroom_ai_quality_result,base.group_system,1,0,0,0

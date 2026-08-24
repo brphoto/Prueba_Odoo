@@ -16,9 +16,16 @@
                                  help="Recomendado: la IA puede preparar planes, pero un usuario autoriza cambios, cobros y envíos.">
                             <field name="chatroom_ai_agent_require_approval"/>
                         </setting>
+                        <setting id="chatroom_ai_agent_mode_setting"
+                                 help="Supervisado mantiene control humano; automatico ejecuta solo acciones autorizadas; simulacion no modifica datos.">
+                            <field name="chatroom_ai_agent_mode"/>
+                        </setting>
                         <setting id="chatroom_ai_agent_max_tasks_setting"
                                  help="Límite de protección por cada ciclo del cron.">
                             <field name="chatroom_ai_agent_max_tasks"/>
+                        </setting>
+                        <setting id="chatroom_ai_agent_max_actions_setting">
+                            <field name="chatroom_ai_agent_max_actions"/>
                         </setting>
                     </block>
                 </app>

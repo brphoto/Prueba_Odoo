@@ -6,6 +6,23 @@ from odoo.exceptions import UserError
 class ChatroomChannel(models.Model):
     _inherit = 'chatroom.channel'
 
+    def _ai_build_conversation(self, extra_system=None):
+        conversation = super()._ai_build_conversation(extra_system=extra_system)
+        self.ensure_one()
+        context = []
+        if 'chatroom.ai.memory' in self.env and self.partner_id:
+            memory = self.env['chatroom.ai.memory'].sudo().get_context(
+                partner=self.partner_id, channel=self, limit=8)
+            if memory:
+                context.append('Memoria empresarial autorizada:\n%s' % memory)
+        if 'ai.knowledge.base' in self.env:
+            knowledge = self.env['ai.knowledge.base'].sudo().get_sales_context(self)
+            if knowledge:
+                context.append('Manuales internos autorizados:\n%s' % knowledge)
+        if context and conversation:
+            conversation[0]['content'] = '%s\n\n%s' % (conversation[0]['content'], '\n\n'.join(context))
+        return conversation
+
     def get_ai_assistant_data(self):
         """Estado seguro que consume el panel lateral del agente.
 

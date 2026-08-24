@@ -57,6 +57,8 @@
                 <field name="total_tokens"/>
                 <field name="cost"/>
                 <field name="currency"/>
+                <field name="budget_remaining" optional="hide"/>
+                <field name="budget_state" widget="badge" optional="hide"/>
                 <field name="local_request_count" optional="hide"/>
             </list>
         </field>
@@ -66,6 +68,9 @@
         <field name="model">chatroom.ai.usage.snapshot</field>
         <field name="arch" type="xml">
             <form string="Resumen de consumo de IA">
+                <header>
+                    <button name="action_open_platform_usage" type="object" string="Abrir panel oficial" class="btn-secondary"/>
+                </header>
                 <sheet>
                     <div class="oe_title"><h1><field name="name"/></h1></div>
                     <div class="alert alert-warning" role="alert" invisible="state != 'partial'">
@@ -86,6 +91,12 @@
                             <field name="currency" readonly="1"/>
                         </group>
                     </group>
+                    <group string="Presupuesto de referencia">
+                        <field name="budget_limit" readonly="1"/>
+                        <field name="budget_remaining" readonly="1"/>
+                        <field name="budget_percent" readonly="1"/>
+                        <field name="budget_state" widget="badge" readonly="1"/>
+                    </group>
                     <group string="Control local">
                         <field name="local_request_count" readonly="1"/>
                         <field name="local_total_tokens" readonly="1"/>
@@ -95,6 +106,50 @@
             </form>
         </field>
     </record>
+    <record id="view_chatroom_ai_usage_event_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.usage.event.list</field>
+        <field name="model">chatroom.ai.usage.event</field>
+        <field name="arch" type="xml"><list string="Solicitudes IA">
+            <field name="request_date"/><field name="model"/><field name="task_type"/>
+            <field name="channel_id"/><field name="input_tokens"/>
+            <field name="output_tokens"/><field name="total_tokens"/><field name="success"/>
+        </list></field>
+    </record>
+    <record id="view_chatroom_ai_usage_event_graph" model="ir.ui.view">
+        <field name="name">chatroom.ai.usage.event.graph</field>
+        <field name="model">chatroom.ai.usage.event</field>
+        <field name="arch" type="xml"><graph string="Actividad de IA" type="bar">
+            <field name="request_date" interval="day" type="row"/>
+            <field name="total_tokens" type="measure"/>
+        </graph></field>
+    </record>
+    <record id="view_chatroom_ai_quality_test_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.quality.test.list</field>
+        <field name="model">chatroom.ai.quality.test</field>
+        <field name="arch" type="xml"><list string="Pruebas de calidad" decoration-success="last_state == 'passed'" decoration-warning="last_state == 'warning'" decoration-danger="last_state == 'error'">
+            <button name="action_run" type="object" icon="fa-play" title="Ejecutar"/>
+            <field name="name"/><field name="task_type"/><field name="channel_id"/>
+            <field name="last_run"/><field name="last_score"/><field name="last_state" widget="badge"/>
+        </list></field>
+    </record>
+    <record id="view_chatroom_ai_quality_test_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.quality.test.form</field>
+        <field name="model">chatroom.ai.quality.test</field>
+        <field name="arch" type="xml"><form string="Prueba de calidad IA">
+            <header><button name="action_run" type="object" string="Ejecutar prueba" class="oe_highlight"/><field name="last_state" widget="statusbar"/></header>
+            <sheet><div class="oe_title"><h1><field name="name"/></h1></div>
+                <group><group><field name="channel_id"/><field name="task_type"/><field name="active"/></group>
+                    <group><field name="expected_keywords"/><field name="last_run" readonly="1"/><field name="last_score" readonly="1"/></group></group>
+                <field name="prompt" placeholder="Criterios que debe seguir la respuesta..."/>
+                <group string="Ultima respuesta"><field name="last_output" readonly="1" nolabel="1" widget="text"/></group>
+                <field name="result_ids" readonly="1"><list><field name="run_date"/><field name="score"/><field name="state" widget="badge"/></list></field>
+            </sheet>
+        </form></field>
+    </record>
+    <record id="view_chatroom_ai_quality_result_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.quality.result.list</field><field name="model">chatroom.ai.quality.result</field>
+        <field name="arch" type="xml"><list string="Historial de calidad"><field name="run_date"/><field name="test_id"/><field name="score"/><field name="state" widget="badge"/></list></field>
+    </record>
     <record id="action_chatroom_ai_provider_model" model="ir.actions.act_window">
         <field name="name">Modelos disponibles</field>
         <field name="res_model">chatroom.ai.provider.model</field>
@@ -103,6 +158,18 @@
     <record id="action_chatroom_ai_usage_snapshot" model="ir.actions.act_window">
         <field name="name">Consumo de IA</field>
         <field name="res_model">chatroom.ai.usage.snapshot</field>
+        <field name="view_mode">graph,pivot,list,form</field>
+    </record>
+    <record id="action_chatroom_ai_usage_event" model="ir.actions.act_window">
+        <field name="name">Solicitudes de IA</field><field name="res_model">chatroom.ai.usage.event</field>
+        <field name="view_mode">graph,list</field>
+    </record>
+    <record id="action_chatroom_ai_quality_test" model="ir.actions.act_window">
+        <field name="name">Pruebas de calidad</field><field name="res_model">chatroom.ai.quality.test</field>
         <field name="view_mode">list,form</field>
+    </record>
+    <record id="action_chatroom_ai_quality_result" model="ir.actions.act_window">
+        <field name="name">Historial de calidad</field><field name="res_model">chatroom.ai.quality.result</field>
+        <field name="view_mode">list</field>
     </record>
 </odoo>

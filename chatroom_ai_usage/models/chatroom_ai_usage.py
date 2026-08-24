@@ -15,6 +15,10 @@ class ChatroomAiUsageEvent(models.Model):
 
     request_date = fields.Datetime(string='Fecha', required=True, default=fields.Datetime.now, index=True)
     model = fields.Char(string='Modelo', index=True)
+    task_type = fields.Selection([
+        ('general', 'General'), ('reply', 'Respuesta'), ('summary', 'Resumen'),
+        ('classification', 'Clasificacion'), ('agent', 'Agente'),
+    ], string='Tipo de tarea', default='general', index=True)
     channel_id = fields.Many2one('chatroom.channel', string='Conversacion', ondelete='set null', index=True)
     input_tokens = fields.Integer(string='Tokens de entrada')
     output_tokens = fields.Integer(string='Tokens de salida')
@@ -37,6 +41,13 @@ class ChatroomAiUsageSnapshot(models.Model):
     total_tokens = fields.Integer(string='Tokens totales')
     cost = fields.Float(string='Costo oficial', digits=(16, 6))
     currency = fields.Char(string='Moneda', default='usd')
+    budget_limit = fields.Float(string='Presupuesto de referencia', digits=(16, 2))
+    budget_remaining = fields.Float(string='Saldo estimado', digits=(16, 2))
+    budget_percent = fields.Float(string='Porcentaje utilizado', digits=(16, 2))
+    budget_state = fields.Selection([
+        ('no_limit', 'Sin presupuesto'), ('ok', 'Normal'),
+        ('warning', 'Alerta'), ('exceeded', 'Excedido'),
+    ], string='Estado del presupuesto', default='no_limit')
     local_request_count = fields.Integer(string='Solicitudes locales')
     local_total_tokens = fields.Integer(string='Tokens locales')
     model_breakdown = fields.Text(string='Detalle por modelo', readonly=True)
@@ -44,6 +55,27 @@ class ChatroomAiUsageSnapshot(models.Model):
         ('ok', 'Actualizado'), ('partial', 'Solo consumo local'), ('error', 'Error'),
     ], default='ok', required=True)
     error_message = fields.Text(string='Detalle')
+
+    def _notify_budget_alert(self):
+        """Crea una actividad visible para administradores sin enviar correos secretos."""
+        todo = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
+        system_group = self.env.ref('base.group_system', raise_if_not_found=False)
+        if not todo or not system_group or self.budget_state not in ('warning', 'exceeded'):
+            return
+        admins = system_group.users.sudo()
+        activity = self.env['mail.activity'].sudo()
+        for user in admins:
+            duplicate = activity.search_count([
+                ('res_model', '=', self._name), ('res_id', '=', self.id),
+                ('user_id', '=', user.id), ('activity_type_id', '=', todo.id),
+            ])
+            if not duplicate:
+                activity.create({
+                    'activity_type_id': todo.id, 'res_model_id': self.env['ir.model']._get(self._name).id,
+                    'res_id': self.id, 'user_id': user.id,
+                    'summary': _('Revisar presupuesto de IA'),
+                    'note': _('El consumo de IA esta en estado %s: %.2f%% del presupuesto de referencia.') % (self.budget_state, self.budget_percent),
+                })
 
     @api.model
     def _api_base(self):
@@ -63,6 +95,23 @@ class ChatroomAiUsageSnapshot(models.Model):
             ('request_date', '>=', start), ('request_date', '<', end),
         ])
         return len(events), sum(events.mapped('total_tokens'))
+
+    @api.model
+    def _budget_values(self, cost):
+        raw = self.env['ir.config_parameter'].sudo().get_param('chatroom_whatsapp.ai_monthly_budget', '0')
+        try:
+            limit = max(float(raw or 0.0), 0.0)
+        except (TypeError, ValueError):
+            limit = 0.0
+        if not limit:
+            return {'budget_limit': 0.0, 'budget_remaining': 0.0, 'budget_percent': 0.0, 'budget_state': 'no_limit'}
+        percent = max(float(cost or 0.0), 0.0) / limit * 100.0
+        return {
+            'budget_limit': limit,
+            'budget_remaining': max(limit - float(cost or 0.0), 0.0),
+            'budget_percent': percent,
+            'budget_state': 'exceeded' if percent >= 100 else 'warning' if percent >= 80 else 'ok',
+        }
 
     @api.model
     def _fetch(self, path, key, start_ts, end_ts):
@@ -100,6 +149,7 @@ class ChatroomAiUsageSnapshot(models.Model):
             'currency': 'usd',
             'model_breakdown': '{}',
         }
+        values.update(self._budget_values(0.0))
         if not admin_key:
             values.update({
                 'state': 'partial',
@@ -107,7 +157,8 @@ class ChatroomAiUsageSnapshot(models.Model):
                 'total_tokens': local_tokens,
                 'error_message': _('Configura una Admin API Key para consultar costos oficiales de la organizacion.'),
             })
-            self.sudo().create(values)
+            snapshot = self.sudo().create(values)
+            snapshot._notify_budget_alert()
             return {
                 'type': 'ir.actions.client', 'tag': 'display_notification',
                 'params': {'title': _('Consumo local actualizado'), 'message': _('Registra %s solicitudes. Falta la Admin API Key para costos oficiales.') % local_count, 'type': 'warning', 'sticky': False},
@@ -146,7 +197,9 @@ class ChatroomAiUsageSnapshot(models.Model):
                 'state': 'ok',
                 'error_message': False,
             })
-            self.sudo().create(values)
+            values.update(self._budget_values(cost))
+            snapshot = self.sudo().create(values)
+            snapshot._notify_budget_alert()
             return {
                 'type': 'ir.actions.client', 'tag': 'display_notification',
                 'params': {'title': _('Consumo de IA actualizado'), 'message': _('Solicitudes: %s | Costo: %.6f %s') % (request_count, cost, currency.upper()), 'type': 'success', 'sticky': False},
@@ -155,3 +208,23 @@ class ChatroomAiUsageSnapshot(models.Model):
             values.update({'state': 'error', 'error_message': str(exc)})
             self.sudo().create(values)
             raise UserError(_('No se pudo consultar el consumo de OpenAI Platform: %s') % exc) from exc
+
+    @api.model
+    def _cron_refresh_usage(self):
+        enabled = self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_whatsapp.ai_usage_auto_refresh', 'False') == 'True'
+        if not enabled:
+            return 0
+        try:
+            self.action_refresh()
+            return 1
+        except UserError:
+            self.env.cr.rollback()
+            return 0
+
+    def action_open_platform_usage(self):
+        return {
+            'type': 'ir.actions.act_url',
+            'url': 'https://platform.openai.com/usage',
+            'target': 'new',
+        }

@@ -76,9 +76,12 @@ class ChatroomAiTask(models.Model):
     @api.model
     def create_from_channel(self, channel, task_type='orchestrate', prompt=False, approval_required=None):
         channel.ensure_one()
+        icp = self.env['ir.config_parameter'].sudo()
+        mode = icp.get_param('chatroom_ai_agent.mode', 'supervised')
         if approval_required is None:
-            approval_required = self.env['ir.config_parameter'].sudo().get_param(
-                'chatroom_ai_agent.require_approval', 'True') == 'True'
+            approval_required = icp.get_param('chatroom_ai_agent.require_approval', 'True') == 'True'
+        if mode in ('supervised', 'simulation'):
+            approval_required = True
         task = self.create({
             'name': _('IA: %s') % channel.display_name,
             'task_type': task_type,
@@ -181,7 +184,7 @@ ni ejecutes pagos. La cotización y las actividades requieren aprobación humana
 Solicitud: %s
 Contexto: %s''') % (self.prompt or '', self._json(context))
         try:
-            raw = channel._ai_chat_completion([{'role': 'user', 'content': prompt}])
+            raw = channel._ai_chat_completion([{'role': 'user', 'content': prompt}], task_type='agent')
             parsed = json.loads(raw)
             actions = parsed.get('actions', [])
             allowed = {tool.key for tool in self.env['chatroom.ai.tool'].enabled_for_user()}
@@ -197,7 +200,8 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             context = task._context()
             actions = task._ai_plan(context) or task._fallback_plan()
             task.action_ids.sudo().unlink()
-            for index, action in enumerate(actions, 1):
+            max_actions = int(self.env['ir.config_parameter'].sudo().get_param('chatroom_ai_agent.max_actions', '8') or 8)
+            for index, action in enumerate(actions[:max(max_actions, 1)], 1):
                 tool = self.env['chatroom.ai.tool'].search([('key', '=', action['key']), ('active', '=', True)], limit=1)
                 task.env['chatroom.ai.task.action'].create({
                     'task_id': task.id, 'sequence': index * 10,
@@ -242,7 +246,7 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             result['intent'] = channel.ai_intent if channel and 'ai_intent' in channel._fields and channel.ai_intent else 'otro'
         elif action.key in ('prepare_reply',):
             if channel and hasattr(channel, '_ai_get_credentials') and channel._ai_get_credentials():
-                result['reply'] = channel._ai_chat_completion(channel._ai_build_conversation(extra_system=self.prompt or _('Prepara una respuesta breve y profesional.')))
+                result['reply'] = channel._ai_chat_completion(channel._ai_build_conversation(extra_system=self.prompt or _('Prepara una respuesta breve y profesional.')), task_type='reply')
             else:
                 result['reply'] = _('Se preparó la tarea. Configure el proveedor de IA para generar el texto personalizado.')
         elif action.key == 'create_lead':
@@ -389,6 +393,9 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             if task.state == 'awaiting_approval':
                 raise UserError(_('Esta tarea necesita aprobación antes de ejecutarse.'))
             if task.state not in ('planned', 'failed'):
+                continue
+            if self.env['ir.config_parameter'].sudo().get_param('chatroom_ai_agent.mode', 'supervised') == 'simulation':
+                task.write({'state': 'done', 'completed_at': fields.Datetime.now(), 'result_summary': _('Simulacion: no se modificaron datos ni se enviaron mensajes.')})
                 continue
             task.write({'state': 'running', 'started_at': fields.Datetime.now(), 'attempts': task.attempts + 1})
             try:

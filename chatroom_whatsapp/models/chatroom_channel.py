@@ -1963,7 +1963,7 @@ class ChatroomChannel(models.Model):
             return default
         return str(raw).strip().lower() in ('1', 'true', 'yes', 'on')
 
-    def _ai_get_credentials(self):
+    def _ai_get_credentials(self, task_type=None):
         if not self._ai_param_enabled('chatroom_whatsapp.ai_enabled'):
             return None
         icp = self.env['ir.config_parameter'].sudo()
@@ -1990,15 +1990,20 @@ class ChatroomChannel(models.Model):
         self.action_send_text(reply)
         return True
 
-    def _ai_chat_completion(self, messages):
+    def _ai_model_candidates(self, task_type=None):
+        """Modelos a probar en orden; modulos opcionales pueden ampliarlo."""
+        credentials = self._ai_get_credentials(task_type=task_type)
+        return [credentials] if credentials else []
+
+    def _ai_chat_completion(self, messages, task_type=None):
         """Llama al endpoint 'chat completions' configurado (cualquier
         proveedor LLM compatible: OpenAI, Anthropic vía proxy, Azure, un
         modelo propio, etc.) y devuelve el texto de la respuesta."""
-        creds = self._ai_get_credentials()
-        if not creds:
+        candidates = self._ai_model_candidates(task_type=task_type)
+        if not candidates:
             raise UserError(_(
                 "Activa y configura la IA en Ajustes > Chatroom WhatsApp."))
-        api_url, api_key, model = creds
+        api_url, api_key, model = candidates[0]
         response = self._meta_request(
             'POST', api_url,
             headers={"Authorization": f"Bearer {api_key}"},
@@ -2048,7 +2053,7 @@ class ChatroomChannel(models.Model):
     def action_ai_suggest_reply(self):
         self.ensure_one()
         try:
-            self.ai_suggested_reply = self._ai_chat_completion(self._ai_build_conversation())
+            self.ai_suggested_reply = self._ai_chat_completion(self._ai_build_conversation(), task_type='reply')
         except (requests.RequestException, KeyError, IndexError) as exc:
             _logger.error("Error consultando IA: %s", exc)
             raise UserError(_("No se pudo obtener una sugerencia de IA: %s") % exc)
@@ -2071,7 +2076,7 @@ class ChatroomChannel(models.Model):
             "cliente y en qué quedó la conversación hasta ahora.")
         try:
             self.ai_summary = self._ai_chat_completion(
-                self._ai_build_conversation(extra_system=system_prompt))
+                self._ai_build_conversation(extra_system=system_prompt), task_type='summary')
         except (requests.RequestException, KeyError, IndexError) as exc:
             _logger.error("Error consultando IA: %s", exc)
             raise UserError(_("No se pudo generar el resumen con IA: %s") % exc)
@@ -2084,7 +2089,7 @@ class ChatroomChannel(models.Model):
             "WhatsApp. Responde ÚNICAMENTE con un JSON de la forma "
             '{"intent": "consulta|venta|soporte|queja"}, sin texto '
             "adicional ni explicaciones.")
-        raw = self._ai_chat_completion(self._ai_build_conversation(extra_system=system_prompt))
+        raw = self._ai_chat_completion(self._ai_build_conversation(extra_system=system_prompt), task_type='classification')
         try:
             intent = json.loads(raw).get('intent')
         except (ValueError, AttributeError):
@@ -2139,7 +2144,7 @@ class ChatroomChannel(models.Model):
             "Sos un asistente de ventas por WhatsApp. Con los datos de "
             "arriba, respondé en español, breve y cordial, la consulta "
             "de precio del cliente.")
-        reply = self._ai_chat_completion(self._ai_build_conversation(extra_system=system_prompt))
+        reply = self._ai_chat_completion(self._ai_build_conversation(extra_system=system_prompt), task_type='reply')
         self._ai_stage_or_send_reply(reply)
 
     # ------------------------------------------------------------------
@@ -2256,7 +2261,7 @@ class ChatroomChannel(models.Model):
             "add_items):\n%(catalog)s"
         ) % {'cart': cart_lines, 'catalog': catalog_lines}
 
-        raw = self._ai_chat_completion(self._ai_build_conversation(extra_system=system_prompt))
+        raw = self._ai_chat_completion(self._ai_build_conversation(extra_system=system_prompt), task_type='reply')
         try:
             data = json.loads(raw)
         except ValueError:

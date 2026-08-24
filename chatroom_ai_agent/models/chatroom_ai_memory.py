@@ -22,6 +22,9 @@ class ChatroomAiMemory(models.Model):
     importance = fields.Selection([
         ('1', 'Baja'), ('2', 'Normal'), ('3', 'Alta'),
     ], string='Importancia', default='2', required=True)
+    confidence = fields.Float(string='Confianza', default=1.0, help='Nivel de confianza del dato entre 0 y 1.')
+    expires_at = fields.Datetime(string='Vigente hasta')
+    source_ref = fields.Char(string='Referencia de origen', copy=False)
     active = fields.Boolean(default=True)
     last_used = fields.Datetime(string='Último uso', default=fields.Datetime.now)
     company_id = fields.Many2one('res.company', string='Empresa', default=lambda self: self.env.company, index=True)
@@ -47,3 +50,16 @@ class ChatroomAiMemory(models.Model):
             memory.write(vals)
             return memory
         return self.create(vals)
+
+    @api.model
+    def get_context(self, partner=False, channel=False, limit=8):
+        """Devuelve memoria vigente y relevante para inyectarla en el prompt."""
+        partner_id = partner.id if hasattr(partner, 'id') else partner
+        channel_id = channel.id if hasattr(channel, 'id') else channel
+        domain = [('active', '=', True), '|', ('expires_at', '=', False), ('expires_at', '>=', fields.Datetime.now())]
+        if partner_id or channel_id:
+            domain += ['|', ('partner_id', '=', partner_id or 0), ('channel_id', '=', channel_id or 0)]
+        records = self.sudo().search(domain, order='importance desc, last_used desc, id desc', limit=limit)
+        if records:
+            records.write({'last_used': fields.Datetime.now()})
+        return '\n'.join('- %s' % record.content for record in records)
