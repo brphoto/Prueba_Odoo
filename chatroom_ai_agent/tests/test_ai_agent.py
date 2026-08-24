@@ -75,6 +75,11 @@ class TestChatroomAiAgent(TransactionCase):
             self.assertEqual(notification.get('tag'), 'display_notification')
             self.assertTrue(automation.last_run)
 
+    def test_agent_menu_is_exposed_from_chatroom_root(self):
+        menu = self.env.ref('chatroom_ai_agent.menu_chatroom_ai_agent')
+        self.assertEqual(menu.parent_id, self.env.ref('chatroom_whatsapp.menu_chatroom_root'))
+        self.assertTrue(self.env.ref('chatroom_ai_agent.menu_chatroom_ai_tasks').action)
+
     def test_contact_panel_actions_are_dialog_safe(self):
         action_methods = {
             'action_view_leads': 'crm.lead',

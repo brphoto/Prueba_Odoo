@@ -6,7 +6,7 @@
 Organiza planes de trabajo, herramientas autorizadas, memoria empresarial,
 aprobaciones, automatizaciones y auditoría sin acoplar la lógica de ventas,
 pagos o WhatsApp a un único módulo.''',
-    'version': '19.0.1.0.13',
+    'version': '19.0.1.0.14',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
     'category': 'Productivity/Discuss',

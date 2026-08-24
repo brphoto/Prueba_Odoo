@@ -50,14 +50,14 @@ class ChatroomAiAutomation(models.Model):
             partner_ids = self.env['crm.lead'].sudo().search([
                 ('type', '=', 'opportunity'), ('active', '=', True),
                 ('probability', '<', 100),
-            ]).mapped('partner_id').ids
+            ], order='write_date desc, id desc', limit=max(automation.max_tasks or 20, 1) * 5).mapped('partner_id').ids
             domain.append(('partner_id', 'in', partner_ids or [0]))
         elif automation.trigger == 'pending_quote':
             if 'sale.order' not in self.env:
                 return self.env['chatroom.channel']
             partner_ids = self.env['sale.order'].sudo().search([
                 ('state', 'in', ('draft', 'sent')),
-            ]).mapped('partner_id').ids
+            ], order='date_order desc, id desc', limit=max(automation.max_tasks or 20, 1) * 5).mapped('partner_id').ids
             domain.append(('partner_id', 'in', partner_ids or [0]))
         elif automation.trigger == 'pending_activity':
             if 'mail.activity' not in self.env or 'ir.model' not in self.env:
@@ -66,7 +66,11 @@ class ChatroomAiAutomation(models.Model):
             activity_domain = [('res_model_id', '=', model.id)]
             if 'date_deadline' in self.env['mail.activity']._fields:
                 activity_domain.append(('date_deadline', '<=', fields.Date.context_today(self)))
-            channel_ids = self.env['mail.activity'].sudo().search(activity_domain).mapped('res_id')
+            channel_ids = self.env['mail.activity'].sudo().search(
+                activity_domain,
+                order='date_deadline asc, id desc',
+                limit=max(automation.max_tasks or 20, 1) * 5,
+            ).mapped('res_id')
             domain.append(('id', 'in', channel_ids or [0]))
         elif automation.trigger == 'overdue_invoice':
             if 'account.move' not in self.env:

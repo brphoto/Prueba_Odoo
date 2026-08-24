@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_chatroom_ai_agent" name="Agente IA" parent="chatroom_whatsapp.menu_chatroom_operation" sequence="60" groups="chatroom_ai_agent.group_chatroom_ai_agent_user"/>
+    <menuitem id="menu_chatroom_ai_agent" name="Agente IA" parent="chatroom_whatsapp.menu_chatroom_root" sequence="25" groups="chatroom_ai_agent.group_chatroom_ai_agent_user"/>
+    <menuitem id="menu_chatroom_ai_settings" name="Ajustes del agente IA" parent="menu_chatroom_ai_agent" action="base_setup.action_general_configuration" sequence="60" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>
     <menuitem id="menu_chatroom_ai_tasks" name="Tareas" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_task" sequence="10"/>
     <menuitem id="menu_chatroom_ai_automations" name="Automatizaciones" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_automation" sequence="20" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>
     <menuitem id="menu_chatroom_ai_memory" name="Memoria empresarial" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_memory" sequence="30"/>
