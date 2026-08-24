@@ -92,15 +92,59 @@
             <search string="Tareas IA">
                 <field name="name"/><field name="partner_id"/><field name="channel_id"/><field name="user_id"/>
                 <filter name="pending" string="Pendientes" domain="[('state', 'in', ('awaiting_approval', 'planned', 'running'))]"/>
+                <filter name="awaiting_approval" string="Esperando aprobación" domain="[('state', '=', 'awaiting_approval')]"/>
                 <filter name="failed" string="Fallidas" domain="[('state', '=', 'failed')]"/>
                 <filter name="done" string="Completadas" domain="[('state', '=', 'done')]"/>
                 <group><filter name="group_state" string="Estado" context="{'group_by': 'state'}"/><filter name="group_type" string="Tipo" context="{'group_by': 'task_type'}"/></group>
             </search>
         </field>
     </record>
+    <record id="view_chatroom_ai_task_kanban" model="ir.ui.view">
+        <field name="name">chatroom.ai.task.kanban</field>
+        <field name="model">chatroom.ai.task</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
+                <field name="name"/><field name="task_type"/><field name="partner_id"/>
+                <field name="state"/><field name="priority"/><field name="approval_required"/><field name="result_summary"/>
+                <field name="error_message"/>
+                <templates><t t-name="card">
+                    <div class="oe_kanban_global_click o_kanban_record">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <strong class="text-truncate" t-esc="record.name.value"/>
+                            <span t-if="record.priority.raw_value == '2'" class="badge text-bg-danger">Urgente</span>
+                        </div>
+                        <div class="text-muted small mt-1" t-esc="record.task_type.value"/>
+                        <div t-if="record.partner_id.value" class="mt-2"><i class="fa fa-user me-1"/><span t-esc="record.partner_id.value"/></div>
+                        <div t-if="record.approval_required.raw_value" class="small mt-2 text-warning"><i class="fa fa-shield me-1"/>Requiere aprobación</div>
+                        <div t-if="record.result_summary.value" class="small text-muted mt-2 text-truncate" t-esc="record.result_summary.value"/>
+                        <div t-if="record.error_message.value" class="small text-danger mt-2 text-truncate" t-esc="record.error_message.value"/>
+                        <div class="mt-2 d-flex gap-1">
+                            <button t-if="record.state.raw_value == 'awaiting_approval'" type="object" name="action_approve" class="btn btn-sm btn-primary">Aprobar</button>
+                            <button t-if="record.state.raw_value == 'planned'" type="object" name="action_run" class="btn btn-sm btn-primary">Ejecutar</button>
+                            <button t-if="record.state.raw_value == 'failed'" type="object" name="action_retry" class="btn btn-sm btn-secondary">Reintentar</button>
+                        </div>
+                    </div>
+                </t></templates>
+            </kanban>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_task_pivot" model="ir.ui.view">
+        <field name="name">chatroom.ai.task.pivot</field><field name="model">chatroom.ai.task</field>
+        <field name="arch" type="xml"><pivot string="Rendimiento del agente IA"><field name="task_type" type="row"/><field name="state" type="col"/><field name="id" type="measure"/></pivot></field>
+    </record>
+    <record id="view_chatroom_ai_task_graph" model="ir.ui.view">
+        <field name="name">chatroom.ai.task.graph</field><field name="model">chatroom.ai.task</field>
+        <field name="arch" type="xml"><graph string="Ejecuciones del agente IA" type="bar"><field name="task_type" type="row"/><field name="state" type="col"/><field name="id" type="measure"/></graph></field>
+    </record>
     <record id="action_chatroom_ai_task" model="ir.actions.act_window">
         <field name="name">Tareas del agente IA</field><field name="res_model">chatroom.ai.task</field>
         <field name="view_mode">list,form</field><field name="search_view_id" ref="view_chatroom_ai_task_search"/>
+        <field name="context">{'search_default_pending': 1}</field>
+    </record>
+    <record id="action_chatroom_ai_control" model="ir.actions.act_window">
+        <field name="name">Centro de control IA</field><field name="res_model">chatroom.ai.task</field>
+        <field name="view_mode">kanban,list,pivot,graph,form</field>
+        <field name="search_view_id" ref="view_chatroom_ai_task_search"/>
         <field name="context">{'search_default_pending': 1}</field>
     </record>
 </odoo>

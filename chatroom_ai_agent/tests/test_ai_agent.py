@@ -79,6 +79,7 @@ class TestChatroomAiAgent(TransactionCase):
         menu = self.env.ref('chatroom_ai_agent.menu_chatroom_ai_agent')
         self.assertEqual(menu.parent_id, self.env.ref('chatroom_whatsapp.menu_chatroom_root'))
         self.assertTrue(self.env.ref('chatroom_ai_agent.menu_chatroom_ai_tasks').action)
+        self.assertTrue(self.env.ref('chatroom_ai_agent.menu_chatroom_ai_control').action)
 
     def test_contact_panel_actions_are_dialog_safe(self):
         action_methods = {
