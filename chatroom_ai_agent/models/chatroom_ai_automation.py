@@ -15,6 +15,9 @@ class ChatroomAiAutomation(models.Model):
     trigger = fields.Selection([
         ('daily_review', 'Revisión periódica'),
         ('open_conversation', 'Conversación activa'),
+        ('open_opportunity', 'Oportunidad abierta'),
+        ('pending_quote', 'Cotización pendiente'),
+        ('pending_activity', 'Actividad vencida'),
         ('overdue_invoice', 'Factura pendiente'),
     ], required=True, default='daily_review')
     task_type = fields.Selection([
@@ -24,11 +27,14 @@ class ChatroomAiAutomation(models.Model):
         ('prepare_reply', 'Preparar respuesta'),
         ('followup', 'Preparar seguimiento'),
         ('collect_payment', 'Preparar cobranza'),
+        ('sales_conversion', 'Convertir conversación en venta'),
         ('daily_review', 'Revisión diaria'),
     ], string='Tipo de tarea', required=True, default='daily_review')
     approval_required = fields.Boolean(default=True)
     max_tasks = fields.Integer(default=20)
     last_run = fields.Datetime(readonly=True)
+    last_run_count = fields.Integer(string='Tareas creadas en la última ejecución', readonly=True)
+    last_error = fields.Text(string='Último error', readonly=True)
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company, index=True)
 
     @api.model
@@ -38,6 +44,40 @@ class ChatroomAiAutomation(models.Model):
         domain = [('state', 'in', ('open', 'pending'))]
         if automation.trigger == 'open_conversation':
             domain.append(('write_date', '>=', fields.Datetime.now() - timedelta(hours=24)))
+        elif automation.trigger == 'open_opportunity':
+            if 'crm.lead' not in self.env:
+                return self.env['chatroom.channel']
+            partner_ids = self.env['crm.lead'].sudo().search([
+                ('type', '=', 'opportunity'), ('active', '=', True),
+                ('probability', '<', 100),
+            ]).mapped('partner_id').ids
+            domain.append(('partner_id', 'in', partner_ids or [0]))
+        elif automation.trigger == 'pending_quote':
+            if 'sale.order' not in self.env:
+                return self.env['chatroom.channel']
+            partner_ids = self.env['sale.order'].sudo().search([
+                ('state', 'in', ('draft', 'sent')),
+            ]).mapped('partner_id').ids
+            domain.append(('partner_id', 'in', partner_ids or [0]))
+        elif automation.trigger == 'pending_activity':
+            if 'mail.activity' not in self.env or 'ir.model' not in self.env:
+                return self.env['chatroom.channel']
+            model = self.env['ir.model']._get('chatroom.channel')
+            activity_domain = [('res_model_id', '=', model.id)]
+            if 'date_deadline' in self.env['mail.activity']._fields:
+                activity_domain.append(('date_deadline', '<=', fields.Date.context_today(self)))
+            channel_ids = self.env['mail.activity'].sudo().search(activity_domain).mapped('res_id')
+            domain.append(('id', 'in', channel_ids or [0]))
+        elif automation.trigger == 'overdue_invoice':
+            if 'account.move' not in self.env:
+                return self.env['chatroom.channel']
+            partner_ids = self.env['account.move'].sudo().search([
+                ('move_type', '=', 'out_invoice'),
+                ('state', '=', 'posted'),
+                ('payment_state', 'in', ('not_paid', 'partial')),
+                ('invoice_date_due', '<', fields.Date.context_today(self)),
+            ]).mapped('partner_id').ids
+            domain.append(('partner_id', 'in', partner_ids or [0]))
         configured_limit = int(self.env['ir.config_parameter'].sudo().get_param(
             'chatroom_ai_agent.max_tasks', automation.max_tasks or 20))
         return self.env['chatroom.channel'].sudo().search(
@@ -45,22 +85,47 @@ class ChatroomAiAutomation(models.Model):
 
     def action_run_now(self):
         self.ensure_one()
-        return self._run_for_channels(self._channels_for(self))
+        created = self._run_for_channels(self._channels_for(self))
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Automatización ejecutada'),
+                'message': _('%s tarea(s) creada(s).') % created,
+                'type': 'success' if created else 'warning',
+                'sticky': False,
+            },
+        }
 
     def _run_for_channels(self, channels):
         self.ensure_one()
         tasks = self.env['chatroom.ai.task'].sudo()
         created = 0
+        errors = []
         for channel in channels:
-            duplicate = tasks.search_count([('channel_id', '=', channel.id), ('task_type', '=', self.task_type or 'daily_review'), ('state', 'in', ('awaiting_approval', 'planned', 'running'))])
-            if duplicate:
-                continue
-            task = tasks.create_from_channel(channel, self.task_type or 'daily_review', _('Automatización: %s') % self.name, self.approval_required)
-            task.action_plan()
-            if not self.approval_required:
-                task.action_run()
-            created += 1
-        self.write({'last_run': fields.Datetime.now()})
+            try:
+                with self.env.cr.savepoint():
+                    duplicate = tasks.search_count([
+                        ('channel_id', '=', channel.id),
+                        ('task_type', '=', self.task_type or 'daily_review'),
+                        ('state', 'in', ('awaiting_approval', 'planned', 'running')),
+                    ])
+                    if duplicate:
+                        continue
+                    task = tasks.create_from_channel(
+                        channel, self.task_type or 'daily_review',
+                        _('Automatización: %s') % self.name, self.approval_required)
+                    task.action_plan()
+                    if not self.approval_required and task.state == 'planned':
+                        task.action_run()
+                    created += 1
+            except Exception as exc:
+                errors.append('%s: %s' % (channel.display_name, exc))
+        self.write({
+            'last_run': fields.Datetime.now(),
+            'last_run_count': created,
+            'last_error': '\n'.join(errors)[:4000] or False,
+        })
         return created
 
     @api.model
@@ -70,9 +135,10 @@ class ChatroomAiAutomation(models.Model):
         if not enabled:
             return 0
         total = 0
-        for automation in self.sudo().search([('active', '=', True), ('trigger', 'in', ('daily_review', 'open_conversation'))]):
+        for automation in self.sudo().search([('active', '=', True), ('trigger', 'in', ('daily_review', 'open_conversation', 'open_opportunity', 'pending_quote', 'pending_activity', 'overdue_invoice'))]):
             try:
                 total += automation._run_for_channels(automation._channels_for(automation))
-            except Exception:
+            except Exception as exc:
                 self.env.cr.rollback()
+                automation.write({'last_run': fields.Datetime.now(), 'last_error': str(exc)[:4000]})
         return total

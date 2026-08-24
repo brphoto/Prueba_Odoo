@@ -17,6 +17,10 @@
         <field name="privilege_id" ref="privilege_chatroom_ai_agent"/>
         <field name="implied_ids" eval="[(4, ref('group_chatroom_ai_agent_user'))]"/>
     </record>
+    <!-- Los administradores técnicos deben poder usar el panel sin configuración manual. -->
+    <record id="base.group_system" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_chatroom_ai_agent_manager'))]"/>
+    </record>
     <record id="chatroom_ai_task_rule_user" model="ir.rule">
         <field name="name">Tareas IA del responsable</field>
         <field name="model_id" ref="model_chatroom_ai_task"/>

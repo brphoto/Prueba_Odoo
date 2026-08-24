@@ -133,18 +133,20 @@
 }
 
 .o_chatroom_contact_actions {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
     padding: 10px 14px;
     border-bottom: 1px solid var(--border-color, #dee2e6);
 
     .btn {
-        flex: 1 1 calc(50% - 6px);
-        min-width: 132px;
+        width: 100%;
+        min-width: 0;
         min-height: 34px;
         border-radius: 14px;
         font-size: 0.8em;
+        white-space: normal;
+        overflow-wrap: anywhere;
     }
 }
 
@@ -346,12 +348,17 @@
 }
 
 @media (max-width: 768px) {
+    .o_chatroom_contact_panel {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+
     .o_chatroom_contact_actions {
         gap: 8px;
         padding: 10px;
 
         .btn {
-            flex-basis: calc(50% - 4px);
             min-width: 0;
             padding-left: 6px;
             padding-right: 6px;

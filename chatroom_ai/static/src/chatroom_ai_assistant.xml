@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-inherit="chatroom_whatsapp.ContactPanel" t-inherit-mode="extension">
-        <xpath expr="//div[hasclass('o_chatroom_contact_actions')]" position="before">
+        <xpath expr="//div[hasclass('o_chatroom_contact_actions_block')]" position="after">
             <div t-attf-class="o_chatroom_contact_docs o_chatroom_ai_assistant {{ aiAssistant.open ? 'o_chatroom_ai_assistant_open' : '' }}">
                 <div class="o_chatroom_contact_section_header" role="button" tabindex="0"
                      t-att-aria-expanded="aiAssistant.open ? 'true' : 'false'"

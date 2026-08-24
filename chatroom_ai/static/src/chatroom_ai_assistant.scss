@@ -31,12 +31,13 @@
 .o_chatroom_ai_assistant_compact_bar {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 6px;
 }
 
 .o_chatroom_ai_assistant_compact_bar select {
     min-width: 0;
-    flex: 1 1 auto;
+    flex: 1 1 160px;
 }
 
 .o_chatroom_ai_assistant_compact_bar button {
@@ -57,6 +58,12 @@
     flex-wrap: wrap;
     gap: 5px;
     margin-top: 8px;
+
+    .btn {
+        flex: 1 1 calc(50% - 5px);
+        min-width: 0;
+        white-space: normal;
+    }
 }
 
 .o_chatroom_ai_assistant_result {

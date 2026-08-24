@@ -233,7 +233,11 @@ export class ContactPanel extends Component {
         });
     }
 
-    _openDialog(action) {
+    async _openDialog(action) {
+        if (!action || action.type !== "ir.actions.act_window") {
+            this.notification.add("No se pudo abrir esta vista en el panel.", { type: "danger" });
+            return;
+        }
         const viewTypes = [
             ...(action.views || []).map((view) => view[1]),
             ...(action.view_mode || "").split(","),
@@ -242,7 +246,11 @@ export class ContactPanel extends Component {
             ["list", "kanban", "pivot", "graph", "calendar", "activity"].includes(viewType)
         );
         const options = isMultiRecordAction ? {} : { onClose: () => this._reload() };
-        this.action.doAction({ ...action, target: "new" }, options);
+        try {
+            await this.action.doAction({ ...action, target: "new" }, options);
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, { type: "danger" });
+        }
     }
 
     // Odoo no deja cambiar de vista (lista -> form) DENTRO de un diálogo
@@ -255,12 +263,18 @@ export class ContactPanel extends Component {
     // arrastrar y soltar, filtros, acciones en lote), sin perder el chat
     // en la pestaña original.
     async _openChannelAction(methodName) {
-        const result = await this.orm.call(
-            "chatroom.channel", methodName, [this.props.channelId]);
+        try {
+            const result = await this.orm.call(
+                "chatroom.channel", methodName, [this.props.channelId]);
         // Mantener las acciones multi-vista como popup nativo. El parche de
         // embedded_record_open.js permite cambiar lista/kanban y abrir el
         // formulario sin salir de este popup.
-        this._openDialog(result);
+            await this._openDialog(result);
+        } catch (error) {
+            this.notification.add(error.data ? error.data.message : error.message, {
+                type: "danger",
+            });
+        }
     }
 
     openLeads() {

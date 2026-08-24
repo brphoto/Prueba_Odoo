@@ -32,3 +32,62 @@ class TestChatroomAiAgent(TransactionCase):
         second = memory_model.remember('Cliente prefiere contacto por WhatsApp', channel=self.channel, memory_type='preference')
         self.assertEqual(first, second)
         self.assertEqual(memory_model.search_count([('channel_id', '=', self.channel.id)]), 1)
+
+    def test_sales_conversion_plan_is_approval_protected(self):
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            self.channel, task_type='sales_conversion',
+            prompt='Convierte esta conversación en una oportunidad y cotización.',
+        )
+        task.action_plan()
+        self.assertEqual(task.state, 'awaiting_approval')
+        self.assertEqual(
+            task.action_ids.mapped('key'),
+            ['search_catalog', 'classify_intent', 'create_lead', 'create_quotation', 'create_activity'],
+        )
+        self.assertFalse(task.action_ids.filtered(lambda action: action.key == 'search_catalog').requires_approval)
+        self.assertTrue(all(task.action_ids.filtered(lambda action: action.key not in ('classify_intent', 'search_catalog')).mapped('requires_approval')))
+
+    def test_automation_reports_execution_result(self):
+        automation = self.env['chatroom.ai.automation'].create({
+            'name': 'Prueba de seguimiento comercial',
+            'trigger': 'open_opportunity',
+            'task_type': 'followup',
+            'approval_required': True,
+            'max_tasks': 1,
+        })
+        notification = automation.action_run_now()
+        self.assertEqual(notification.get('tag'), 'display_notification')
+        self.assertGreaterEqual(automation.last_run_count, 0)
+        self.assertTrue(automation.last_run)
+        self.assertFalse(automation.last_error)
+
+    def test_commercial_automation_triggers_are_available(self):
+        automation_model = self.env['chatroom.ai.automation']
+        for trigger in ('open_opportunity', 'pending_quote', 'pending_activity'):
+            automation = automation_model.create({
+                'name': 'Prueba %s' % trigger,
+                'trigger': trigger,
+                'task_type': 'followup',
+                'approval_required': True,
+                'max_tasks': 1,
+            })
+            notification = automation.action_run_now()
+            self.assertEqual(notification.get('tag'), 'display_notification')
+            self.assertTrue(automation.last_run)
+
+    def test_contact_panel_actions_are_dialog_safe(self):
+        action_methods = {
+            'action_view_leads': 'crm.lead',
+            'action_view_sale_orders': 'sale.order',
+            'action_view_purchases': 'purchase.order',
+            'action_view_invoices': 'account.move',
+            'action_view_tasks': 'project.task',
+        }
+        for method_name, model_name in action_methods.items():
+            if model_name not in self.env:
+                continue
+            action = getattr(self.channel, method_name)()
+            self.assertEqual(action.get('type'), 'ir.actions.act_window')
+            self.assertEqual(action.get('target'), 'new')
+            self.assertTrue(action.get('views'))
+            self.assertIn((False, 'form'), action['views'])

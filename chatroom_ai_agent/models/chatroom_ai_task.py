@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import re
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -37,6 +38,7 @@ class ChatroomAiTask(models.Model):
         ('prepare_reply', 'Preparar respuesta'),
         ('followup', 'Preparar seguimiento'),
         ('collect_payment', 'Preparar cobranza'),
+        ('sales_conversion', 'Convertir conversación en venta'),
         ('daily_review', 'Revisión diaria'),
     ], string='Tipo de tarea', required=True, default='orchestrate', index=True)
     state = fields.Selection([
@@ -97,10 +99,50 @@ class ChatroomAiTask(models.Model):
             'channel': channel.display_name if channel else False,
             'partner': partner.display_name if partner else False,
             'messages': len(channel.message_ids) if channel and 'message_ids' in channel._fields else 0,
+            'recent_messages': [
+                {
+                    'direction': message.direction,
+                    'body': (message.body or '')[:500],
+                    'date': fields.Datetime.to_string(message.date) if message.date else False,
+                }
+                for message in (channel.message_ids.sorted('date')[-10:] if channel and 'message_ids' in channel._fields else [])
+                if message.body
+            ],
         }
         for field_name in ('rfm_category', 'rfm_score', 'rfm_total_amount', 'rfm_last_invoice_date'):
             if partner and field_name in partner._fields:
                 data[field_name] = partner[field_name]
+        if partner and 'crm.lead' in self.env and 'partner_id' in self.env['crm.lead']._fields:
+            opportunities = self.env['crm.lead'].search([
+                ('partner_id', '=', partner.id), ('type', '=', 'opportunity'), ('active', '=', True),
+            ], order='write_date desc, id desc', limit=10)
+            data['open_opportunities'] = [{
+                'id': lead.id,
+                'name': lead.display_name,
+                'stage': lead.stage_id.display_name if 'stage_id' in lead._fields and lead.stage_id else False,
+                'expected_revenue': lead.expected_revenue if 'expected_revenue' in lead._fields else 0,
+            } for lead in opportunities]
+        if partner and 'sale.order' in self.env:
+            orders = self.env['sale.order'].search([
+                ('partner_id', '=', partner.id), ('state', 'in', ('draft', 'sent', 'sale')),
+            ], order='date_order desc, id desc', limit=10)
+            data['sales_documents'] = [{
+                'id': order.id,
+                'name': order.name,
+                'state': order.state,
+                'amount_total': order.amount_total,
+            } for order in orders]
+        if partner and 'account.move' in self.env:
+            invoices = self.env['account.move'].search([
+                ('partner_id', '=', partner.id), ('move_type', '=', 'out_invoice'),
+                ('state', '=', 'posted'), ('payment_state', 'in', ('not_paid', 'partial')),
+            ], order='invoice_date_due asc, id desc', limit=10)
+            data['open_invoices'] = [{
+                'id': invoice.id,
+                'name': invoice.name,
+                'amount_residual': invoice.amount_residual,
+                'due_date': fields.Date.to_string(invoice.invoice_date_due) if invoice.invoice_date_due else False,
+            } for invoice in invoices]
         return data
 
     def _fallback_plan(self):
@@ -108,8 +150,19 @@ class ChatroomAiTask(models.Model):
         plans = {
             'classify_customer': [('classify_customer', 'Leer clasificación comercial del cliente')],
             'qualify_lead': [('classify_customer', 'Leer clasificación comercial del cliente'), ('create_lead', 'Crear o actualizar oportunidad')],
+            'sales_conversion': [
+                ('search_catalog', 'Buscar productos relacionados'),
+                ('classify_intent', 'Identificar intención comercial'),
+                ('create_lead', 'Crear oportunidad desde la conversación'),
+                ('create_quotation', 'Crear cotización para el cliente'),
+                ('create_activity', 'Registrar seguimiento comercial'),
+            ],
             'prepare_reply': [('classify_intent', 'Identificar intención'), ('prepare_reply', 'Preparar respuesta sin enviarla')],
-            'followup': [('classify_intent', 'Identificar intención'), ('prepare_reply', 'Preparar seguimiento personalizado')],
+            'followup': [
+                ('classify_intent', 'Identificar intención'),
+                ('prepare_reply', 'Preparar seguimiento personalizado'),
+                ('create_activity', 'Registrar seguimiento pendiente'),
+            ],
             'collect_payment': [('find_open_invoice', 'Consultar facturas pendientes'), ('send_payment_link', 'Generar y enviar link de pago')],
             'daily_review': [('classify_customer', 'Revisar clasificación de clientes'), ('classify_intent', 'Revisar intención de conversaciones')],
             'orchestrate': [('classify_customer', 'Revisar contexto comercial'), ('classify_intent', 'Identificar intención'), ('prepare_reply', 'Proponer siguiente acción')],
@@ -123,7 +176,8 @@ class ChatroomAiTask(models.Model):
             return False
         prompt = _('''Devuelve únicamente JSON válido con esta forma: {"actions":[{"key":"...","name":"..."}]}.
 Usa solo estas herramientas: classify_customer, classify_intent, prepare_reply, create_lead,
-find_open_invoice, prepare_payment_link, create_activity. No envíes mensajes ni ejecutes pagos.
+search_catalog, create_quotation, find_open_invoice, prepare_payment_link, create_activity. No envíes mensajes
+ni ejecutes pagos. La cotización y las actividades requieren aprobación humana.
 Solicitud: %s
 Contexto: %s''') % (self.prompt or '', self._json(context))
         try:
@@ -196,10 +250,60 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                 result['status'] = 'skipped'
                 result['reason'] = _('CRM o cliente no disponible.')
             else:
-                lead = self.env['crm.lead'].search([('partner_id', '=', partner.id), ('type', '=', 'opportunity'), ('active', '=', True)], limit=1)
+                action_result = channel.action_create_lead() if channel and hasattr(channel, 'action_create_lead') else False
+                lead = self.env['crm.lead'].browse(action_result.get('res_id')).exists() if action_result else self.env['crm.lead'].search([
+                    ('partner_id', '=', partner.id), ('type', '=', 'opportunity'), ('active', '=', True)], limit=1)
                 if not lead:
-                    lead = self.env['crm.lead'].create({'name': _('Oportunidad IA - %s') % partner.display_name, 'partner_id': partner.id, 'type': 'opportunity'})
+                    lead = self.env['crm.lead'].create({
+                        'name': _('Oportunidad IA - %s') % partner.display_name,
+                        'partner_id': partner.id, 'type': 'opportunity',
+                    })
                 result['lead_id'] = lead.id
+                result['lead_name'] = lead.display_name
+        elif action.key == 'search_catalog':
+            if 'product.template' not in self.env:
+                result['status'] = 'skipped'
+                result['reason'] = _('El catálogo de productos no está disponible.')
+            else:
+                message_text = ' '.join([
+                    self.prompt or '',
+                    ' '.join((message.body or '') for message in channel.message_ids if message.body) if channel else '',
+                ])
+                stopwords = {
+                    'para', 'como', 'esta', 'este', 'cliente', 'cotización', 'cotizacion',
+                    'producto', 'productos', 'quiero', 'necesito', 'desde', 'con', 'una', 'uno',
+                    'del', 'por', 'que', 'los', 'las', 'una', 'sus', 'the', 'and',
+                }
+                terms = [term for term in re.findall(r'[\wáéíóúñü]{3,}', message_text.lower()) if term not in stopwords]
+                products = self.env['product.template'].browse()
+                for term in terms[:3]:
+                    products |= self.env['product.template'].search([
+                        ('active', '=', True), '|', ('name', 'ilike', term), ('default_code', 'ilike', term),
+                    ], limit=5)
+                if not products:
+                    products = self.env['product.template'].search([('active', '=', True)], order='write_date desc, id desc', limit=5)
+                result['matches'] = [{
+                    'id': product.id,
+                    'name': product.display_name,
+                    'default_code': product.default_code or False,
+                    'list_price': product.list_price,
+                } for product in products[:10]]
+                result['search_terms'] = terms[:3]
+        elif action.key == 'create_quotation':
+            if 'sale.order' not in self.env or not channel or not partner:
+                result['status'] = 'skipped'
+                result['reason'] = _('Ventas, conversación o cliente no disponible.')
+            elif not hasattr(channel, 'action_create_quotation'):
+                result['status'] = 'skipped'
+                result['reason'] = _('El conector de ventas no está instalado.')
+            else:
+                action_result = channel.action_create_quotation()
+                order = self.env['sale.order'].browse(action_result.get('res_id')).exists()
+                if not order:
+                    result['status'] = 'skipped'
+                    result['reason'] = _('No se pudo crear la cotización.')
+                else:
+                    result.update({'order_id': order.id, 'order_name': order.name, 'state': order.state})
         elif action.key == 'find_open_invoice':
             if 'account.move' not in self.env or not partner:
                 result['invoices'] = []

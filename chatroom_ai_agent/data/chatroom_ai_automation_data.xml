@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="automation_daily_review" model="chatroom.ai.automation">
+        <field name="name">Revisión diaria de conversaciones</field>
+        <field name="trigger">daily_review</field>
+        <field name="task_type">daily_review</field>
+        <field name="approval_required">true</field>
+        <field name="max_tasks">20</field>
+        <field name="active">false</field>
+    </record>
+    <record id="automation_followup_open_conversations" model="chatroom.ai.automation">
+        <field name="name">Seguimiento de conversaciones activas</field>
+        <field name="trigger">open_conversation</field>
+        <field name="task_type">followup</field>
+        <field name="approval_required">true</field>
+        <field name="max_tasks">10</field>
+        <field name="active">false</field>
+    </record>
+    <record id="automation_overdue_invoices" model="chatroom.ai.automation">
+        <field name="name">Cobranza de facturas vencidas</field>
+        <field name="trigger">overdue_invoice</field>
+        <field name="task_type">collect_payment</field>
+        <field name="approval_required">true</field>
+        <field name="max_tasks">10</field>
+        <field name="active">false</field>
+    </record>
+    <record id="automation_open_opportunities" model="chatroom.ai.automation">
+        <field name="name">Seguimiento de oportunidades abiertas</field>
+        <field name="trigger">open_opportunity</field>
+        <field name="task_type">followup</field>
+        <field name="approval_required">true</field>
+        <field name="max_tasks">10</field>
+        <field name="active">false</field>
+    </record>
+    <record id="automation_pending_quotes" model="chatroom.ai.automation">
+        <field name="name">Seguimiento de cotizaciones pendientes</field>
+        <field name="trigger">pending_quote</field>
+        <field name="task_type">followup</field>
+        <field name="approval_required">true</field>
+        <field name="max_tasks">10</field>
+        <field name="active">false</field>
+    </record>
+    <record id="automation_pending_activities" model="chatroom.ai.automation">
+        <field name="name">Revisión de actividades vencidas</field>
+        <field name="trigger">pending_activity</field>
+        <field name="task_type">followup</field>
+        <field name="approval_required">true</field>
+        <field name="max_tasks">10</field>
+        <field name="active">false</field>
+    </record>
+</odoo>

@@ -12,12 +12,14 @@ patch(ContactPanel.prototype, {
             busy: false,
             task: false,
             error: "",
+            canUse: null,
         });
         onWillUpdateProps((nextProps) => {
             if (nextProps.channelId !== this.props.channelId) {
                 this.aiAgent.open = false;
                 this.aiAgent.task = false;
                 this.aiAgent.error = "";
+                this.aiAgent.canUse = null;
             }
         });
     },
@@ -46,6 +48,7 @@ patch(ContactPanel.prototype, {
             const data = await this.orm.call(
                 "chatroom.channel", "get_ai_agent_data", [this.props.channelId]);
             this.aiAgent.task = data?.task || false;
+            this.aiAgent.canUse = data?.can_use !== false;
         } catch (error) {
             this.aiAgent.error = error.data ? error.data.message : error.message;
         } finally {

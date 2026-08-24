@@ -11,7 +11,7 @@ class ResConfigSettings(models.TransientModel):
         help='Permite que las automatizaciones creen y ejecuten tareas según sus reglas.',
     )
     chatroom_ai_agent_require_approval = fields.Boolean(
-        string='Requerir aprobación humana', default=True,
+        string='Requerir aprobación para acciones sensibles', default=True,
         config_parameter='chatroom_ai_agent.require_approval',
         help='Las acciones que cambian datos o envían mensajes siempre conservan su aprobación propia.',
     )

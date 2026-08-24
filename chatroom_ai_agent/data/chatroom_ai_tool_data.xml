@@ -24,6 +24,18 @@
         <field name="model_name">crm.lead</field><field name="operation">create</field>
         <field name="requires_approval">true</field>
     </record>
+    <record id="tool_create_quotation" model="chatroom.ai.tool">
+        <field name="name">Crear cotización</field><field name="key">create_quotation</field>
+        <field name="description">Crea una cotización nativa de Ventas para el cliente de la conversación.</field>
+        <field name="model_name">sale.order</field><field name="operation">create</field>
+        <field name="requires_approval">true</field>
+    </record>
+    <record id="tool_search_catalog" model="chatroom.ai.tool">
+        <field name="name">Buscar en catálogo</field><field name="key">search_catalog</field>
+        <field name="description">Busca productos relacionados con la conversación sin modificar ventas.</field>
+        <field name="model_name">product.template</field><field name="operation">read</field>
+        <field name="requires_approval">false</field>
+    </record>
     <record id="tool_find_open_invoice" model="chatroom.ai.tool">
         <field name="name">Consultar facturas pendientes</field><field name="key">find_open_invoice</field>
         <field name="description">Consulta facturas publicadas con saldo pendiente.</field>
