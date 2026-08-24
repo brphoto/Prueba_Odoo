@@ -423,6 +423,38 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
         self.action_ids.filtered(lambda line: line.state == 'error').write({'state': 'pending', 'error_message': False})
         return True
 
+    def action_run_selected(self):
+        """Run only selected planned tasks and keep approval gates intact."""
+        planned = self.filtered(lambda task: task.state == 'planned')
+        completed = 0
+        failed = 0
+        for task in planned:
+            try:
+                with self.env.cr.savepoint():
+                    task.action_run()
+                completed += 1
+            except UserError:
+                failed += 1
+        skipped = len(self) - len(planned)
+        message = _('Ejecutadas: %s. Con error: %s. Omitidas por estado: %s.') % (completed, failed, skipped)
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {'title': _('Centro de control IA'), 'message': message, 'type': 'success' if not failed else 'warning', 'sticky': False},
+        }
+
+    def action_retry_selected(self):
+        """Prepare only selected failed tasks for another controlled run."""
+        failed = self.filtered(lambda task: task.state == 'failed')
+        failed.action_retry()
+        skipped = len(self) - len(failed)
+        message = _('Listas para reintentar: %s. Omitidas por estado: %s.') % (len(failed), skipped)
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {'title': _('Centro de control IA'), 'message': message, 'type': 'success', 'sticky': False},
+        }
+
     def action_cancel(self):
         self.write({'state': 'cancelled'})
         return True

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_chatroom_ai_usage" name="Consumo de IA" parent="chatroom_whatsapp.menu_chatroom_root" sequence="28" groups="base.group_system"/>
+    <menuitem id="menu_chatroom_ai_usage_snapshots" name="Resumen de consumo" parent="menu_chatroom_ai_usage" action="action_chatroom_ai_usage_snapshot" sequence="10"/>
+    <menuitem id="menu_chatroom_ai_provider_models" name="Modelos disponibles" parent="menu_chatroom_ai_usage" action="action_chatroom_ai_provider_model" sequence="20"/>
+</odoo>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.chatroom.ai.usage</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="chatroom_whatsapp.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='chatroom_ai_model']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>
+            <xpath expr="//block[.//field[@name='chatroom_ai_auto_classify']]" position="after">
+                <block title="Modelos y consumo de IA">
+                    <setting id="chatroom_ai_model_selector_setting"
+                             help="Selecciona un modelo sincronizado y evita escribir identificadores manualmente.">
+                        <field name="chatroom_ai_model_id" options="{'no_create': True}"/>
+                        <button name="action_sync_ai_models" type="object" string="Actualizar modelos" class="btn-secondary ms-2"/>
+                    </setting>
+                    <setting id="chatroom_ai_admin_api_key_setting"
+                             help="Clave administrativa separada para consultar uso y costos de la organizacion. Nunca se usa para responder mensajes.">
+                        <field name="chatroom_ai_admin_api_key" password="True"/>
+                    </setting>
+                    <setting id="chatroom_ai_usage_days_setting">
+                        <field name="chatroom_ai_usage_days"/>
+                    </setting>
+                    <setting id="chatroom_ai_monthly_budget_setting"
+                             help="Referencia local para comparar el gasto; no cambia los limites de OpenAI.">
+                        <field name="chatroom_ai_monthly_budget"/>
+                    </setting>
+                    <setting id="chatroom_ai_refresh_usage_setting"
+                             help="Consulta el costo oficial si hay Admin API Key; si no, muestra el consumo registrado localmente.">
+                        <button name="action_refresh_ai_usage" type="object" string="Actualizar consumo" class="btn-primary"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

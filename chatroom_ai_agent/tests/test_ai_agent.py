@@ -75,11 +75,29 @@ class TestChatroomAiAgent(TransactionCase):
             self.assertEqual(notification.get('tag'), 'display_notification')
             self.assertTrue(automation.last_run)
 
+    def test_bulk_controls_keep_state_gates(self):
+        planned = self.env['chatroom.ai.task'].create({
+            'name': 'Tarea planificada de prueba', 'task_type': 'orchestrate', 'state': 'planned',
+            'approval_required': False, 'channel_id': self.channel.id,
+        })
+        failed = self.env['chatroom.ai.task'].create({
+            'name': 'Tarea fallida de prueba', 'task_type': 'orchestrate', 'state': 'failed',
+            'approval_required': False, 'channel_id': self.channel.id,
+        })
+        run_notification = (planned | failed).action_run_selected()
+        self.assertEqual(run_notification.get('tag'), 'display_notification')
+        self.assertEqual(planned.state, 'done')
+        retry_notification = (planned | failed).action_retry_selected()
+        self.assertEqual(retry_notification.get('tag'), 'display_notification')
+        self.assertEqual(failed.state, 'planned')
+
     def test_agent_menu_is_exposed_from_chatroom_root(self):
         menu = self.env.ref('chatroom_ai_agent.menu_chatroom_ai_agent')
         self.assertEqual(menu.parent_id, self.env.ref('chatroom_whatsapp.menu_chatroom_root'))
         self.assertTrue(self.env.ref('chatroom_ai_agent.menu_chatroom_ai_tasks').action)
         self.assertTrue(self.env.ref('chatroom_ai_agent.menu_chatroom_ai_control').action)
+        self.assertTrue(self.env.ref('chatroom_ai_agent.menu_chatroom_ai_approvals').action)
+        self.assertTrue(self.env.ref('chatroom_ai_agent.menu_chatroom_ai_failed').action)
 
     def test_contact_panel_actions_are_dialog_safe(self):
         action_methods = {

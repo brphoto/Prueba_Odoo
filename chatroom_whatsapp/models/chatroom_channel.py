@@ -2017,6 +2017,18 @@ class ChatroomChannel(models.Model):
         if not isinstance(content, str) or not content.strip():
             raise UserError(_(
                 "El proveedor de IA no devolvió contenido utilizable."))
+        if 'chatroom.ai.usage.event' in self.env:
+            usage = payload.get('usage') or {}
+            input_tokens = int(usage.get('prompt_tokens') or usage.get('input_tokens') or 0)
+            output_tokens = int(usage.get('completion_tokens') or usage.get('output_tokens') or 0)
+            self.env['chatroom.ai.usage.event'].sudo().create({
+                'model': model,
+                'channel_id': self.id,
+                'input_tokens': input_tokens,
+                'output_tokens': output_tokens,
+                'total_tokens': int(usage.get('total_tokens') or input_tokens + output_tokens),
+                'success': True,
+            })
         return content.strip()
 
     def _ai_build_conversation(self, extra_system=None):

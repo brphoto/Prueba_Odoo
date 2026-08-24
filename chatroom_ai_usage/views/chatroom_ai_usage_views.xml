@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_ai_provider_model_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.provider.model.list</field>
+        <field name="model">chatroom.ai.provider.model</field>
+        <field name="arch" type="xml">
+            <list string="Modelos disponibles" decoration-success="recommended" decoration-muted="not active">
+                <field name="recommended" widget="boolean_toggle"/>
+                <field name="name"/>
+                <field name="provider" widget="badge"/>
+                <field name="owned_by" optional="hide"/>
+                <field name="supports_chat"/>
+                <field name="last_synced"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_provider_model_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.provider.model.form</field>
+        <field name="model">chatroom.ai.provider.model</field>
+        <field name="arch" type="xml">
+            <form string="Modelo de IA">
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="model_id"/>
+                            <field name="provider"/>
+                            <field name="owned_by"/>
+                        </group>
+                        <group>
+                            <field name="supports_chat"/>
+                            <field name="recommended"/>
+                            <field name="active"/>
+                            <field name="last_synced" readonly="1"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        Los modelos se sincronizan desde el proveedor configurado. Chatroom solo muestra como compatibles los modelos de texto detectados.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_usage_snapshot_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.usage.snapshot.list</field>
+        <field name="model">chatroom.ai.usage.snapshot</field>
+        <field name="arch" type="xml">
+            <list string="Consumo de IA" decoration-danger="state == 'error'" decoration-warning="state == 'partial'">
+                <field name="fetched_at"/>
+                <field name="period_start" optional="hide"/>
+                <field name="period_end" optional="hide"/>
+                <field name="state" widget="badge"/>
+                <field name="request_count"/>
+                <field name="input_tokens" optional="hide"/>
+                <field name="output_tokens" optional="hide"/>
+                <field name="total_tokens"/>
+                <field name="cost"/>
+                <field name="currency"/>
+                <field name="local_request_count" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_usage_snapshot_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.usage.snapshot.form</field>
+        <field name="model">chatroom.ai.usage.snapshot</field>
+        <field name="arch" type="xml">
+            <form string="Resumen de consumo de IA">
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <div class="alert alert-warning" role="alert" invisible="state != 'partial'">
+                        Este resumen contiene consumo local. Configura una Admin API Key para consultar los costos oficiales de la organizacion.
+                    </div>
+                    <div class="alert alert-danger" role="alert" invisible="state != 'error'"><field name="error_message"/></div>
+                    <group>
+                        <group>
+                            <field name="fetched_at" readonly="1"/>
+                            <field name="period_start" readonly="1"/>
+                            <field name="period_end" readonly="1"/>
+                            <field name="state" widget="badge" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="request_count" readonly="1"/>
+                            <field name="total_tokens" readonly="1"/>
+                            <field name="cost" readonly="1"/>
+                            <field name="currency" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Control local">
+                        <field name="local_request_count" readonly="1"/>
+                        <field name="local_total_tokens" readonly="1"/>
+                    </group>
+                    <group string="Solicitudes por modelo"><field name="model_breakdown" nolabel="1" readonly="1" widget="text"/></group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chatroom_ai_provider_model" model="ir.actions.act_window">
+        <field name="name">Modelos disponibles</field>
+        <field name="res_model">chatroom.ai.provider.model</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="action_chatroom_ai_usage_snapshot" model="ir.actions.act_window">
+        <field name="name">Consumo de IA</field>
+        <field name="res_model">chatroom.ai.usage.snapshot</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>
