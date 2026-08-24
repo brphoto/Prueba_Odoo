@@ -150,6 +150,28 @@
         <field name="name">chatroom.ai.quality.result.list</field><field name="model">chatroom.ai.quality.result</field>
         <field name="arch" type="xml"><list string="Historial de calidad"><field name="run_date"/><field name="test_id"/><field name="score"/><field name="state" widget="badge"/></list></field>
     </record>
+    <record id="view_chatroom_ai_sandbox_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.sandbox.list</field><field name="model">chatroom.ai.sandbox</field>
+        <field name="arch" type="xml"><list string="Simulador IA" decoration-success="state == 'done'" decoration-danger="state == 'error'">
+            <button name="action_run" type="object" icon="fa-play" title="Ejecutar sin enviar"/>
+            <field name="name"/><field name="channel_id"/><field name="task_type"/><field name="state" widget="badge"/>
+            <field name="model_used" optional="hide"/><field name="write_date"/>
+        </list></field>
+    </record>
+    <record id="view_chatroom_ai_sandbox_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.sandbox.form</field><field name="model">chatroom.ai.sandbox</field>
+        <field name="arch" type="xml"><form string="Simulador seguro de IA">
+            <header><button name="action_run" type="object" string="Probar IA (no enviar)" class="oe_highlight"/><field name="state" widget="statusbar"/></header>
+            <sheet><div class="alert alert-info" role="alert">Esta prueba solo consulta el modelo. No aprueba ni envia mensajes al cliente.</div>
+                <div class="oe_title"><h1><field name="name"/></h1></div>
+                <group><group><field name="channel_id"/><field name="task_type"/></group>
+                    <group><field name="model_used" readonly="1"/><field name="input_tokens" readonly="1"/><field name="output_tokens" readonly="1"/></group></group>
+                <group string="Instruccion"><field name="prompt" nolabel="1" placeholder="Ejemplo: responde con tono profesional y ofrece el siguiente paso..."/></group>
+                <group string="Resultado"><field name="output" nolabel="1" readonly="1" widget="text"/></group>
+                <group string="Error"><field name="error_message" nolabel="1" readonly="1"/></group>
+            </sheet>
+        </form></field>
+    </record>
     <record id="action_chatroom_ai_provider_model" model="ir.actions.act_window">
         <field name="name">Modelos disponibles</field>
         <field name="res_model">chatroom.ai.provider.model</field>
@@ -171,5 +193,9 @@
     <record id="action_chatroom_ai_quality_result" model="ir.actions.act_window">
         <field name="name">Historial de calidad</field><field name="res_model">chatroom.ai.quality.result</field>
         <field name="view_mode">list</field>
+    </record>
+    <record id="action_chatroom_ai_sandbox" model="ir.actions.act_window">
+        <field name="name">Simulador IA</field><field name="res_model">chatroom.ai.sandbox</field>
+        <field name="view_mode">list,form</field>
     </record>
 </odoo>

@@ -4,6 +4,7 @@
     <menuitem id="menu_chatroom_ai_control" name="Centro de control" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_control" sequence="5"/>
     <menuitem id="menu_chatroom_ai_approvals" name="Aprobaciones pendientes" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_approvals" sequence="6"/>
     <menuitem id="menu_chatroom_ai_failed" name="Tareas fallidas" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_failed" sequence="7"/>
+    <menuitem id="menu_chatroom_ai_suggestions" name="Sugerencias de IA" parent="menu_chatroom_ai_agent" action="chatroom_ai.action_chatroom_ai_suggestion" sequence="15"/>
     <menuitem id="menu_chatroom_ai_settings" name="Ajustes del agente IA" parent="menu_chatroom_ai_agent" action="base_setup.action_general_configuration" sequence="60" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>
     <menuitem id="menu_chatroom_ai_tasks" name="Tareas" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_task" sequence="10"/>
     <menuitem id="menu_chatroom_ai_automations" name="Automatizaciones" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_automation" sequence="20" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>

@@ -7,6 +7,10 @@
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
                 <app data-string="Agente IA" string="Agente IA" name="chatroom_ai_agent">
+                    <setting id="chatroom_ai_agent_open_control_setting"
+                             help="Abre directamente el tablero de tareas, aprobaciones y fallos del agente.">
+                        <button name="action_open_ai_agent_control" type="object" string="Abrir centro de control IA" class="btn-primary"/>
+                    </setting>
                     <block title="Operación autónoma">
                         <setting id="chatroom_ai_agent_enabled_setting"
                                  help="Activa los ciclos automáticos definidos en el menú Agente IA &gt; Automatizaciones.">

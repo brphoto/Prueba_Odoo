@@ -6,4 +6,5 @@
     <menuitem id="menu_chatroom_ai_usage_events" name="Actividad por solicitud" parent="menu_chatroom_ai_usage" action="action_chatroom_ai_usage_event" sequence="30"/>
     <menuitem id="menu_chatroom_ai_quality" name="Pruebas de calidad" parent="menu_chatroom_ai_usage" action="action_chatroom_ai_quality_test" sequence="40"/>
     <menuitem id="menu_chatroom_ai_quality_results" name="Historial de pruebas" parent="menu_chatroom_ai_usage" action="action_chatroom_ai_quality_result" sequence="50"/>
+    <menuitem id="menu_chatroom_ai_sandbox" name="Simulador IA (no envia)" parent="menu_chatroom_ai_usage" action="action_chatroom_ai_sandbox" sequence="60" groups="chatroom_ai.group_chatroom_ai_user"/>
 </odoo>

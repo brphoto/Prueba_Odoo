@@ -53,6 +53,10 @@
                              help="Consulta el costo oficial si hay Admin API Key; si no, muestra el consumo registrado localmente.">
                         <button name="action_refresh_ai_usage" type="object" string="Actualizar consumo" class="btn-primary"/>
                     </setting>
+                    <setting id="chatroom_ai_open_sandbox_setting"
+                             help="Prueba respuestas y resumenes con el contexto de una conversacion sin enviarlos.">
+                        <button name="action_open_ai_sandbox" type="object" string="Abrir simulador IA" class="btn-secondary"/>
+                    </setting>
                     <setting id="chatroom_ai_usage_auto_refresh_setting"
                              help="El resumen diario genera una actividad para los administradores cuando el presupuesto entra en alerta.">
                         <field name="chatroom_ai_usage_auto_refresh"/>

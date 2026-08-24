@@ -30,3 +30,6 @@ class ResConfigSettings(models.TransientModel):
         string='Maximo de acciones por tarea', default=8,
         config_parameter='chatroom_ai_agent.max_actions',
     )
+
+    def action_open_ai_agent_control(self):
+        return self.env.ref('chatroom_ai_agent.action_chatroom_ai_control').read()[0]

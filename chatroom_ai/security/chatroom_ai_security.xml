@@ -13,6 +13,11 @@
         <field name="name">Administrador IA</field><field name="privilege_id" ref="privilege_chatroom_ai"/>
         <field name="implied_ids" eval="[(4, ref('group_chatroom_ai_user'))]"/>
     </record>
+    <!-- El administrador tecnico debe poder usar y probar las sugerencias IA
+         sin tener que asignarse manualmente el grupo funcional. -->
+    <record id="base.group_system" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_chatroom_ai_manager'))]"/>
+    </record>
     <record id="chatroom_ai_suggestion_rule_user" model="ir.rule">
         <field name="name">Sugerencias IA asignadas al agente</field>
         <field name="model_id" ref="model_chatroom_ai_suggestion"/>
