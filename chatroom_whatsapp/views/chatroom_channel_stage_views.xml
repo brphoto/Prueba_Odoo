@@ -58,6 +58,6 @@
     </record>
 
     <menuitem id="menu_chatroom_config_stages" name="Etapas de conversaciones"
-              parent="menu_chatroom_config" action="action_chatroom_channel_stage"
+              parent="menu_chatroom_config_connection" action="action_chatroom_channel_stage"
               sequence="12" groups="chatroom_whatsapp.group_chatroom_manager"/>
 </odoo>

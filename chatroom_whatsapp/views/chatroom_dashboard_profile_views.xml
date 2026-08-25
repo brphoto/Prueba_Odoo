@@ -29,6 +29,6 @@
         <field name="view_mode">list,form</field>
     </record>
     <menuitem id="menu_chatroom_config_dashboard_profiles" name="Perfiles guardados"
-              parent="menu_chatroom_config" action="action_chatroom_dashboard_profile"
+              parent="menu_chatroom_config_analytics" action="action_chatroom_dashboard_profile"
               sequence="15" groups="chatroom_whatsapp.group_chatroom_manager"/>
 </odoo>

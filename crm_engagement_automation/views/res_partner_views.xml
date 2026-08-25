@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_engagement_automation" model="ir.ui.view">
+        <field name="name">res.partner.form.engagement.automation</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="crm_customer_intelligence.view_partner_form_sales_intelligence"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_open_engagement_events" type="object"
+                        class="oe_stat_button" icon="fa-calendar-check-o">
+                    <field name="engagement_event_count" widget="statinfo" string="Eventos"/>
+                </button>
+            </div>
+            <xpath expr="//page[@name='commercial_intelligence']/group" position="inside">
+                <group string="Automatizaciones y fechas importantes">
+                    <field name="engagement_birthday"/>
+                    <field name="engagement_note"/>
+                    <field name="engagement_event_count"/>
+                    <button name="action_open_engagement_events" type="object"
+                            string="Gestionar eventos y planes" class="btn-link"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -56,6 +56,6 @@
     </record>
 
     <menuitem id="menu_chatroom_config_dashboard_widgets" name="Widgets del dashboard"
-              parent="menu_chatroom_config" action="action_chatroom_dashboard_widget"
+              parent="menu_chatroom_config_analytics" action="action_chatroom_dashboard_widget"
               sequence="14" groups="chatroom_whatsapp.group_chatroom_manager"/>
 </odoo>

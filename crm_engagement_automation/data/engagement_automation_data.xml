@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="engagement_automation_birthday" model="crm.engagement.automation">
+        <field name="name">Cumpleaños de clientes</field>
+        <field name="source_type">birthday</field>
+        <field name="active">False</field>
+    </record>
+    <record id="engagement_step_birthday_activity" model="crm.engagement.automation.step">
+        <field name="automation_id" ref="crm_engagement_automation.engagement_automation_birthday"/>
+        <field name="name">Preparar felicitación</field>
+        <field name="sequence">10</field>
+        <field name="days_offset">-1</field>
+        <field name="channel">activity</field>
+        <field name="message_body">Preparar felicitación para ${partner_name}. Cumple años el ${event_date}.</field>
+        <field name="activity_summary">Preparar felicitación de cumpleaños</field>
+    </record>
+
+    <record id="engagement_automation_invoice_due" model="crm.engagement.automation">
+        <field name="name">Facturas próximas a vencer</field>
+        <field name="source_type">invoice_due</field>
+        <field name="only_customers">True</field>
+        <field name="active">False</field>
+    </record>
+    <record id="engagement_step_invoice_due_notification" model="crm.engagement.automation.step">
+        <field name="automation_id" ref="crm_engagement_automation.engagement_automation_invoice_due"/>
+        <field name="name">Aviso preventivo</field>
+        <field name="sequence">10</field>
+        <field name="days_offset">-7</field>
+        <field name="channel">notification</field>
+        <field name="message_body">La factura ${invoice_number} de ${partner_name} vence el ${event_date}. Saldo: ${invoice_amount}.</field>
+        <field name="activity_summary">Revisar factura próxima a vencer</field>
+    </record>
+
+    <record id="engagement_automation_custom_event" model="crm.engagement.automation">
+        <field name="name">Eventos y planes personalizados</field>
+        <field name="source_type">custom_event</field>
+        <field name="active">False</field>
+    </record>
+    <record id="engagement_step_custom_event_activity" model="crm.engagement.automation.step">
+        <field name="automation_id" ref="crm_engagement_automation.engagement_automation_custom_event"/>
+        <field name="name">Aviso de planificación</field>
+        <field name="sequence">10</field>
+        <field name="days_offset">-7</field>
+        <field name="channel">activity</field>
+        <field name="message_body">Recordatorio: ${event_name} para ${partner_name} está programado para ${event_date}. ${event_description}</field>
+        <field name="activity_summary">Preparar evento del cliente</field>
+    </record>
+</odoo>

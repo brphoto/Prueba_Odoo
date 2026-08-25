@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="ir_cron_process_engagement_automations" model="ir.cron">
+        <field name="name">Automatizaciones comerciales: procesar recordatorios</field>
+        <field name="model_id" ref="model_crm_engagement_automation"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_process_engagement_automations()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="nextcall" eval="(DateTime.now() + relativedelta(days=1)).replace(hour=7, minute=0, second=0)"/>
+    </record>
+</odoo>

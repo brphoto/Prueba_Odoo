@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_crm_engagement_automation_search" model="ir.ui.view">
+        <field name="name">crm.engagement.automation.search</field>
+        <field name="model">crm.engagement.automation</field>
+        <field name="arch" type="xml">
+            <search string="Automatizaciones comerciales">
+                <field name="name"/>
+                <field name="source_type"/>
+                <filter string="Activas" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Cumpleaños" name="birthday" domain="[('source_type', '=', 'birthday')]"/>
+                <filter string="Vencimientos" name="invoice_due" domain="[('source_type', '=', 'invoice_due')]"/>
+                <filter string="Eventos personalizados" name="custom_event" domain="[('source_type', '=', 'custom_event')]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_crm_engagement_automation_list" model="ir.ui.view">
+        <field name="name">crm.engagement.automation.list</field>
+        <field name="model">crm.engagement.automation</field>
+        <field name="arch" type="xml">
+            <list string="Automatizaciones comerciales">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="source_type"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="last_preview_count" string="Último resultado"/>
+                <field name="last_run"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_crm_engagement_automation_form" model="ir.ui.view">
+        <field name="name">crm.engagement.automation.form</field>
+        <field name="model">crm.engagement.automation</field>
+        <field name="arch" type="xml">
+            <form string="Automatización comercial">
+                <header>
+                    <button name="action_preview" type="object" string="Previsualizar" class="btn-secondary"/>
+                    <button name="action_run_now" type="object" string="Ejecutar ahora" class="btn-primary"
+                            groups="crm_engagement_automation.group_crm_engagement_manager"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1><field name="name" placeholder="Ej. Cumpleaños de clientes VIP"/></h1>
+                    </div>
+                    <group>
+                        <group string="Disparador">
+                            <field name="active" widget="boolean_toggle"/>
+                            <field name="source_type"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group string="Audiencia">
+                            <field name="only_customers"/>
+                            <field name="rfm_category_ids" widget="many2many_tags"/>
+                            <field name="tag_ids" widget="many2many_tags"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="reminders" string="Recordatorios">
+                            <div class="alert alert-info" role="alert">
+                                Usa valores negativos para avisar antes del evento: -14, -7, -1.
+                                Usa 0 el mismo día o valores positivos después del evento.
+                            </div>
+                            <field name="step_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="days_offset"/>
+                                    <field name="channel"/>
+                                    <field name="requires_approval"/>
+                                    <field name="activity_summary" optional="hide"/>
+                                    <field name="user_id" optional="hide"/>
+                                    <field name="whatsapp_template_name" optional="hide"/>
+                                </list>
+                                <form string="Recordatorio">
+                                    <group>
+                                        <group>
+                                            <field name="name"/>
+                                            <field name="sequence"/>
+                                            <field name="days_offset"/>
+                                            <field name="channel"/>
+                                            <field name="requires_approval"/>
+                                        </group>
+                                        <group>
+                                            <field name="activity_summary" invisible="channel != 'activity'"/>
+                                            <field name="activity_type_id" invisible="channel != 'activity'"/>
+                                            <field name="user_id" invisible="channel != 'activity'"/>
+                                            <field name="email_subject" invisible="channel != 'email'"/>
+                                            <field name="mail_template_id" invisible="channel != 'email'"/>
+                                            <field name="whatsapp_template_name" invisible="channel != 'whatsapp'"/>
+                                            <field name="whatsapp_template_language" invisible="channel != 'whatsapp'"/>
+                                        </group>
+                                    </group>
+                                    <separator string="Contenido personalizado"/>
+                                    <group string="Agregar datos automáticamente" col="2">
+                                        <field name="variable_to_insert" string="Selecciona un dato"/>
+                                        <div class="text-muted">
+                                            Selecciona un dato y se agregará automáticamente al mensaje.
+                                        </div>
+                                    </group>
+                                    <field name="message_body" placeholder="Escribe aquí el mensaje que recibirá el cliente..."/>
+                                    <group string="Vista previa" invisible="not message_body">
+                                        <field name="message_preview" nolabel="1" readonly="1"/>
+                                    </group>
+                                    <div class="text-muted" invisible="channel != 'whatsapp'">
+                                        Para WhatsApp se enviará la plantilla aprobada de Meta; el selector sirve como guía para los datos que deben mapearse en esa plantilla.
+                                    </div>
+                                </form>
+                            </field>
+                        </page>
+                        <page name="help" string="Cómo funciona">
+                            <p>El sistema revisa diariamente los eventos y crea una ejecución única por cliente, recordatorio y evento.</p>
+                            <p>Las ejecuciones fallidas quedan registradas para corregir datos y reintentar sin duplicar mensajes.</p>
+                            <p>WhatsApp utiliza únicamente plantillas aprobadas por Meta y respeta la configuración del canal.</p>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_crm_engagement_automation" model="ir.actions.act_window">
+        <field name="name">Automatizaciones comerciales</field>
+        <field name="res_model">crm.engagement.automation</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_crm_engagement_automation_search"/>
+    </record>
+
+    <record id="view_crm_engagement_event_search" model="ir.ui.view">
+        <field name="name">crm.engagement.event.search</field>
+        <field name="model">crm.engagement.event</field>
+        <field name="arch" type="xml">
+            <search string="Eventos del cliente">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="event_type"/>
+                <field name="event_date"/>
+                <filter string="Próximos" name="upcoming" domain="[('event_date', '&gt;=', context_today())]"/>
+                <filter string="Activos" name="active" domain="[('active', '=', True)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_crm_engagement_event_list" model="ir.ui.view">
+        <field name="name">crm.engagement.event.list</field>
+        <field name="model">crm.engagement.event</field>
+        <field name="arch" type="xml">
+            <list string="Eventos del cliente">
+                <field name="event_date" decoration-danger="event_date &lt; context_today()"/>
+                <field name="name"/>
+                <field name="event_type"/>
+                <field name="partner_id"/>
+                <field name="lead_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_crm_engagement_event_form" model="ir.ui.view">
+        <field name="name">crm.engagement.event.form</field>
+        <field name="model">crm.engagement.event</field>
+        <field name="arch" type="xml">
+            <form string="Evento del cliente">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" placeholder="Ej. Renovación del plan anual"/>
+                            <field name="event_type"/>
+                            <field name="event_date"/>
+                        </group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="lead_id" domain="[('partner_id', '=', partner_id)]"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <field name="description" placeholder="Contexto que se incluirá en el recordatorio..."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_crm_engagement_event" model="ir.actions.act_window">
+        <field name="name">Eventos del cliente</field>
+        <field name="res_model">crm.engagement.event</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_crm_engagement_event_search"/>
+        <field name="context">{'search_default_active': 1, 'search_default_upcoming': 1}</field>
+    </record>
+
+    <record id="view_crm_engagement_execution_list" model="ir.ui.view">
+        <field name="name">crm.engagement.execution.list</field>
+        <field name="model">crm.engagement.execution</field>
+        <field name="arch" type="xml">
+            <list string="Historial de recordatorios">
+                <field name="scheduled_date"/>
+                <field name="event_date"/>
+                <field name="event_name"/>
+                <field name="partner_id"/>
+                <field name="automation_id"/>
+                <field name="channel"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'sent'"
+                       decoration-warning="state in ('queued', 'pending_approval')"
+                       decoration-danger="state == 'failed'"/>
+                <field name="error_message" optional="hide"/>
+                <button name="action_retry" type="object" string="Reintentar"
+                        invisible="state != 'failed'" groups="crm_engagement_automation.group_crm_engagement_manager"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_crm_engagement_execution" model="ir.actions.act_window">
+        <field name="name">Historial de recordatorios</field>
+        <field name="res_model">crm.engagement.execution</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <menuitem id="menu_crm_engagement_root" name="Automatizaciones comerciales"
+              parent="crm_customer_intelligence.menu_crm_intelligence_root" sequence="35"/>
+    <menuitem id="menu_crm_engagement_automation" name="Reglas y recordatorios"
+              parent="menu_crm_engagement_root" action="action_crm_engagement_automation" sequence="10"/>
+    <menuitem id="menu_crm_engagement_event" name="Eventos personalizados"
+              parent="menu_crm_engagement_root" action="action_crm_engagement_event" sequence="20"/>
+    <menuitem id="menu_crm_engagement_execution" name="Historial de envíos"
+              parent="menu_crm_engagement_root" action="action_crm_engagement_execution" sequence="30"/>
+
+</odoo>

@@ -71,28 +71,42 @@
               parent="menu_chatroom_root" sequence="90"
               groups="chatroom_whatsapp.group_chatroom_manager"/>
 
+    <!-- La configuración se divide por objetivo para que un usuario no
+         tenga que recorrer una lista plana de opciones técnicas. -->
+    <menuitem id="menu_chatroom_config_connection" name="Conexión y canales"
+              parent="menu_chatroom_config" sequence="5"
+              groups="chatroom_whatsapp.group_chatroom_manager"/>
+
+    <menuitem id="menu_chatroom_config_analytics" name="Indicadores y reportes"
+              parent="menu_chatroom_config" sequence="30"
+              groups="chatroom_whatsapp.group_chatroom_manager"/>
+
+    <menuitem id="menu_chatroom_config_tools" name="Herramientas de prueba"
+              parent="menu_chatroom_config" sequence="90"
+              groups="chatroom_whatsapp.group_chatroom_manager"/>
+
     <menuitem id="menu_chatroom_config_settings" name="Ajustes"
-              parent="menu_chatroom_config" sequence="10"
+              parent="menu_chatroom_config_connection" sequence="10"
               action="base_setup.action_general_configuration"/>
 
     <menuitem id="menu_chatroom_config_onboarding" name="Configuración guiada"
-              parent="menu_chatroom_config" sequence="5"
+              parent="menu_chatroom_config_connection" sequence="5"
               action="action_chatroom_onboarding_wizard"/>
 
     <menuitem id="menu_chatroom_config_templates" name="Plantillas de WhatsApp"
-              parent="menu_chatroom_config" sequence="20"
+              parent="menu_chatroom_config_connection" sequence="20"
               action="action_chatroom_template"/>
 
     <menuitem id="menu_chatroom_config_numbers" name="Líneas de WhatsApp"
-              parent="menu_chatroom_config" sequence="15"
+              parent="menu_chatroom_config_connection" sequence="15"
               action="action_chatroom_whatsapp_number"/>
 
     <menuitem id="menu_chatroom_config_tags" name="Etiquetas"
-              parent="menu_chatroom_config" sequence="17"
+              parent="menu_chatroom_config_connection" sequence="25"
               action="action_chatroom_tag"/>
 
     <menuitem id="menu_chatroom_config_demo" name="Generar conversaciones de prueba"
-              parent="menu_chatroom_config" sequence="99"
+              parent="menu_chatroom_config_tools" sequence="10"
               action="action_chatroom_generate_demo"/>
 
 </odoo>

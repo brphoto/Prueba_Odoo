@@ -32,6 +32,6 @@
         <field name="view_mode">list,form</field>
     </record>
     <menuitem id="menu_chatroom_config_kpi_targets" name="Objetivos por agente y línea"
-              parent="menu_chatroom_config" action="action_chatroom_kpi_target"
+              parent="menu_chatroom_config_analytics" action="action_chatroom_kpi_target"
               sequence="16" groups="chatroom_whatsapp.group_chatroom_manager"/>
 </odoo>

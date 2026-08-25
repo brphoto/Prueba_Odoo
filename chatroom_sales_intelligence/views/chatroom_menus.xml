@@ -12,23 +12,30 @@
     <menuitem id="menu_chatroom_commercial" name="Inteligencia comercial"
               parent="chatroom_whatsapp.menu_chatroom_root" sequence="25" active="False"/>
 
+    <menuitem id="menu_chatroom_commercial_panels" name="Paneles comerciales"
+              parent="menu_chatroom_commercial" sequence="5"/>
+    <menuitem id="menu_chatroom_commercial_automation" name="Automatización y campañas"
+              parent="menu_chatroom_commercial" sequence="20"/>
+    <menuitem id="menu_chatroom_commercial_knowledge" name="Conocimiento"
+              parent="menu_chatroom_commercial" sequence="30"/>
+
     <record id="action_my_followups_dashboard" model="ir.actions.client">
         <field name="name">Mis pendientes</field>
         <field name="tag">chatroom_sales_intelligence.my_followups_dashboard</field>
     </record>
 
     <menuitem id="menu_my_followups_dashboard" name="Mis pendientes"
-              parent="menu_chatroom_commercial"
+              parent="menu_chatroom_commercial_panels"
               action="action_my_followups_dashboard"
               sequence="6"/>
 
     <menuitem id="menu_rfm_dashboard" name="Dashboard RFM y KPIs"
-              parent="menu_chatroom_commercial"
+              parent="menu_chatroom_commercial_panels"
               action="crm_customer_intelligence.action_customer_intelligence_dashboard"
               sequence="7"/>
 
     <menuitem id="menu_integrated_pipeline_health" name="Salud del pipeline"
-              parent="menu_chatroom_commercial"
+              parent="menu_chatroom_commercial_panels"
               action="crm_stagnation_intelligence.action_crm_integrated_pipeline_health"
               sequence="7"/>
 
@@ -38,7 +45,12 @@
     </record>
 
     <menuitem id="menu_executive_dashboard" name="Tablero ejecutivo"
-              parent="menu_chatroom_commercial"
+              parent="menu_chatroom_commercial_panels"
               action="action_executive_dashboard" sequence="8"/>
+
+    <menuitem id="menu_engagement_automation" name="Automatizaciones comerciales"
+              parent="menu_chatroom_commercial_automation"
+              action="crm_engagement_automation.action_crm_engagement_automation"
+              sequence="9"/>
 
 </odoo>

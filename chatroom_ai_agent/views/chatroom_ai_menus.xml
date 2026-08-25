@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <menuitem id="menu_chatroom_ai_agent" name="Agente IA" parent="chatroom_whatsapp.menu_chatroom_root" sequence="25" groups="chatroom_ai_agent.group_chatroom_ai_agent_user"/>
-    <menuitem id="menu_chatroom_ai_dashboard" name="Resumen ejecutivo" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_dashboard" sequence="1"/>
-    <menuitem id="menu_chatroom_ai_control" name="Centro de control" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_control" sequence="5"/>
-    <menuitem id="menu_chatroom_ai_approvals" name="Aprobaciones pendientes" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_approvals" sequence="6"/>
-    <menuitem id="menu_chatroom_ai_failed" name="Tareas fallidas" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_failed" sequence="7"/>
-    <menuitem id="menu_chatroom_ai_suggestions" name="Sugerencias de IA" parent="menu_chatroom_ai_agent" action="chatroom_ai.action_chatroom_ai_suggestion" sequence="15"/>
-    <menuitem id="menu_chatroom_ai_settings" name="Ajustes del agente IA" parent="menu_chatroom_ai_agent" action="base_setup.action_general_configuration" sequence="60" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>
-    <menuitem id="menu_chatroom_ai_tasks" name="Tareas" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_task" sequence="10"/>
-    <menuitem id="menu_chatroom_ai_automations" name="Automatizaciones" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_automation" sequence="20" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>
-    <menuitem id="menu_chatroom_ai_memory" name="Memoria empresarial" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_memory" sequence="30"/>
-    <menuitem id="menu_chatroom_ai_tools" name="Herramientas autorizadas" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_tool" sequence="40" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>
-    <menuitem id="menu_chatroom_ai_audit" name="Auditoría" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_audit" sequence="50" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>
+    <menuitem id="menu_chatroom_ai_operation" name="Operación diaria" parent="menu_chatroom_ai_agent" sequence="5"/>
+    <menuitem id="menu_chatroom_ai_configuration" name="Configuración y automatización" parent="menu_chatroom_ai_agent" sequence="20" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>
+    <menuitem id="menu_chatroom_ai_governance" name="Memoria y auditoría" parent="menu_chatroom_ai_agent" sequence="30"/>
+    <menuitem id="menu_chatroom_ai_dashboard" name="Resumen ejecutivo" parent="menu_chatroom_ai_operation" action="action_chatroom_ai_dashboard" sequence="1"/>
+    <menuitem id="menu_chatroom_ai_control" name="Centro de control" parent="menu_chatroom_ai_operation" action="action_chatroom_ai_control" sequence="5"/>
+    <menuitem id="menu_chatroom_ai_approvals" name="Aprobaciones pendientes" parent="menu_chatroom_ai_operation" action="action_chatroom_ai_approvals" sequence="6"/>
+    <menuitem id="menu_chatroom_ai_failed" name="Tareas fallidas" parent="menu_chatroom_ai_operation" action="action_chatroom_ai_failed" sequence="7"/>
+    <menuitem id="menu_chatroom_ai_tasks" name="Tareas" parent="menu_chatroom_ai_operation" action="action_chatroom_ai_task" sequence="10"/>
+    <menuitem id="menu_chatroom_ai_suggestions" name="Sugerencias de IA" parent="menu_chatroom_ai_operation" action="chatroom_ai.action_chatroom_ai_suggestion" sequence="15"/>
+    <menuitem id="menu_chatroom_ai_automations" name="Automatizaciones" parent="menu_chatroom_ai_configuration" action="action_chatroom_ai_automation" sequence="20" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>
+    <menuitem id="menu_chatroom_ai_tools" name="Herramientas autorizadas" parent="menu_chatroom_ai_configuration" action="action_chatroom_ai_tool" sequence="40" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>
+    <menuitem id="menu_chatroom_ai_settings" name="Ajustes del agente IA" parent="menu_chatroom_ai_configuration" action="base_setup.action_general_configuration" sequence="60" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>
+    <menuitem id="menu_chatroom_ai_memory" name="Memoria empresarial" parent="menu_chatroom_ai_governance" action="action_chatroom_ai_memory" sequence="30"/>
+    <menuitem id="menu_chatroom_ai_audit" name="Auditoría" parent="menu_chatroom_ai_governance" action="action_chatroom_ai_audit" sequence="50" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>
 </odoo>

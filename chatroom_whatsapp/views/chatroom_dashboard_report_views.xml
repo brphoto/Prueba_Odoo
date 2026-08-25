@@ -38,7 +38,7 @@
     </record>
 
     <menuitem id="menu_chatroom_config_dashboard_report" name="Reporte gerencial"
-              parent="menu_chatroom_config" action="action_chatroom_dashboard_report_wizard"
+              parent="menu_chatroom_config_analytics" action="action_chatroom_dashboard_report_wizard"
               sequence="14" groups="chatroom_whatsapp.group_chatroom_manager"/>
 
     <template id="chatroom_dashboard_report">

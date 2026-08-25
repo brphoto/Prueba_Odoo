@@ -64,6 +64,6 @@
     </record>
 
     <menuitem id="menu_chatroom_config_kpis" name="KPIs de Chatroom"
-              parent="menu_chatroom_config" action="action_chatroom_kpi_definition"
+              parent="menu_chatroom_config_analytics" action="action_chatroom_kpi_definition"
               sequence="13" groups="chatroom_whatsapp.group_chatroom_manager"/>
 </odoo>
