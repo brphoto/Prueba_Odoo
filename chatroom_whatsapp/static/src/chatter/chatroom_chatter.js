@@ -1,6 +1,13 @@
 /** @odoo-module **/
 
-import { Component, onWillStart, onWillUpdateProps, useState } from "@odoo/owl";
+import {
+    Component,
+    onMounted,
+    onWillStart,
+    onWillUnmount,
+    onWillUpdateProps,
+    useState,
+} from "@odoo/owl";
 import { Chatter } from "@mail/chatter/web_portal/chatter";
 import { patch } from "@web/core/utils/patch";
 import { useService } from "@web/core/utils/hooks";
@@ -21,6 +28,7 @@ export class ChatroomChatter extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.notification = useService("notification");
+        this.busService = useService("bus_service");
         this.state = useState({
             loading: true,
             error: false,
@@ -28,8 +36,22 @@ export class ChatroomChatter extends Component {
             partnerId: false,
             channels: [],
             selectedChannelId: false,
+            relatedRecords: [],
+            totalUnread: 0,
+            aiOpen: false,
+            aiBusy: false,
+            aiAction: "summary",
+            aiError: "",
         });
+        this._onBusNotification = this._onBusNotification.bind(this);
         onWillStart(() => this.loadContext());
+        onMounted(() => {
+            this.busService.addChannel("chatroom_whatsapp_global");
+            this.busService.addEventListener("notification", this._onBusNotification);
+        });
+        onWillUnmount(() => {
+            this.busService.removeEventListener("notification", this._onBusNotification);
+        });
     }
 
     async loadContext() {
@@ -41,10 +63,15 @@ export class ChatroomChatter extends Component {
                 "get_chatter_context",
                 [this.props.model, Number(this.props.resId)]
             );
+            const previousChannelId = this.state.selectedChannelId;
             this.state.partnerId = context.partner_id || false;
             this.state.partnerName = context.partner_name || "";
             this.state.channels = context.channels || [];
-            this.state.selectedChannelId = this.state.channels[0]?.id || false;
+            this.state.relatedRecords = context.related_records || [];
+            this.state.totalUnread = context.total_unread || 0;
+            this.state.selectedChannelId = this.state.channels.some(
+                (channel) => channel.id === previousChannelId
+            ) ? previousChannelId : (this.state.channels[0]?.id || false);
         } catch (error) {
             // El chatter nunca debe romperse por una regla de acceso de
             // Chatroom. En ese caso se muestra un estado discreto y se
@@ -52,6 +79,8 @@ export class ChatroomChatter extends Component {
             this.state.error = true;
             this.state.channels = [];
             this.state.partnerId = false;
+            this.state.relatedRecords = [];
+            this.state.totalUnread = 0;
         } finally {
             this.state.loading = false;
         }
@@ -63,6 +92,12 @@ export class ChatroomChatter extends Component {
 
     get channelCount() {
         return this.state.channels.length;
+    }
+
+    get selectedChannel() {
+        return this.state.channels.find(
+            (channel) => channel.id === this.state.selectedChannelId
+        );
     }
 
     channelLabel(channel) {
@@ -83,6 +118,125 @@ export class ChatroomChatter extends Component {
 
     async openConversation(channel) {
         this.state.selectedChannelId = channel.id;
+        this.state.aiError = "";
+    }
+
+    async openNewConversation() {
+        if (!this.state.partnerId) {
+            return;
+        }
+        try {
+            await this.action.doAction(
+                "chatroom_whatsapp.action_chatroom_new_conversation_wizard",
+                {
+                    additionalContext: { default_partner_id: this.state.partnerId },
+                    onClose: () => this.loadContext(),
+                }
+            );
+        } catch (error) {
+            this.notification.add("No se pudo iniciar una conversación.", {
+                type: "danger",
+            });
+        }
+    }
+
+    async openRelated(record) {
+        try {
+            await this.action.doAction({
+                type: "ir.actions.act_window",
+                name: record.label,
+                res_model: record.model,
+                res_id: record.id,
+                views: [[false, "form"]],
+                view_mode: "form",
+                target: "new",
+            });
+        } catch (error) {
+            this.notification.add("No se pudo abrir el registro relacionado.", {
+                type: "danger",
+            });
+        }
+    }
+
+    toggleAi() {
+        this.state.aiOpen = !this.state.aiOpen;
+        this.state.aiError = "";
+    }
+
+    async runAiAction() {
+        const channel = this.selectedChannel;
+        const methods = {
+            summary: "action_ai_summarize",
+            reply: "action_ai_suggest_reply",
+            intent: "action_ai_classify_intent",
+            analysis: "action_ai_analyze",
+            next_action: "action_ai_next_action",
+        };
+        const method = methods[this.state.aiAction];
+        if (!channel || !method) {
+            return;
+        }
+        this.state.aiBusy = true;
+        this.state.aiError = "";
+        try {
+            await this.orm.call("chatroom.channel", method, [channel.id]);
+            await this.loadContext();
+        } catch (error) {
+            this.state.aiError = error?.data?.message || error?.message
+                || "No se pudo consultar la IA.";
+        } finally {
+            this.state.aiBusy = false;
+        }
+    }
+
+    async sendAiSuggestion() {
+        const channel = this.selectedChannel;
+        if (!channel?.ai_suggested_reply) {
+            return;
+        }
+        this.state.aiBusy = true;
+        this.state.aiError = "";
+        try {
+            await this.orm.call("chatroom.channel", "action_send_ai_suggestion", [channel.id]);
+            await this.loadContext();
+        } catch (error) {
+            this.state.aiError = error?.data?.message || error?.message
+                || "No se pudo enviar la sugerencia.";
+        } finally {
+            this.state.aiBusy = false;
+        }
+    }
+
+    async createAiActivity() {
+        const channel = this.selectedChannel;
+        if (!channel?.ai_next_action) {
+            return;
+        }
+        this.state.aiBusy = true;
+        this.state.aiError = "";
+        try {
+            await this.orm.call(
+                "chatroom.channel",
+                "action_create_followup_activity",
+                [channel.id, channel.ai_next_action]
+            );
+            await this.loadContext();
+            this.notification.add("Actividad creada con la próxima acción de IA.", {
+                type: "success",
+            });
+        } catch (error) {
+            this.state.aiError = error?.data?.message || error?.message
+                || "No se pudo crear la actividad.";
+        } finally {
+            this.state.aiBusy = false;
+        }
+    }
+
+    _onBusNotification({ detail: notifications }) {
+        if (notifications.some(({ type }) =>
+            type === "chatroom.message/new" || type === "chatroom.message/inbound")) {
+            this.loadContext();
+        }
     }
 
     async openAllConversations() {

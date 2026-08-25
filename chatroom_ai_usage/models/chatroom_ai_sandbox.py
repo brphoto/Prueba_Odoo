@@ -12,7 +12,8 @@ class ChatroomAiSandbox(models.Model):
     channel_id = fields.Many2one('chatroom.channel', string='Contexto de conversacion')
     task_type = fields.Selection([
         ('reply', 'Respuesta'), ('summary', 'Resumen'),
-        ('classification', 'Clasificacion'), ('agent', 'Agente'),
+        ('classification', 'Clasificacion'), ('next_action', 'Proxima accion'),
+        ('agent', 'Agente'),
     ], string='Tipo de tarea', default='reply', required=True)
     prompt = fields.Text(string='Instruccion', required=True)
     output = fields.Text(string='Resultado', readonly=True)

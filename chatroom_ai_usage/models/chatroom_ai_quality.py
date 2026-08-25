@@ -13,7 +13,8 @@ class ChatroomAiQualityTest(models.Model):
     channel_id = fields.Many2one('chatroom.channel', string='Conversacion de prueba', required=True)
     task_type = fields.Selection([
         ('reply', 'Respuesta'), ('summary', 'Resumen'),
-        ('classification', 'Clasificacion'), ('agent', 'Agente'),
+        ('classification', 'Clasificacion'), ('next_action', 'Proxima accion'),
+        ('agent', 'Agente'),
     ], string='Tipo de prueba', default='reply', required=True)
     prompt = fields.Text(string='Instruccion adicional')
     expected_keywords = fields.Char(string='Palabras esperadas', help='Separalas por coma para medir cobertura basica.')

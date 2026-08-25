@@ -10,7 +10,7 @@ import pytz
 import requests
 
 from odoo import _, api, fields, models, tools
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
@@ -109,7 +109,14 @@ class ChatroomChannel(models.Model):
          ('soporte', "Soporte"),
          ('queja', "Queja"),
          ('otro', "Otro")],
-        string="Intención (IA)", tracking=True)
+       string="Intención (IA)", tracking=True)
+    ai_next_action = fields.Text(string="Próxima acción IA")
+    ai_sentiment = fields.Selection(
+        [('positive', 'Positivo'), ('neutral', 'Neutral'), ('negative', 'Negativo')],
+        string="Sentimiento (IA)", tracking=True)
+    ai_urgency = fields.Selection(
+        [('low', 'Baja'), ('normal', 'Normal'), ('high', 'Alta'), ('critical', 'Crítica')],
+        string="Urgencia (IA)", tracking=True)
     company_id = fields.Many2one(
         'res.company', default=lambda self: self.env.company)
     tag_ids = fields.Many2many(
@@ -2082,6 +2089,57 @@ class ChatroomChannel(models.Model):
             raise UserError(_("No se pudo generar el resumen con IA: %s") % exc)
         return True
 
+    def action_ai_classify_intent(self):
+        """Classify the conversation without sending anything to the client."""
+        for channel in self:
+            channel.ai_intent = channel._ai_classify_intent()
+        return True
+
+    def action_ai_analyze(self):
+        """Extract operational signals in one supervised IA request."""
+        for channel in self:
+            system_prompt = _(
+                "Analiza esta conversacion y responde SOLO con JSON valido, "
+                "sin markdown, con esta estructura exacta: "
+                '{"intent":"consulta|venta|soporte|queja|otro",'
+                '"sentiment":"positive|neutral|negative",'
+                '"urgency":"low|normal|high|critical"}. '
+                "No inventes informacion.")
+            raw = channel._ai_chat_completion(
+                channel._ai_build_conversation(extra_system=system_prompt),
+                task_type='classification')
+            match = re.search(r'\{.*\}', raw or '', re.DOTALL)
+            try:
+                values = json.loads(match.group(0) if match else raw)
+            except (ValueError, AttributeError, TypeError):
+                values = {}
+            valid_intents = dict(channel._fields['ai_intent'].selection)
+            valid_sentiments = dict(channel._fields['ai_sentiment'].selection)
+            valid_urgencies = dict(channel._fields['ai_urgency'].selection)
+            channel.write({
+                'ai_intent': values.get('intent') if values.get('intent') in valid_intents else 'otro',
+                'ai_sentiment': values.get('sentiment') if values.get('sentiment') in valid_sentiments else 'neutral',
+                'ai_urgency': values.get('urgency') if values.get('urgency') in valid_urgencies else 'normal',
+            })
+        return True
+
+    def action_ai_next_action(self):
+        """Suggest one concrete next step for the assigned agent."""
+        self.ensure_one()
+        system_prompt = _(
+            "Determina la proxima accion comercial para esta conversacion. "
+            "Responde en espanol con una sola accion concreta, breve y "
+            "ejecutable por un agente humano. No inventes datos ni prometas "
+            "acciones que no aparecen en la conversacion.")
+        try:
+            self.ai_next_action = self._ai_chat_completion(
+                self._ai_build_conversation(extra_system=system_prompt),
+                task_type='next_action')
+        except (requests.RequestException, KeyError, IndexError) as exc:
+            _logger.error("Error consultando IA para proxima accion: %s", exc)
+            raise UserError(_("No se pudo generar la proxima accion con IA: %s") % exc)
+        return True
+
     def _ai_classify_intent(self):
         self.ensure_one()
         system_prompt = _(
@@ -2363,17 +2421,26 @@ class ChatroomChannel(models.Model):
         rights and record rules are intentionally preserved.
         """
         if not model_name or model_name not in self.env or not record_id:
-            return {'partner_id': False, 'partner_name': False, 'channels': []}
+            return {
+                'partner_id': False, 'partner_name': False, 'channels': [],
+                'related_records': [], 'total_unread': 0,
+            }
 
         model = self.env[model_name]
         record = model.browse(int(record_id)).exists()
         if not record:
-            return {'partner_id': False, 'partner_name': False, 'channels': []}
+            return {
+                'partner_id': False, 'partner_name': False, 'channels': [],
+                'related_records': [], 'total_unread': 0,
+            }
         record.check_access('read')
 
         partner = record if model_name == 'res.partner' else self._partner_from_record(record)
         if not partner:
-            return {'partner_id': False, 'partner_name': False, 'channels': []}
+            return {
+                'partner_id': False, 'partner_name': False, 'channels': [],
+                'related_records': [], 'total_unread': 0,
+            }
 
         channels = self.search(
             [('partner_id', '=', partner.id)],
@@ -2385,13 +2452,59 @@ class ChatroomChannel(models.Model):
             'last_message_date', 'unread_count', 'message_count', 'state',
             'manual_urgent', 'is_pinned', 'is_favorite', 'partner_id',
             'assigned_user_id', 'assigned_user_initials', 'assigned_user_color',
-            'stage_name',
+            'stage_name', 'ai_summary', 'ai_suggested_reply', 'ai_intent',
+            'ai_next_action', 'ai_sentiment', 'ai_urgency', 'ai_paused',
         ]
         return {
             'partner_id': partner.id,
             'partner_name': partner.display_name,
             'channels': channels.read(fields_to_read),
+            'total_unread': sum(channels.mapped('unread_count')),
+            'related_records': self._get_chatter_related_records(partner),
         }
+
+    @api.model
+    def _get_chatter_related_records(self, partner):
+        """Return a small, permission-aware quick-access list for the tab."""
+        specs = [
+            (
+                'crm.lead', 'Oportunidades', 'fa-star',
+                [('partner_id', '=', partner.id), ('type', '=', 'opportunity'),
+                 ('active', '=', True)],
+                'write_date desc, id desc',
+            ),
+            (
+                'sale.order', 'Ventas', 'fa-file-text-o',
+                [('partner_id', '=', partner.id)],
+                'date_order desc, id desc',
+            ),
+            (
+                'purchase.order', 'Compras', 'fa-shopping-cart',
+                [('partner_id', '=', partner.id)],
+                'date_order desc, id desc',
+            ),
+            (
+                'account.move', 'Facturas', 'fa-usd',
+                [('partner_id', '=', partner.id), ('move_type', '=', 'out_invoice')],
+                'invoice_date desc, id desc',
+            ),
+        ]
+        result = []
+        for model_name, label, icon, domain, order in specs:
+            if model_name not in self.env:
+                continue
+            try:
+                records = self.env[model_name].search(domain, order=order, limit=3)
+            except (AccessError, UserError):
+                continue
+            result.extend({
+                'model': model_name,
+                'id': rec.id,
+                'name': rec.display_name,
+                'label': label,
+                'icon': icon,
+            } for rec in records)
+        return result[:10]
 
     @api.model
     def _partner_from_record(self, record):

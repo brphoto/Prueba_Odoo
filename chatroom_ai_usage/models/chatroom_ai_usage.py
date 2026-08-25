@@ -17,7 +17,8 @@ class ChatroomAiUsageEvent(models.Model):
     model = fields.Char(string='Modelo', index=True)
     task_type = fields.Selection([
         ('general', 'General'), ('reply', 'Respuesta'), ('summary', 'Resumen'),
-        ('classification', 'Clasificacion'), ('agent', 'Agente'),
+        ('classification', 'Clasificacion'), ('next_action', 'Proxima accion'),
+        ('agent', 'Agente'),
     ], string='Tipo de tarea', default='general', index=True)
     channel_id = fields.Many2one('chatroom.channel', string='Conversacion', ondelete='set null', index=True)
     input_tokens = fields.Integer(string='Tokens de entrada')

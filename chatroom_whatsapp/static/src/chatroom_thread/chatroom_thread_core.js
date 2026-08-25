@@ -117,6 +117,9 @@ export class ChatroomThreadCore extends Component {
             scheduleDate: "",
             aiPaused: false,
             manualUrgent: false,
+            messageSearchOpen: false,
+            messageSearch: "",
+            newMessages: 0,
         });
 
         this._shouldScroll = true;
@@ -171,6 +174,44 @@ export class ChatroomThreadCore extends Component {
         return this.props.channelId;
     }
 
+    get visibleMessages() {
+        const query = (this.state.messageSearch || "").trim().toLowerCase();
+        if (!query) {
+            return this.state.messages;
+        }
+        return this.state.messages.filter((message) =>
+            (message.body || "").toLowerCase().includes(query)
+            || (message.author_name || "").toLowerCase().includes(query)
+        );
+    }
+
+    get messageSearchCount() {
+        return this.state.messageSearch ? this.visibleMessages.length : 0;
+    }
+
+    toggleMessageSearch() {
+        this.state.messageSearchOpen = !this.state.messageSearchOpen;
+        if (!this.state.messageSearchOpen) {
+            this.state.messageSearch = "";
+        }
+    }
+
+    clearMessageSearch() {
+        this.state.messageSearch = "";
+    }
+
+    onMessagesScroll() {
+        if (this._isNearBottom()) {
+            this.state.newMessages = 0;
+        }
+    }
+
+    scrollToNewMessages() {
+        this.state.newMessages = 0;
+        this._shouldScroll = true;
+        this._scrollToBottom();
+    }
+
     _onAiUseResponse(ev) {
         const detail = ev.detail || {};
         if (detail.channelId !== this.channelId || !detail.text) {
@@ -206,6 +247,9 @@ export class ChatroomThreadCore extends Component {
         this.state.tagPickerOpen = false;
         this.state.scheduleOpen = false;
         this.state.scheduleDate = "";
+        this.state.messageSearchOpen = false;
+        this.state.messageSearch = "";
+        this.state.newMessages = 0;
         if (!channelId) {
             this.state.loading = false;
             this.state.messages = [];
@@ -249,7 +293,8 @@ export class ChatroomThreadCore extends Component {
              "manual_urgent",
              "next_activity_id", "next_activity_summary", "next_activity_date_deadline",
              "next_activity_overdue", "next_activity_user_id", "calendar_installed",
-             "whatsapp_number_id", "tag_ids", "ai_paused"]
+             "whatsapp_number_id", "tag_ids", "ai_paused",
+             "ai_sentiment", "ai_urgency"]
         );
         this.state.channelName = channel.display_name;
         this.state.partnerId = channel.partner_id ? channel.partner_id[0] : false;
@@ -272,6 +317,8 @@ export class ChatroomThreadCore extends Component {
         this.state.whatsappNumberId = channel.whatsapp_number_id ? channel.whatsapp_number_id[0] : false;
         this.state.channelTagIds = channel.tag_ids || [];
         this.state.aiPaused = channel.ai_paused;
+        this.state.aiSentiment = channel.ai_sentiment || false;
+        this.state.aiUrgency = channel.ai_urgency || false;
 
         if (this.state.partnerId) {
             const [partner] = await this.orm.read(
@@ -528,6 +575,8 @@ export class ChatroomThreadCore extends Component {
             this.state.loading = false;
             return;
         }
+        const previousCount = this.state.messages.length;
+        const wasNearBottom = this._isNearBottom() || !previousCount;
         const [messages, notes] = await Promise.all([
             this.orm.searchRead(
                 "chatroom.message",
@@ -560,7 +609,9 @@ export class ChatroomThreadCore extends Component {
         this.state.messages = [...messageItems, ...noteItems].sort(
             (a, b) => (a.dateObj || 0) - (b.dateObj || 0));
         this.state.loading = false;
-        this._shouldScroll = true;
+        const addedMessages = Math.max(this.state.messages.length - previousCount, 0);
+        this.state.newMessages = wasNearBottom ? 0 : this.state.newMessages + addedMessages;
+        this._shouldScroll = wasNearBottom;
 
         const hasUnread = messages.some((m) => m.direction === "inbound" && m.state !== "read");
         if (hasUnread) {
@@ -578,13 +629,13 @@ export class ChatroomThreadCore extends Component {
             && a.getDate() === b.getDate();
     }
 
-    isNewDay(index) {
+    isNewDay(index, messages = this.state.messages) {
         if (index === 0) {
             return true;
         }
         return !this.isSameDay(
-            this.state.messages[index].dateObj,
-            this.state.messages[index - 1].dateObj
+            messages[index].dateObj,
+            messages[index - 1].dateObj
         );
     }
 
@@ -782,6 +833,14 @@ export class ChatroomThreadCore extends Component {
 
     closeLightbox() {
         this.state.lightboxUrl = false;
+    }
+
+    _isNearBottom() {
+        const el = this.messagesRef.el;
+        if (!el) {
+            return true;
+        }
+        return el.scrollHeight - el.scrollTop - el.clientHeight < 90;
     }
 
     _scrollToBottom() {

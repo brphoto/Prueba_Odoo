@@ -2,22 +2,35 @@
 <templates xml:space="preserve">
 
     <t t-name="chatroom_whatsapp.ChatroomChatter" owl="1">
-        <section class="o-chatroom-chatter p-3">
+        <section class="o-chatroom-chatter p-2">
             <div class="o-chatroom-chatter__heading d-flex align-items-center justify-content-between gap-2">
                 <div>
                     <div class="fw-bold">
                         <i class="fa fa-comments-o me-2" aria-hidden="true"/>
                         Chatroom
                     </div>
-                    <small class="text-muted" t-if="state.partnerName">
-                        Conversaciones de <t t-esc="state.partnerName"/>
+                    <small class="text-muted o-chatroom-chatter__partner" t-if="state.partnerName">
+                        <t t-esc="state.partnerName"/>
                     </small>
                 </div>
-                <button t-if="hasChannels" type="button"
-                        class="btn btn-sm btn-outline-secondary"
-                        t-on-click="openAllConversations">
-                    Ver todas
-                </button>
+                <div class="d-flex align-items-center gap-2">
+                    <span t-if="state.totalUnread" class="badge text-bg-success rounded-pill"
+                          title="Conversaciones sin leer">
+                        <t t-esc="state.totalUnread"/>
+                    </span>
+                    <button t-if="state.partnerId" type="button"
+                            class="btn btn-sm btn-light o-chatroom-chatter__icon-button"
+                            title="Nueva conversación" aria-label="Nueva conversación"
+                            t-on-click="openNewConversation">
+                        <i class="fa fa-plus"/>
+                    </button>
+                    <button t-if="hasChannels" type="button"
+                            class="btn btn-sm btn-light o-chatroom-chatter__icon-button"
+                            title="Ver todas las conversaciones" aria-label="Ver todas las conversaciones"
+                            t-on-click="openAllConversations">
+                        <i class="fa fa-list"/>
+                    </button>
+                </div>
             </div>
 
             <div t-if="state.loading" class="o-chatroom-chatter__state text-muted">
@@ -32,7 +45,76 @@
                 Este contacto todavía no tiene conversaciones en Chatroom.
             </div>
             <div t-else="" class="o-chatroom-chatter__workspace">
-                <div class="o-chatroom-chatter__list">
+                <div t-if="state.relatedRecords.length" class="o-chatroom-chatter__related">
+                    <span class="text-muted small me-1">Accesos rápidos</span>
+                    <t t-foreach="state.relatedRecords" t-as="record" t-key="record.model + '-' + record.id">
+                        <button type="button" class="btn btn-sm btn-light o-chatroom-chatter__related-button"
+                                t-on-click="() => this.openRelated(record)" t-att-title="record.name">
+                            <i t-attf-class="fa {{record.icon}} me-1" aria-hidden="true"/>
+                            <t t-esc="record.label"/> · <t t-esc="record.name"/>
+                        </button>
+                    </t>
+                </div>
+                <div t-if="selectedChannel" class="o-chatroom-chatter__ai">
+                    <button type="button" class="o-chatroom-chatter__ai-heading"
+                            t-on-click="toggleAi" aria-controls="chatroom-chatter-ai-panel">
+                        <span><i class="fa fa-magic me-2" aria-hidden="true"/> Inteligencia IA</span>
+                        <i t-att-class="state.aiOpen ? 'fa fa-chevron-up' : 'fa fa-chevron-down'" aria-hidden="true"/>
+                    </button>
+                    <div t-if="state.aiOpen" id="chatroom-chatter-ai-panel" class="o-chatroom-chatter__ai-body">
+                        <div class="input-group input-group-sm">
+                            <select class="form-select" t-model="state.aiAction">
+                                <option value="summary">Resumen de conversación</option>
+                                <option value="reply">Sugerencia de respuesta</option>
+                                <option value="intent">Clasificar intención</option>
+                                <option value="analysis">Analizar intención, sentimiento y urgencia</option>
+                                <option value="next_action">Próxima acción</option>
+                            </select>
+                            <button type="button" class="btn btn-primary" t-on-click="runAiAction"
+                                    t-att-disabled="state.aiBusy">
+                                <i t-if="state.aiBusy" class="fa fa-spinner fa-spin"/>
+                                <i t-else="" class="fa fa-play"/>
+                                Ejecutar
+                            </button>
+                        </div>
+                        <div t-if="state.aiError" class="alert alert-warning py-2 mt-2 mb-0" role="alert">
+                            <t t-esc="state.aiError"/>
+                        </div>
+                        <div t-if="selectedChannel.ai_summary" class="small mt-2">
+                            <strong>Resumen:</strong> <t t-esc="selectedChannel.ai_summary"/>
+                        </div>
+                        <div t-if="selectedChannel.ai_intent" class="small mt-2">
+                            <strong>Intención:</strong> <t t-esc="selectedChannel.ai_intent"/>
+                        </div>
+                        <div t-if="selectedChannel.ai_sentiment || selectedChannel.ai_urgency" class="small mt-2">
+                            <strong>Señales:</strong>
+                            <span t-if="selectedChannel.ai_sentiment" class="badge text-bg-light ms-1">
+                                <t t-esc="selectedChannel.ai_sentiment"/>
+                            </span>
+                            <span t-if="selectedChannel.ai_urgency" class="badge text-bg-warning ms-1">
+                                <t t-esc="selectedChannel.ai_urgency"/>
+                            </span>
+                        </div>
+                        <div t-if="selectedChannel.ai_next_action" class="small mt-2">
+                            <strong>Próxima acción:</strong> <t t-esc="selectedChannel.ai_next_action"/>
+                            <button type="button" class="btn btn-sm btn-outline-primary d-block mt-2"
+                                    t-on-click="createAiActivity" t-att-disabled="state.aiBusy">
+                                <i class="fa fa-calendar-plus-o me-1"/> Crear actividad
+                            </button>
+                        </div>
+                        <div t-if="selectedChannel.ai_suggested_reply" class="small mt-2">
+                            <strong>Sugerencia:</strong>
+                            <div class="o-chatroom-chatter__ai-suggestion">
+                                <t t-esc="selectedChannel.ai_suggested_reply"/>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-success mt-2"
+                                    t-on-click="sendAiSuggestion" t-att-disabled="state.aiBusy">
+                                <i class="fa fa-send me-1"/> Enviar sugerencia
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div t-if="channelCount > 1" class="o-chatroom-chatter__list o-chatroom-chatter__list--compact">
                 <t t-foreach="state.channels" t-as="channel" t-key="channel.id">
                     <button type="button" class="o-chatroom-chatter__conversation"
                             t-att-class="{'o-chatroom-chatter__conversation--selected': state.selectedChannelId === channel.id}"
@@ -57,6 +139,15 @@
                         <i class="fa fa-chevron-right text-muted" aria-hidden="true"/>
                     </button>
                 </t>
+                </div>
+                <div t-if="channelCount > 1 &amp;&amp; selectedChannel" class="o-chatroom-chatter__selected-bar">
+                    <span class="o-chatroom-chatter__icon" aria-hidden="true">
+                        <i class="fa fa-whatsapp" t-if="selectedChannel.channel_type === 'whatsapp'"/>
+                        <i class="fa fa-comments-o" t-else=""/>
+                    </span>
+                    <strong class="text-truncate" t-esc="selectedChannel.display_name"/>
+                    <span t-if="selectedChannel.unread_count" class="badge text-bg-success rounded-pill"
+                          t-esc="selectedChannel.unread_count"/>
                 </div>
                 <div t-if="state.selectedChannelId" class="o-chatroom-chatter__thread">
                     <ChatroomThreadCore

@@ -30,6 +30,10 @@
                             <field name="chatroom_ai_model_classification_id" options="{'no_create': True}"/>
                         </div>
                         <div class="row mt-2">
+                            <label for="chatroom_ai_model_next_action_id" class="col-lg-4 o_light_label"/>
+                            <field name="chatroom_ai_model_next_action_id" options="{'no_create': True}"/>
+                        </div>
+                        <div class="row mt-2">
                             <label for="chatroom_ai_model_agent_id" class="col-lg-4 o_light_label"/>
                             <field name="chatroom_ai_model_agent_id" options="{'no_create': True}"/>
                         </div>

@@ -24,6 +24,14 @@
                 <div class="o_chatroom_header_info">
                     <div class="o_chatroom_header_name" t-esc="state.channelName"/>
                     <div class="o_chatroom_header_channel" t-esc="state.channelType"/>
+                    <div t-if="state.aiSentiment || state.aiUrgency" class="o_chatroom_ai_signals">
+                        <span t-if="state.aiSentiment" class="o_chatroom_ai_signal">
+                            <i class="fa fa-smile-o me-1"/><t t-esc="state.aiSentiment"/>
+                        </span>
+                        <span t-if="state.aiUrgency" class="o_chatroom_ai_signal o_chatroom_ai_signal_urgency">
+                            <i class="fa fa-bolt me-1"/><t t-esc="state.aiUrgency"/>
+                        </span>
+                    </div>
                     <button t-attf-class="o_chatroom_activity_pill {{ state.activity and state.activity.overdue ? 'o_overdue' : '' }}"
                             title="Abrir planificador de actividades"
                             t-on-click.stop="toggleActivityMenu">
@@ -161,20 +169,44 @@
                 <button class="btn btn-sm btn-light" t-on-click="openSendTemplate">Enviar plantilla</button>
             </div>
 
-            <div class="o_chatroom_thread_messages" t-ref="messages">
+            <div class="o_chatroom_message_tools" t-if="!state.loading and state.messages.length">
+                <button class="btn btn-sm btn-link" type="button"
+                        title="Buscar en la conversación" aria-label="Buscar en la conversación"
+                        t-on-click="toggleMessageSearch">
+                    <i class="fa fa-search"/>
+                </button>
+                <div t-if="state.messageSearchOpen" class="o_chatroom_message_search">
+                    <input type="search" class="form-control form-control-sm"
+                           placeholder="Buscar mensajes..." t-model="state.messageSearch"/>
+                    <button t-if="state.messageSearch" type="button" class="btn btn-sm btn-link"
+                            title="Limpiar búsqueda" t-on-click="clearMessageSearch">
+                        <i class="fa fa-times"/>
+                    </button>
+                    <span t-if="state.messageSearch" class="text-muted small">
+                        <t t-esc="messageSearchCount"/>
+                    </span>
+                </div>
+                <button t-if="state.newMessages" type="button" class="btn btn-sm btn-primary o_chatroom_new_messages ms-auto"
+                        t-on-click="scrollToNewMessages">
+                    <i class="fa fa-arrow-down me-1"/> Nuevos (<t t-esc="state.newMessages"/>)
+                </button>
+            </div>
+
+            <div class="o_chatroom_thread_messages" t-ref="messages" t-on-scroll="onMessagesScroll">
                 <t t-if="state.loading">
                     <div class="o_chatroom_loading">
                         <i class="fa fa-spin fa-circle-o-notch"/>
                     </div>
                 </t>
-                <t t-elif="!state.messages.length">
+                <t t-elif="!state.messages.length || !visibleMessages.length">
                     <div class="o_chatroom_empty text-muted">
-                        Aún no hay mensajes en esta conversación.
+                        <t t-if="state.messageSearch">No se encontraron mensajes.</t>
+                        <t t-else="">Aún no hay mensajes en esta conversación.</t>
                     </div>
                 </t>
                 <t t-else="">
-                    <t t-foreach="state.messages" t-as="message" t-key="message.id">
-                        <div class="o_chatroom_date_separator" t-if="isNewDay(message_index)">
+                    <t t-foreach="visibleMessages" t-as="message" t-key="message.id">
+                        <div class="o_chatroom_date_separator" t-if="isNewDay(message_index, visibleMessages)">
                             <span t-esc="dateSeparatorLabel(message.dateObj)"/>
                         </div>
                         <div class="o_chatroom_note_bubble" t-if="message.isNote">

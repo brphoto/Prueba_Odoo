@@ -11,9 +11,29 @@
     max-height: 52vh;
     overflow-y: auto;
 
+    &__workspace {
+        display: flex;
+        flex-direction: column;
+    }
+
     &__heading {
-        padding-bottom: .75rem;
+        min-height: 2.25rem;
+        padding-bottom: .4rem;
         border-bottom: 1px solid var(--border-color, #dee2e6);
+    }
+
+    &__partner {
+        display: block;
+        max-width: 20rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__icon-button {
+        width: 2rem;
+        height: 2rem;
+        padding: 0;
     }
 
     &__state {
@@ -21,16 +41,103 @@
         text-align: center;
     }
 
+    &__related {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .35rem;
+        padding: .7rem 0 .15rem;
+        max-height: 7rem;
+        overflow-y: auto;
+        order: 3;
+    }
+
+    &__related-button {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        border: 1px solid var(--border-color, #dee2e6);
+    }
+
+    &__ai {
+        margin-top: .7rem;
+        border: 1px solid var(--border-color, #dee2e6);
+        border-radius: .5rem;
+        overflow: hidden;
+        order: 2;
+    }
+
+    &__ai-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: .6rem .75rem;
+        border: 0;
+        color: var(--o-brand-odoo, #714b67);
+        background: var(--o-webclient-background-color, #f8f9fa);
+        font-weight: 600;
+        text-align: left;
+    }
+
+    &__ai-body {
+        padding: .65rem .75rem .75rem;
+        background: var(--o-view-background-color, #fff);
+    }
+
+    &__ai-suggestion {
+        margin-top: .3rem;
+        padding: .55rem .65rem;
+        border-left: 3px solid var(--o-brand-odoo, #714b67);
+        background: var(--o-webclient-background-color, #f8f9fa);
+        white-space: pre-wrap;
+    }
+
     &__list {
         display: flex;
         flex-direction: column;
         gap: .5rem;
         padding-top: .75rem;
+        order: 0;
+
+        &--compact {
+            gap: .25rem;
+            padding-top: .4rem;
+
+            .o-chatroom-chatter__conversation {
+                min-height: 2.6rem;
+                padding: .35rem .5rem;
+                border-radius: .35rem;
+
+                .o-chatroom-chatter__icon {
+                    flex-basis: 1.7rem;
+                    width: 1.7rem;
+                    height: 1.7rem;
+                }
+
+                .o-chatroom-chatter__body > span:nth-child(2),
+                .o-chatroom-chatter__body > span:nth-child(3) {
+                    display: none !important;
+                }
+            }
+        }
+    }
+
+    &__selected-bar {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        min-height: 2.2rem;
+        padding: .35rem .15rem .25rem;
+        color: var(--o-brand-odoo, #714b67);
+        order: 0;
     }
 
     &__thread {
-        margin-top: .85rem;
-        min-height: 360px;
+        margin-top: .35rem;
+        min-height: 0;
+        order: 1;
 
         .o_chatroom_thread {
             width: 100%;

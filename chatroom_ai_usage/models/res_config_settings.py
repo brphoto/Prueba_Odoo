@@ -21,6 +21,10 @@ class ResConfigSettings(models.TransientModel):
         'chatroom.ai.provider.model', string='Modelo para clasificacion',
         domain=[('active', '=', True), ('supports_chat', '=', True)],
     )
+    chatroom_ai_model_next_action_id = fields.Many2one(
+        'chatroom.ai.provider.model', string='Modelo para proxima accion',
+        domain=[('active', '=', True), ('supports_chat', '=', True)],
+    )
     chatroom_ai_model_agent_id = fields.Many2one(
         'chatroom.ai.provider.model', string='Modelo para agente',
         domain=[('active', '=', True), ('supports_chat', '=', True)],
@@ -58,6 +62,7 @@ class ResConfigSettings(models.TransientModel):
             'chatroom_ai_model_reply_id': 'chatroom_whatsapp.ai_model_reply_id',
             'chatroom_ai_model_summary_id': 'chatroom_whatsapp.ai_model_summary_id',
             'chatroom_ai_model_classification_id': 'chatroom_whatsapp.ai_model_classification_id',
+            'chatroom_ai_model_next_action_id': 'chatroom_whatsapp.ai_model_next_action_id',
             'chatroom_ai_model_agent_id': 'chatroom_whatsapp.ai_model_agent_id',
             'chatroom_ai_fallback_model_id': 'chatroom_whatsapp.ai_fallback_model_id',
         }
@@ -76,6 +81,7 @@ class ResConfigSettings(models.TransientModel):
             'chatroom_whatsapp.ai_model_reply_id': self.chatroom_ai_model_reply_id.id,
             'chatroom_whatsapp.ai_model_summary_id': self.chatroom_ai_model_summary_id.id,
             'chatroom_whatsapp.ai_model_classification_id': self.chatroom_ai_model_classification_id.id,
+            'chatroom_whatsapp.ai_model_next_action_id': self.chatroom_ai_model_next_action_id.id,
             'chatroom_whatsapp.ai_model_agent_id': self.chatroom_ai_model_agent_id.id,
             'chatroom_whatsapp.ai_fallback_model_id': self.chatroom_ai_fallback_model_id.id,
         }

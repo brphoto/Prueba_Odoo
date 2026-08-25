@@ -35,6 +35,7 @@ class ChatroomChannel(models.Model):
             'reply': 'chatroom_whatsapp.ai_model_reply_id',
             'summary': 'chatroom_whatsapp.ai_model_summary_id',
             'classification': 'chatroom_whatsapp.ai_model_classification_id',
+            'next_action': 'chatroom_whatsapp.ai_model_next_action_id',
             'agent': 'chatroom_whatsapp.ai_model_agent_id',
         }
         selected_id = icp.get_param(param_by_task.get(task_type, 'chatroom_whatsapp.ai_model_id'))

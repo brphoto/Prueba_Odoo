@@ -95,6 +95,25 @@
     }
 }
 
+.o_chatroom_ai_signals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+    font-size: 11px;
+}
+
+.o_chatroom_ai_signal {
+    padding: 1px 6px;
+    border-radius: 10px;
+    color: #fff;
+    background: rgba(255, 255, 255, .18);
+}
+
+.o_chatroom_ai_signal_urgency {
+    background: rgba(245, 158, 11, .85);
+}
+
 .o_chatroom_thread_mobile_menu_btn {
     display: none;
 }
@@ -843,6 +862,36 @@
     display: flex;
     align-items: flex-end;
     gap: 6px;
+}
+
+.o_chatroom_message_tools {
+    display: flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 2px 8px;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    background: var(--o-view-background-color, #fff);
+}
+
+.o_chatroom_message_search {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1 1 auto;
+    max-width: 360px;
+}
+
+.o_chatroom_message_search .form-control {
+    min-width: 0;
+    border-radius: 16px;
+}
+
+.o_chatroom_new_messages {
+    position: sticky;
+    bottom: 12px;
+    align-self: center;
+    z-index: 2;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .15);
 }
 
 .o_chatroom_quick_buttons_panel {
