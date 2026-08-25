@@ -38,6 +38,11 @@
                         <tr><td class="label">Estado:</td><td t-esc="dict(channel._fields['state'].selection).get(channel.state)"/></tr>
                         <tr><td class="label">Agente asignado:</td><td t-esc="channel.assigned_user_id.name or '-'"/></tr>
                     </table>
+                    <t t-set="report_data" t-value="channel.get_transcript_report_data()"/>
+                    <p t-if="report_data['truncated']" class="text-muted">
+                        Mostrando los <span t-esc="report_data['shown']"/> mensajes más recientes de
+                        <span t-esc="report_data['total']"/>. El límite se puede cambiar en Ajustes de Chatroom.
+                    </p>
                     <table class="chatroom-report-table">
                         <thead>
                             <tr>
@@ -48,7 +53,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <t t-foreach="channel.get_transcript_lines()" t-as="line">
+                            <t t-foreach="report_data['lines']" t-as="line">
                                 <tr>
                                     <td class="date" t-esc="line['date']"/>
                                     <td class="direction" t-esc="line['direction']"/>

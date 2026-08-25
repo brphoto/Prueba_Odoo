@@ -1556,6 +1556,45 @@ class ChatroomChannel(models.Model):
         self._notify_thread_update()
         return message
 
+    def _transcript_pdf_limit(self):
+        """Devuelve un límite seguro para el PDF sin permitir valores extremos."""
+        raw_limit = self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_whatsapp.transcript_pdf_max_messages', '500')
+        try:
+            return max(50, min(int(raw_limit), 5000))
+        except (TypeError, ValueError):
+            return 500
+
+    def get_transcript_report_data(self, limit=None):
+        """Prepara el historial del PDF con una consulta acotada."""
+        self.ensure_one()
+        limit = limit or self._transcript_pdf_limit()
+        message_model = self.env['chatroom.message']
+        total = message_model.search_count([('channel_id', '=', self.id)])
+        messages = message_model.search(
+            [('channel_id', '=', self.id)],
+            order='date desc, id desc',
+            limit=limit,
+        ).sorted('date')
+        message_type_labels = dict(message_model._fields['message_type'].selection)
+        lines = []
+        for message in messages:
+            body = message.body or _(["[%s]"]) % message_type_labels.get(
+                message.message_type, message.message_type)
+            lines.append({
+                'date': message.date.strftime('%d/%m/%Y %H:%M') if message.date else '',
+                'direction': _("Cliente") if message.direction == 'inbound' else _("Nosotros"),
+                'sender': message.sender_user_id.name or '',
+                'body': body,
+            })
+        return {
+            'lines': lines,
+            'total': total,
+            'shown': len(lines),
+            'truncated': total > len(lines),
+            'limit': limit,
+        }
+
     def get_transcript_lines(self):
         """Historial de mensajes ya formateado para mostrar (usado por
         el reporte PDF): se arma acá en vez de en el template QWeb para

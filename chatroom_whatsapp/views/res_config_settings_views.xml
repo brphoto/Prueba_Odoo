@@ -103,6 +103,10 @@
                                  help="Envía una alerta push y un correo al asesor cuando el cliente espera respuesta.">
                             <field name="chatroom_waiting_response_minutes"/>
                         </setting>
+                        <setting id="chatroom_transcript_pdf_max_messages_setting"
+                                 help="El PDF usa los mensajes más recientes hasta este límite para proteger el rendimiento del servidor.">
+                            <field name="chatroom_transcript_pdf_max_messages"/>
+                        </setting>
                     </block>
 
                     <block title="Messenger / Instagram">

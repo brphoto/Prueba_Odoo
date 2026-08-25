@@ -77,6 +77,13 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='chatroom_whatsapp.waiting_response_minutes',
         default=10,
         help="Tiempo desde el último mensaje entrante para emitir la alerta al asesor.")
+    chatroom_transcript_pdf_max_messages = fields.Integer(
+        string="Máximo de mensajes por PDF",
+        config_parameter='chatroom_whatsapp.transcript_pdf_max_messages',
+        default=500,
+        help="Para proteger el servidor, el PDF de una conversación toma los "
+             "mensajes más recientes hasta este límite. Usa un valor entre "
+             "50 y 5000.")
 
     # -- Messenger / Instagram (misma App de Meta, token de Página) --
     chatroom_meta_page_access_token = fields.Char(

@@ -416,3 +416,27 @@ class TestChatroomWhatsapp(TransactionCase):
         self.assertGreaterEqual(data['sla_answered_count'], 1)
         self.assertGreaterEqual(data['csat_answered_count'], 1)
         self.assertGreater(data['avg_csat_score'], 0)
+
+    def test_transcript_pdf_data_is_bounded_and_ordered(self):
+        """El PDF no debe materializar todo el historial de una conversación."""
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': '573001130002',
+        })
+        for index in range(8):
+            self.env['chatroom.message'].create({
+                'channel_id': channel.id,
+                'direction': 'inbound' if index % 2 == 0 else 'outbound',
+                'message_type': 'text',
+                'body': f'Mensaje {index}',
+                'date': Datetime.now() - timedelta(minutes=8 - index),
+            })
+        self.env['ir.config_parameter'].sudo().set_param(
+            'chatroom_whatsapp.transcript_pdf_max_messages', '50')
+
+        data = channel.get_transcript_report_data(limit=5)
+
+        self.assertEqual(data['total'], 8)
+        self.assertEqual(data['shown'], 5)
+        self.assertTrue(data['truncated'])
+        self.assertEqual(data['lines'][0]['body'], 'Mensaje 3')
+        self.assertEqual(data['lines'][-1]['body'], 'Mensaje 7')
