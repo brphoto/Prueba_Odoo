@@ -2,7 +2,7 @@
     'name': 'Chatroom Control Center',
     'author': 'Bryan Cando',
     'website': 'https://github.com/brphoto/Prueba_Odoo',
-    'version': '19.0.1.0.6',
+    'version': '19.0.1.0.9',
     'category': 'Productivity/Discuss',
     'summary': 'Centro de control para las integraciones de Chatroom',
     'depends': ['chatroom_whatsapp'],

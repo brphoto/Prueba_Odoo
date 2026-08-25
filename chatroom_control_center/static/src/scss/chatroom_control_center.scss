@@ -11,6 +11,39 @@
     background: #f4f6fa;
 }
 
+/* Odoo limita el renderer completo, no solamente el sheet. */
+.o_form_renderer.o_chatroom_control_center,
+.o_form_renderer.chatroom_ai_dashboard_form,
+.o_form_renderer:has(.o_chatroom_control_center),
+.o_form_renderer:has(.chatroom_ai_dashboard_form) {
+    width: 100% !important;
+    max-width: none !important;
+}
+
+.o_form_renderer.o_chatroom_control_center .o_form_sheet_bg,
+.o_form_renderer.chatroom_ai_dashboard_form .o_form_sheet_bg,
+.o_form_renderer:has(.o_chatroom_control_center) .o_form_sheet_bg,
+.o_form_renderer:has(.chatroom_ai_dashboard_form) .o_form_sheet_bg {
+    width: 100% !important;
+    max-width: none !important;
+}
+
+/* En pantallas XXL Odoo reserva una columna lateral para el chatter.
+   Estos paneles son dashboards completos y no necesitan esa columna vacía. */
+.o_form_view.o_xxl_form_view:has(.o_chatroom_control_center),
+.o_form_view.o_xxl_form_view:has(.chatroom_ai_dashboard_form) {
+    flex-flow: column nowrap !important;
+}
+
+.o_form_view.o_xxl_form_view:has(.o_chatroom_control_center) .o_form_view_container,
+.o_form_view.o_xxl_form_view:has(.chatroom_ai_dashboard_form) .o_form_view_container,
+.o_form_view.o_xxl_form_view:has(.o_chatroom_control_center) .o_form_sheet_bg,
+.o_form_view.o_xxl_form_view:has(.chatroom_ai_dashboard_form) .o_form_sheet_bg {
+    width: 100% !important;
+    max-width: none !important;
+    flex: 1 1 auto !important;
+}
+
 .o_chatroom_control_center .o_form_sheet {
     width: calc(100% - 32px);
     max-width: 1480px;

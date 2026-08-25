@@ -96,6 +96,39 @@
     }
 }
 
+/* El límite de ancho de Odoo se aplica al renderer padre. */
+.o_form_renderer.chatroom_ai_dashboard_form,
+.o_form_renderer.o_chatroom_control_center,
+.o_form_renderer:has(.chatroom_ai_dashboard_form),
+.o_form_renderer:has(.o_chatroom_control_center) {
+    width: 100% !important;
+    max-width: none !important;
+}
+
+.o_form_renderer.chatroom_ai_dashboard_form .o_form_sheet_bg,
+.o_form_renderer.o_chatroom_control_center .o_form_sheet_bg,
+.o_form_renderer:has(.chatroom_ai_dashboard_form) .o_form_sheet_bg,
+.o_form_renderer:has(.o_chatroom_control_center) .o_form_sheet_bg {
+    width: 100% !important;
+    max-width: none !important;
+}
+
+/* Desactiva la columna lateral que Odoo reserva para chatter en la vista XXL:
+   estos centros de control son dashboards de pantalla completa. */
+.o_form_view.o_xxl_form_view:has(.chatroom_ai_dashboard_form),
+.o_form_view.o_xxl_form_view:has(.o_chatroom_control_center) {
+    flex-flow: column nowrap !important;
+}
+
+.o_form_view.o_xxl_form_view:has(.chatroom_ai_dashboard_form) .o_form_view_container,
+.o_form_view.o_xxl_form_view:has(.o_chatroom_control_center) .o_form_view_container,
+.o_form_view.o_xxl_form_view:has(.chatroom_ai_dashboard_form) .o_form_sheet_bg,
+.o_form_view.o_xxl_form_view:has(.o_chatroom_control_center) .o_form_sheet_bg {
+    width: 100% !important;
+    max-width: none !important;
+    flex: 1 1 auto !important;
+}
+
 /* Panel ejecutivo: tarjetas propias para evitar la superposición de
    etiquetas que produce oe_stat_button en formularios anchos. */
 .chatroom_ai_dashboard_form .o_form_sheet {
