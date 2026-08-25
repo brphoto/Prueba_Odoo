@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.chatroom.ai.sales.payment</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="chatroom_ai_sales.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='chatroom_ai_sales']/block" position="after">
+                <block title="Cierre postventa">
+                    <setting id="chatroom_ai_sales_notify_payment_setting"
+                             help="Confirma al cliente cuando PayPhone u otro proveedor reporte el pago.">
+                        <field name="chatroom_ai_sales_notify_payment"/>
+                    </setting>
+                    <setting id="chatroom_ai_sales_auto_create_invoice_setting"
+                             help="Prepara una factura borrador después del pago.">
+                        <field name="chatroom_ai_sales_auto_create_invoice"/>
+                    </setting>
+                    <setting id="chatroom_ai_sales_auto_post_invoice_setting"
+                             help="Publica la factura automáticamente; requiere validación fiscal previa.">
+                        <field name="chatroom_ai_sales_auto_post_invoice"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

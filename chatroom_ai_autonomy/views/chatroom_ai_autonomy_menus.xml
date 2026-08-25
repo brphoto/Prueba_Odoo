@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_chatroom_ai_autonomy_root" name="Conocimiento y autonomía" parent="chatroom_ai_agent.menu_chatroom_ai_configuration" sequence="15" groups="chatroom_ai_autonomy.group_chatroom_ai_autonomy_user"/>
+    <menuitem id="menu_chatroom_ai_autonomy_setup" name="Configuración guiada" parent="menu_chatroom_ai_autonomy_root" action="action_chatroom_ai_autonomy_setup" sequence="1"/>
+    <menuitem id="menu_chatroom_ai_knowledge_profiles" name="Perfiles de conocimiento" parent="menu_chatroom_ai_autonomy_root" action="action_chatroom_ai_knowledge_profile" sequence="1"/>
+    <menuitem id="menu_chatroom_ai_autonomy_simulator" name="Simulador seguro" parent="menu_chatroom_ai_autonomy_root" action="action_chatroom_ai_autonomy_simulator" sequence="5"/>
+    <menuitem id="menu_chatroom_ai_message_templates" name="Plantillas y variables" parent="menu_chatroom_ai_autonomy_root" action="action_chatroom_ai_message_template" sequence="7"/>
+    <menuitem id="menu_chatroom_ai_autonomy_policies" name="Políticas de autonomía" parent="menu_chatroom_ai_autonomy_root" action="action_chatroom_ai_autonomy_policy" sequence="10" groups="chatroom_ai_autonomy.group_chatroom_ai_autonomy_manager"/>
+    <menuitem id="menu_chatroom_ai_autonomy_requests" name="Trazabilidad de decisiones" parent="menu_chatroom_ai_autonomy_root" action="action_chatroom_ai_autonomy_request" sequence="20" groups="chatroom_ai_autonomy.group_chatroom_ai_autonomy_manager"/>
+</odoo>

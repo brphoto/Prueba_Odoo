@@ -107,6 +107,8 @@ Requisitos
 
     'assets': {
         'web.assets_backend': [
+            'chatroom_whatsapp/static/src/chatroom_template.scss',
+            'chatroom_whatsapp/static/src/chatroom_workflows.scss',
             'chatroom_whatsapp/static/src/chatter/chatroom_chatter.js',
             'chatroom_whatsapp/static/src/chatter/chatroom_chatter.xml',
             'chatroom_whatsapp/static/src/chatter/chatroom_chatter.scss',

@@ -37,6 +37,42 @@ class ChatroomScheduledMessage(models.Model):
          ('cancelled', "Cancelado")],
         default='pending', required=True, copy=False)
     error_message = fields.Char(copy=False)
+    preview = fields.Text(string='Vista previa', compute='_compute_preview')
+    readiness_message = fields.Char(string='Estado de configuración', compute='_compute_readiness')
+
+    @api.depends('message_type', 'body', 'template_id', 'template_id.body', 'template_id.preview_body')
+    def _compute_preview(self):
+        for rec in self:
+            if rec.message_type == 'template':
+                rec.preview = rec.template_id.preview_body if rec.template_id else _('Selecciona una plantilla aprobada.')
+            else:
+                rec.preview = rec.body or _('Escribe el mensaje que se enviará.')
+
+    @api.depends('channel_id', 'message_type', 'body', 'template_id', 'scheduled_date')
+    def _compute_readiness(self):
+        now = fields.Datetime.now()
+        for rec in self:
+            if not rec.channel_id:
+                rec.readiness_message = _('Falta seleccionar la conversación.')
+            elif rec.channel_id.partner_id.whatsapp_opt_out:
+                rec.readiness_message = _('El cliente se dio de baja; primero debe volver a autorizar los mensajes.')
+            elif not rec.scheduled_date or rec.scheduled_date <= now:
+                rec.readiness_message = _('La fecha debe ser posterior a la hora actual.')
+            elif rec.message_type == 'text' and not (rec.body or '').strip():
+                rec.readiness_message = _('Falta escribir el mensaje.')
+            elif rec.message_type == 'template' and not rec.template_id:
+                rec.readiness_message = _('Falta seleccionar una plantilla aprobada.')
+            elif rec.message_type == 'template' and rec.template_id.status != 'approved':
+                rec.readiness_message = _('La plantilla seleccionada aún no está aprobada.')
+            else:
+                rec.readiness_message = _('Listo para programar el envío.')
+
+    @api.onchange('message_type')
+    def _onchange_message_type(self):
+        if self.message_type == 'text':
+            self.template_id = False
+        else:
+            self.body = False
 
     @api.constrains('message_type', 'body', 'template_id')
     def _check_message_content(self):
@@ -50,6 +86,26 @@ class ChatroomScheduledMessage(models.Model):
         for rec in self:
             if rec.state == 'pending':
                 rec.state = 'cancelled'
+
+    def action_retry(self):
+        """Reencola un mensaje fallido para el siguiente ciclo del cron."""
+        failed = self.filtered(lambda rec: rec.state == 'failed')
+        if not failed:
+            raise UserError(_('Solo se pueden reintentar mensajes fallidos.'))
+        failed.write({
+            'state': 'pending',
+            'scheduled_date': fields.Datetime.now(),
+            'error_message': False,
+        })
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Mensaje programado'),
+                'message': _('Se reencolaron %s mensaje(s) para el próximo ciclo.') % len(failed),
+                'type': 'success',
+            },
+        }
 
     def _send(self):
         self.ensure_one()

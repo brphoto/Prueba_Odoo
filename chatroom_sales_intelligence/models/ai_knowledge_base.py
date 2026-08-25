@@ -135,6 +135,27 @@ class AiKnowledgeBase(models.Model):
         """
         icp = self.env['ir.config_parameter'].sudo()
 
+        # El perfil activo pertenece al módulo separado de autonomía. Se
+        # consulta de forma opcional para mantener compatible este motor si
+        # autonomía no está instalada.
+        profile = self.browse()
+        profile_model = self.env['chatroom.ai.knowledge.profile'] if 'chatroom.ai.knowledge.profile' in self.env else False
+        if profile_model is not False:
+            try:
+                profile_id = int(icp.get_param('chatroom_ai.knowledge_profile_id', 0) or 0)
+            except (TypeError, ValueError):
+                profile_id = 0
+            if profile_id:
+                profile = profile_model.sudo().browse(profile_id).exists()
+                if profile and (not profile.active or profile.state != 'ready'):
+                    profile = self.browse()
+
+        include_company = profile.include_company if profile else True
+        include_products = profile.include_products if profile else True
+        include_stock = profile.include_stock if profile else True
+        include_customer = profile.include_customer if profile else True
+        include_rfm = profile.include_rfm if profile else True
+
         def bounded_param(key, default, minimum, maximum):
             try:
                 value = int(icp.get_param(key, default))
@@ -142,7 +163,8 @@ class AiKnowledgeBase(models.Model):
                 value = default
             return max(minimum, min(value, maximum))
 
-        max_chars = bounded_param('chatroom_ai.knowledge_context_max_chars', 7000, 3000, 12000)
+        max_chars = profile.context_max_chars if profile else bounded_param(
+            'chatroom_ai.knowledge_context_max_chars', 7000, 3000, 12000)
         max_chunks = bounded_param('chatroom_ai.knowledge_context_max_chunks', 3, 1, 5)
         company = (channel.company_id if channel else False) or company or self.env.company
         partner = (channel.partner_id if channel else False) or partner
@@ -184,15 +206,19 @@ class AiKnowledgeBase(models.Model):
             'Correo: %s' % (company.email or ''),
             'Dirección: %s' % ', '.join(filter(None, [company.street, company.city, company.country_id.name])),
         ]
-        context_parts.append('Datos actuales de la empresa en Odoo:\n%s' % '\n'.join(item for item in company_data if item.split(': ', 1)[-1]))
+        if include_company:
+            context_parts.append('Datos actuales de la empresa en Odoo:\n%s' % '\n'.join(
+                item for item in company_data if item.split(': ', 1)[-1]))
 
-        product_context = self._get_product_context(company, query)
+        product_context = self._get_product_context(
+            company, query, include_stock=include_stock) if include_products else ''
         if product_context:
             context_parts.append(product_context)
-        if partner:
+        if partner and include_customer:
+            rfm_text = getattr(partner, 'rfm_category', '') if include_rfm else ''
             context_parts.append(
                 'Ficha comercial actual del cliente:\n' +
-                f'Cliente: {partner.name}; categoría RFM: {getattr(partner, "rfm_category", "")}; '
+                f'Cliente: {partner.name}; categoría RFM: {rfm_text}; '
                 f'productos comprados: {getattr(partner, "commercial_top_product_summary", "")}.'
             )
         if text:
@@ -208,19 +234,21 @@ class AiKnowledgeBase(models.Model):
                 'chunks': len(rows),
             })
         sources.sort(key=lambda item: (-item['score'], item['name']))
+        live_sources = [
+            'Empresa y moneda' if include_company else '',
+            'Productos coincidentes de Odoo' if product_context else '',
+            'Ficha del cliente' if partner and include_customer else '',
+            'RFM del cliente' if partner and include_customer and include_rfm else '',
+        ]
         return {
             'context': context,
             'sources': sources,
-            'live_sources': [
-                'Empresa y moneda',
-                'Productos coincidentes de Odoo' if product_context else '',
-                'Ficha RFM del cliente' if partner else '',
-            ],
+            'live_sources': [source for source in live_sources if source],
             'estimated_input_tokens': max(1, (len(context) + 3) // 4) if context else 0,
             'context_chars': len(context),
         }
 
-    def _get_product_context(self, company, query):
+    def _get_product_context(self, company, query, include_stock=True):
         """Consulta productos vivos de Odoo; nunca copia un catálogo completo."""
         if 'product.product' not in self.env or not query:
             return ''
@@ -251,13 +279,13 @@ class AiKnowledgeBase(models.Model):
         rows = []
         for product in products:
             product_company = product.with_company(company)
-            rows.append(
-                '- %s | código: %s | precio de venta: %.2f %s | disponible: %.2f' % (
-                    product.display_name,
-                    product.default_code or 'sin código',
-                    product_company.lst_price,
-                    currency,
-                    product_company.qty_available,
-                )
+            row = '- %s | código: %s | precio de venta: %.2f %s' % (
+                product.display_name,
+                product.default_code or 'sin código',
+                product_company.lst_price,
+                currency,
             )
+            if include_stock:
+                row += ' | disponible: %.2f' % product_company.qty_available
+            rows.append(row)
         return 'Datos vivos de productos en Odoo (consultados ahora):\n%s' % '\n'.join(rows)

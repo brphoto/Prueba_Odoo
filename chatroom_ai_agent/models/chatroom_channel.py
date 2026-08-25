@@ -14,8 +14,11 @@ class ChatroomChannel(models.Model):
         """
         icp = self.env['ir.config_parameter'].sudo()
         configured = icp.get_param('chatroom_ai_agent.require_approval')
-        if configured != '':
-            return configured == 'True'
+        # get_param() devuelve False cuando no existe el registro. Ese valor
+        # no puede interpretarse como una desactivación: el modo seguro por
+        # defecto debe exigir revisión humana.
+        if configured not in (False, None, ''):
+            return str(configured).strip().lower() in ('1', 'true', 'yes', 'on')
         return super()._ai_requires_approval()
 
     def get_ai_agent_data(self):

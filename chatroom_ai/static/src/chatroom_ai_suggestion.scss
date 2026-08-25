@@ -1,0 +1,54 @@
+.o_chatroom_ai_suggestion_form {
+    .o_form_sheet_bg { background: #f5f7fa; }
+
+    .o_form_sheet {
+        max-width: 1180px !important;
+        margin: 18px auto;
+        padding: 28px 34px 40px;
+        border: 1px solid #dce3ec;
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: 0 6px 24px rgba(20, 30, 50, .07);
+    }
+
+    .o_chatroom_ai_suggestion_context,
+    .o_chatroom_ai_suggestion_trace,
+    .o_chatroom_ai_suggestion_feedback {
+        margin: 0 0 20px !important;
+        padding: 16px 18px !important;
+        border: 1px solid #dce3ec;
+        border-radius: 11px;
+        background: #f8fafc;
+    }
+
+    .o_chatroom_ai_suggestion_reply {
+        margin: 0 0 20px !important;
+        padding: 20px !important;
+        border: 1px solid #c9b1c5;
+        border-left: 4px solid #704c6c;
+        border-radius: 11px;
+        background: #fcf9fc;
+
+        .o_field_text textarea,
+        .o_field_text {
+            min-height: 145px;
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #d7c8d5;
+            border-radius: 9px;
+            color: #172033;
+            font-size: 15px;
+            line-height: 1.65;
+            white-space: pre-wrap;
+        }
+    }
+
+    .o_horizontal_separator {
+        margin-bottom: 12px !important;
+        color: #172033;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .o_chatroom_ai_suggestion_feedback { background: #fffaf1; }
+}

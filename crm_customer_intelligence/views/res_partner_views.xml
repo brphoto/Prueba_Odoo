@@ -52,10 +52,10 @@
                         </group>
                     </group>
                     <group string="Explicación de la clasificación"
-                           invisible="not rfm_explanation">
+                           invisible="not rfm_explanation" class="o_rfm_explanation_section">
                         <field name="rfm_explanation" nolabel="1" readonly="1"/>
                     </group>
-                    <group string="Análisis Pareto (80/20)" invisible="not commercial_top_product_summary">
+                    <group string="Análisis Pareto (80/20)" class="o_rfm_explanation_section" invisible="not commercial_top_product_summary">
                         <field name="commercial_top_product_summary" nolabel="1" readonly="1"/>
                     </group>
                 </page>

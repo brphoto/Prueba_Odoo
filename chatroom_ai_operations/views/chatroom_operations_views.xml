@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_operations_dashboard_form" model="ir.ui.view">
+        <field name="name">chatroom.operations.dashboard.form</field>
+        <field name="model">chatroom.operations.dashboard</field>
+        <field name="arch" type="xml">
+            <form string="Panel operativo" create="0" edit="0">
+                <header><button name="action_refresh" type="object" string="Actualizar" class="btn-primary" icon="fa-refresh"/></header>
+                <sheet>
+                    <div class="oe_title"><h1>Panel operativo de Chatroom</h1><field name="summary" class="text-muted"/></div>
+                    <group string="Atención inmediata" col="4">
+                        <button name="action_open_sla" type="object" class="oe_stat_button"><field name="sla_attention" widget="statinfo" string="SLA"/></button>
+                        <button name="action_open_failed_payments" type="object" class="oe_stat_button"><field name="failed_payments" widget="statinfo" string="Pagos fallidos"/></button>
+                        <button name="action_open_ai_failed" type="object" class="oe_stat_button"><field name="ai_failed" widget="statinfo" string="IA fallida"/></button>
+                        <button name="action_open_notifications" type="object" class="oe_stat_button"><field name="unread_notifications" widget="statinfo" string="Alertas"/></button>
+                    </group>
+                    <group string="Operación comercial" col="4">
+                        <field name="active_conversations"/>
+                        <field name="abandoned_carts"/>
+                        <button name="action_open_deliveries" type="object" class="oe_stat_button"><field name="deliveries_pending" widget="statinfo" string="Entregas"/></button>
+                        <field name="deliveries_late"/>
+                        <field name="pending_payments"/>
+                        <field name="ai_pending"/>
+                        <field name="ai_approvals"/>
+                        <field name="demo_count"/>
+                    </group>
+                    <field name="refreshed_at"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chatroom_operations_dashboard" model="ir.actions.server">
+        <field name="name">Panel operativo</field>
+        <field name="model_id" ref="model_chatroom_operations_dashboard"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open_dashboard()</field>
+    </record>
+    <record id="view_chatroom_operations_playbook_list" model="ir.ui.view">
+        <field name="name">chatroom.operations.playbook.list</field>
+        <field name="model">chatroom.operations.playbook</field>
+        <field name="arch" type="xml">
+            <list string="Playbooks de comunicación"><field name="sequence" widget="handle"/><field name="name"/><field name="trigger"/><field name="execution_mode"/><field name="template_id"/><field name="approval_required"/><field name="active"/></list>
+        </field>
+    </record>
+    <record id="view_chatroom_operations_playbook_form" model="ir.ui.view">
+        <field name="name">chatroom.operations.playbook.form</field>
+        <field name="model">chatroom.operations.playbook</field>
+        <field name="arch" type="xml">
+            <form string="Playbook de comunicación">
+                <header><button name="action_run_now" type="object" string="Probar ahora" class="btn-primary" icon="fa-play"/><field name="active" widget="boolean_button"/></header>
+                <sheet><group><field name="name"/><field name="trigger"/><field name="test_channel_id" invisible="trigger != 'manual'"/><field name="execution_mode"/><field name="template_id" invisible="execution_mode != 'send_template'"/><field name="approval_required"/><field name="delay_hours"/><field name="max_per_run"/></group><group string="Última ejecución"><field name="last_run_at"/><field name="last_result"/></group></sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chatroom_operations_playbook" model="ir.actions.act_window">
+        <field name="name">Playbooks de comunicación</field><field name="res_model">chatroom.operations.playbook</field><field name="view_mode">list,form</field>
+    </record>
+    <record id="view_chatroom_operations_demo_form" model="ir.ui.view">
+        <field name="name">chatroom.operations.demo.form</field><field name="model">chatroom.operations.demo</field>
+        <field name="arch" type="xml"><form string="Demos QA"><header><button name="action_generate" type="object" string="Generar demos" class="btn-primary" icon="fa-flask"/></header><sheet><h1>Demos funcionales de Chatroom</h1><p>Genera escenarios visibles con el prefijo DEMO QA. No envía mensajes ni cobra.</p><field name="scenario_count"/><field name="result" nolabel="1"/></sheet></form></field>
+    </record>
+    <record id="action_chatroom_operations_demo" model="ir.actions.act_window"><field name="name">Demos QA</field><field name="res_model">chatroom.operations.demo</field><field name="view_mode">form</field><field name="target">new</field></record>
+</odoo>

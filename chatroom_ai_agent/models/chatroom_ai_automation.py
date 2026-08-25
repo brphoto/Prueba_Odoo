@@ -2,6 +2,7 @@
 from datetime import timedelta
 
 from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class ChatroomAiAutomation(models.Model):
@@ -39,7 +40,18 @@ class ChatroomAiAutomation(models.Model):
     last_run = fields.Datetime(readonly=True)
     last_run_count = fields.Integer(string='Tareas creadas en la última ejecución', readonly=True)
     last_error = fields.Text(string='Último error', readonly=True)
+    last_scanned_count = fields.Integer(string='Canales revisados', readonly=True)
+    last_skipped_count = fields.Integer(string='Canales omitidos', readonly=True)
+    last_run_summary = fields.Char(string='Resumen de la última ejecución', readonly=True)
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company, index=True)
+
+    @api.constrains('max_tasks', 'min_rfm_score')
+    def _check_limits(self):
+        for automation in self:
+            if automation.max_tasks <= 0:
+                raise ValidationError(_('El máximo de tareas debe ser mayor que cero.'))
+            if automation.min_rfm_score < 0:
+                raise ValidationError(_('El score RFM mínimo no puede ser negativo.'))
 
     @api.model
     def _channels_for(self, automation):
@@ -105,13 +117,16 @@ class ChatroomAiAutomation(models.Model):
 
     def action_run_now(self):
         self.ensure_one()
-        created = self._run_for_channels(self._channels_for(self))
+        channels = self._channels_for(self)
+        created = self._run_for_channels(channels)
+        skipped = max(len(channels) - created, 0)
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
                 'title': _('Automatización ejecutada'),
-                'message': _('%s tarea(s) creada(s).') % created,
+                'message': _('%s tarea(s) creada(s) de %s canal(es) revisado(s); %s omitido(s).') % (
+                    created, len(channels), skipped),
                 'type': 'success' if created else 'warning',
                 'sticky': False,
             },
@@ -132,9 +147,13 @@ class ChatroomAiAutomation(models.Model):
                     ])
                     if duplicate:
                         continue
+                    instruction = self.instruction or (_('Automatización: %s') % self.name)
+                    template = getattr(self, 'template_id', False)
+                    if template:
+                        instruction = '%s\n\nMensaje personalizado preparado:\n%s' % (
+                            instruction, template.render(channel=channel))
                     task = tasks.create_from_channel(
-                        channel, self.task_type or 'daily_review',
-                        self.instruction or (_('Automatización: %s') % self.name),
+                        channel, self.task_type or 'daily_review', instruction,
                         self.approval_required, automation=self)
                     task.action_plan()
                     if not self.approval_required and task.state == 'planned':
@@ -145,6 +164,10 @@ class ChatroomAiAutomation(models.Model):
         self.write({
             'last_run': fields.Datetime.now(),
             'last_run_count': created,
+            'last_scanned_count': len(channels),
+            'last_skipped_count': max(len(channels) - created, 0),
+            'last_run_summary': _('%s creadas · %s revisadas · %s omitidas') % (
+                created, len(channels), max(len(channels) - created, 0)),
             'last_error': '\n'.join(errors)[:4000] or False,
         })
         return created

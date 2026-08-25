@@ -35,6 +35,21 @@ class ChatroomPaymentLink(models.Model):
     resent_at = fields.Datetime(string='Reenviado el', readonly=True, copy=False)
     resent_by = fields.Many2one('res.users', string='Reenviado por', readonly=True, copy=False)
     error_message = fields.Text(string='Detalle del error', readonly=True)
+    status_message = fields.Char(string='Resumen', compute='_compute_status_message')
+
+    @api.depends('state', 'error_message')
+    def _compute_status_message(self):
+        for link in self:
+            if link.state == 'paid':
+                link.status_message = _('Pago confirmado correctamente.')
+            elif link.state == 'expired':
+                link.status_message = _('Enlace expirado; genera uno nuevo si el cliente desea pagar.')
+            elif link.state == 'error':
+                link.status_message = link.error_message or _('El proveedor reportó un error. Puedes diagnosticar o reenviar.')
+            elif link.state == 'sent':
+                link.status_message = _('Enviado; pendiente de confirmación del proveedor.')
+            else:
+                link.status_message = _('Generado; todavía no se ha enviado al cliente.')
 
     @api.model
     def _cron_sync_transaction_states(self):

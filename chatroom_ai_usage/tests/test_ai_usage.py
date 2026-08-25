@@ -26,6 +26,9 @@ class TestChatroomAiUsage(TransactionCase):
             'provider': 'openai', 'supports_chat': True, 'active': True,
         })
         icp.set_param('chatroom_whatsapp.ai_model_id', str(selected.id))
+        icp.set_param('chatroom_whatsapp.ai_model_reply_id', str(selected.id))
+        self.assertIn('general', selected.usage_roles)
+        self.assertIn('respuestas', selected.usage_roles)
         channel = self.env['chatroom.channel'].create({'channel_type': 'whatsapp', 'external_id': 'usage-test-001'})
         self.assertEqual(channel._ai_get_credentials()[2], 'test-selector-model')
 

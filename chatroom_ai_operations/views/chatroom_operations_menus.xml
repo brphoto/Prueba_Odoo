@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_chatroom_operations_root" name="Operaciones" parent="chatroom_ai_agent.menu_chatroom_ai_operation" sequence="1" groups="chatroom_ai_operations.group_chatroom_operations_user"/>
+    <menuitem id="menu_chatroom_operations_dashboard" name="Panel operativo" parent="menu_chatroom_operations_root" action="action_chatroom_operations_dashboard" sequence="1"/>
+    <menuitem id="menu_chatroom_operations_playbooks" name="Playbooks de comunicación" parent="menu_chatroom_operations_root" action="action_chatroom_operations_playbook" sequence="10" groups="chatroom_ai_operations.group_chatroom_operations_manager"/>
+    <menuitem id="menu_chatroom_operations_demo" name="Demos QA" parent="menu_chatroom_operations_root" action="action_chatroom_operations_demo" sequence="20" groups="chatroom_ai_operations.group_chatroom_operations_manager"/>
+</odoo>

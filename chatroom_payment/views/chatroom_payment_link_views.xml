@@ -21,6 +21,7 @@
                        decoration-success="state in ('sent', 'paid')"
                        decoration-warning="state in ('generated', 'expired')"
                        decoration-danger="state == 'error'"/>
+                <field name="status_message" optional="hide"/>
                 <field name="link" widget="url" string="Enlace"/>
             </list>
         </field>
@@ -66,6 +67,7 @@
                         </group>
                     </group>
                     <field name="link" widget="url"/>
+                    <field name="status_message" readonly="1"/>
                     <field name="error_message" invisible="not error_message"/>
                 </sheet>
             </form>

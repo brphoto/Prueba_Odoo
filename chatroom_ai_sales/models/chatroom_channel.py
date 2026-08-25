@@ -18,6 +18,8 @@ class ChatroomChannel(models.Model):
         ('quotation', 'Cotización creada'),
         ('confirmed', 'Pedido confirmado'),
         ('payment_pending', 'Pago pendiente'),
+        ('payment_received', 'Pago recibido'),
+        ('post_sale', 'Postventa'),
         ('escalated', 'Revisión humana'),
     ], string='Estado de venta autónoma', default='idle', copy=False, index=True)
     ai_sales_last_order_id = fields.Many2one('sale.order', string='Último pedido autónomo', copy=False)

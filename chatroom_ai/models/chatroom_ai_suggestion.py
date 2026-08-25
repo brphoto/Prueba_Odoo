@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import json
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
@@ -18,6 +20,8 @@ class ChatroomAiSuggestion(models.Model):
         ('conversation', 'Conversación'), ('manual', 'Generación manual'),
     ], string='Fuente', required=True, default='conversation')
     source_detail = fields.Char(string='Detalle de fuente')
+    knowledge_sources = fields.Text(string='Fuentes de conocimiento', readonly=True)
+    estimated_context_tokens = fields.Integer(string='Tokens estimados de contexto', readonly=True)
     intent = fields.Selection([
         ('consulta', 'Consulta'), ('venta', 'Venta'), ('soporte', 'Soporte'),
         ('queja', 'Queja'), ('otro', 'Otro'),
@@ -55,7 +59,7 @@ class ChatroomAiSuggestion(models.Model):
     @api.model
     def create_from_channel(self, channel, text, source='conversation'):
         channel.ensure_one()
-        return self.create({
+        values = {
             'name': _('IA - %s') % channel.display_name,
             'channel_id': channel.id,
             'suggested_text': text.strip(),
@@ -63,7 +67,21 @@ class ChatroomAiSuggestion(models.Model):
             'source': source,
             'source_detail': channel.display_name,
             'intent': channel.ai_intent or False,
-        })
+        }
+        if 'ai.knowledge.base' in self.env:
+            query = ' '.join(
+                (message.body or '') for message in channel.message_ids.sorted('date')[-20:]
+                if message.body)
+            details = self.env['ai.knowledge.base'].sudo().get_sales_context_details(
+                channel=channel, query=query, partner=channel.partner_id,
+                company=channel.company_id)
+            source_names = [item.get('name') for item in details.get('sources', []) if item.get('name')]
+            source_names += [item for item in details.get('live_sources', []) if item]
+            values.update({
+                'knowledge_sources': json.dumps(source_names, ensure_ascii=False),
+                'estimated_context_tokens': details.get('estimated_input_tokens', 0),
+            })
+        return self.create(values)
 
     def action_approve(self):
         for suggestion in self:

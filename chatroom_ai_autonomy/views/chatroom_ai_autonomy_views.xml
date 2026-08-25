@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_ai_knowledge_profile_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.knowledge.profile.list</field>
+        <field name="model">chatroom.ai.knowledge.profile</field>
+        <field name="arch" type="xml">
+            <list string="Perfiles de conocimiento"><field name="sequence" widget="handle"/><field name="name"/><field name="company_id"/><field name="state"/><field name="last_sync_at"/><field name="product_count"/><field name="partner_count"/><field name="active"/></list>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_knowledge_profile_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.knowledge.profile.form</field>
+        <field name="model">chatroom.ai.knowledge.profile</field>
+        <field name="arch" type="xml">
+            <form string="Perfil de conocimiento">
+                <header><button name="action_sync" type="object" string="Sincronizar ahora" class="btn-primary" icon="fa-refresh"/><button name="action_set_default" type="object" string="Usar como predeterminado" icon="fa-check"/><field name="active" widget="boolean_button"/></header>
+                <sheet><div class="oe_title"><h1><field name="name"/></h1></div><group><field name="company_id"/><field name="sequence"/><field name="product_limit"/><field name="context_max_chars"/></group><group string="Fuentes vivas de Odoo" col="3"><field name="include_company"/><field name="include_products"/><field name="include_stock"/><field name="include_customer"/><field name="include_rfm"/></group><group string="Estado"><field name="state"/><field name="last_sync_at"/><field name="last_result"/><field name="product_count"/><field name="partner_count"/></group><field name="source_summary" nolabel="1"/></sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_knowledge_profile_ui" model="ir.ui.view">
+        <field name="name">chatroom.ai.knowledge.profile.ui</field>
+        <field name="model">chatroom.ai.knowledge.profile</field>
+        <field name="inherit_id" ref="view_chatroom_ai_knowledge_profile_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes">
+                <attribute name="class">o_chatroom_ai_knowledge_profile_form</attribute>
+            </xpath>
+            <xpath expr="//sheet/div[@class='oe_title']" position="after">
+                <div class="o_chatroom_ai_knowledge_intro">
+                    <div class="o_chatroom_ai_knowledge_intro_icon"><i class="fa fa-database" title="Conocimiento local" aria-hidden="true"/></div>
+                    <div>
+                        <h2>Fuentes locales para la IA</h2>
+                        <p>La sincronización consulta Odoo y prepara un resumen local; no entrena un modelo ni consume tokens.</p>
+                    </div>
+                </div>
+            </xpath>
+            <xpath expr="//field[@name='source_summary']" position="before">
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_chatroom_ai_knowledge_profile" model="ir.actions.act_window"><field name="name">Perfiles de conocimiento</field><field name="res_model">chatroom.ai.knowledge.profile</field><field name="view_mode">list,form</field></record>
+
+    <record id="view_chatroom_ai_autonomy_policy_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.autonomy.policy.list</field><field name="model">chatroom.ai.autonomy.policy</field>
+        <field name="arch" type="xml">
+            <list string="Políticas de autonomía">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="mode"/>
+                <field name="company_id"/>
+                <field name="allow_order"/>
+                <field name="allow_payment"/>
+                <field name="max_order_amount"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_autonomy_policy_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.autonomy.policy.form</field><field name="model">chatroom.ai.autonomy.policy</field>
+        <field name="arch" type="xml">
+            <form string="Política de autonomía" class="o_chatroom_ai_policy_form">
+                <header>
+                    <field name="active" widget="boolean_button"/>
+                </header>
+                <sheet>
+                    <div class="o_chatroom_ai_policy_intro">
+                        <div class="o_chatroom_ai_policy_intro_icon"><i class="fa fa-shield" title="Política de seguridad" aria-hidden="true"/></div>
+                        <div>
+                            <h1><field name="name"/></h1>
+                            <p>Define qué puede hacer la IA, qué debe aprobar una persona y qué límites se aplicarán.</p>
+                        </div>
+                    </div>
+                    <div class="o_chatroom_ai_policy_status">
+                    </div>
+                    <group string="Operación y alcance" class="o_chatroom_ai_policy_section" col="2">
+                        <field name="company_id"/>
+                        <field name="sequence"/>
+                        <field name="mode"/>
+                        <field name="min_confidence" help="La IA solicitará revisión cuando su confianza esté por debajo de este porcentaje."/>
+                        <field name="daily_message_limit" help="Usa cero para permitir respuestas sin límite diario."/>
+                    </group>
+                    <group string="Acciones permitidas" class="o_chatroom_ai_policy_section o_chatroom_ai_policy_actions" col="3">
+                        <field name="allow_reply"/>
+                        <field name="allow_quotation"/>
+                        <field name="allow_order"/>
+                        <field name="allow_payment"/>
+                        <field name="allow_delivery"/>
+                    </group>
+                    <group string="Límites y escalamiento" class="o_chatroom_ai_policy_section" col="2">
+                        <field name="max_order_amount" help="Cero significa sin límite monetario explícito."/>
+                        <field name="require_human_negative"/>
+                        <field name="require_human_discount"/>
+                    </group>
+                    <group string="Criterio de uso" class="o_chatroom_ai_policy_section">
+                        <field name="description" placeholder="Ejemplo: atender consultas de productos y escalar descuentos o reclamos." nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chatroom_ai_autonomy_policy" model="ir.actions.act_window"><field name="name">Políticas de autonomía</field><field name="res_model">chatroom.ai.autonomy.policy</field><field name="view_mode">list,form</field></record>
+
+    <record id="view_chatroom_ai_autonomy_request_list" model="ir.ui.view"><field name="name">chatroom.ai.autonomy.request.list</field><field name="model">chatroom.ai.autonomy.request</field><field name="arch" type="xml"><list string="Evaluaciones de autonomía"><field name="create_date"/><field name="name"/><field name="action_key"/><field name="decision"/><field name="amount"/><field name="estimated_tokens"/><field name="state"/><field name="user_id"/></list></field></record>
+    <record id="view_chatroom_ai_autonomy_request_form" model="ir.ui.view"><field name="name">chatroom.ai.autonomy.request.form</field><field name="model">chatroom.ai.autonomy.request</field><field name="arch" type="xml"><form string="Evaluación de autonomía"><header><button name="action_mark_cancelled" type="object" string="Cancelar evaluación" icon="fa-ban"/><field name="state" widget="statusbar"/></header><sheet><div class="oe_title"><h1><field name="name"/></h1></div><group><field name="channel_id"/><field name="partner_id"/><field name="policy_id"/><field name="action_key"/><field name="decision"/><field name="amount"/><field name="confidence"/><field name="estimated_tokens"/></group><field name="query"/><field name="reason"/><field name="context_snapshot"/><field name="sources_json"/></sheet></form></field></record>
+    <record id="action_chatroom_ai_autonomy_request" model="ir.actions.act_window"><field name="name">Evaluaciones de autonomía</field><field name="res_model">chatroom.ai.autonomy.request</field><field name="view_mode">list,form</field></record>
+
+    <record id="view_chatroom_ai_autonomy_simulator_form" model="ir.ui.view"><field name="name">chatroom.ai.autonomy.simulator.form</field><field name="model">chatroom.ai.autonomy.simulator</field><field name="arch" type="xml"><form string="Simulador seguro de IA"><header><button name="action_simulate" type="object" string="Simular sin enviar" class="btn-primary" icon="fa-flask"/><button name="action_open_request" type="object" string="Ver trazabilidad" icon="fa-list" invisible="not request_id"/></header><sheet><div class="oe_title"><h1>Prueba de conocimiento y autonomía</h1></div><p>Consulta productos y datos vivos de Odoo sin llamar al proveedor de IA ni enviar mensajes.</p><group><field name="channel_id"/><field name="query"/><field name="action_key"/><field name="amount"/><field name="confidence"/></group><group string="Decisión"><field name="decision"/><field name="reason"/><field name="estimated_tokens"/></group><group string="Contexto y fuentes"><field name="sources"/><field name="context_preview" nolabel="1"/></group></sheet></form></field></record>
+    <record id="view_chatroom_ai_autonomy_simulator_ui" model="ir.ui.view">
+        <field name="name">chatroom.ai.autonomy.simulator.ui</field>
+        <field name="model">chatroom.ai.autonomy.simulator</field>
+        <field name="inherit_id" ref="view_chatroom_ai_autonomy_simulator_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes">
+                <attribute name="class">o_chatroom_ai_simulator_form</attribute>
+            </xpath>
+            <xpath expr="//sheet/div[@class='oe_title']" position="after">
+                <div class="o_chatroom_ai_simulator_intro">
+                    <div class="o_chatroom_ai_simulator_intro_icon"><i class="fa fa-flask" title="Simulación segura" aria-hidden="true"/></div>
+                    <div>
+                        <h2>Prueba antes de activar</h2>
+                        <p>Consulta datos de Odoo y revisa la decisión de la política sin enviar mensajes ni modificar registros.</p>
+                    </div>
+                </div>
+            </xpath>
+            <xpath expr="//group[field[@name='decision']]" position="before">
+                <group class="o_chatroom_ai_simulator_result">
+                </group>
+            </xpath>
+        </field>
+    </record>
+    <record id="action_chatroom_ai_autonomy_simulator" model="ir.actions.act_window"><field name="name">Simulador seguro</field><field name="res_model">chatroom.ai.autonomy.simulator</field><field name="view_mode">form</field><field name="target">new</field></record>
+</odoo>

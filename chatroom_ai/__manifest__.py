@@ -13,6 +13,7 @@ motor de WhatsApp ni obliga a instalar un proveedor de IA.''',
     'depends': ['chatroom_whatsapp', 'mail'],
     'assets': {
         'web.assets_backend': [
+            'chatroom_ai/static/src/chatroom_ai_suggestion.scss',
             'chatroom_ai/static/src/chatroom_ai_assistant.js',
             'chatroom_ai/static/src/chatroom_ai_assistant.xml',
             'chatroom_ai/static/src/chatroom_ai_assistant.scss',

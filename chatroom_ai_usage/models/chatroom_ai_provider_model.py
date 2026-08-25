@@ -24,6 +24,31 @@ class ChatroomAiProviderModel(models.Model):
     recommended = fields.Boolean(string='Recomendado', default=False, index=True)
     active = fields.Boolean(default=True)
     last_synced = fields.Datetime(string='Ultima sincronizacion', readonly=True)
+    usage_roles = fields.Char(
+        string='Usado para', compute='_compute_usage_roles')
+
+    @api.depends('model_id')
+    def _compute_usage_roles(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        role_params = [
+            ('ai_model_id', _('general')),
+            ('ai_model_reply_id', _('respuestas')),
+            ('ai_model_summary_id', _('resúmenes')),
+            ('ai_model_classification_id', _('clasificación')),
+            ('ai_model_next_action_id', _('próxima acción')),
+            ('ai_model_agent_id', _('agente')),
+            ('ai_fallback_model_id', _('respaldo')),
+        ]
+        for record in self:
+            roles = []
+            for param_suffix, label in role_params:
+                raw_id = icp.get_param('chatroom_whatsapp.%s' % param_suffix)
+                try:
+                    if raw_id and int(raw_id) == record.id:
+                        roles.append(label)
+                except (TypeError, ValueError):
+                    continue
+            record.usage_roles = ', '.join(roles) or _('Sin asignar')
 
     _model_id_unique = models.Constraint(
         'unique(model_id)',

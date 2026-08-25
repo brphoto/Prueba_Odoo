@@ -5,9 +5,15 @@
         <field name="name">chatroom.bulk.whatsapp.wizard.form</field>
         <field name="model">chatroom.bulk.whatsapp.wizard</field>
         <field name="arch" type="xml">
-            <form string="Enviar WhatsApp masivo">
-                <group>
+            <form string="Enviar WhatsApp masivo" class="o_chatroom_workflow_sheet">
+                <div class="o_chatroom_workflow_intro">
+                    <strong>Envio masivo seguro</strong>
+                    <span>Se encola por contacto para no bloquear la pantalla ni repetir envios.</span>
+                </div>
+                <group class="o_chatroom_workflow_step">
                     <field name="template_id"/>
+                    <field name="eligible_recipient_count" readonly="1" string="Contactos aptos para enviar"/>
+                    <field name="opt_out_count" readonly="1" string="Dados de baja (se omiten)"/>
                     <field name="recipient_count" readonly="1"
                            string="Contactos únicos en la selección"/>
                 </group>
@@ -16,6 +22,10 @@
                     (deduplicado por número de WhatsApp). Los contactos dados de
                     baja se omiten solos.
                 </p>
+                <group string="Revision antes de encolar" class="o_chatroom_workflow_preview">
+                    <field name="readiness_message" nolabel="1" readonly="1"/>
+                    <field name="preview" string="Resumen del envio" nolabel="1" readonly="1"/>
+                </group>
                 <footer>
                     <button name="action_send" type="object" string="Enviar" class="btn-primary"/>
                     <button string="Cancelar" class="btn-secondary" special="cancel"/>

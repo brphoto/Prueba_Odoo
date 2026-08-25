@@ -23,6 +23,37 @@ class ChatroomBulkWhatsappWizard(models.TransientModel):
              "ventana de 24h, así que un mensaje de texto libre "
              "quedaría rechazado.")
     recipient_count = fields.Integer(compute='_compute_recipient_count')
+    eligible_recipient_count = fields.Integer(compute='_compute_recipient_count')
+    opt_out_count = fields.Integer(compute='_compute_recipient_count')
+    preview = fields.Text(compute='_compute_preview')
+    readiness_message = fields.Char(compute='_compute_readiness')
+    ready_to_queue = fields.Boolean(compute='_compute_readiness')
+
+    @api.depends('template_id', 'recipient_count', 'eligible_recipient_count', 'opt_out_count')
+    def _compute_preview(self):
+        for wizard in self:
+            if wizard.template_id:
+                wizard.preview = _('%s apto(s) recibirán la plantilla "%s". %s dado(s) de baja se omitirán.') % (
+                    wizard.eligible_recipient_count, wizard.template_id.display_name,
+                    wizard.opt_out_count)
+            else:
+                wizard.preview = _('Selecciona una plantilla aprobada para ver el resumen.')
+
+    @api.depends('template_id', 'recipient_count', 'eligible_recipient_count', 'opt_out_count')
+    def _compute_readiness(self):
+        for wizard in self:
+            wizard.ready_to_queue = bool(
+                wizard.template_id and wizard.template_id.status == 'approved' and wizard.eligible_recipient_count)
+            if not wizard.template_id:
+                wizard.readiness_message = _('Selecciona una plantilla aprobada.')
+            elif wizard.template_id.status != 'approved':
+                wizard.readiness_message = _('La plantilla debe estar aprobada por Meta.')
+            elif not wizard.recipient_count:
+                wizard.readiness_message = _('No hay contactos con un número de WhatsApp válido.')
+            elif not wizard.eligible_recipient_count:
+                wizard.readiness_message = _('Todos los contactos válidos están dados de baja.')
+            else:
+                wizard.readiness_message = _('Listo: el envío se encolará y no bloqueará la pantalla.')
 
     def _get_target_partners(self):
         """Resuelve un res.partner por cada registro seleccionado
@@ -61,7 +92,10 @@ class ChatroomBulkWhatsappWizard(models.TransientModel):
     @api.depends_context('active_model', 'active_ids')
     def _compute_recipient_count(self):
         for wizard in self:
-            wizard.recipient_count = len(wizard._get_target_partners())
+            partners = wizard._get_target_partners()
+            wizard.recipient_count = len(partners)
+            wizard.opt_out_count = len(partners.filtered('whatsapp_opt_out'))
+            wizard.eligible_recipient_count = len(partners) - wizard.opt_out_count
 
     def action_send(self):
         """Encola un chatroom.scheduled.message por contacto en vez de
@@ -72,6 +106,8 @@ class ChatroomBulkWhatsappWizard(models.TransientModel):
         mensajes programados (_cron_send_scheduled_messages) se encarga
         del envío real, de a lotes de 100."""
         self.ensure_one()
+        if not self.template_id or self.template_id.status != 'approved':
+            raise UserError(_("Solo puedes enviar una plantilla aprobada por Meta."))
         partners = self._get_target_partners()
         if not partners:
             raise UserError(_(

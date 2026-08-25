@@ -129,6 +129,31 @@ class TestChatroomWhatsapp(TransactionCase):
         with self.assertRaises(UserError):
             channel.action_send_text("Hola")
 
+    def test_failed_scheduled_message_can_be_retried(self):
+        partner = self.env['res.partner'].create({
+            'name': "Cliente reintento",
+            'phone': "+573002229999",
+        })
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp',
+            'external_id': '573002229999',
+            'partner_id': partner.id,
+        })
+        scheduled = self.env['chatroom.scheduled.message'].create({
+            'channel_id': channel.id,
+            'message_type': 'text',
+            'body': 'Seguimiento de prueba',
+            'scheduled_date': Datetime.now(),
+            'state': 'failed',
+            'error_message': 'Fallo temporal',
+        })
+
+        scheduled.action_retry()
+
+        self.assertEqual(scheduled.state, 'pending')
+        self.assertFalse(scheduled.error_message)
+        self.assertLessEqual(scheduled.scheduled_date, Datetime.now())
+
     def test_mark_read_updates_message_state(self):
         """action_mark_read debe marcar los mensajes localmente incluso
         sin credenciales configuradas para el acuse remoto (no debe

@@ -27,7 +27,7 @@
         <field name="name">chatroom.template.form</field>
         <field name="model">chatroom.template</field>
         <field name="arch" type="xml">
-            <form string="Plantilla de WhatsApp">
+            <form string="Plantilla de WhatsApp" class="o_chatroom_template_form">
                 <header>
                     <button name="action_submit_to_meta" type="object"
                             string="Enviar a Meta" class="btn-primary"
@@ -41,20 +41,20 @@
                     <field name="status" widget="statusbar"
                            statusbar_visible="draft,pending,approved,rejected"/>
                 </header>
-                <sheet>
-                    <div class="alert alert-info" role="alert" invisible="waba_template_id">
+                <sheet class="o_chatroom_template_sheet">
+                    <div class="o_chatroom_template_banner alert alert-info" role="alert" invisible="waba_template_id">
                         Guarda el borrador y pulsa «Enviar a Meta» para solicitar su aprobación.
                     </div>
                     <field name="waba_template_id" invisible="1"/>
-                    <div class="oe_title">
+                    <div class="o_chatroom_template_hero oe_title">
                         <h1><field name="name" string="Nombre" readonly="waba_template_id"/></h1>
                     </div>
-                    <group>
-                        <group>
+                    <group class="o_chatroom_template_meta">
+                        <group class="o_chatroom_template_meta_card">
                             <field name="language" string="Idioma" readonly="waba_template_id"/>
                             <field name="category" string="Categoría" readonly="waba_template_id"/>
                         </group>
-                        <group>
+                        <group class="o_chatroom_template_meta_card">
                             <field name="header_type" string="Tipo de encabezado" readonly="waba_template_id"/>
                             <field name="header_text" string="Texto del encabezado" readonly="waba_template_id"/>
                             <field name="footer_text" string="Pie del mensaje" readonly="waba_template_id"/>
@@ -62,10 +62,10 @@
                             <field name="last_synced_at" string="Última sincronización" readonly="1"/>
                         </group>
                     </group>
-                    <group string="Cuerpo del mensaje">
+                    <group string="Mensaje aprobado" class="o_chatroom_template_section o_chatroom_template_body_section">
                         <field name="body" string="Mensaje" nolabel="1" readonly="waba_template_id"/>
                     </group>
-                    <group string="Campos de variables" invisible="not variable_count">
+                    <group string="Variables del mensaje" class="o_chatroom_template_section o_chatroom_template_variables_section" invisible="not variable_count">
                         <field name="variable_mapping_ids" nolabel="1">
                             <list editable="bottom">
                                 <field name="sequence"/>
@@ -76,14 +76,19 @@
                                 <field name="static_value" invisible="value_source != 'static'"/>
                             </list>
                         </field>
-                        <div class="text-muted">
+                        <div class="o_chatroom_template_helper text-muted">
                             Detecta las variables después de escribir el cuerpo. Al enviar desde un chat,
                             Odoo completará estos campos automáticamente.
                         </div>
                     </group>
-                    <group string="Prueba rápida">
-                        <field name="example_values" placeholder="Un valor por línea, en el mismo orden de {{1}}, {{2}}..."/>
-                        <field name="preview_body" readonly="1" nolabel="1"/>
+                    <group string="Vista previa" class="o_chatroom_template_section o_chatroom_template_preview_section">
+                        <group class="o_chatroom_template_preview_input">
+                            <field name="example_values" placeholder="Un valor por línea, en el mismo orden de {{1}}, {{2}}..."/>
+                        </group>
+                        <group class="o_chatroom_template_preview_card">
+                            <div class="o_form_label">Así recibirá el mensaje el cliente</div>
+                            <field name="preview_body" readonly="1" nolabel="1"/>
+                        </group>
                     </group>
                 </sheet>
             </form>
@@ -109,8 +114,8 @@
         <field name="name">chatroom.send.template.wizard.form</field>
         <field name="model">chatroom.send.template.wizard</field>
         <field name="arch" type="xml">
-            <form string="Enviar plantilla de WhatsApp">
-                <group>
+            <form string="Enviar plantilla de WhatsApp" class="o_chatroom_template_send_wizard">
+                <group class="o_chatroom_workflow_step">
                     <field name="channel_id" invisible="1"/>
                     <field name="template_id"/>
                     <field name="variable_count" string="Cantidad de variables"/>
@@ -120,8 +125,9 @@
                     <field name="mapping_preview" string="Campos detectados"
                            invisible="not variable_count" readonly="1"/>
                 </group>
-                <group string="Vista previa" invisible="not template_id">
+                <group string="Vista previa antes de enviar" class="o_chatroom_workflow_preview" invisible="not template_id">
                     <field name="preview" nolabel="1" readonly="1"/>
+                    <field name="readiness_message" nolabel="1" readonly="1"/>
                 </group>
                 <footer>
                     <button name="action_send" type="object" string="Enviar"

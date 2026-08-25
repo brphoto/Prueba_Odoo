@@ -1,12 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="view_chatroom_ai_automation_list" model="ir.ui.view">
-        <field name="name">chatroom.ai.automation.list</field><field name="model">chatroom.ai.automation</field>
-        <field name="arch" type="xml"><list string="Automatizaciones IA"><field name="sequence" widget="handle"/><field name="name"/><field name="trigger"/><field name="task_type"/><field name="only_unread" optional="hide"/><field name="min_rfm_score" optional="hide"/><field name="approval_required"/><field name="last_run"/><field name="last_run_count"/><field name="last_error" optional="hide"/><field name="active"/></list></field>
+        <field name="name">chatroom.ai.automation.list</field>
+        <field name="model">chatroom.ai.automation</field>
+        <field name="arch" type="xml">
+            <list string="Automatizaciones IA" decoration-muted="not active">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="trigger"/>
+                <field name="task_type"/>
+                <field name="approval_required"/>
+                <field name="last_run"/>
+                <field name="last_run_count" string="Creadas"/>
+                <field name="last_error" optional="hide"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
     </record>
+
     <record id="view_chatroom_ai_automation_form" model="ir.ui.view">
-        <field name="name">chatroom.ai.automation.form</field><field name="model">chatroom.ai.automation</field>
-        <field name="arch" type="xml"><form string="Automatización IA"><header><button name="action_run_now" type="object" string="Ejecutar ahora" class="btn-primary"/><field name="active" widget="boolean_toggle"/></header><sheet><div class="oe_title"><h1><field name="name"/></h1></div><group><group><field name="trigger"/><field name="task_type"/><field name="sequence"/><field name="max_tasks"/></group><group><field name="approval_required"/><field name="only_unread"/><field name="only_unassigned"/><field name="min_rfm_score"/><field name="company_id"/></group></group><group string="Instrucción"><field name="instruction" nolabel="1" placeholder="Ejemplo: prepara seguimiento de manera breve, cita la última compra y no envíes mensajes."/></group><group string="Última ejecución"><field name="last_run" readonly="1"/><field name="last_run_count" readonly="1"/><field name="last_error" readonly="1" placeholder="Sin errores registrados."/></group></sheet></form></field>
+        <field name="name">chatroom.ai.automation.form</field>
+        <field name="model">chatroom.ai.automation</field>
+        <field name="arch" type="xml">
+            <form string="Automatización IA" class="o_chatroom_ai_automation_form">
+                <header>
+                    <button name="action_run_now" type="object" string="Ejecutar ahora" class="btn-primary"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </header>
+                <sheet>
+                    <div class="o_chatroom_ai_automation_intro">
+                        <div class="o_chatroom_ai_automation_intro_icon"><i class="fa fa-magic" title="Automatización IA" aria-hidden="true"/></div>
+                        <div>
+                            <h1><field name="name" placeholder="Nombre de la automatización"/></h1>
+                            <p>Define cuándo debe actuar el agente y qué nivel de aprobación necesita.</p>
+                        </div>
+                    </div>
+                    <group class="o_chatroom_ai_automation_grid">
+                        <group string="Objetivo">
+                            <field name="trigger"/>
+                            <field name="task_type"/>
+                            <field name="instruction" nolabel="1"
+                                   placeholder="Escribe aquí el contexto o la instrucción para la IA..."/>
+                        </group>
+                        <group string="Seguridad y alcance">
+                            <field name="approval_required"/>
+                            <field name="max_tasks"/>
+                            <field name="sequence"/>
+                            <field name="company_id"/>
+                            <div class="o_chatroom_ai_automation_hint">
+                                Las acciones sensibles conservarán su propia aprobación aunque esta automatización sea automática.
+                            </div>
+                        </group>
+                    </group>
+                    <group string="Filtros opcionales" class="o_chatroom_ai_automation_filters">
+                        <field name="only_unread"/>
+                        <field name="only_unassigned"/>
+                        <field name="min_rfm_score"/>
+                    </group>
+                    <group string="Resultado de la última ejecución" class="o_chatroom_ai_automation_result">
+                        <field name="last_run" readonly="1"/>
+                        <field name="last_run_count" readonly="1"/>
+                        <field name="last_error" readonly="1" placeholder="Sin errores registrados."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
     </record>
-    <record id="action_chatroom_ai_automation" model="ir.actions.act_window"><field name="name">Automatizaciones IA</field><field name="res_model">chatroom.ai.automation</field><field name="view_mode">list,form</field></record>
+
+    <record id="action_chatroom_ai_automation" model="ir.actions.act_window">
+        <field name="name">Automatizaciones IA</field>
+        <field name="res_model">chatroom.ai.automation</field>
+        <field name="view_mode">list,form</field>
+    </record>
 </odoo>

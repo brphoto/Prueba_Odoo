@@ -17,6 +17,9 @@ class ChatroomAiSalesEvent(models.Model):
         ('quotation_created', 'Cotización creada'),
         ('order_confirmed', 'Pedido confirmado'),
         ('payment_link_sent', 'Link de pago enviado'),
+        ('payment_received', 'Pago recibido'),
+        ('invoice_created', 'Factura preparada'),
+        ('post_sale_notified', 'Postventa notificada'),
         ('blocked', 'Bloqueado por política'),
         ('escalated', 'Escalado a humano'),
     ], required=True, index=True)

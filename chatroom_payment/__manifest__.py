@@ -15,6 +15,7 @@
     ],
     'assets': {
         'web.assets_backend': [
+            'chatroom_payment/static/src/chatroom_payment_forms.scss',
             'chatroom_payment/static/src/chatroom_thread/chatroom_thread_patch.js',
             'chatroom_payment/static/src/chatroom_thread/chatroom_thread_patch.xml',
             'chatroom_payment/static/src/chatroom_app/contact_panel_patch.js',

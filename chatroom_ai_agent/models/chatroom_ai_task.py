@@ -83,6 +83,31 @@ class ChatroomAiTask(models.Model):
     action_ids = fields.One2many('chatroom.ai.task.action', 'task_id', string='Plan de acciones')
     audit_ids = fields.One2many('chatroom.ai.audit', 'task_id', string='Auditoría')
 
+    operational_status = fields.Char(string='Estado operativo', compute='_compute_operational_status')
+    action_progress = fields.Char(string='Progreso', compute='_compute_operational_status')
+
+    @api.depends('state', 'action_ids.state', 'attempts', 'max_attempts', 'error_message')
+    def _compute_operational_status(self):
+        for task in self:
+            total = len(task.action_ids)
+            completed = len(task.action_ids.filtered(lambda action: action.state in ('done', 'skipped')))
+            task.action_progress = _('%s/%s acciones completadas') % (completed, total)
+            if task.state == 'draft':
+                task.operational_status = _('Listo para generar el plan.')
+            elif task.state == 'awaiting_approval':
+                task.operational_status = _('Requiere aprobación humana antes de ejecutar.')
+            elif task.state == 'planned':
+                task.operational_status = _('Plan listo; pendiente de ejecución.')
+            elif task.state == 'running':
+                task.operational_status = _('Ejecutando acciones de forma controlada.')
+            elif task.state == 'done':
+                task.operational_status = _('Completada correctamente.')
+            elif task.state == 'failed':
+                task.operational_status = _('Falló en el intento %s de %s. Revisa el detalle o reintenta.') % (
+                    task.attempts, task.max_attempts)
+            else:
+                task.operational_status = _('Cancelada; no se ejecutará.')
+
     @api.depends('task_type', 'action_ids.risk_level', 'state')
     def _compute_risk_level(self):
         defaults = {
@@ -109,7 +134,8 @@ class ChatroomAiTask(models.Model):
         icp = self.env['ir.config_parameter'].sudo()
         mode = icp.get_param('chatroom_ai_agent.mode', 'supervised')
         if approval_required is None:
-            approval_required = icp.get_param('chatroom_ai_agent.require_approval', 'True') == 'True'
+            configured = icp.get_param('chatroom_ai_agent.require_approval', 'True')
+            approval_required = str(configured).strip().lower() in ('1', 'true', 'yes', 'on')
         if mode in ('supervised', 'simulation'):
             approval_required = True
         task = self.create({

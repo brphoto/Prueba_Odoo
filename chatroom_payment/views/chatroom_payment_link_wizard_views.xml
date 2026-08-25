@@ -26,6 +26,10 @@
                         <field name="product_qty" invisible="not product_id"/>
                     </group>
                 </div>
+                <div class="o_chatroom_payment_preview">
+                    <field name="readiness_message" nolabel="1" readonly="1"/>
+                    <field name="preview" nolabel="1" readonly="1"/>
+                </div>
                 <footer>
                     <button name="action_send" type="object" string="Generar y enviar" class="btn-primary"/>
                     <button string="Cancelar" special="cancel" class="btn-secondary"/>

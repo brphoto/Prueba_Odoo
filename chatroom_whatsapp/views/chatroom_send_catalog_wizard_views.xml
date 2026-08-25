@@ -5,10 +5,18 @@
         <field name="name">chatroom.send.catalog.wizard.form</field>
         <field name="model">chatroom.send.catalog.wizard</field>
         <field name="arch" type="xml">
-            <form string="Enviar catálogo de productos">
-                <group>
+            <form string="Enviar catálogo de productos" class="o_chatroom_workflow_sheet">
+                <div class="o_chatroom_workflow_intro">
+                    <strong>Comparte productos de forma clara</strong>
+                    <span>El catalogo interactivo admite hasta 10 productos.</span>
+                </div>
+                <group class="o_chatroom_workflow_step">
                     <field name="channel_id" invisible="1"/>
                     <field name="product_ids" widget="many2many_tags"/>
+                </group>
+                <group string="Revision antes de enviar" class="o_chatroom_workflow_preview">
+                    <field name="readiness_message" nolabel="1" readonly="1"/>
+                    <field name="preview" string="Productos seleccionados" nolabel="1" readonly="1"/>
                 </group>
                 <footer>
                     <button name="action_send" type="object" string="Enviar"

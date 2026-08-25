@@ -53,6 +53,10 @@
                             <field name="next_run_at"/>
                         </group>
                     </group>
+                    <group string="Estado operativo" class="o_chatroom_ai_task_status">
+                        <field name="attempts" readonly="1"/>
+                        <field name="max_attempts"/>
+                    </group>
                     <group string="Solicitud"><field name="prompt" nolabel="1" placeholder="Describe qué debe resolver el agente..."/></group>
                     <notebook>
                         <page string="Plan y ejecución">

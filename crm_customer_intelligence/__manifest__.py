@@ -81,6 +81,7 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
 
     'assets': {
         'web.assets_backend': [
+            'crm_customer_intelligence/static/src/rfm_usability.scss',
             'crm_customer_intelligence/static/src/rfm_dashboard/rfm_dashboard.js',
             'crm_customer_intelligence/static/src/rfm_dashboard/rfm_dashboard.xml',
             'crm_customer_intelligence/static/src/rfm_dashboard/rfm_dashboard.scss',

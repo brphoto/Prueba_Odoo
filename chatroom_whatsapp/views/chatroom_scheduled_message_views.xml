@@ -18,6 +18,7 @@
                        decoration-danger="state == 'failed'"
                        decoration-muted="state == 'cancelled'"/>
                 <field name="error_message" string="Mensaje de error" optional="hide"/>
+                <button name="action_retry" type="object" string="Reintentar" icon="fa-refresh" invisible="state != 'failed'"/>
                 <button name="action_cancel" type="object" string="Cancelar envío"
                         icon="fa-ban" invisible="state != 'pending'"/>
             </list>
@@ -28,27 +29,36 @@
         <field name="name">chatroom.scheduled.message.form</field>
         <field name="model">chatroom.scheduled.message</field>
         <field name="arch" type="xml">
-            <form string="Mensaje programado">
+            <form string="Mensaje programado" class="o_chatroom_scheduled_form">
                 <header>
                     <button name="action_cancel" type="object" string="Cancelar envío"
                             class="btn-secondary" invisible="state != 'pending'"/>
+                    <button name="action_retry" type="object" string="Reintentar envio" class="btn-primary" invisible="state != 'failed'"/>
                     <field name="state" string="Estado" widget="statusbar"
                            statusbar_visible="pending,sent,failed,cancelled"/>
                 </header>
-                <sheet>
-                    <group>
+                <sheet class="o_chatroom_workflow_sheet">
+                    <div class="o_chatroom_workflow_intro">
+                        <strong>Programa el siguiente contacto con claridad</strong>
+                        <span>El mensaje quedará pendiente y se enviará únicamente cuando llegue la fecha configurada.</span>
+                    </div>
+                    <group class="o_chatroom_workflow_step">
                         <field name="channel_id" string="Conversación" readonly="state != 'pending'"/>
                         <field name="message_type" string="Tipo" readonly="state != 'pending'"/>
                         <field name="scheduled_date" string="Fecha y hora de envío"
                                readonly="state != 'pending'"/>
                     </group>
-                    <group string="Mensaje" invisible="message_type != 'text'">
+                    <group string="Contenido del mensaje" class="o_chatroom_workflow_step" invisible="message_type != 'text'">
                         <field name="body" string="Texto" nolabel="1"
                                readonly="state != 'pending'"/>
                     </group>
-                    <group string="Plantilla" invisible="message_type != 'template'">
+                    <group string="Plantilla aprobada" class="o_chatroom_workflow_step" invisible="message_type != 'template'">
                         <field name="template_id" string="Plantilla" nolabel="1"
                                readonly="state != 'pending'"/>
+                    </group>
+                    <group string="Revisión antes de programar" class="o_chatroom_workflow_preview">
+                        <field name="readiness_message" nolabel="1" readonly="1"/>
+                        <field name="preview" string="Mensaje que se enviará" nolabel="1" readonly="1"/>
                     </group>
                     <group string="Resultado del envío" invisible="not error_message">
                         <field name="error_message" string="Mensaje de error" readonly="1"/>
@@ -66,6 +76,7 @@
                 <field name="channel_id"/>
                 <field name="body"/>
                 <filter name="pending" string="Pendientes" domain="[('state', '=', 'pending')]"/>
+                <filter name="failed" string="Fallidos" domain="[('state', '=', 'failed')]"/>
                 <group>
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
                 </group>

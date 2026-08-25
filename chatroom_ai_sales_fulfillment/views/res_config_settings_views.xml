@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_fulfillment" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.chatroom.ai.sales.fulfillment</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="chatroom_ai_sales.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='chatroom_ai_sales']/block" position="inside">
+                <separator string="Cumplimiento y postventa"/>
+                <setting id="chatroom_ai_sales_require_stock_setting">
+                    <field name="chatroom_ai_sales_require_stock"/>
+                </setting>
+                <setting id="chatroom_ai_sales_require_delivery_address_setting">
+                    <field name="chatroom_ai_sales_require_delivery_address"/>
+                </setting>
+                <setting id="chatroom_ai_sales_notify_delivery_setting">
+                    <field name="chatroom_ai_sales_notify_delivery"/>
+                </setting>
+                <setting id="chatroom_ai_sales_cart_reminder_enabled_setting">
+                    <field name="chatroom_ai_sales_cart_reminder_enabled"/>
+                </setting>
+                <setting id="chatroom_ai_sales_cart_reminder_hours_setting">
+                    <field name="chatroom_ai_sales_cart_reminder_hours"/>
+                </setting>
+                <setting id="chatroom_ai_sales_cart_reminder_max_setting">
+                    <field name="chatroom_ai_sales_cart_reminder_max"/>
+                </setting>
+                <setting id="chatroom_ai_sales_payment_retry_enabled_setting">
+                    <field name="chatroom_ai_sales_payment_retry_enabled"/>
+                </setting>
+                <setting id="chatroom_ai_sales_payment_retry_hours_setting">
+                    <field name="chatroom_ai_sales_payment_retry_hours"/>
+                </setting>
+                <setting id="chatroom_ai_sales_payment_retry_max_setting">
+                    <field name="chatroom_ai_sales_payment_retry_max"/>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+</odoo>

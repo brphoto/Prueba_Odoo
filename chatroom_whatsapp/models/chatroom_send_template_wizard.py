@@ -18,6 +18,9 @@ class ChatroomSendTemplateWizard(models.TransientModel):
              "{{1}}, {{2}}, ... de la plantilla.")
     mapping_preview = fields.Text(compute='_compute_mapping_preview')
     preview = fields.Text(compute='_compute_preview')
+    missing_variable_count = fields.Integer(compute='_compute_readiness')
+    ready_to_send = fields.Boolean(compute='_compute_readiness')
+    readiness_message = fields.Char(compute='_compute_readiness')
 
     @api.onchange('template_id')
     def _onchange_template_id(self):
@@ -28,7 +31,11 @@ class ChatroomSendTemplateWizard(models.TransientModel):
     @api.depends('template_id', 'channel_id', 'variables_text')
     def _compute_mapping_preview(self):
         for rec in self:
-            if not rec.template_id:
+            if not rec.channel_id:
+                rec.readiness_message = _('Falta seleccionar la conversación.')
+            elif rec.channel_id.partner_id.whatsapp_opt_out:
+                rec.readiness_message = _('El cliente se dio de baja; primero debe volver a autorizar los mensajes.')
+            elif not rec.template_id:
                 rec.mapping_preview = ''
                 continue
             values = (rec.variables_text or '').splitlines()
@@ -47,8 +54,31 @@ class ChatroomSendTemplateWizard(models.TransientModel):
                 body = body.replace('{{%d}}' % index, value or '{{%d}}' % index)
             rec.preview = body
 
+    @api.depends('template_id', 'variables_text', 'channel_id')
+    def _compute_readiness(self):
+        for rec in self:
+            count = rec.template_id.variable_count if rec.template_id else 0
+            values = (rec.variables_text or '').splitlines()
+            missing = sum(1 for index in range(count) if index >= len(values) or not values[index].strip())
+            rec.missing_variable_count = missing
+            rec.ready_to_send = bool(rec.channel_id and rec.template_id and rec.template_id.status == 'approved' and not missing)
+            if not rec.template_id:
+                rec.readiness_message = _('Selecciona una plantilla aprobada.')
+            elif rec.template_id.status != 'approved':
+                rec.readiness_message = _('La plantilla debe estar aprobada por Meta.')
+            elif missing:
+                rec.readiness_message = _('Completa %s variable(s) antes de enviar.') % missing
+            else:
+                rec.readiness_message = _('Listo para enviar a esta conversación.')
+
     def action_send(self):
         self.ensure_one()
+        if not self.channel_id:
+            raise UserError(_("Selecciona la conversación de destino antes de enviar."))
+        if self.channel_id.partner_id.whatsapp_opt_out:
+            raise UserError(_("El cliente se dio de baja; primero debe volver a autorizar los mensajes."))
+        if not self.template_id or self.template_id.status != 'approved':
+            raise UserError(_("Solo puedes enviar una plantilla aprobada por Meta."))
         values = [v for v in (self.variables_text or '').splitlines()]
         if len(values) < self.template_id.variable_count or any(
                 not values[index].strip()

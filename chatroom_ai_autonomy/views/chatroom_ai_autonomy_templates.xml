@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_ai_autonomy_setup_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.autonomy.setup.form</field>
+        <field name="model">chatroom.ai.autonomy.setup</field>
+        <field name="arch" type="xml">
+            <form string="Configuración guiada de IA" class="o_chatroom_ai_autonomy_setup">
+                <sheet>
+                    <div class="o_chatroom_ai_autonomy_intro">
+                        <div class="o_chatroom_ai_autonomy_intro_icon"><i class="fa fa-sliders" title="Configuración guiada" aria-hidden="true"/></div>
+                        <div>
+                            <h1>Configura tu IA en pocos pasos</h1>
+                            <p>Esta pantalla prepara conocimiento y reglas. No envía mensajes ni confirma pedidos.</p>
+                        </div>
+                    </div>
+                    <group string="1. Conocimiento de Odoo" col="2">
+                        <field name="company_id"/><field name="profile_name"/>
+                        <field name="include_company"/><field name="include_products"/>
+                        <field name="include_stock"/><field name="include_customer"/>
+                        <field name="include_rfm"/>
+                    </group>
+                    <group string="2. Seguridad operativa" col="2">
+                        <field name="policy_name"/><field name="mode"/>
+                        <field name="allow_reply"/><field name="allow_quotation"/>
+                        <field name="allow_order"/><field name="allow_payment"/>
+                        <field name="allow_delivery"/>
+                        <field name="max_order_amount"/>
+                    </group>
+                    <group string="Revisión antes de aplicar" class="o_chatroom_ai_autonomy_review">
+                    </group>
+                    <footer>
+                        <button name="action_apply" type="object" string="Aplicar y sincronizar" class="btn-primary" icon="fa-check"/>
+                        <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chatroom_ai_autonomy_setup" model="ir.actions.act_window">
+        <field name="name">Configuración guiada</field>
+        <field name="res_model">chatroom.ai.autonomy.setup</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="view_chatroom_ai_message_template_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.message.template.list</field>
+        <field name="model">chatroom.ai.message.template</field>
+        <field name="arch" type="xml">
+            <list string="Plantillas personalizadas"><field name="sequence" widget="handle"/><field name="name"/><field name="trigger"/><field name="requires_approval"/><field name="company_id"/><field name="active"/></list>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_message_template_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.message.template.form</field>
+        <field name="model">chatroom.ai.message.template</field>
+        <field name="arch" type="xml">
+            <form string="Plantilla personalizada">
+                <header><button name="action_preview" type="object" string="Previsualizar" class="btn-primary" icon="fa-eye"/><button name="action_clear_preview" type="object" string="Limpiar vista previa" icon="fa-eraser"/><field name="active" widget="boolean_button"/></header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group><field name="company_id"/><field name="sequence"/><field name="trigger"/><field name="delay_days"/><field name="requires_approval"/></group>
+                    <group string="Mensaje personalizado"><field name="body" placeholder="Hola {{partner_name}}, te escribimos desde {{company_name}}..." nolabel="1"/><field name="variable_help" nolabel="1"/></group>
+                    <group string="Vista previa"><field name="preview_partner_id"/><field name="preview_text" nolabel="1"/></group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chatroom_ai_message_template" model="ir.actions.act_window">
+        <field name="name">Plantillas personalizadas</field>
+        <field name="res_model">chatroom.ai.message.template</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="view_chatroom_ai_automation_form_template" model="ir.ui.view">
+        <field name="name">chatroom.ai.automation.form.template</field>
+        <field name="model">chatroom.ai.automation</field>
+        <field name="inherit_id" ref="chatroom_ai_agent.view_chatroom_ai_automation_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='instruction']" position="after"><field name="template_id"/></xpath>
+        </field>
+    </record>
+</odoo>

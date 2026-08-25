@@ -1,0 +1,54 @@
+.o_chatroom_payment_wizard {
+    max-width: 760px;
+
+    .o_chatroom_payment_intro {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin: 0 0 20px;
+        padding: 16px 18px;
+        border-left: 4px solid #0b9e94;
+        border-radius: 10px;
+        background: #eaf8f6;
+        color: #174c49;
+
+        > .fa {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #0b9e94;
+            color: #fff;
+            font-size: 17px;
+        }
+
+        strong { display: block; margin-bottom: 3px; font-size: 15px; }
+        div div { color: #4f6f6d; font-size: 13px; }
+    }
+
+    .o_chatroom_payment_section {
+        margin: 16px 0 0;
+        padding: 18px 20px;
+        border: 1px solid #dce3ec;
+        border-radius: 12px;
+        background: #f8fafc;
+
+        .o_form_label { color: #667085; font-size: 12px; font-weight: 600; }
+    }
+
+    .o_chatroom_payment_preview {
+        margin: 18px 0;
+        padding: 14px 16px;
+        border-left: 4px solid #704c6c;
+        border-radius: 9px;
+        background: #faf7fb;
+        color: #344054;
+        line-height: 1.55;
+    }
+
+    .o_field_widget {
+        font-weight: 600;
+    }
+}
