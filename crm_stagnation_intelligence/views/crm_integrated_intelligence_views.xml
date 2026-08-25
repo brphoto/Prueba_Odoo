@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_crm_integrated_pipeline_search" model="ir.ui.view">
+        <field name="name">crm.lead.search.integrated.pipeline</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <search string="Salud del pipeline">
+                <field name="name" string="Oportunidad"/>
+                <field name="partner_id" string="Cliente"/>
+                <field name="user_id" string="Vendedor"/>
+                <field name="stage_id" string="Etapa"/>
+                <field name="rfm_category" string="Categoría RFM"/>
+                <field name="stagnation_score" string="Nivel de estancamiento"/>
+                <separator/>
+                <filter string="En riesgo" name="integrated_risk"
+                        domain="[('stagnation_score', 'in', ('warning', 'critical', 'stagnant', 'dead'))]"/>
+                <filter string="Críticas" name="integrated_critical"
+                        domain="[('stagnation_score', 'in', ('critical', 'stagnant', 'dead'))]"/>
+                <filter string="Para depurar" name="integrated_purge"
+                        domain="[('purge_recommendation', '=', 'purge')]"/>
+                <filter string="RFM A" name="integrated_rfm_a"
+                        domain="[('rfm_category', '=', 'a')]"/>
+                <filter string="RFM B" name="integrated_rfm_b"
+                        domain="[('rfm_category', '=', 'b')]"/>
+                <filter string="RFM C" name="integrated_rfm_c"
+                        domain="[('rfm_category', '=', 'c')]"/>
+                <separator/>
+                <filter string="Nivel de estancamiento" name="group_integrated_stagnation"
+                        context="{'group_by': 'stagnation_score'}"/>
+                <filter string="Categoría RFM" name="group_integrated_rfm"
+                        context="{'group_by': 'rfm_category'}"/>
+                <filter string="Etapa" name="group_integrated_stage"
+                        context="{'group_by': 'stage_id'}"/>
+                <filter string="Vendedor" name="group_integrated_user"
+                        context="{'group_by': 'user_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_crm_integrated_pipeline_list" model="ir.ui.view">
+        <field name="name">crm.lead.list.integrated.pipeline</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <list string="Salud del pipeline"
+                  decoration-danger="stagnation_score in ('critical', 'stagnant', 'dead')"
+                  decoration-warning="stagnation_score == 'warning'">
+                <field name="name" string="Oportunidad"/>
+                <field name="partner_id" string="Cliente"/>
+                <field name="rfm_category" string="RFM" widget="badge"
+                       decoration-success="rfm_category == 'a'"
+                       decoration-warning="rfm_category == 'b'"/>
+                <field name="rfm_score" string="Score RFM"/>
+                <field name="stage_id" string="Etapa"/>
+                <field name="user_id" string="Vendedor"/>
+                <field name="expected_revenue" string="Ingreso esperado" widget="monetary"/>
+                <field name="stagnation_score" string="Salud" widget="badge"
+                       decoration-success="stagnation_score == 'healthy'"
+                       decoration-warning="stagnation_score == 'warning'"
+                       decoration-danger="stagnation_score in ('critical', 'stagnant', 'dead')"/>
+                <field name="days_in_stage" string="Días en etapa"/>
+                <field name="days_without_activity" string="Sin actividad" optional="show"/>
+                <field name="estimated_capital_trapped" string="Capital en riesgo" widget="monetary"/>
+                <field name="purge_recommendation" string="Recomendación" optional="show"/>
+                <field name="next_action_required" string="Próxima acción" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_crm_integrated_pipeline_kanban" model="ir.ui.view">
+        <field name="name">crm.lead.kanban.integrated.pipeline</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_small_column" default_group_by="stage_id">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="stage_id"/>
+                <field name="user_id"/>
+                <field name="rfm_category"/>
+                <field name="rfm_score"/>
+                <field name="stagnation_score"/>
+                <field name="days_in_stage"/>
+                <field name="estimated_capital_trapped"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_global_click o_kanban_record p-3">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <strong class="text-truncate"><field name="name"/></strong>
+                                <field name="stagnation_score" widget="badge"/>
+                            </div>
+                            <div class="text-muted mt-1"><field name="partner_id"/></div>
+                            <div class="mt-2 d-flex justify-content-between">
+                                <span>RFM <field name="rfm_category"/> · <field name="rfm_score"/></span>
+                                <span><field name="estimated_capital_trapped" widget="monetary"/></span>
+                            </div>
+                            <div class="text-muted small mt-1">
+                                <field name="days_in_stage"/> días en etapa · <field name="user_id"/>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_crm_integrated_pipeline_graph" model="ir.ui.view">
+        <field name="name">crm.lead.graph.integrated.pipeline</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <graph string="Salud del pipeline" type="bar">
+                <field name="stage_id" type="row"/>
+                <field name="stagnation_score" type="col"/>
+                <field name="expected_revenue" type="measure"/>
+                <field name="estimated_capital_trapped" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_crm_integrated_pipeline_pivot" model="ir.ui.view">
+        <field name="name">crm.lead.pivot.integrated.pipeline</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <pivot string="Inteligencia integrada del pipeline">
+                <field name="rfm_category" type="row"/>
+                <field name="stagnation_score" type="col"/>
+                <field name="stage_id" type="row"/>
+                <field name="expected_revenue" type="measure"/>
+                <field name="estimated_capital_trapped" type="measure"/>
+                <field name="real_vs_fake_score" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_crm_integrated_pipeline_health" model="ir.actions.act_window">
+        <field name="name">Salud del pipeline</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">list,kanban,graph,pivot,form</field>
+        <field name="search_view_id" ref="view_crm_integrated_pipeline_search"/>
+        <field name="view_ids" eval="[
+            Command.clear(),
+            Command.create({'view_mode': 'list', 'view_id': ref('view_crm_integrated_pipeline_list')}),
+            Command.create({'view_mode': 'kanban', 'view_id': ref('view_crm_integrated_pipeline_kanban')}),
+            Command.create({'view_mode': 'graph', 'view_id': ref('view_crm_integrated_pipeline_graph')}),
+            Command.create({'view_mode': 'pivot', 'view_id': ref('view_crm_integrated_pipeline_pivot')}),
+            Command.create({'view_mode': 'form', 'view_id': False}),
+        ]"/>
+        <field name="domain">[('active', '=', True), ('type', '=', 'opportunity'), ('stage_id.is_won', '=', False)]</field>
+        <field name="context">{'search_default_integrated_risk': 1}</field>
+    </record>
+
+    <menuitem id="menu_crm_integrated_pipeline_health"
+              name="Salud del pipeline"
+              parent="crm_customer_intelligence.menu_crm_intelligence_root"
+              action="action_crm_integrated_pipeline_health"
+              sequence="12"/>
+
+    <record id="view_partner_form_integrated_pipeline" model="ir.ui.view">
+        <field name="name">res.partner.form.integrated.pipeline</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="crm_customer_intelligence.view_partner_form_sales_intelligence"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_open_pipeline_intelligence" type="object"
+                        class="oe_stat_button" icon="fa-heartbeat"
+                        invisible="not intelligence_stagnant_count">
+                    <field name="intelligence_stagnant_count" widget="statinfo" string="En riesgo"/>
+                </button>
+            </div>
+            <xpath expr="//page[@name='commercial_intelligence']/group" position="inside">
+                <group string="Salud del pipeline">
+                    <field name="intelligence_pipeline_health" widget="badge"
+                           decoration-success="intelligence_pipeline_health == 'healthy'"
+                           decoration-warning="intelligence_pipeline_health == 'warning'"
+                           decoration-danger="intelligence_pipeline_health == 'critical'"/>
+                    <field name="intelligence_stagnant_count"/>
+                    <field name="intelligence_stagnant_capital" widget="monetary"/>
+                    <button name="action_open_pipeline_intelligence" type="object"
+                            string="Ver oportunidades y tomar acción" class="btn-link"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

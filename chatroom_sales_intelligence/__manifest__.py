@@ -69,9 +69,9 @@ agrega la capa visual que los muestra dentro del chat.
     'icon': '/chatroom_sales_intelligence/static/description/icon.svg',
 
     'category': 'Sales/CRM',
-    'version': '19.0.1.0.14',
+    'version': '19.0.1.0.15',
 
-    'depends': ['chatroom_whatsapp', 'crm_customer_intelligence'],
+    'depends': ['chatroom_whatsapp', 'crm_customer_intelligence', 'crm_stagnation_intelligence'],
 
     'data': [
         'security/ir.model.access.csv',

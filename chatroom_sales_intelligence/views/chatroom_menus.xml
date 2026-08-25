@@ -27,6 +27,11 @@
               action="crm_customer_intelligence.action_customer_intelligence_dashboard"
               sequence="7"/>
 
+    <menuitem id="menu_integrated_pipeline_health" name="Salud del pipeline"
+              parent="menu_chatroom_commercial"
+              action="crm_stagnation_intelligence.action_crm_integrated_pipeline_health"
+              sequence="7"/>
+
     <record id="action_executive_dashboard" model="ir.actions.client">
         <field name="name">Tablero ejecutivo</field>
         <field name="tag">chatroom_sales_intelligence.executive_dashboard</field>
