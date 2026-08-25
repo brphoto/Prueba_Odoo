@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 import json
 import re
+from datetime import timedelta
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 
 class ChatroomAiTaskAction(models.Model):
@@ -124,6 +125,12 @@ class ChatroomAiTask(models.Model):
                     level = action.risk_level
             task.risk_level = level
 
+    @api.constrains('max_attempts')
+    def _check_max_attempts(self):
+        for task in self:
+            if task.max_attempts <= 0:
+                raise ValidationError(_('Los intentos máximos deben ser mayores que cero.'))
+
     @api.model
     def _json(self, value):
         return json.dumps(value, ensure_ascii=False, indent=2, default=str)
@@ -143,7 +150,9 @@ class ChatroomAiTask(models.Model):
             'task_type': task_type,
             'prompt': prompt or _('Analiza esta conversación y determina la siguiente acción útil.'),
             'channel_id': channel.id,
+            'company_id': channel.company_id.id if 'company_id' in channel._fields and channel.company_id else self.env.company.id,
             'approval_required': approval_required,
+            'max_attempts': automation.max_attempts if automation and automation.max_attempts else 3,
             'user_id': self.env.user.id,
             'automation_id': automation.id if automation else False,
         })
@@ -175,6 +184,7 @@ class ChatroomAiTask(models.Model):
         if partner and 'crm.lead' in self.env and 'partner_id' in self.env['crm.lead']._fields:
             opportunities = self.env['crm.lead'].search([
                 ('partner_id', '=', partner.id), ('type', '=', 'opportunity'), ('active', '=', True),
+                ('company_id', '=', self.company_id.id),
             ], order='write_date desc, id desc', limit=10)
             data['open_opportunities'] = [{
                 'id': lead.id,
@@ -185,6 +195,7 @@ class ChatroomAiTask(models.Model):
         if partner and 'sale.order' in self.env:
             orders = self.env['sale.order'].search([
                 ('partner_id', '=', partner.id), ('state', 'in', ('draft', 'sent', 'sale')),
+                ('company_id', '=', self.company_id.id),
             ], order='date_order desc, id desc', limit=10)
             data['sales_documents'] = [{
                 'id': order.id,
@@ -196,6 +207,7 @@ class ChatroomAiTask(models.Model):
             invoices = self.env['account.move'].search([
                 ('partner_id', '=', partner.id), ('move_type', '=', 'out_invoice'),
                 ('state', '=', 'posted'), ('payment_state', 'in', ('not_paid', 'partial')),
+                ('company_id', '=', self.company_id.id),
             ], order='invoice_date_due asc, id desc', limit=10)
             data['open_invoices'] = [{
                 'id': invoice.id,
@@ -340,13 +352,20 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                 result['status'] = 'skipped'
                 result['reason'] = _('CRM o cliente no disponible.')
             else:
-                action_result = channel.action_create_lead() if channel and hasattr(channel, 'action_create_lead') else False
-                lead = self.env['crm.lead'].browse(action_result.get('res_id')).exists() if action_result else self.env['crm.lead'].search([
-                    ('partner_id', '=', partner.id), ('type', '=', 'opportunity'), ('active', '=', True)], limit=1)
+                lead = self.env['crm.lead'].search([
+                    ('partner_id', '=', partner.id), ('type', '=', 'opportunity'),
+                    ('active', '=', True), ('company_id', '=', self.company_id.id),
+                ], order='write_date desc, id desc', limit=1)
+                action_result = False
+                if not lead and channel and hasattr(channel, 'action_create_lead'):
+                    action_result = channel.action_create_lead()
+                    lead = self.env['crm.lead'].browse(
+                        action_result.get('res_id')).exists() if action_result else self.env['crm.lead'].browse()
                 if not lead:
                     lead = self.env['crm.lead'].create({
                         'name': _('Oportunidad IA - %s') % partner.display_name,
                         'partner_id': partner.id, 'type': 'opportunity',
+                        'company_id': self.company_id.id,
                     })
                 result['lead_id'] = lead.id
                 result['lead_name'] = lead.display_name
@@ -387,8 +406,17 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                 result['status'] = 'skipped'
                 result['reason'] = _('El conector de ventas no está instalado.')
             else:
-                action_result = channel.action_create_quotation()
-                order = self.env['sale.order'].browse(action_result.get('res_id')).exists()
+                order = channel.ai_sales_last_order_id if 'ai_sales_last_order_id' in channel._fields else self.env['sale.order'].browse()
+                if not order or order.state not in ('draft', 'sent', 'sale'):
+                    order = self.env['sale.order'].search([
+                        ('partner_id', '=', partner.id),
+                        ('origin', '=', channel.display_name),
+                        ('state', 'in', ('draft', 'sent', 'sale')),
+                        ('company_id', '=', self.company_id.id),
+                    ], order='write_date desc, id desc', limit=1)
+                if not order:
+                    action_result = channel.action_create_quotation()
+                    order = self.env['sale.order'].browse(action_result.get('res_id')).exists()
                 if not order:
                     result['status'] = 'skipped'
                     result['reason'] = _('No se pudo crear la cotización.')
@@ -398,7 +426,11 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             if 'account.move' not in self.env or not partner:
                 result['invoices'] = []
             else:
-                invoices = self.env['account.move'].search([('partner_id', '=', partner.id), ('move_type', '=', 'out_invoice'), ('state', '=', 'posted'), ('payment_state', 'in', ('not_paid', 'partial'))], limit=20)
+                invoices = self.env['account.move'].search([
+                    ('partner_id', '=', partner.id), ('move_type', '=', 'out_invoice'),
+                    ('state', '=', 'posted'), ('payment_state', 'in', ('not_paid', 'partial')),
+                    ('company_id', '=', self.company_id.id),
+                ], limit=20)
                 result['invoices'] = [{'id': inv.id, 'name': inv.name, 'amount_residual': inv.amount_residual} for inv in invoices]
         elif action.key == 'prepare_payment_link':
             result['status'] = 'ready_for_connector' if 'payment.link' in self.env or 'chatroom.payment.link' in self.env else 'requires_payment_module'
@@ -414,6 +446,7 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                 document = self.env['sale.order'].search([
                     ('partner_id', '=', partner.id),
                     ('state', 'in', ('draft', 'sent', 'sale')),
+                    ('company_id', '=', self.company_id.id),
                 ], order='date_order desc, id desc', limit=1) if partner and 'sale.order' in self.env else self.env['account.move'].browse()
                 if not document and partner and 'account.move' in self.env:
                     document = self.env['account.move'].search([
@@ -421,6 +454,7 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                         ('move_type', '=', 'out_invoice'),
                         ('state', '=', 'posted'),
                         ('payment_state', 'in', ('not_paid', 'partial')),
+                        ('company_id', '=', self.company_id.id),
                     ], order='invoice_date desc, id desc', limit=1)
                 if not document:
                     result['status'] = 'skipped'
@@ -436,10 +470,17 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                         result['status'] = 'blocked'
                         result['reason'] = _('El documento supera el límite de cobro automático configurado (%s).') % limit
                         return result
-                    channel.action_send_payment_link(document._name, document.id)
                     link = self.env['chatroom.payment.link'].search([
                         ('channel_id', '=', channel.id),
+                        ('res_model', '=', document._name), ('res_id', '=', document.id),
+                        ('state', 'in', ('generated', 'sent', 'paid')),
                     ], order='create_date desc, id desc', limit=1)
+                    if not link:
+                        channel.action_send_payment_link(document._name, document.id)
+                        link = self.env['chatroom.payment.link'].search([
+                            ('channel_id', '=', channel.id),
+                            ('res_model', '=', document._name), ('res_id', '=', document.id),
+                        ], order='create_date desc, id desc', limit=1)
                     result.update({
                         'document': document.display_name,
                         'provider': link.provider_id.display_name if link.provider_id else _('Pago en línea'),
@@ -567,14 +608,32 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
 
     @api.model
     def _cron_run_pending(self):
-        tasks = self.sudo().search([('state', 'in', ('draft', 'planned')), ('active', '=', True), ('next_run_at', '<=', fields.Datetime.now()), ('attempts', '<', 3)], limit=20)
+        candidates = self.sudo().search([
+            ('state', 'in', ('draft', 'planned')), ('active', '=', True),
+            ('next_run_at', '<=', fields.Datetime.now()),
+        ], limit=50)
+        tasks = candidates.filtered(
+            lambda task: task.attempts < max(task.max_attempts or 1, 1))[:20]
         for task in tasks:
             try:
-                if task.state == 'draft':
-                    task.action_plan()
-                if task.state != 'planned':
-                    continue
-                task.action_run()
-            except UserError:
-                self.env.cr.rollback()
+                with self.env.cr.savepoint():
+                    if task.state == 'draft':
+                        task.action_plan()
+                    if task.state != 'planned':
+                        continue
+                    task.action_run()
+            except Exception as exc:  # noqa: BLE001 - el cron debe continuar con la cola
+                # El savepoint revierte la ejecución parcial, pero el estado
+                # de fallo se registra fuera de él para que el siguiente cron
+                # no repita silenciosamente la misma tarea.
+                failed_task = self.sudo().browse(task.id).exists()
+                if failed_task:
+                    attempts = failed_task.attempts + 1
+                    failed_task.write({
+                        'state': 'failed',
+                        'attempts': attempts,
+                        'error_message': str(exc)[:4000],
+                        'next_run_at': fields.Datetime.now() + timedelta(
+                            minutes=min(60, 5 * (2 ** max(attempts - 1, 0)))),
+                    })
         return len(tasks)

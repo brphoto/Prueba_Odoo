@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from odoo import fields
 from odoo.tests import TransactionCase, tagged
 
 
@@ -9,6 +10,7 @@ class TestChatroomAiOperations(TransactionCase):
         dashboard = self.env['chatroom.operations.dashboard'].create({})
         dashboard._refresh_metrics()
         self.assertIsNotNone(dashboard.refreshed_at)
+        self.assertEqual(dashboard.company_id, self.env.company)
         self.assertIsInstance(dashboard.active_conversations, int)
         self.assertEqual(dashboard.action_open_failed_payments()['target'], 'new')
 
@@ -41,3 +43,22 @@ class TestChatroomAiOperations(TransactionCase):
         self.assertEqual(self.env['chatroom.operations.playbook'].search_count([
             ('name', 'like', 'DEMO QA - Aviso%'), ('active', '=', False),
         ]), 3)
+
+    def test_daily_metrics_are_refreshable_and_unique(self):
+        metrics = self.env['chatroom.operations.metric']
+        first = metrics.collect_for_date()
+        second = metrics.collect_for_date()
+        self.assertEqual(first, second)
+        self.assertEqual(first.date, fields.Date.context_today(self))
+        self.assertEqual(first.company_id, self.env.company)
+        self.assertGreaterEqual(first.conversation_count, 0)
+        self.assertGreaterEqual(first.ai_tokens, 0)
+        self.assertGreaterEqual(first.quotation_count, 0)
+        self.assertGreaterEqual(first.confirmed_orders, 0)
+        self.assertGreaterEqual(first.invoice_count, 0)
+        self.assertGreaterEqual(first.new_customers, 0)
+
+    def test_dashboard_can_refresh_persistent_metrics(self):
+        dashboard = self.env['chatroom.operations.dashboard'].create({})
+        action = dashboard.action_collect_metrics()
+        self.assertEqual(action['tag'], 'display_notification')

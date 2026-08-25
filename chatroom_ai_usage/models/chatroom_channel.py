@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+from datetime import datetime
 
 import requests
 
@@ -35,7 +36,8 @@ class ChatroomChannel(models.Model):
     def get_ai_assistant_data(self):
         data = super().get_ai_assistant_data()
         snapshot = self.env['chatroom.ai.usage.snapshot'].sudo().search(
-            [], order='fetched_at desc, id desc', limit=1)
+            [('company_id', '=', self.env.company.id)],
+            order='fetched_at desc, id desc', limit=1)
         data['budget'] = {
             'state': snapshot.budget_state,
             'remaining': snapshot.budget_remaining,
@@ -47,7 +49,42 @@ class ChatroomChannel(models.Model):
         options, selected_id = self._ai_model_catalog(task_type='reply')
         data['model_options'] = options
         data['selected_model_id'] = selected_id
+        data['daily_limits'] = self._ai_daily_usage()
         return data
+
+    def _ai_daily_usage(self):
+        """Devuelve el consumo del día sin revelar credenciales al frontend."""
+        self.ensure_one()
+        if 'chatroom.ai.usage.event' not in self.env:
+            return {'requests': 0, 'tokens': 0, 'request_limit': 0, 'token_limit': 0}
+        icp = self.env['ir.config_parameter'].sudo()
+        try:
+            request_limit = max(int(icp.get_param('chatroom_whatsapp.ai_daily_request_limit', 0) or 0), 0)
+        except (TypeError, ValueError):
+            request_limit = 0
+        try:
+            token_limit = max(int(icp.get_param('chatroom_whatsapp.ai_daily_token_limit', 0) or 0), 0)
+        except (TypeError, ValueError):
+            token_limit = 0
+        start = datetime.combine(fields.Date.context_today(self), datetime.min.time())
+        events = self.env['chatroom.ai.usage.event'].sudo().search([
+            ('company_id', '=', self.company_id.id), ('request_date', '>=', start),
+        ])
+        return {
+            'requests': len(events), 'tokens': sum(events.mapped('total_tokens')),
+            'request_limit': request_limit, 'token_limit': token_limit,
+            'request_state': 'exceeded' if request_limit and len(events) >= request_limit else 'ok',
+            'token_state': 'exceeded' if token_limit and sum(events.mapped('total_tokens')) >= token_limit else 'ok',
+        }
+
+    def _ai_budget_guard(self):
+        """Bloquea llamadas externas cuando se alcanzan los límites diarios."""
+        usage = self._ai_daily_usage()
+        if usage['request_state'] == 'exceeded':
+            raise UserError(_('Se alcanzó el límite diario de solicitudes de IA (%s).') % usage['request_limit'])
+        if usage['token_state'] == 'exceeded':
+            raise UserError(_('Se alcanzó el límite diario de tokens de IA (%s).') % usage['token_limit'])
+        return usage
 
     def get_ai_usage_summary(self):
         self.ensure_one()
@@ -110,6 +147,8 @@ class ChatroomChannel(models.Model):
 
     def _ai_chat_completion(self, messages, task_type=None, model_id=None):
         """Ejecuta el modelo por tarea y usa el respaldo ante fallos recuperables."""
+        self.ensure_one()
+        self._ai_budget_guard()
         candidates = self._ai_model_candidates(task_type=task_type, model_id=model_id)
         if not candidates:
             raise UserError(_('Activa y configura la IA en Ajustes > Chatroom WhatsApp.'))

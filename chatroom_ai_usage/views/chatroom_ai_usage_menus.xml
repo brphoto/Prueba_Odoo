@@ -2,7 +2,17 @@
 <odoo>
     <menuitem id="menu_chatroom_ai_usage" name="Consumo de IA" parent="chatroom_whatsapp.menu_chatroom_root" sequence="28" groups="base.group_system"/>
     <menuitem id="menu_chatroom_ai_quality_group" name="Calidad y pruebas" parent="menu_chatroom_ai_usage" sequence="40" groups="base.group_system"/>
-    <menuitem id="menu_chatroom_ai_usage_snapshots" name="Resumen de consumo" parent="menu_chatroom_ai_usage" action="action_chatroom_ai_usage_snapshot" sequence="10"/>
+    <record id="action_chatroom_ai_usage_snapshot_auto" model="ir.actions.server">
+        <field name="name">Resumen de consumo actualizado</field>
+        <field name="model_id" ref="model_chatroom_ai_usage_snapshot"/>
+        <field name="state">code</field>
+        <field name="code">
+snapshot_model = env['chatroom.ai.usage.snapshot']
+snapshot_model.action_refresh_local()
+action = env.ref('chatroom_ai_usage.action_chatroom_ai_usage_snapshot').read()[0]
+        </field>
+    </record>
+    <menuitem id="menu_chatroom_ai_usage_snapshots" name="Resumen de consumo" parent="menu_chatroom_ai_usage" action="action_chatroom_ai_usage_snapshot_auto" sequence="10"/>
     <menuitem id="menu_chatroom_ai_provider_models" name="Modelos disponibles" parent="menu_chatroom_ai_usage" action="action_chatroom_ai_provider_model" sequence="20"/>
     <menuitem id="menu_chatroom_ai_usage_events" name="Actividad por solicitud" parent="menu_chatroom_ai_usage" action="action_chatroom_ai_usage_event" sequence="30"/>
     <menuitem id="menu_chatroom_ai_quality" name="Pruebas de calidad" parent="menu_chatroom_ai_quality_group" action="action_chatroom_ai_quality_test" sequence="40"/>

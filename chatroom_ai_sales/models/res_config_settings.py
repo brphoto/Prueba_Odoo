@@ -26,6 +26,19 @@ class ResConfigSettings(models.TransientModel):
         help='Usa el proveedor de pagos instalado, incluido PayPhone si está configurado. Si falla, escala al equipo.',
     )
 
+    chatroom_ai_sales_validate_stock = fields.Boolean(
+        string='Validar inventario antes de confirmar',
+        default=True,
+        config_parameter='chatroom_ai_sales.validate_stock',
+        help='Bloquea la confirmaciÃ³n automÃ¡tica si la existencia disponible no cubre el carrito.',
+    )
+    chatroom_ai_sales_validate_price = fields.Boolean(
+        string='Validar precio antes de confirmar',
+        default=True,
+        config_parameter='chatroom_ai_sales.validate_price',
+        help='Solicita revisiÃ³n si el precio del carrito ya no coincide con el precio vigente.',
+    )
+
     def set_values(self):
         result = super().set_values()
         if self.chatroom_ai_sales_enabled:

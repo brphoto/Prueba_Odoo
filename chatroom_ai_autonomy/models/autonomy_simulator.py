@@ -78,7 +78,14 @@ class ChatroomAiAutonomySimulator(models.TransientModel):
             'estimated_tokens': details.get('estimated_input_tokens', 0),
             'request_id': request.id,
         })
-        return True
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Simulador seguro de IA'),
+            'res_model': self._name,
+            'view_mode': 'form',
+            'res_id': self.id,
+            'target': 'new',
+        }
 
     def action_open_request(self):
         self.ensure_one()

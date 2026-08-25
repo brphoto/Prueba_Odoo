@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
-                <app data-string="Ventas autónomas" string="Ventas autónomas" name="chatroom_ai_sales">
+                <app data-string="Ventas autónomas" string="Ventas autónomas" name="chatroom_ai_sales" logo="/chatroom_ai_sales/static/description/icon.svg">
                     <block title="Venta conversacional por WhatsApp">
                         <setting id="chatroom_ai_sales_enabled_setting"
                                  help="Usa el catálogo y carrito de Chatroom para atender peticiones comerciales. Al guardarlo activa automáticamente el motor de carrito de WhatsApp.">
@@ -23,6 +23,14 @@
                         <setting id="chatroom_ai_sales_auto_payment_link_setting"
                                  help="Después de confirmar usa el conector instalado, como PayPhone, para enviar el enlace.">
                             <field name="chatroom_ai_sales_auto_payment_link"/>
+                        </setting>
+                        <setting id="chatroom_ai_sales_validate_stock_setting"
+                                 help="Evita vender automÃ¡ticamente productos sin existencia disponible.">
+                            <field name="chatroom_ai_sales_validate_stock"/>
+                        </setting>
+                        <setting id="chatroom_ai_sales_validate_price_setting"
+                                 help="Evita confirmar si el precio cambiÃ³ desde que se armÃ³ el carrito.">
+                            <field name="chatroom_ai_sales_validate_price"/>
                         </setting>
                     </block>
                 </app>

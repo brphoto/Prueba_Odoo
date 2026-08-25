@@ -23,5 +23,9 @@ class ChatroomAiTool(models.Model):
 
     @api.model
     def enabled_for_user(self):
-        tools = self.search([('active', '=', True), '|', ('group_id', '=', False), ('group_id', 'in', self.env.user.groups_id.ids)])
+        tools = self.search([
+            ('active', '=', True),
+            '|', ('company_id', '=', False), ('company_id', '=', self.env.company.id),
+            '|', ('group_id', '=', False), ('group_id', 'in', self.env.user.groups_id.ids),
+        ])
         return tools

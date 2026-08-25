@@ -5,6 +5,16 @@ from odoo.tests import TransactionCase, tagged
 @tagged('post_install', '-at_install')
 class TestChatroomNotification(TransactionCase):
 
+    def test_notification_inherits_channel_company(self):
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'notification-company-test',
+        })
+        notification = self.env['chatroom.notification'].create({
+            'name': 'Alerta de prueba', 'message': 'Revisar',
+            'channel_id': channel.id,
+        })
+        self.assertEqual(notification.company_id, channel.company_id)
+
     def test_deduplication_and_lifecycle(self):
         model = self.env['chatroom.notification']
         vals = {
@@ -23,6 +33,17 @@ class TestChatroomNotification(TransactionCase):
         first.action_reopen()
         first.action_resolve()
         self.assertEqual(first.state, 'done')
+
+    def test_bulk_actions_return_visible_feedback(self):
+        first = self.env['chatroom.notification'].create({
+            'name': 'Aviso 1', 'message': 'Detalle 1', 'notification_type': 'other',
+        })
+        second = self.env['chatroom.notification'].create({
+            'name': 'Aviso 2', 'message': 'Detalle 2', 'notification_type': 'other',
+        })
+        action = (first | second).action_resolve()
+        self.assertEqual(action['tag'], 'display_notification')
+        self.assertEqual((first | second).mapped('state'), ['done', 'done'])
 
     def test_done_dedupe_key_can_be_reused(self):
         model = self.env['chatroom.notification']

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_ai_setup_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.setup.form</field>
+        <field name="model">chatroom.ai.setup</field>
+        <field name="arch" type="xml">
+            <form string="Preparación del sistema comercial" create="0" edit="0">
+                <header>
+                    <button name="action_refresh" type="object" string="Volver a comprobar" class="btn-primary" icon="fa-refresh"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1>Preparación del sistema comercial</h1></div>
+                    <div class="alert alert-info" role="alert">
+                        Revisa estos puntos antes de activar la atención y las ventas automáticas.
+                    </div>
+                    <group col="4">
+                        <field name="overall_state" widget="badge"/>
+                        <field name="ready_count"/>
+                        <field name="total_checks"/>
+                        <field name="readiness_percent" widget="percentage"/>
+                    </group>
+                    <separator string="Conexiones y datos"/>
+                    <group col="2">
+                        <group string="WhatsApp"><field name="whatsapp_ready" widget="boolean"/><field name="whatsapp_detail" nolabel="1"/></group>
+                        <group string="Proveedor IA"><field name="provider_ready" widget="boolean"/><field name="provider_detail" nolabel="1"/></group>
+                        <group string="Base de conocimiento"><field name="knowledge_ready" widget="boolean"/><field name="knowledge_detail" nolabel="1"/></group>
+                        <group string="Ventas autónomas"><field name="sales_ready" widget="boolean"/><field name="sales_detail" nolabel="1"/></group>
+                        <group string="Pagos"><field name="payment_ready" widget="boolean"/><field name="payment_detail" nolabel="1"/></group>
+                        <group string="Seguridad"><field name="security_ready" widget="boolean"/><field name="security_detail" nolabel="1"/></group>
+                    </group>
+                    <field name="refreshed_at"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chatroom_ai_setup" model="ir.actions.server">
+        <field name="name">Preparación del sistema comercial</field>
+        <field name="model_id" ref="model_chatroom_ai_setup"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open()</field>
+    </record>
+    <menuitem id="menu_chatroom_ai_setup" name="Checklist de preparación" parent="menu_chatroom_ai_configuration" action="action_chatroom_ai_setup" sequence="5" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>
+</odoo>

@@ -5,9 +5,10 @@
         <field name="model">chatroom.operations.dashboard</field>
         <field name="arch" type="xml">
             <form string="Panel operativo" create="0" edit="0">
-                <header><button name="action_refresh" type="object" string="Actualizar" class="btn-primary" icon="fa-refresh"/></header>
+                <header><button name="action_refresh" type="object" string="Actualizar panel" class="btn-primary" icon="fa-refresh"/><button name="action_collect_metrics" type="object" string="Actualizar métricas" icon="fa-line-chart"/></header>
                 <sheet>
                     <div class="oe_title"><h1>Panel operativo de Chatroom</h1><field name="summary" class="text-muted"/></div>
+                    <field name="company_id" invisible="1"/>
                     <group string="Atención inmediata" col="4">
                         <button name="action_open_sla" type="object" class="oe_stat_button"><field name="sla_attention" widget="statinfo" string="SLA"/></button>
                         <button name="action_open_failed_payments" type="object" class="oe_stat_button"><field name="failed_payments" widget="statinfo" string="Pagos fallidos"/></button>

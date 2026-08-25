@@ -3,6 +3,7 @@ import re
 import logging
 
 from odoo import _, fields, models
+from odoo.tools.float_utils import float_compare
 
 
 _logger = logging.getLogger(__name__)
@@ -74,6 +75,33 @@ class ChatroomChannel(models.Model):
             self.ai_sales_status = 'awaiting_confirmation'
             self._sales_log('confirmation_requested', reason)
             return reason
+        cart_error = self._sales_validate_cart()
+        if cart_error:
+            self.ai_sales_status = 'escalated'
+            self.ai_sales_last_error = cart_error
+            self.ai_sales_reply_override = cart_error + ' ' + _('Un asesor continuarÃ¡ contigo.')
+            self._sales_log('blocked', cart_error, amount=self.cart_total)
+            return cart_error
+        # La política de autonomía, si está instalada, es el último control
+        # antes de crear o confirmar una venta. La dependencia sigue siendo
+        # opcional para conservar la modularidad.
+        if 'chatroom.ai.autonomy.policy' in self.env:
+            policy = self.env['chatroom.ai.autonomy.policy'].get_active_policy(self.company_id)
+            if policy:
+                decision = policy.evaluate(
+                    'confirm_order', self.cart_total, 1.0, channel=self)
+                if decision['decision'] != 'allow':
+                    reason = decision['reason']
+                    self.ai_sales_status = (
+                        'awaiting_confirmation'
+                        if decision['decision'] == 'approval' else 'escalated')
+                    self.ai_sales_last_error = reason
+                    self.ai_sales_reply_override = reason
+                    self._sales_log(
+                        'confirmation_requested'
+                        if decision['decision'] == 'approval' else 'blocked',
+                        reason, amount=self.cart_total)
+                    return reason
         return False
 
     def _sales_send_text(self, body):
@@ -101,6 +129,27 @@ class ChatroomChannel(models.Model):
             lambda line: not line.product_id.active or not line.product_id.sale_ok or line.discount)
         if invalid:
             return _('El pedido contiene productos inactivos, no vendibles o con descuento; requiere revisión humana.')
+        return False
+
+    def _sales_validate_cart(self):
+        self.ensure_one()
+        icp = self.env['ir.config_parameter'].sudo()
+        validate_stock = icp.get_param('chatroom_ai_sales.validate_stock', 'True') == 'True'
+        validate_price = icp.get_param('chatroom_ai_sales.validate_price', 'True') == 'True'
+        currency = self.env.company.currency_id
+        for cart_line in self.cart_line_ids:
+            product = self.env['product.product'].browse(cart_line.product_id).exists()
+            if not product or not product.active or not product.sale_ok:
+                return _('El producto %s ya no estÃ¡ disponible para la venta.') % (cart_line.product_name or cart_line.product_id)
+            if validate_price and float_compare(
+                    cart_line.price_unit, product.lst_price,
+                    precision_rounding=currency.rounding):
+                return _('El precio de %s cambiÃ³ desde que se agregÃ³ al carrito; requiere revisiÃ³n.') % product.display_name
+            if validate_stock and product.type == 'consu' and product.is_storable:
+                available = product.with_company(self.company_id).free_qty
+                if available < cart_line.quantity:
+                    return _('La existencia de %s es insuficiente: disponible %s, solicitado %s.') % (
+                        product.display_name, available, cart_line.quantity)
         return False
 
     def _sales_after_checkout(self, order):
@@ -152,7 +201,6 @@ class ChatroomChannel(models.Model):
         self.ensure_one()
         guard = self._ai_autonomous_checkout_guard()
         if guard:
-            self.ai_sales_status = 'awaiting_confirmation'
             self.ai_sales_reply_override = guard
             return False
         order_id = super().action_checkout_cart()

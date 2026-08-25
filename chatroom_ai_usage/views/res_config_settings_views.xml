@@ -74,6 +74,18 @@
                              help="Referencia local para comparar el gasto; no cambia los limites de OpenAI.">
                         <field name="chatroom_ai_monthly_budget"/>
                     </setting>
+                    <setting id="chatroom_ai_daily_limits_setting"
+                             string="Protección diaria de consumo"
+                             help="Detiene llamadas externas al alcanzar los límites configurados. Las respuestas locales siguen funcionando.">
+                        <div class="row mt-2">
+                            <label for="chatroom_ai_daily_token_limit" class="col-lg-5 o_light_label"/>
+                            <field name="chatroom_ai_daily_token_limit"/>
+                        </div>
+                        <div class="row mt-2">
+                            <label for="chatroom_ai_daily_request_limit" class="col-lg-5 o_light_label"/>
+                            <field name="chatroom_ai_daily_request_limit"/>
+                        </div>
+                    </setting>
                     <setting id="chatroom_ai_refresh_usage_setting"
                              help="Consulta el costo oficial si hay Admin API Key; si no, muestra el consumo registrado localmente.">
                         <button name="action_refresh_ai_usage" type="object" string="Actualizar consumo" class="btn-primary"/>

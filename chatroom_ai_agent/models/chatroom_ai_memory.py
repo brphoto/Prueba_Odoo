@@ -41,12 +41,14 @@ class ChatroomAiMemory(models.Model):
             domain.append(('partner_id', '=', partner.id if hasattr(partner, 'id') else partner))
         if channel:
             domain.append(('channel_id', '=', channel.id if hasattr(channel, 'id') else channel))
+        domain.append(('company_id', '=', self.env.company.id))
         memory = self.search(domain, limit=1)
         vals = {
             'name': content[:80], 'content': content, 'memory_type': memory_type,
             'source': source, 'importance': importance, 'last_used': fields.Datetime.now(),
             'partner_id': partner.id if hasattr(partner, 'id') else partner,
             'channel_id': channel.id if hasattr(channel, 'id') else channel,
+            'company_id': channel.company_id.id if channel and hasattr(channel, 'company_id') and channel.company_id else self.env.company.id,
         }
         if memory:
             memory.write(vals)
@@ -58,7 +60,10 @@ class ChatroomAiMemory(models.Model):
         """Devuelve memoria vigente y relevante para inyectarla en el prompt."""
         partner_id = partner.id if hasattr(partner, 'id') else partner
         channel_id = channel.id if hasattr(channel, 'id') else channel
-        domain = [('active', '=', True), '|', ('expires_at', '=', False), ('expires_at', '>=', fields.Datetime.now())]
+        domain = [
+            ('active', '=', True), ('company_id', '=', self.env.company.id),
+            '|', ('expires_at', '=', False), ('expires_at', '>=', fields.Datetime.now()),
+        ]
         if partner_id or channel_id:
             domain += ['|', ('partner_id', '=', partner_id or 0), ('channel_id', '=', channel_id or 0)]
         records = self.sudo().search(domain, order='importance desc, last_used desc, id desc', limit=limit)

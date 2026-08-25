@@ -47,6 +47,7 @@
         <field name="model">chatroom.ai.usage.snapshot</field>
         <field name="arch" type="xml">
             <list string="Consumo de IA" decoration-danger="state == 'error'" decoration-warning="state == 'partial'">
+                <field name="company_id" optional="hide"/>
                 <field name="fetched_at"/>
                 <field name="period_start" optional="hide"/>
                 <field name="period_end" optional="hide"/>
@@ -69,6 +70,7 @@
         <field name="arch" type="xml">
             <form string="Resumen de consumo de IA">
                 <header>
+                    <button name="action_refresh_local_ui" type="object" string="Actualizar resumen local" class="btn-primary" icon="fa-refresh"/>
                     <button name="action_open_platform_usage" type="object" string="Abrir panel oficial" class="btn-secondary"/>
                 </header>
                 <sheet>
@@ -79,6 +81,7 @@
                     <div class="alert alert-danger" role="alert" invisible="state != 'error'"><field name="error_message"/></div>
                     <group>
                         <group>
+                            <field name="company_id" readonly="1"/>
                             <field name="fetched_at" readonly="1"/>
                             <field name="period_start" readonly="1"/>
                             <field name="period_end" readonly="1"/>
@@ -106,10 +109,35 @@
             </form>
         </field>
     </record>
+    <record id="view_chatroom_ai_usage_snapshot_graph" model="ir.ui.view">
+        <field name="name">chatroom.ai.usage.snapshot.graph</field>
+        <field name="model">chatroom.ai.usage.snapshot</field>
+        <field name="arch" type="xml">
+            <graph string="Consumo de IA por día" type="bar">
+                <field name="fetched_at" interval="day" type="row"/>
+                <field name="total_tokens" type="measure"/>
+                <field name="request_count" type="measure"/>
+            </graph>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_usage_snapshot_pivot" model="ir.ui.view">
+        <field name="name">chatroom.ai.usage.snapshot.pivot</field>
+        <field name="model">chatroom.ai.usage.snapshot</field>
+        <field name="arch" type="xml">
+            <pivot string="Resumen de consumo">
+                <field name="fetched_at" type="row" interval="day"/>
+                <field name="state" type="col"/>
+                <field name="request_count" type="measure"/>
+                <field name="total_tokens" type="measure"/>
+                <field name="cost" type="measure"/>
+            </pivot>
+        </field>
+    </record>
     <record id="view_chatroom_ai_usage_event_list" model="ir.ui.view">
         <field name="name">chatroom.ai.usage.event.list</field>
         <field name="model">chatroom.ai.usage.event</field>
         <field name="arch" type="xml"><list string="Solicitudes IA">
+            <field name="company_id" optional="hide"/>
             <field name="request_date"/><field name="model"/><field name="task_type"/>
             <field name="channel_id"/><field name="input_tokens"/>
             <field name="output_tokens"/><field name="total_tokens"/><field name="success"/>

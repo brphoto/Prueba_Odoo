@@ -3,7 +3,12 @@
     <record id="view_chatroom_notification_list" model="ir.ui.view">
         <field name="name">chatroom.notification.list</field><field name="model">chatroom.notification</field>
         <field name="arch" type="xml"><list string="Notificaciones">
-            <field name="create_date"/><field name="name"/><field name="notification_type" widget="badge"/>
+            <header>
+                <button name="action_mark_read" type="object" string="Marcar leÃ­das"/>
+                <button name="action_snooze" type="object" string="Posponer 1 hora"/>
+                <button name="action_resolve" type="object" string="Resolver" class="btn-primary"/>
+            </header>
+            <field name="create_date"/><field name="company_id" optional="hide"/><field name="name"/><field name="notification_type" widget="badge"/>
             <field name="priority" widget="badge"/><field name="state" widget="badge"/><field name="user_id"/>
             <field name="channel_id" optional="show"/><field name="snoozed_until" optional="show"/>
         </list></field>
@@ -19,7 +24,7 @@
                 <field name="state" widget="statusbar" statusbar_visible="unread,read,done"/>
             </header><sheet>
                 <div class="oe_title"><h1><field name="name"/></h1></div>
-                <group><group><field name="notification_type"/><field name="priority"/><field name="user_id"/></group>
+                <group><group><field name="company_id"/><field name="notification_type"/><field name="priority"/><field name="user_id"/></group>
                     <group><field name="channel_id"/><field name="partner_id"/><field name="escalation_level"/></group></group>
                 <group string="Detalle"><field name="message" nolabel="1"/></group>
                 <group string="Auditoría"><field name="dedupe_key"/><field name="read_at"/><field name="snoozed_until"/><field name="resolved_at"/></group>

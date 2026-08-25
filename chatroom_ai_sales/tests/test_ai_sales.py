@@ -11,6 +11,8 @@ class TestChatroomAiSales(TransactionCase):
         self.icp.set_param('chatroom_ai_sales.enabled', 'True')
         self.icp.set_param('chatroom_ai_sales.auto_confirm', 'True')
         self.icp.set_param('chatroom_ai_sales.auto_payment_link', 'False')
+        self.icp.set_param('chatroom_ai_sales.validate_stock', 'False')
+        self.icp.set_param('chatroom_ai_sales.validate_price', 'True')
         self.partner = self.env['res.partner'].create({'name': 'Cliente venta autónoma', 'phone': '+593999111222'})
         self.channel = self.env['chatroom.channel'].create({
             'channel_type': 'whatsapp',
@@ -87,3 +89,42 @@ class TestChatroomAiSales(TransactionCase):
         self.assertEqual(order.state, 'draft')
         self.assertEqual(self.channel.ai_sales_status, 'escalated')
         self.assertTrue(self.channel.ai_sales_last_error)
+
+    def test_price_drift_requires_human_review_before_checkout(self):
+        self.icp.set_param('chatroom_ai_sales.max_auto_amount', '100')
+        self.icp.set_param('chatroom_ai_sales.auto_confirm', 'False')
+        message = self.env['chatroom.message'].create({
+            'channel_id': self.channel.id,
+            'direction': 'inbound',
+            'message_type': 'text',
+            'body': 'Confirmo el pedido',
+        })
+        self._cart()
+        self.channel.cart_line_ids.price_unit = self.product.lst_price + 1
+        result = self.channel.with_context(
+            chatroom_ai_autonomous_checkout=True,
+            chatroom_ai_autonomous_message_id=message.id,
+        ).action_checkout_cart()
+        self.assertFalse(result)
+        self.assertEqual(self.channel.ai_sales_status, 'escalated')
+        self.assertIn('precio', self.channel.ai_sales_last_error.lower())
+
+    def test_stock_validation_blocks_empty_inventory(self):
+        self.icp.set_param('chatroom_ai_sales.max_auto_amount', '100')
+        self.icp.set_param('chatroom_ai_sales.auto_confirm', 'False')
+        self.icp.set_param('chatroom_ai_sales.validate_stock', 'True')
+        self.product.is_storable = True
+        message = self.env['chatroom.message'].create({
+            'channel_id': self.channel.id,
+            'direction': 'inbound',
+            'message_type': 'text',
+            'body': 'Confirmo el pedido',
+        })
+        self._cart()
+        result = self.channel.with_context(
+            chatroom_ai_autonomous_checkout=True,
+            chatroom_ai_autonomous_message_id=message.id,
+        ).action_checkout_cart()
+        self.assertFalse(result)
+        self.assertEqual(self.channel.ai_sales_status, 'escalated')
+        self.assertIn('existencia', self.channel.ai_sales_last_error.lower())

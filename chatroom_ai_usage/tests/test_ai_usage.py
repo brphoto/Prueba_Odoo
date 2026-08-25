@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from unittest.mock import Mock, patch
 
+from odoo import fields
+from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -75,12 +77,29 @@ class TestChatroomAiUsage(TransactionCase):
             'output_tokens': 7, 'total_tokens': 17,
         })
         self.assertEqual(event.total_tokens, event.input_tokens + event.output_tokens)
+        self.assertEqual(event.company_id, self.env.company)
 
     def test_budget_alert_thresholds(self):
         self.env['ir.config_parameter'].sudo().set_param('chatroom_whatsapp.ai_monthly_budget', '10')
         values = self.env['chatroom.ai.usage.snapshot']._budget_values(8.5)
         self.assertEqual(values['budget_state'], 'warning')
         self.assertEqual(values['budget_remaining'], 1.5)
+
+    def test_local_refresh_creates_summary_from_registered_requests(self):
+        self.env['chatroom.ai.usage.event'].create({
+            'model': 'gpt-test-local', 'input_tokens': 4,
+            'output_tokens': 3, 'total_tokens': 7,
+        })
+        snapshot = self.env['chatroom.ai.usage.snapshot'].action_refresh_local()
+        self.assertEqual(snapshot.state, 'partial')
+        self.assertEqual(snapshot.company_id, self.env.company)
+        self.assertGreaterEqual(snapshot.request_count, 1)
+        self.assertGreaterEqual(snapshot.total_tokens, 7)
+
+    def test_local_refresh_ui_returns_notification(self):
+        action = self.env['chatroom.ai.usage.snapshot'].action_refresh_local_ui()
+        self.assertEqual(action['type'], 'ir.actions.client')
+        self.assertEqual(action['tag'], 'display_notification')
 
     def test_task_profile_and_fallback_models_are_ordered(self):
         icp = self.env['ir.config_parameter'].sudo()
@@ -131,3 +150,19 @@ class TestChatroomAiUsage(TransactionCase):
         with patch.object(type(channel), '_meta_request', side_effect=[failed, success]):
             self.assertEqual(channel._ai_chat_completion([{'role': 'user', 'content': 'Hola'}]), 'Respuesta de respaldo')
         self.assertEqual(self.env['chatroom.ai.usage.event'].search_count([('model', '=', 'completion-backup')]), 1)
+
+    def test_daily_request_limit_blocks_external_completion(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.ai_enabled', 'True')
+        icp.set_param('chatroom_whatsapp.ai_provider_url', 'https://example.test/v1/chat/completions')
+        icp.set_param('chatroom_whatsapp.ai_api_key', 'test-key')
+        icp.set_param('chatroom_whatsapp.ai_daily_request_limit', '1')
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'usage-limit-test',
+        })
+        self.env['chatroom.ai.usage.event'].create({
+            'company_id': self.env.company.id,
+            'request_date': fields.Datetime.now(), 'total_tokens': 10,
+        })
+        with self.assertRaises(UserError):
+            channel._ai_chat_completion([{'role': 'user', 'content': 'Hola'}])

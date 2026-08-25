@@ -52,3 +52,35 @@ class TestEngagementAutomation(TransactionCase):
         candidates = automation._candidate_events(step, date.today())
         self.assertEqual(len(candidates), 1)
         self.assertEqual(candidates[0]['event_key'], 'event:%s' % event.id)
+
+    def test_pending_execution_can_be_approved_and_executed(self):
+        partner = self.env['res.partner'].create({'name': 'Contacto aprobacion'})
+        automation = self.env['crm.engagement.automation'].create({
+            'name': 'Aprobacion de prueba', 'source_type': 'custom_event',
+        })
+        step = self.env['crm.engagement.automation.step'].create({
+            'automation_id': automation.id,
+            'name': 'Aviso aprobado',
+            'channel': 'notification',
+            'requires_approval': True,
+            'message_body': 'Hola ${first_name}',
+        })
+        execution = self.env['crm.engagement.execution'].create({
+            'automation_id': automation.id,
+            'step_id': step.id,
+            'partner_id': partner.id,
+            'event_key': 'approval:test',
+            'event_name': 'Prueba',
+            'scheduled_date': date.today(),
+            'state': 'pending_approval',
+            'context_json': '{"first_name": "Contacto"}',
+        })
+        manager_group = self.env.ref('crm_engagement_automation.group_crm_engagement_manager')
+        manager = self.env['res.users'].create({
+            'name': 'Administrador de pruebas',
+            'login': 'engagement.manager.test',
+            'group_ids': [(6, 0, [self.env.ref('base.group_user').id, manager_group.id])],
+        })
+        result = execution.with_user(manager).action_approve()
+        self.assertEqual(result['tag'], 'display_notification')
+        self.assertEqual(execution.state, 'sent')

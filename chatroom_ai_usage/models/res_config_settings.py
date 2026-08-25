@@ -35,7 +35,7 @@ class ResConfigSettings(models.TransientModel):
     chatroom_ai_fallback_model_id = fields.Many2one(
         'chatroom.ai.provider.model', string='Modelo de respaldo',
         domain=[('active', '=', True), ('supports_chat', '=', True)],
-        help='Se usa automaticamente si el modelo principal no responde o no esta disponible.',
+        help='Se usa automáticamente si el modelo principal no responde o no está disponible.',
     )
     chatroom_ai_admin_api_key = fields.Char(
         string='Admin API Key para consumo',
@@ -50,15 +50,25 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='chatroom_whatsapp.ai_monthly_budget',
         help='Referencia interna para alertas. No modifica el limite de OpenAI.',
     )
+    chatroom_ai_daily_token_limit = fields.Integer(
+        string='Límite diario de tokens', default=0,
+        config_parameter='chatroom_whatsapp.ai_daily_token_limit',
+        help='0 permite consumo ilimitado. Si se alcanza el límite, la IA externa se pausa hasta el día siguiente.',
+    )
+    chatroom_ai_daily_request_limit = fields.Integer(
+        string='Límite diario de solicitudes', default=0,
+        config_parameter='chatroom_whatsapp.ai_daily_request_limit',
+        help='0 permite solicitudes ilimitadas. Sirve como protección adicional ante automatizaciones mal configuradas.',
+    )
     chatroom_ai_usage_auto_refresh = fields.Boolean(
-        string='Actualizar consumo automaticamente',
+        string='Actualizar consumo automáticamente',
         config_parameter='chatroom_whatsapp.ai_usage_auto_refresh',
         help='Crea un resumen diario y alerta a los administradores cuando se alcanza el presupuesto.',
     )
     chatroom_ai_history_messages = fields.Integer(
         string='Mensajes recientes para la IA', default=6,
         config_parameter='chatroom_ai.history_messages',
-        help='Cantidad de mensajes recientes que se envian al proveedor. Un valor bajo reduce tokens y mantiene el contexto operativo.',
+        help='Cantidad de mensajes recientes que se envían al proveedor. Un valor bajo reduce tokens y mantiene el contexto operativo.',
     )
     chatroom_ai_knowledge_context_max_chars = fields.Integer(
         string='Máximo de conocimiento enviado (caracteres)', default=7000,

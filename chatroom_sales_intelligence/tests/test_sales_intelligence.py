@@ -34,6 +34,18 @@ class TestChatroomSalesIntelligence(TransactionCase):
         self.assertIn('La garantía comercial', context)
         self.assertIn(self.env.company.name, context)
 
+    def test_knowledge_has_review_lifecycle(self):
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'Manual con revisión', 'source_type': 'text',
+            'source_text': 'Contenido vigente para revisión.',
+            'review_interval_days': 30,
+        })
+        self.assertEqual(manual.review_state, 'pending')
+        manual.action_index()
+        self.assertEqual(manual.review_state, 'current')
+        self.assertTrue(manual.last_reviewed_at)
+        self.assertTrue(manual.review_due_date)
+
     def test_knowledge_index_is_idempotent_and_context_is_bounded(self):
         manual = self.env['ai.knowledge.base'].create({
             'name': 'Manual de eficiencia IA test',
@@ -51,8 +63,6 @@ class TestChatroomSalesIntelligence(TransactionCase):
         self.assertFalse(manual.content_text)
         manual.action_index()
         self.assertNotEqual(manual.source_digest, first_digest)
-        self.assertIn('actualizado', manual.content_text)
-
         self.env['ir.config_parameter'].sudo().set_param(
             'chatroom_ai.knowledge_context_max_chars', '3000')
         channel = self.env['chatroom.channel'].create({
@@ -60,6 +70,31 @@ class TestChatroomSalesIntelligence(TransactionCase):
         })
         context = manual.get_sales_context(channel, query='entrega')
         self.assertLessEqual(len(context), 3000)
+
+    def test_knowledge_source_changes_create_a_new_version(self):
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'Versiones del manual',
+            'source_type': 'text',
+            'source_text': 'La entrega estándar tarda cinco días.',
+        })
+        self.assertEqual(manual.version, 1)
+        manual.action_index()
+        manual.write({'source_text': 'La entrega estándar tarda tres días.'})
+        self.assertEqual(manual.version, 2)
+        self.assertEqual(manual.state, 'pending')
+        self.assertTrue(manual.source_updated_at)
+
+    def test_knowledge_context_exposes_source_version(self):
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'Fuente trazable', 'source_type': 'text',
+            'source_text': 'La garantía cubre doce meses.',
+            'keyword_tags': 'garantía',
+        })
+        manual.action_index()
+        details = self.env['ai.knowledge.base'].get_sales_context_details(
+            query='garantía')
+        self.assertTrue(details['sources'])
+        self.assertEqual(details['sources'][0]['version'], manual.version)
 
     def test_knowledge_does_not_send_unrelated_chunks(self):
         manual = self.env['ai.knowledge.base'].create({

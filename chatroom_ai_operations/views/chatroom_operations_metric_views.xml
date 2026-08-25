@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_operations_metric_list" model="ir.ui.view">
+        <field name="name">chatroom.operations.metric.list</field>
+        <field name="model">chatroom.operations.metric</field>
+        <field name="arch" type="xml">
+            <list string="Métricas comerciales" create="0" edit="0">
+                <field name="date"/>
+                <field name="company_id"/>
+                <field name="conversation_count"/>
+                <field name="inbound_messages"/>
+                <field name="avg_first_response_minutes"/>
+                <field name="sla_compliance_rate" widget="percentage"/>
+                <field name="sales_orders"/>
+                <field name="confirmed_orders" optional="hide"/>
+                <field name="quotation_count" optional="hide"/>
+                <field name="sales_amount" widget="monetary"/>
+                <field name="invoice_count" optional="hide"/>
+                <field name="invoiced_amount" widget="monetary" optional="hide"/>
+                <field name="new_customers" optional="hide"/>
+                <field name="payment_links_paid"/>
+                <field name="ai_requests"/>
+                <field name="ai_tokens"/>
+                <field name="ai_resolution_rate" widget="percentage"/>
+                <field name="ai_suggestions_helpful" optional="hide"/>
+                <field name="ai_suggestions_edited" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chatroom_operations_metric_graph" model="ir.ui.view">
+        <field name="name">chatroom.operations.metric.graph</field>
+        <field name="model">chatroom.operations.metric</field>
+        <field name="arch" type="xml">
+            <graph string="Evolución comercial" type="bar">
+                <field name="date" interval="day"/>
+                <field name="sales_amount" type="measure"/>
+                <field name="conversation_count" type="measure"/>
+                <field name="sales_orders" type="measure"/>
+                <field name="confirmed_orders" type="measure"/>
+                <field name="quotation_count" type="measure"/>
+                <field name="ai_tokens" type="measure"/>
+            </graph>
+        </field>
+    </record>
+    <record id="view_chatroom_operations_metric_pivot" model="ir.ui.view">
+        <field name="name">chatroom.operations.metric.pivot</field>
+        <field name="model">chatroom.operations.metric</field>
+        <field name="arch" type="xml">
+            <pivot string="Métricas comerciales">
+                <field name="date" type="row" interval="month"/>
+                <field name="company_id" type="row"/>
+                <field name="conversation_count" type="measure"/>
+                <field name="sales_amount" type="measure"/>
+                <field name="sales_orders" type="measure"/>
+                <field name="confirmed_orders" type="measure"/>
+                <field name="quotation_count" type="measure"/>
+                <field name="payment_links_paid" type="measure"/>
+                <field name="ai_tokens" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="action_chatroom_operations_metric" model="ir.actions.act_window">
+        <field name="name">Métricas comerciales</field>
+        <field name="res_model">chatroom.operations.metric</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="view_ids" eval="[(5, 0, 0), (0, 0, {'view_mode': 'graph', 'view_id': ref('view_chatroom_operations_metric_graph')}), (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_chatroom_operations_metric_pivot')}), (0, 0, {'view_mode': 'list', 'view_id': ref('view_chatroom_operations_metric_list')})]"/>
+    </record>
+    <record id="server_action_chatroom_operations_metric_refresh" model="ir.actions.server">
+        <field name="name">Actualizar métricas comerciales</field>
+        <field name="model_id" ref="model_chatroom_operations_metric"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_collect_today()</field>
+    </record>
+</odoo>

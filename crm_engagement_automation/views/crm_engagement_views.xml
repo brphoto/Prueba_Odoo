@@ -214,6 +214,8 @@
                        decoration-warning="state in ('queued', 'pending_approval')"
                        decoration-danger="state == 'failed'"/>
                 <field name="error_message" optional="hide"/>
+                <button name="action_approve" type="object" string="Aprobar y ejecutar"
+                        invisible="state != 'pending_approval'" groups="crm_engagement_automation.group_crm_engagement_manager"/>
                 <button name="action_retry" type="object" string="Reintentar"
                         invisible="state != 'failed'" groups="crm_engagement_automation.group_crm_engagement_manager"/>
             </list>

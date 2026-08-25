@@ -38,4 +38,11 @@ class ChatroomAiKnowledgeTest(models.TransientModel):
             'estimated_input_tokens': details.get('estimated_input_tokens', 0),
             'context_chars': details.get('context_chars', 0),
         })
-        return True
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Probar conocimiento IA'),
+            'res_model': self._name,
+            'view_mode': 'form',
+            'res_id': self.id,
+            'target': 'new',
+        }

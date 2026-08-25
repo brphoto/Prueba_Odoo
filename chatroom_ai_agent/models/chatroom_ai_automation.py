@@ -33,6 +33,9 @@ class ChatroomAiAutomation(models.Model):
     ], string='Tipo de tarea', required=True, default='daily_review')
     approval_required = fields.Boolean(default=True)
     max_tasks = fields.Integer(default=20)
+    max_attempts = fields.Integer(
+        string='Intentos máximos por tarea', default=3,
+        help='Cantidad máxima de ejecuciones antes de dejar una tarea bloqueada para revisión humana.')
     only_unread = fields.Boolean(string='Solo conversaciones no leídas')
     only_unassigned = fields.Boolean(string='Solo conversaciones sin asignar')
     min_rfm_score = fields.Integer(string='Score RFM mínimo', default=0)
@@ -45,11 +48,13 @@ class ChatroomAiAutomation(models.Model):
     last_run_summary = fields.Char(string='Resumen de la última ejecución', readonly=True)
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company, index=True)
 
-    @api.constrains('max_tasks', 'min_rfm_score')
+    @api.constrains('max_tasks', 'max_attempts', 'min_rfm_score')
     def _check_limits(self):
         for automation in self:
             if automation.max_tasks <= 0:
                 raise ValidationError(_('El máximo de tareas debe ser mayor que cero.'))
+            if automation.max_attempts <= 0:
+                raise ValidationError(_('Los intentos máximos deben ser mayores que cero.'))
             if automation.min_rfm_score < 0:
                 raise ValidationError(_('El score RFM mínimo no puede ser negativo.'))
 
@@ -57,7 +62,11 @@ class ChatroomAiAutomation(models.Model):
     def _channels_for(self, automation):
         if 'chatroom.channel' not in self.env:
             return self.env['chatroom.channel']
-        domain = [('state', 'in', ('open', 'pending'))]
+        company = automation.company_id or self.env.company
+        domain = [
+            ('state', 'in', ('open', 'pending')),
+            ('company_id', '=', company.id),
+        ]
         if automation.trigger == 'open_conversation':
             recent_from = fields.Datetime.to_datetime(fields.Datetime.now()) - timedelta(hours=24)
             domain.append(('write_date', '>=', recent_from))
@@ -67,6 +76,7 @@ class ChatroomAiAutomation(models.Model):
             partner_ids = self.env['crm.lead'].sudo().search([
                 ('type', '=', 'opportunity'), ('active', '=', True),
                 ('probability', '<', 100),
+                ('company_id', '=', company.id),
             ], order='write_date desc, id desc', limit=max(automation.max_tasks or 20, 1) * 5).mapped('partner_id').ids
             domain.append(('partner_id', 'in', partner_ids or [0]))
         elif automation.trigger == 'pending_quote':
@@ -74,6 +84,7 @@ class ChatroomAiAutomation(models.Model):
                 return self.env['chatroom.channel']
             partner_ids = self.env['sale.order'].sudo().search([
                 ('state', 'in', ('draft', 'sent')),
+                ('company_id', '=', company.id),
             ], order='date_order desc, id desc', limit=max(automation.max_tasks or 20, 1) * 5).mapped('partner_id').ids
             domain.append(('partner_id', 'in', partner_ids or [0]))
         elif automation.trigger == 'pending_activity':
@@ -97,6 +108,7 @@ class ChatroomAiAutomation(models.Model):
                 ('state', '=', 'posted'),
                 ('payment_state', 'in', ('not_paid', 'partial')),
                 ('invoice_date_due', '<', fields.Date.context_today(self)),
+                ('company_id', '=', company.id),
             ]).mapped('partner_id').ids
             domain.append(('partner_id', 'in', partner_ids or [0]))
         configured_raw = self.env['ir.config_parameter'].sudo().get_param(

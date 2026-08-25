@@ -6,8 +6,10 @@
         <field name="arch" type="xml"><list>
             <field name="name"/><field name="company_id"/><field name="category"/>
             <field name="source_type"/><field name="pdf_filename"/><field name="chunk_count"/>
+            <field name="version"/><field name="source_updated_at" optional="hide"/>
             <field name="usage_count"/><field name="last_used_at" optional="hide"/>
-            <field name="indexed_at" optional="hide"/><field name="state"/><field name="active" widget="boolean_toggle"/>
+            <field name="indexed_at" optional="hide"/><field name="review_due_date" optional="hide"/>
+            <field name="review_state"/><field name="state"/><field name="active" widget="boolean_toggle"/>
         </list></field>
     </record>
     <record id="view_ai_knowledge_base_form" model="ir.ui.view">
@@ -15,15 +17,21 @@
         <field name="model">ai.knowledge.base</field>
         <field name="arch" type="xml"><form string="Base de conocimiento IA">
             <header><button name="action_index" type="object" string="Indexar manual" class="btn-primary"/>
+                <button name="action_mark_reviewed" type="object" string="Marcar como revisado" class="btn-secondary"
+                        invisible="state != 'indexed'"/>
                 <field name="state" widget="statusbar"/></header>
             <sheet><group><group><field name="name"/><field name="company_id"/><field name="category"/>
-                    <field name="priority"/><field name="active"/><field name="keyword_tags"/></group>
+                    <field name="priority"/><field name="active"/><field name="owner_id"/>
+                    <field name="review_interval_days"/><field name="keyword_tags"/></group>
                 <group><field name="source_type"/>
                     <field name="source_text" invisible="source_type != 'text'"
                            placeholder="Ej.: La garantía cubre..."/>
                     <field name="pdf_file" filename="pdf_filename" invisible="source_type != 'pdf'"/>
                     <field name="pdf_filename" invisible="1"/></group>
-                <field name="chunk_count" readonly="1"/><field name="indexed_at" readonly="1"/><field name="processing_error" readonly="1"/></group>
+                <field name="chunk_count" readonly="1"/><field name="version" readonly="1"/>
+                <field name="source_updated_at" readonly="1"/><field name="indexed_at" readonly="1"/>
+                <field name="last_reviewed_at" readonly="1"/><field name="review_due_date" readonly="1"/>
+                <field name="review_state" readonly="1"/><field name="processing_error" readonly="1"/></group>
                 <field name="content_text" readonly="1" nolabel="1"/></sheet>
         </form></field>
     </record>

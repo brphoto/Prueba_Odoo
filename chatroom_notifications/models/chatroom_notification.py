@@ -12,6 +12,9 @@ class ChatroomNotification(models.Model):
 
     name = fields.Char(string='Título', required=True)
     message = fields.Text(string='Detalle', required=True)
+    company_id = fields.Many2one(
+        'res.company', string='Empresa', required=True,
+        default=lambda self: self.env.company, index=True)
     notification_type = fields.Selection([
         ('sla', 'SLA'), ('integration', 'Integración'), ('payment', 'Pago'),
         ('ai', 'IA'), ('followup', 'Seguimiento'), ('other', 'Otra'),
@@ -34,11 +37,25 @@ class ChatroomNotification(models.Model):
     resolved_at = fields.Datetime(string='Resuelta el', readonly=True)
     escalation_level = fields.Integer(string='Nivel de escalamiento', default=0, copy=False)
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('channel_id') and not vals.get('company_id'):
+                channel = self.env['chatroom.channel'].sudo().browse(
+                    vals['channel_id']).exists()
+                if channel and channel.company_id:
+                    vals['company_id'] = channel.company_id.id
+        return super().create(vals_list)
+
     @api.model
     def create_deduplicated(self, vals):
         key = vals.get('dedupe_key')
         if key:
-            existing = self.search([('dedupe_key', '=', key), ('state', '!=', 'done')], limit=1)
+            company_id = vals.get('company_id') or self.env.company.id
+            existing = self.search([
+                ('dedupe_key', '=', key), ('company_id', '=', company_id),
+                ('state', '!=', 'done'),
+            ], limit=1)
             if existing:
                 existing.write({
                     'message': vals.get('message', existing.message),
@@ -49,22 +66,30 @@ class ChatroomNotification(models.Model):
 
     def action_mark_read(self):
         self.write({'state': 'read', 'read_at': fields.Datetime.now()})
-        return True
+        return self._action_feedback(_('Notificaciones actualizadas'), _('%s marcada(s) como leÃ­da(s).') % len(self))
 
     def action_snooze(self):
         self.write({
             'state': 'snoozed',
             'snoozed_until': fields.Datetime.now() + timedelta(hours=1),
         })
-        return True
+        return self._action_feedback(_('Notificaciones pospuestas'), _('%s notificacion(es) pospuesta(s) por una hora.') % len(self))
 
     def action_resolve(self):
         self.write({'state': 'done', 'resolved_at': fields.Datetime.now()})
-        return True
+        return self._action_feedback(_('Notificaciones resueltas'), _('%s notificacion(es) resuelta(s).') % len(self))
 
     def action_reopen(self):
         self.write({'state': 'unread', 'read_at': False, 'snoozed_until': False, 'resolved_at': False})
-        return True
+        return self._action_feedback(_('Notificaciones reabiertas'), _('%s notificacion(es) reabierta(s).') % len(self))
+
+    @api.model
+    def _action_feedback(self, title, message):
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {'title': title, 'message': message, 'type': 'success', 'sticky': False},
+        }
 
     def action_open_record(self):
         self.ensure_one()
@@ -102,6 +127,7 @@ class ChatroomNotification(models.Model):
                 'partner_id': channel.partner_id.id,
                 'res_model': 'chatroom.channel', 'res_id': channel.id,
                 'dedupe_key': key, 'escalation_level': level,
+                'company_id': channel.company_id.id,
             })
             created += bool(notification)
         return created

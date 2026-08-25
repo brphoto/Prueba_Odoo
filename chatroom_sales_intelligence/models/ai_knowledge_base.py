@@ -50,9 +50,52 @@ class AiKnowledgeBase(models.Model):
     processing_error = fields.Text(readonly=True)
     keyword_tags = fields.Char(string='Palabras clave', help='Términos separados por coma para priorizar este manual.')
     indexed_at = fields.Datetime(string='Indexado el', readonly=True)
+    owner_id = fields.Many2one(
+        'res.users', string='Responsable', default=lambda self: self.env.user,
+        index=True, help='Persona responsable de mantener este manual vigente.')
+    review_interval_days = fields.Integer(
+        string='Revisar cada (días)', default=90,
+        help='Después de este plazo el manual aparecerá como pendiente de revisión.')
+    last_reviewed_at = fields.Datetime(string='Última revisión', readonly=True)
+    review_due_date = fields.Date(
+        string='Revisión prevista', compute='_compute_review_status', store=True)
+    review_state = fields.Selection([
+        ('pending', 'Pendiente de indexar'),
+        ('current', 'Vigente'),
+        ('due', 'Requiere revisión'),
+        ('archived', 'Archivado'),
+    ], string='Vigencia', compute='_compute_review_status', store=True)
     source_digest = fields.Char(string='Huella de fuente', readonly=True, copy=False)
+    version = fields.Integer(string='Versión', default=1, readonly=True, copy=False)
+    source_updated_at = fields.Datetime(
+        string='Fuente actualizada', default=fields.Datetime.now,
+        readonly=True, copy=False)
     usage_count = fields.Integer(string='Consultas', readonly=True, copy=False)
     last_used_at = fields.Datetime(string='Última consulta', readonly=True, copy=False)
+
+    @api.depends('active', 'state', 'indexed_at', 'last_reviewed_at', 'review_interval_days')
+    def _compute_review_status(self):
+        today = fields.Date.context_today(self)
+        for manual in self:
+            if not manual.active:
+                manual.review_due_date = False
+                manual.review_state = 'archived'
+                continue
+            if manual.state != 'indexed':
+                manual.review_due_date = False
+                manual.review_state = 'pending'
+                continue
+            reviewed_at = manual.last_reviewed_at or manual.indexed_at
+            due_date = fields.Date.to_date(reviewed_at) + timedelta(
+                days=max(manual.review_interval_days or 90, 1)) if reviewed_at else False
+            manual.review_due_date = due_date
+            manual.review_state = 'due' if due_date and due_date <= today else 'current'
+
+    @api.constrains('review_interval_days')
+    def _check_review_interval(self):
+        for manual in self:
+            if manual.review_interval_days < 1:
+                raise ValidationError(_('El intervalo de revisión debe ser de al menos 1 día.'))
 
     @api.constrains('source_type', 'pdf_file', 'source_text')
     def _check_knowledge_source(self):
@@ -69,12 +112,29 @@ class AiKnowledgeBase(models.Model):
             # La versión anterior no vuelve a estar disponible para la IA
             # hasta que el usuario pulse Indexar. Así nunca se mezclan datos
             # viejos y nuevos ni se hace una llamada extra al proveedor.
-            super(AiKnowledgeBase, self).write({
-                'state': 'pending', 'source_digest': False,
-                'content_text': False, 'chunk_count': 0,
-                'processing_error': False, 'indexed_at': False,
-            })
+            for manual in self:
+                super(AiKnowledgeBase, manual).write({
+                    'state': 'pending', 'source_digest': False,
+                    'content_text': False, 'chunk_count': 0,
+                    'processing_error': False, 'indexed_at': False,
+                    'last_reviewed_at': False,
+                    'version': (manual.version or 0) + 1,
+                    'source_updated_at': fields.Datetime.now(),
+                })
         return result
+
+    def action_mark_reviewed(self):
+        """Confirma que la fuente sigue vigente sin pagar una reindexación."""
+        self.write({'last_reviewed_at': fields.Datetime.now()})
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Conocimiento revisado'),
+                'message': _('%s manual(es) marcado(s) como vigente(s).') % len(self),
+                'type': 'success', 'sticky': False,
+            },
+        }
 
     def action_index(self):
         for manual in self:
@@ -103,6 +163,7 @@ class AiKnowledgeBase(models.Model):
                     'content_text': '\n\n'.join(chunks), 'chunk_count': len(chunks),
                     'state': 'indexed', 'processing_error': False,
                     'indexed_at': fields.Datetime.now(),
+                    'last_reviewed_at': fields.Datetime.now(),
                     'source_digest': digest,
                 })
             except Exception as error:
@@ -232,6 +293,8 @@ class AiKnowledgeBase(models.Model):
                 'id': manual.id, 'name': manual.name, 'category': manual.category,
                 'score': max((item[0] for item in rows), default=0),
                 'chunks': len(rows),
+                'version': manual.version,
+                'review_state': manual.review_state,
             })
         sources.sort(key=lambda item: (-item['score'], item['name']))
         live_sources = [

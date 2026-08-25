@@ -6,6 +6,10 @@ class ChatroomOperationsDashboard(models.TransientModel):
     _name = 'chatroom.operations.dashboard'
     _description = 'Panel operativo de Chatroom'
 
+    company_id = fields.Many2one(
+        'res.company', string='Empresa', required=True,
+        default=lambda self: self.env.company,
+    )
     refreshed_at = fields.Datetime(string='Actualizado', readonly=True)
     active_conversations = fields.Integer(string='Conversaciones activas', readonly=True)
     sla_attention = fields.Integer(string='SLA por atender', readonly=True)
@@ -34,20 +38,28 @@ class ChatroomOperationsDashboard(models.TransientModel):
             'target': 'current',
         }
 
+    def _company_domain(self, model_name, domain):
+        if model_name in self.env and 'company_id' in self.env[model_name]._fields:
+            return list(domain) + [('company_id', '=', self.env.company.id)]
+        return domain
+
     def _count(self, model_name, domain):
         if model_name not in self.env:
             return 0
-        return self.env[model_name].sudo().search_count(domain)
+        return self.env[model_name].sudo().search_count(
+            self._company_domain(model_name, domain))
 
     def _sla_channel_ids(self):
         Channel = self.env['chatroom.channel'].sudo()
-        channels = Channel.search([('state', 'in', ('open', 'pending'))])
+        channels = Channel.search(self._company_domain(
+            'chatroom.channel', [('state', 'in', ('open', 'pending'))]))
         return channels.filtered(
             lambda channel: channel.first_response_sla_state in ('yellow', 'red')
         ).ids
 
     def _refresh_metrics(self):
         for record in self:
+            record.company_id = self.env.company
             record.refreshed_at = fields.Datetime.now()
             record.active_conversations = self._count('chatroom.channel', [('state', 'in', ('open', 'pending'))])
             record.sla_attention = len(record._sla_channel_ids())
@@ -79,11 +91,24 @@ class ChatroomOperationsDashboard(models.TransientModel):
         self._refresh_metrics()
         return {'type': 'ir.actions.client', 'tag': 'reload'}
 
+    def action_collect_metrics(self):
+        self.env['chatroom.operations.metric'].collect_for_date()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Métricas actualizadas'),
+                'message': _('El resumen comercial diario quedó actualizado.'),
+                'type': 'success',
+                'sticky': False,
+            },
+        }
+
     def _open(self, model, title, domain):
         return {
             'type': 'ir.actions.act_window', 'name': title, 'res_model': model,
             'view_mode': 'list,form', 'views': [(False, 'list'), (False, 'form')],
-            'domain': domain, 'target': 'new',
+            'domain': self._company_domain(model, domain), 'target': 'new',
         }
 
     def action_open_failed_payments(self):

@@ -115,8 +115,10 @@ class CrmEngagementExecution(models.Model):
         channel.action_send_template(template.name, template.language, values)
 
     def action_execute(self):
+        sent = failed = skipped = 0
         for execution in self:
             if execution.state not in ('queued', 'pending_approval'):
+                skipped += 1
                 continue
             try:
                 context = json.loads(execution.context_json or '{}')
@@ -130,15 +132,35 @@ class CrmEngagementExecution(models.Model):
                 elif execution.channel == 'whatsapp':
                     execution._execute_whatsapp(context)
                 execution.write({'state': 'sent', 'sent_at': fields.Datetime.now(), 'error_message': False})
+                sent += 1
             except Exception as exc:  # noqa: BLE001 - conservar el fallo en el historial
                 _logger.exception('Falló la automatización comercial %s', execution.id)
                 execution.write({'state': 'failed', 'error_message': str(exc)[:1000]})
-        return True
+                failed += 1
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('AutomatizaciÃ³n procesada'),
+                'message': _('%s ejecutadas, %s fallidas, %s omitidas.') % (
+                    sent, failed, skipped),
+                'type': 'success' if not failed else 'warning',
+                'sticky': False,
+            },
+        }
+
+    def action_approve(self):
+        if not self.env.user.has_group('crm_engagement_automation.group_crm_engagement_manager'):
+            raise UserError(_('Solo un administrador puede aprobar recordatorios.'))
+        pending = self.filtered(lambda execution: execution.state == 'pending_approval')
+        if not pending:
+            raise UserError(_('Seleccione ejecuciones pendientes de aprobaciÃ³n.'))
+        pending.write({'state': 'queued', 'error_message': False})
+        return pending.action_execute()
 
     def action_retry(self):
         failed = self.filtered(lambda execution: execution.state == 'failed')
         if not failed:
             raise UserError(_('Seleccione ejecuciones fallidas para reintentar.'))
         failed.write({'state': 'queued', 'error_message': False})
-        failed.action_execute()
-        return True
+        return failed.action_execute()

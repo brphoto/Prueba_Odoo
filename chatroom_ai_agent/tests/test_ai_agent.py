@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from unittest.mock import patch
 
+from odoo import fields
+from odoo.exceptions import UserError
+
 from odoo.tests import TransactionCase, tagged
 
 
@@ -110,6 +113,29 @@ class TestChatroomAiAgent(TransactionCase):
         self.assertTrue(automation.last_run)
         self.assertFalse(automation.last_error)
 
+    def test_automation_propagates_retry_policy_to_tasks(self):
+        automation = self.env['chatroom.ai.automation'].create({
+            'name': 'Política de reintentos configurable',
+            'trigger': 'open_conversation',
+            'task_type': 'classify_customer',
+            'approval_required': True,
+            'max_tasks': 1,
+            'max_attempts': 5,
+        })
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            self.channel, task_type=automation.task_type,
+            prompt='Revisa el contexto del cliente.',
+            approval_required=automation.approval_required,
+            automation=automation,
+        )
+        self.assertEqual(task.max_attempts, 5)
+
+    def test_ai_dashboard_actions_are_company_scoped(self):
+        dashboard = self.env['chatroom.ai.dashboard'].create({})
+        pending_action = dashboard.action_open_pending()
+        self.assertIn(('company_id', '=', self.env.company.id), pending_action['domain'])
+        self.assertEqual(dashboard.company_id, self.env.company)
+
     def test_inbound_message_plans_task_for_active_automation(self):
         icp = self.env['ir.config_parameter'].sudo()
         icp.set_param('chatroom_ai_agent.event_orchestration', 'True')
@@ -189,6 +215,60 @@ class TestChatroomAiAgent(TransactionCase):
         self.assertEqual(retry_notification.get('tag'), 'display_notification')
         self.assertEqual(failed.state, 'planned')
 
+    def test_sales_actions_are_idempotent_on_retry(self):
+        partner = self.env['res.partner'].create({
+            'name': 'Cliente idempotencia IA',
+            'phone': '+593999991111',
+        })
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp',
+            'external_id': 'ai-agent-idempotency-001',
+            'partner_id': partner.id,
+        })
+        task = self.env['chatroom.ai.task'].create({
+            'name': 'Prueba idempotencia comercial',
+            'task_type': 'sales_conversion',
+            'channel_id': channel.id,
+            'company_id': channel.company_id.id,
+            'approval_required': False,
+        })
+        lead_action = self.env['chatroom.ai.task.action'].create({
+            'task_id': task.id, 'key': 'create_lead', 'name': 'Crear oportunidad',
+            'requires_approval': False,
+        })
+        task._execute_action(lead_action)
+        task._execute_action(lead_action)
+        self.assertEqual(self.env['crm.lead'].search_count([
+            ('partner_id', '=', partner.id), ('type', '=', 'opportunity'),
+            ('company_id', '=', self.env.company.id),
+        ]), 1)
+        if 'sale.order' not in self.env:
+            return
+        quote_action = self.env['chatroom.ai.task.action'].create({
+            'task_id': task.id, 'key': 'create_quotation', 'name': 'Crear cotización',
+            'requires_approval': False,
+        })
+        task._execute_action(quote_action)
+        task._execute_action(quote_action)
+        self.assertEqual(self.env['sale.order'].search_count([
+            ('partner_id', '=', partner.id), ('origin', '=', channel.display_name),
+            ('company_id', '=', self.env.company.id),
+        ]), 1)
+
+    def test_cron_persists_failure_and_backoff(self):
+        task = self.env['chatroom.ai.task'].create({
+            'name': 'Tarea fallida en cron', 'task_type': 'orchestrate',
+            'state': 'planned', 'approval_required': False,
+            'channel_id': self.channel.id, 'next_run_at': fields.Datetime.now(),
+        })
+        with patch.object(type(task), 'action_run', side_effect=UserError('Fallo controlado')):
+            self.env['chatroom.ai.task']._cron_run_pending()
+        task.invalidate_recordset()
+        self.assertEqual(task.state, 'failed')
+        self.assertEqual(task.attempts, 1)
+        self.assertIn('Fallo controlado', task.error_message)
+        self.assertGreater(task.next_run_at, fields.Datetime.now())
+
     def test_agent_menu_is_exposed_from_chatroom_root(self):
         menu = self.env.ref('chatroom_ai_agent.menu_chatroom_ai_agent')
         self.assertEqual(menu.parent_id, self.env.ref('chatroom_whatsapp.menu_chatroom_root'))
@@ -213,3 +293,12 @@ class TestChatroomAiAgent(TransactionCase):
             self.assertEqual(action.get('target'), 'new')
             self.assertTrue(action.get('views'))
             self.assertIn((False, 'form'), action['views'])
+
+    def test_setup_checklist_returns_a_clear_readiness_state(self):
+        checklist = self.env['chatroom.ai.setup'].create({})
+        checklist._refresh()
+        self.assertIn(checklist.overall_state, ('ready', 'attention'))
+        self.assertGreaterEqual(checklist.ready_count, 0)
+        self.assertLessEqual(checklist.ready_count, checklist.total_checks)
+        self.assertGreaterEqual(checklist.readiness_percent, 0)
+        self.assertLessEqual(checklist.readiness_percent, 100)

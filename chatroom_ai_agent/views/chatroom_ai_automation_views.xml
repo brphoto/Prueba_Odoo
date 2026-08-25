@@ -10,6 +10,7 @@
                 <field name="trigger"/>
                 <field name="task_type"/>
                 <field name="approval_required"/>
+                <field name="max_attempts"/>
                 <field name="last_run"/>
                 <field name="last_run_count" string="Creadas"/>
                 <field name="last_error" optional="hide"/>
@@ -45,6 +46,7 @@
                         <group string="Seguridad y alcance">
                             <field name="approval_required"/>
                             <field name="max_tasks"/>
+                            <field name="max_attempts"/>
                             <field name="sequence"/>
                             <field name="company_id"/>
                             <div class="o_chatroom_ai_automation_hint">

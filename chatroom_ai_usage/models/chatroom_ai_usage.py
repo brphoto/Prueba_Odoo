@@ -14,10 +14,14 @@ class ChatroomAiUsageEvent(models.Model):
     _order = 'request_date desc, id desc'
 
     request_date = fields.Datetime(string='Fecha', required=True, default=fields.Datetime.now, index=True)
+    company_id = fields.Many2one(
+        'res.company', string='Empresa', required=True, index=True,
+        default=lambda self: self.env.company,
+    )
     model = fields.Char(string='Modelo', index=True)
     task_type = fields.Selection([
         ('general', 'General'), ('reply', 'Respuesta'), ('summary', 'Resumen'),
-        ('classification', 'Clasificacion'), ('next_action', 'Proxima accion'),
+        ('classification', 'Clasificación'), ('next_action', 'Próxima acción'),
         ('agent', 'Agente'),
     ], string='Tipo de tarea', default='general', index=True)
     channel_id = fields.Many2one('chatroom.channel', string='Conversacion', ondelete='set null', index=True)
@@ -26,6 +30,17 @@ class ChatroomAiUsageEvent(models.Model):
     total_tokens = fields.Integer(string='Tokens totales')
     success = fields.Boolean(string='Correcta', default=True)
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Asigna la empresa de la conversación cuando el evento la tiene."""
+        for values in vals_list:
+            if values.get('channel_id') and not values.get('company_id'):
+                channel = self.env['chatroom.channel'].sudo().browse(
+                    values['channel_id']).exists()
+                if channel and channel.company_id:
+                    values['company_id'] = channel.company_id.id
+        return super().create(vals_list)
+
 
 class ChatroomAiUsageSnapshot(models.Model):
     _name = 'chatroom.ai.usage.snapshot'
@@ -33,6 +48,10 @@ class ChatroomAiUsageSnapshot(models.Model):
     _order = 'fetched_at desc, id desc'
 
     name = fields.Char(string='Resumen', required=True)
+    company_id = fields.Many2one(
+        'res.company', string='Empresa', required=True, index=True,
+        default=lambda self: self.env.company,
+    )
     fetched_at = fields.Datetime(string='Actualizado', required=True, default=fields.Datetime.now, readonly=True)
     period_start = fields.Datetime(string='Desde', required=True, readonly=True)
     period_end = fields.Datetime(string='Hasta', required=True, readonly=True)
@@ -94,6 +113,7 @@ class ChatroomAiUsageSnapshot(models.Model):
     def _local_totals(self, start, end):
         events = self.env['chatroom.ai.usage.event'].sudo().search([
             ('request_date', '>=', start), ('request_date', '<', end),
+            ('company_id', '=', self.env.company.id),
         ])
         return len(events), sum(events.mapped('total_tokens'))
 
@@ -134,6 +154,45 @@ class ChatroomAiUsageSnapshot(models.Model):
         return payload if isinstance(payload, dict) else {}
 
     @api.model
+    def action_refresh_local(self):
+        """Genera un resumen inmediato desde las solicitudes registradas en Odoo."""
+        now = fields.Datetime.now()
+        start = now - timedelta(days=self._days())
+        local_count, local_tokens = self._local_totals(start, now)
+        snapshot = self.sudo().create({
+            'name': _('IA - resumen local de los últimos %s días') % self._days(),
+            'company_id': self.env.company.id,
+            'fetched_at': now,
+            'period_start': start,
+            'period_end': now,
+            'request_count': local_count,
+            'total_tokens': local_tokens,
+            'local_request_count': local_count,
+            'local_total_tokens': local_tokens,
+            'currency': 'usd',
+            'model_breakdown': '{}',
+            'state': 'partial',
+            'error_message': _('Resumen local basado en las solicitudes registradas. Para costos oficiales configura la Admin API Key.'),
+        })
+        snapshot._notify_budget_alert()
+        return snapshot
+
+    @api.model
+    def action_refresh_local_ui(self):
+        snapshot = self.action_refresh_local()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Consumo local actualizado'),
+                'message': _('Se registraron %s solicitudes y %s tokens.') % (
+                    snapshot.local_request_count, snapshot.local_total_tokens),
+                'type': 'success',
+                'sticky': False,
+            },
+        }
+
+    @api.model
     def action_refresh(self):
         icp = self.env['ir.config_parameter'].sudo()
         admin_key = icp.get_param('chatroom_whatsapp.ai_admin_api_key')
@@ -141,7 +200,8 @@ class ChatroomAiUsageSnapshot(models.Model):
         start = now - timedelta(days=self._days())
         local_count, local_tokens = self._local_totals(start, now)
         values = {
-            'name': _('IA - ultimos %s dias') % self._days(),
+            'name': _('IA - últimos %s días') % self._days(),
+            'company_id': self.env.company.id,
             'fetched_at': now,
             'period_start': start,
             'period_end': now,
@@ -156,7 +216,7 @@ class ChatroomAiUsageSnapshot(models.Model):
                 'state': 'partial',
                 'request_count': local_count,
                 'total_tokens': local_tokens,
-                'error_message': _('Configura una Admin API Key para consultar costos oficiales de la organizacion.'),
+                'error_message': _('Configura una Admin API Key para consultar costos oficiales de la organización.'),
             })
             snapshot = self.sudo().create(values)
             snapshot._notify_budget_alert()

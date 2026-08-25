@@ -90,7 +90,18 @@ class ChatroomKnowledgeProfile(models.Model):
                 })
             except Exception as error:  # noqa: BLE001
                 record.write({'state': 'error', 'last_result': str(error)})
-        return True
+        record = self[:1]
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Conocimiento local actualizado'),
+                'message': _('Perfil listo: %s productos y %s clientes disponibles.') % (
+                    record.product_count, record.partner_count),
+                'type': 'success',
+                'sticky': False,
+            },
+        }
 
     def action_set_default(self):
         self.ensure_one()
