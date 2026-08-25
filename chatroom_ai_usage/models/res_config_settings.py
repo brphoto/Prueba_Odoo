@@ -119,8 +119,8 @@ class ResConfigSettings(models.TransientModel):
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
-                'title': _('ConexiÃ³n IA correcta'),
-                'message': _('El endpoint respondiÃ³ correctamente y devolviÃ³ %s modelo(s).') % models_count,
+                'title': _('Conexión IA correcta'),
+                'message': _('El endpoint respondió correctamente y devolvió %s modelo(s).') % models_count,
                 'type': 'success',
                 'sticky': False,
             },

@@ -32,9 +32,9 @@ class ChatroomAiSuggestion(models.Model):
     safety_reason = fields.Text(string='Motivo del control de seguridad', readonly=True)
     feedback_state = fields.Selection([
         ('pending', 'Sin valorar'), ('helpful', 'Util'),
-        ('edited', 'RequiriÃ³ ediciÃ³n'), ('unsafe', 'No usar'),
-    ], string='EvaluaciÃ³n humana', default='pending', index=True,
-       help='Permite medir la calidad real de las respuestas antes de ampliar la automatizaciÃ³n.')
+        ('edited', 'Requirió edición'), ('unsafe', 'No usar'),
+    ], string='Evaluación humana', default='pending', index=True,
+       help='Permite medir la calidad real de las respuestas antes de ampliar la automatización.')
     feedback_notes = fields.Text(string='Observaciones de calidad')
     feedback_by = fields.Many2one('res.users', string='Evaluada por', readonly=True)
     feedback_at = fields.Datetime(string='Evaluada el', readonly=True)

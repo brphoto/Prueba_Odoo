@@ -2156,14 +2156,16 @@ class ChatroomChannel(models.Model):
             raise UserError(_("No se pudo generar la proxima accion con IA: %s") % exc)
         return True
 
-    def _ai_classify_intent(self):
+    def _ai_classify_intent(self, model_id=None):
         self.ensure_one()
         system_prompt = _(
             "Clasifica la intención del cliente en esta conversación de "
             "WhatsApp. Responde ÚNICAMENTE con un JSON de la forma "
             '{"intent": "consulta|venta|soporte|queja"}, sin texto '
             "adicional ni explicaciones.")
-        raw = self._ai_chat_completion(self._ai_build_conversation(extra_system=system_prompt), task_type='classification')
+        raw = self._ai_chat_completion(
+            self._ai_build_conversation(extra_system=system_prompt),
+            task_type='classification', model_id=model_id)
         try:
             intent = json.loads(raw).get('intent')
         except (ValueError, AttributeError):

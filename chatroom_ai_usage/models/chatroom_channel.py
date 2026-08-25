@@ -12,6 +12,26 @@ _logger = logging.getLogger(__name__)
 class ChatroomChannel(models.Model):
     _inherit = 'chatroom.channel'
 
+    def _ai_model_catalog(self, task_type=None):
+        """Catalogo seguro para el panel: nunca expone URL ni credenciales."""
+        if 'chatroom.ai.provider.model' not in self.env:
+            return [], False
+        models = self.env['chatroom.ai.provider.model'].sudo().search([
+            ('active', '=', True), ('supports_chat', '=', True),
+        ], order='recommended desc, name', limit=100)
+        options = [{
+            'id': model.id,
+            'name': model.name or model.model_id,
+            'model_id': model.model_id,
+            'provider': model.provider,
+            'recommended': model.recommended,
+        } for model in models]
+        selected = self._ai_get_credentials(task_type=task_type)
+        selected_model = selected[2] if selected else False
+        selected_id = next((item['id'] for item in options
+                            if item['model_id'] == selected_model), False)
+        return options, selected_id
+
     def get_ai_assistant_data(self):
         data = super().get_ai_assistant_data()
         snapshot = self.env['chatroom.ai.usage.snapshot'].sudo().search(
@@ -24,6 +44,9 @@ class ChatroomChannel(models.Model):
             'currency': snapshot.currency or 'usd',
             'fetched_at': fields.Datetime.to_string(snapshot.fetched_at) if snapshot else False,
         } if snapshot else False
+        options, selected_id = self._ai_model_catalog(task_type='reply')
+        data['model_options'] = options
+        data['selected_model_id'] = selected_id
         return data
 
     def get_ai_usage_summary(self):
@@ -39,11 +62,18 @@ class ChatroomChannel(models.Model):
             'last_model': events[:1].model if events else '',
         }
 
-    def _ai_get_credentials(self, task_type=None):
+    def _ai_get_credentials(self, task_type=None, model_id=None):
         credentials = super()._ai_get_credentials(task_type=task_type)
         if not credentials or 'chatroom.ai.provider.model' not in self.env:
             return credentials
         api_url, api_key, fallback_model = credentials
+        if model_id:
+            try:
+                selected = self.env['chatroom.ai.provider.model'].sudo().browse(int(model_id)).exists()
+            except (TypeError, ValueError):
+                selected = self.env['chatroom.ai.provider.model'].browse()
+            if selected and selected.active and selected.supports_chat:
+                return api_url, api_key, selected.model_id
         icp = self.env['ir.config_parameter'].sudo()
         param_by_task = {
             'reply': 'chatroom_whatsapp.ai_model_reply_id',
@@ -63,8 +93,8 @@ class ChatroomChannel(models.Model):
             return api_url, api_key, selected.model_id
         return api_url, api_key, fallback_model
 
-    def _ai_model_candidates(self, task_type=None):
-        primary = self._ai_get_credentials(task_type=task_type)
+    def _ai_model_candidates(self, task_type=None, model_id=None):
+        primary = self._ai_get_credentials(task_type=task_type, model_id=model_id)
         if not primary:
             return []
         candidates = [primary]
@@ -78,9 +108,9 @@ class ChatroomChannel(models.Model):
             candidates.append((primary[0], primary[1], fallback.model_id))
         return candidates
 
-    def _ai_chat_completion(self, messages, task_type=None):
+    def _ai_chat_completion(self, messages, task_type=None, model_id=None):
         """Ejecuta el modelo por tarea y usa el respaldo ante fallos recuperables."""
-        candidates = self._ai_model_candidates(task_type=task_type)
+        candidates = self._ai_model_candidates(task_type=task_type, model_id=model_id)
         if not candidates:
             raise UserError(_('Activa y configura la IA en Ajustes > Chatroom WhatsApp.'))
         last_error = False

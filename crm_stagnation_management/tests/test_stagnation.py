@@ -51,9 +51,10 @@ class TestCrmStagnationManagement(TransactionCase):
         })
         with self.assertRaises(UserError):
             wizard.action_execute_purge()
-        wizard.reviewer_id = self.env.user.id
-        wizard.action_execute_purge()
-        self.assertEqual(self.lead.user_id, self.env.user)
+        manager = self.env.ref('base.user_admin')
+        wizard.reviewer_id = manager.id
+        wizard.with_user(manager).action_execute_purge()
+        self.assertEqual(self.lead.user_id, manager)
 
     def test_default_configuration_is_created_per_company(self):
         config = self.env['crm.stagnation.config'].get_for_company(self.company)

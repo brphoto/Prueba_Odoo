@@ -84,8 +84,6 @@ class CrmLead(models.Model):
         (message_type='notification', el valor por defecto de
         message_post) para que NO cuente ella misma como "gestión" en
         _get_last_management_date y se reinicie el semáforo sola."""
-        if 'crm.stagnation.config' in self.env:
-            return 0
         leads = self.search([('active', '=', True), ('stage_id.is_won', '=', False)])
         for lead in leads:
             if lead.management_alert_state == 'red':

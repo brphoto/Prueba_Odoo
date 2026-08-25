@@ -29,6 +29,43 @@ class TestChatroomAiUsage(TransactionCase):
         channel = self.env['chatroom.channel'].create({'channel_type': 'whatsapp', 'external_id': 'usage-test-001'})
         self.assertEqual(channel._ai_get_credentials()[2], 'test-selector-model')
 
+    def test_conversation_panel_exposes_safe_model_catalog(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.ai_enabled', 'True')
+        icp.set_param('chatroom_whatsapp.ai_provider_url', 'https://api.openai.com/v1/chat/completions')
+        icp.set_param('chatroom_whatsapp.ai_api_key', 'test-key')
+        selected = self.env['chatroom.ai.provider.model'].create({
+            'name': 'panel-visible-model', 'model_id': 'panel-visible-model',
+            'provider': 'openai', 'supports_chat': True, 'active': True,
+            'recommended': True,
+        })
+        icp.set_param('chatroom_whatsapp.ai_model_reply_id', str(selected.id))
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'usage-test-panel',
+        })
+        data = channel.get_ai_assistant_data()
+        self.assertEqual(data['selected_model_id'], selected.id)
+        self.assertIn('panel-visible-model', [item['model_id'] for item in data['model_options']])
+        self.assertNotIn('api_key', data)
+        self.assertNotIn('provider_url', data)
+
+    def test_explicit_panel_model_is_validated_and_used(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.ai_enabled', 'True')
+        icp.set_param('chatroom_whatsapp.ai_provider_url', 'https://api.openai.com/v1/chat/completions')
+        icp.set_param('chatroom_whatsapp.ai_api_key', 'test-key')
+        selected = self.env['chatroom.ai.provider.model'].create({
+            'name': 'panel-explicit-model', 'model_id': 'panel-explicit-model',
+            'provider': 'openai', 'supports_chat': True, 'active': True,
+        })
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'usage-test-explicit',
+        })
+        self.assertEqual(
+            channel._ai_get_credentials(task_type='reply', model_id=selected.id)[2],
+            'panel-explicit-model',
+        )
+
     def test_local_usage_event_totals(self):
         event = self.env['chatroom.ai.usage.event'].create({
             'model': 'gpt-4o-mini', 'input_tokens': 10,

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import logging
+import re
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -41,8 +42,9 @@ class CrmEngagementExecution(models.Model):
     @api.model
     def _render_message(self, template, context):
         text = template or ''
-        for key, value in context.items():
-            text = text.replace('${%s}' % key, str(value or ''))
+        def replace_token(match):
+            return str(context.get(match.group(1), '') or '')
+        text = re.sub(r'\$\{([a-zA-Z0-9_]+)\}', replace_token, text)
         return text
 
     def _activity_user(self, partner):

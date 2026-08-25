@@ -2,6 +2,7 @@
 from datetime import date, timedelta
 import calendar
 import json
+import re
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -304,6 +305,15 @@ class CrmEngagementAutomationStep(models.Model):
         help='Debe coincidir con una plantilla aprobada sincronizada desde Meta.')
     whatsapp_template_language = fields.Char(string='Idioma WhatsApp', default='es')
 
+    @api.model
+    def _message_variables(self):
+        return {
+            'partner_name', 'first_name', 'event_name', 'event_date',
+            'days_to_event', 'rfm_category', 'rfm_score', 'phone', 'email',
+            'engagement_note', 'event_description', 'invoice_number',
+            'invoice_amount', 'lead_name', 'expected_revenue',
+        }
+
     @api.onchange('variable_to_insert')
     def _onchange_variable_to_insert(self):
         for step in self:
@@ -346,3 +356,10 @@ class CrmEngagementAutomationStep(models.Model):
                 raise ValidationError(_('El mensaje personalizado no puede quedar vacío.'))
             if step.channel == 'whatsapp' and not step.whatsapp_template_name:
                 raise ValidationError(_('Indica el nombre de la plantilla aprobada de WhatsApp.'))
+            tokens = set(re.findall(r'\$\{([a-zA-Z0-9_]+)\}', step.message_body or ''))
+            unknown = sorted(tokens - step._message_variables())
+            if unknown:
+                raise ValidationError(_(
+                    'El mensaje contiene variables no disponibles: %s. '
+                    'Usa el selector "Agregar dato al mensaje".') % ', '.join(
+                        '${%s}' % token for token in unknown))

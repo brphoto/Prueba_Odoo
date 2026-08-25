@@ -240,9 +240,10 @@ class ChatroomChannel(models.Model):
         self.ai_suggested_reply = False
         return {'status': 'sent', 'suggestion_id': suggestion.id}
 
-    def action_ai_prepare_suggestion(self):
+    def action_ai_prepare_suggestion(self, model_id=None):
         self.ensure_one()
-        text = self._ai_chat_completion(self._ai_build_conversation())
+        text = self._ai_chat_completion(
+            self._ai_build_conversation(), task_type='reply', model_id=model_id)
         suggestion = self.env['chatroom.ai.suggestion'].create_from_channel(self, text)
         return {
             'id': suggestion.id, 'text': suggestion.suggested_text,
@@ -250,14 +251,20 @@ class ChatroomChannel(models.Model):
             'confidence': suggestion.confidence,
         }
 
-    def action_ai_prepare_summary(self):
+    def action_ai_prepare_summary(self, model_id=None):
         self.ensure_one()
-        self.action_ai_summarize()
+        system_prompt = _(
+            'Resume esta conversación de WhatsApp para un agente humano. '
+            'Responde en español, en un párrafo corto de máximo 5 líneas, '
+            'mencionando qué quiere el cliente y en qué quedó la conversación.')
+        self.ai_summary = self._ai_chat_completion(
+            self._ai_build_conversation(extra_system=system_prompt),
+            task_type='summary', model_id=model_id)
         return self.ai_summary or ''
 
-    def action_ai_classify_intent(self):
+    def action_ai_classify_intent(self, model_id=None):
         self.ensure_one()
-        self.ai_intent = self._ai_classify_intent()
+        self.ai_intent = self._ai_classify_intent(model_id=model_id)
         return self.ai_intent
 
     def _get_ai_suggestion_for_action(self, suggestion_id):

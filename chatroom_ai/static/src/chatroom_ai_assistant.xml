@@ -33,6 +33,18 @@
                             <option value="summary">Resumen de conversación</option>
                             <option value="intent">Clasificar intención</option>
                         </select>
+                        <select class="form-select form-select-sm o_chatroom_ai_model_select"
+                                aria-label="Modelo de IA"
+                                t-if="aiAssistant.modelOptions.length"
+                                t-att-value="aiAssistant.modelId || ''"
+                                t-att-disabled="aiAssistant.busy || !aiAssistant.providerReady"
+                                t-on-change="onAiModelChange">
+                            <option value="">Modelo configurado</option>
+                            <option t-foreach="aiAssistant.modelOptions" t-as="model" t-key="model.id"
+                                    t-att-value="model.id">
+                                <t t-esc="model.name"/><t t-if="model.recommended"> · recomendado</t>
+                            </option>
+                        </select>
                         <button type="button" class="btn btn-sm btn-primary"
                                 t-att-disabled="aiAssistant.busy || !aiAssistant.providerReady"
                                 t-on-click="runAiAction">
@@ -80,14 +92,14 @@
                         </div>
                         <div class="o_chatroom_ai_assistant_feedback mt-2"
                              t-if="(aiAssistant.suggestion.state == 'approved' || aiAssistant.suggestion.state == 'sent') &amp;&amp; aiAssistant.suggestion.feedback_state == 'pending'">
-                            <small class="d-block mb-1">Â¿CÃ³mo fue esta respuesta?</small>
+                            <small class="d-block mb-1">¿Cómo fue esta respuesta?</small>
                             <button type="button" class="btn btn-sm btn-outline-success"
                                     t-att-disabled="aiAssistant.busy" t-on-click="rateAiHelpful">
-                                <i class="fa fa-thumbs-up"/> Ãštil
+                                <i class="fa fa-thumbs-up"/> Útil
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-warning"
                                     t-att-disabled="aiAssistant.busy" t-on-click="rateAiEdited">
-                                <i class="fa fa-pencil"/> RequiriÃ³ ediciÃ³n
+                                <i class="fa fa-pencil"/> Requirió edición
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-danger"
                                     t-att-disabled="aiAssistant.busy" t-on-click="rateAiUnsafe">

@@ -16,6 +16,8 @@ patch(ContactPanel.prototype, {
             summary: "",
             intent: "",
             mode: "suggestion",
+            modelId: false,
+            modelOptions: [],
             knowledgeCount: 0,
             usage: { requests: 0, tokens: 0, last_model: "" },
             safetyPolicy: { enabled: true, min_confidence: 0.80, cooldown_minutes: 15, daily_limit: 30, escalate_negative: true },
@@ -38,6 +40,8 @@ patch(ContactPanel.prototype, {
         this.aiAssistant.summary = "";
         this.aiAssistant.intent = "";
         this.aiAssistant.mode = "suggestion";
+        this.aiAssistant.modelId = false;
+        this.aiAssistant.modelOptions = [];
         this.aiAssistant.suggestion = false;
         this.aiAssistant.usage = { requests: 0, tokens: 0, last_model: "" };
         this.aiAssistant.safetyPolicy = { enabled: true, min_confidence: 0.80, cooldown_minutes: 15, daily_limit: 30, escalate_negative: true };
@@ -70,6 +74,8 @@ patch(ContactPanel.prototype, {
         this.aiAssistant.intent = data?.intent || "";
         this.aiAssistant.knowledgeCount = data?.knowledge_count || 0;
         this.aiAssistant.usage = data?.usage || { requests: 0, tokens: 0, last_model: "" };
+        this.aiAssistant.modelOptions = data?.model_options || [];
+        this.aiAssistant.modelId = data?.selected_model_id || this.aiAssistant.modelId || false;
         this.aiAssistant.safetyPolicy = data?.safety_policy || this.aiAssistant.safetyPolicy;
         this.aiAssistant.budget = data?.budget || false;
         this.aiAssistant.aiPaused = Boolean(data?.ai_paused);
@@ -92,6 +98,10 @@ patch(ContactPanel.prototype, {
 
     onAiModeChange(ev) {
         this.aiAssistant.mode = ev.target.value;
+    },
+
+    onAiModelChange(ev) {
+        this.aiAssistant.modelId = ev.target.value ? Number(ev.target.value) : false;
     },
 
     async runAiAction() {
@@ -152,7 +162,9 @@ patch(ContactPanel.prototype, {
         this.aiAssistant.error = "";
         try {
             const result = await this.orm.call(
-                "chatroom.channel", callName, [this.props.channelId]);
+                "chatroom.channel", callName, [this.props.channelId], {
+                    model_id: this.aiAssistant.modelId || false,
+                });
             onResult(result);
         } catch (error) {
             this.aiAssistant.error = error.data ? error.data.message : error.message;
