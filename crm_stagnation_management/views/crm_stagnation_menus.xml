@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_crm_stagnation_root" name="Estancamiento" parent="crm.crm_menu_root"
+              sequence="65" groups="crm_stagnation_management.group_crm_stagnation_user"/>
+    <menuitem id="menu_crm_stagnant_leads" name="Oportunidades estancadas"
+              parent="crm_stagnation_management.menu_crm_stagnation_root"
+              action="crm_stagnation_management.action_crm_stagnant_leads" sequence="10"/>
+    <menuitem id="menu_crm_stagnation_trend" name="Tendencia y análisis"
+              parent="crm_stagnation_management.menu_crm_stagnation_root"
+              action="crm_stagnation_management.action_crm_stagnation_trend" sequence="20"/>
+    <menuitem id="menu_crm_stagnation_purge" name="Depurar oportunidades"
+              parent="crm_stagnation_management.menu_crm_stagnation_root"
+              action="crm_stagnation_management.action_crm_lead_purge_wizard"
+              groups="crm_stagnation_management.group_crm_stagnation_manager" sequence="30"/>
+    <menuitem id="menu_crm_stagnation_config" name="Reglas de estancamiento"
+              parent="crm_stagnation_management.menu_crm_stagnation_root"
+              action="crm_stagnation_management.action_crm_stagnation_config"
+              groups="crm_stagnation_management.group_crm_stagnation_manager" sequence="90"/>
+</odoo>

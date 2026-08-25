@@ -32,6 +32,10 @@ class ChatroomAiAutomation(models.Model):
     ], string='Tipo de tarea', required=True, default='daily_review')
     approval_required = fields.Boolean(default=True)
     max_tasks = fields.Integer(default=20)
+    only_unread = fields.Boolean(string='Solo conversaciones no leídas')
+    only_unassigned = fields.Boolean(string='Solo conversaciones sin asignar')
+    min_rfm_score = fields.Integer(string='Score RFM mínimo', default=0)
+    instruction = fields.Text(string='Instrucción para la IA', help='Contexto adicional que se agregará a la tarea creada.')
     last_run = fields.Datetime(readonly=True)
     last_run_count = fields.Integer(string='Tareas creadas en la última ejecución', readonly=True)
     last_error = fields.Text(string='Último error', readonly=True)
@@ -43,7 +47,8 @@ class ChatroomAiAutomation(models.Model):
             return self.env['chatroom.channel']
         domain = [('state', 'in', ('open', 'pending'))]
         if automation.trigger == 'open_conversation':
-            domain.append(('write_date', '>=', fields.Datetime.now() - timedelta(hours=24)))
+            recent_from = fields.Datetime.to_datetime(fields.Datetime.now()) - timedelta(hours=24)
+            domain.append(('write_date', '>=', recent_from))
         elif automation.trigger == 'open_opportunity':
             if 'crm.lead' not in self.env:
                 return self.env['chatroom.channel']
@@ -82,10 +87,21 @@ class ChatroomAiAutomation(models.Model):
                 ('invoice_date_due', '<', fields.Date.context_today(self)),
             ]).mapped('partner_id').ids
             domain.append(('partner_id', 'in', partner_ids or [0]))
-        configured_limit = int(self.env['ir.config_parameter'].sudo().get_param(
-            'chatroom_ai_agent.max_tasks', automation.max_tasks or 20))
-        return self.env['chatroom.channel'].sudo().search(
+        configured_raw = self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_ai_agent.max_tasks', automation.max_tasks or 20)
+        try:
+            configured_limit = max(int(configured_raw), 1)
+        except (TypeError, ValueError):
+            configured_limit = max(automation.max_tasks or 20, 1)
+        channels = self.env['chatroom.channel'].sudo().search(
             domain, limit=min(automation.max_tasks or configured_limit, configured_limit))
+        if automation.only_unread:
+            channels = channels.filtered(lambda channel: channel.unread_count > 0)
+        if automation.only_unassigned:
+            channels = channels.filtered(lambda channel: not channel.assigned_user_id)
+        if automation.min_rfm_score and 'rfm_score' in self.env['res.partner']._fields:
+            channels = channels.filtered(lambda channel: channel.partner_id and channel.partner_id.rfm_score >= automation.min_rfm_score)
+        return channels
 
     def action_run_now(self):
         self.ensure_one()
@@ -118,7 +134,8 @@ class ChatroomAiAutomation(models.Model):
                         continue
                     task = tasks.create_from_channel(
                         channel, self.task_type or 'daily_review',
-                        _('Automatización: %s') % self.name, self.approval_required)
+                        self.instruction or (_('Automatización: %s') % self.name),
+                        self.approval_required, automation=self)
                     task.action_plan()
                     if not self.approval_required and task.state == 'planned':
                         task.action_run()

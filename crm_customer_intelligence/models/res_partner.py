@@ -38,6 +38,13 @@ class ResPartner(models.Model):
         currency_field='currency_id')
     commercial_top_product_summary = fields.Char(
         string="Producto más comprado", compute='_compute_commercial_metrics')
+    duplicate_phone_count = fields.Integer(
+        string='Coincidencias por teléfono', compute='_compute_data_quality')
+    duplicate_email_count = fields.Integer(
+        string='Coincidencias por correo', compute='_compute_data_quality')
+    data_quality_state = fields.Selection([
+        ('ok', 'Completo'), ('warning', 'Revisar'),
+    ], string='Calidad de datos', compute='_compute_data_quality')
 
     rfm_score = fields.Integer(
         string="Score RFM", default=0, copy=False, index=True,
@@ -47,8 +54,15 @@ class ResPartner(models.Model):
     rfm_category = fields.Selection(
         selection='_selection_rfm_category',
         string="Categoría RFM", default='none', copy=False, index=True,
-        help="Clasificación simplificada A/B/C de valor del cliente, "
-             "calculada por el mismo cron que el score RFM.")
+        help="Categoría efectiva: automática salvo que se configure una categoría manual.")
+    rfm_manual_category = fields.Selection(
+        selection='_selection_rfm_category', string="Categoría manual RFM",
+        copy=False, index=True,
+        help="Si se define, tiene prioridad sobre la categoría automática. "
+             "El score y las métricas siguen calculándose normalmente.")
+    rfm_category_origin = fields.Selection([
+        ('automatic', 'Automática'), ('manual', 'Manual'),
+    ], string="Origen de categoría", compute='_compute_rfm_category_origin')
     rfm_recency_days = fields.Integer(
         string="Recencia (días)", default=0, copy=False, readonly=True,
         help="Días transcurridos desde la última compra usada para el cálculo RFM.")
@@ -77,6 +91,51 @@ class ResPartner(models.Model):
     rfm_explanation = fields.Text(
         string="Explicación RFM", compute='_compute_rfm_explanation')
 
+    def write(self, vals):
+        # La categoría manual se refleja inmediatamente en la categoría
+        # efectiva; así también funciona para clientes sin histórico.
+        if 'rfm_manual_category' in vals and 'rfm_category' not in vals:
+            vals = dict(vals)
+            vals['rfm_category'] = vals['rfm_manual_category'] or 'none'
+        return super().write(vals)
+
+    @api.depends('phone', 'mobile', 'email')
+    def _compute_data_quality(self):
+        Partner = self.env['res.partner'].sudo()
+        for partner in self:
+            phone = partner.phone or partner.mobile
+            phone_count = 0
+            email_count = 0
+            if phone:
+                phone_count = Partner.search_count([
+                    ('id', '!=', partner.id), '|',
+                    ('phone', '=', phone), ('mobile', '=', phone),
+                ])
+            if partner.email:
+                email_count = Partner.search_count([
+                    ('id', '!=', partner.id), ('email', '=ilike', partner.email),
+                ])
+            partner.duplicate_phone_count = phone_count
+            partner.duplicate_email_count = email_count
+            partner.data_quality_state = 'warning' if phone_count or email_count else 'ok'
+
+    def action_open_data_quality_duplicates(self):
+        self.ensure_one()
+        domain = [('id', '=', False)]
+        if self.phone or self.mobile:
+            phone = self.phone or self.mobile
+            domain = ['|', ('phone', '=', phone), ('mobile', '=', phone)]
+        elif self.email:
+            domain = [('email', '=ilike', self.email)]
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Posibles duplicados'),
+            'res_model': 'res.partner',
+            'view_mode': 'list,form',
+            'domain': domain,
+            'context': {'search_default_customer': 1},
+        }
+
     @api.model
     def _selection_rfm_category(self):
         """Categorías configurables, conservando A/B/C como respaldo."""
@@ -94,7 +153,7 @@ class ResPartner(models.Model):
 
     @api.depends(
         'rfm_category', 'rfm_score', 'rfm_recency_days', 'rfm_frequency',
-        'rfm_monetary_value', 'rfm_last_purchase_date',
+        'rfm_monetary_value', 'rfm_last_purchase_date', 'rfm_manual_category',
     )
     def _compute_rfm_explanation(self):
         configured = self.env['crm.rfm.segment'].search([
@@ -105,14 +164,22 @@ class ResPartner(models.Model):
         category_labels.update({category.code: category.name for category in configured})
         for partner in self:
             if not partner.rfm_frequency:
-                partner.rfm_explanation = _(
-                    'Sin compras válidas: todavía no hay datos suficientes para clasificar.')
+                if partner.rfm_manual_category:
+                    partner.rfm_explanation = _(
+                        'Categoría %(category)s fijada manualmente. '
+                        'Todavía no hay compras válidas para calcular un score automático.'
+                    ) % {'category': category_labels.get(partner.rfm_manual_category, partner.rfm_manual_category)}
+                else:
+                    partner.rfm_explanation = _(
+                        'Sin compras válidas: todavía no hay datos suficientes para clasificar.')
                 continue
             category = category_labels.get(partner.rfm_category, partner.rfm_category or '')
+            origin = _('manual') if partner.rfm_manual_category else _('automática')
             partner.rfm_explanation = _(
                 'Categoría %(category)s con score %(score)s. '
                 'Última compra: %(last)s (%(recency)s días), '
-                '%(frequency)s compras y %(amount)s de valor acumulado.'
+                '%(frequency)s compras y %(amount)s de valor acumulado. '
+                'Origen: %(origin)s.'
             ) % {
                 'category': category,
                 'score': partner.rfm_score,
@@ -120,7 +187,13 @@ class ResPartner(models.Model):
                 'recency': partner.rfm_recency_days,
                 'frequency': partner.rfm_frequency,
                 'amount': partner.rfm_monetary_value,
+                'origin': origin,
             }
+
+    @api.depends('rfm_manual_category')
+    def _compute_rfm_category_origin(self):
+        for partner in self:
+            partner.rfm_category_origin = 'manual' if partner.rfm_manual_category else 'automatic'
 
     def action_schedule_rfm_followup(self):
         """Acción masiva: crea una actividad nativa para los contactos seleccionados."""
@@ -871,7 +944,7 @@ class ResPartner(models.Model):
             processed_partner_ids.add(row['partner'].id)
             row['partner'].write({
                 'rfm_score': row['score'],
-                'rfm_category': row['category'],
+                'rfm_category': row['partner'].rfm_manual_category or row['category'],
                 'rfm_recency_days': row['recency_days'],
                 'rfm_frequency': row['count'],
                 'rfm_monetary_value': row['total'],
@@ -914,3 +987,5 @@ class ResPartner(models.Model):
                 'rfm_last_purchase_date': False,
                 'rfm_last_computed_at': fields.Datetime.now(),
             })
+            for partner in stale.filtered('rfm_manual_category'):
+                partner.write({'rfm_category': partner.rfm_manual_category})

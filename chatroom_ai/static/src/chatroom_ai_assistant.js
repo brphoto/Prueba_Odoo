@@ -17,6 +17,7 @@ patch(ContactPanel.prototype, {
             intent: "",
             mode: "suggestion",
             knowledgeCount: 0,
+            usage: { requests: 0, tokens: 0, last_model: "" },
             suggestion: false,
             error: "",
         });
@@ -35,6 +36,7 @@ patch(ContactPanel.prototype, {
         this.aiAssistant.intent = "";
         this.aiAssistant.mode = "suggestion";
         this.aiAssistant.suggestion = false;
+        this.aiAssistant.usage = { requests: 0, tokens: 0, last_model: "" };
         this.aiAssistant.error = "";
     },
 
@@ -61,6 +63,7 @@ patch(ContactPanel.prototype, {
         this.aiAssistant.summary = data?.summary || "";
         this.aiAssistant.intent = data?.intent || "";
         this.aiAssistant.knowledgeCount = data?.knowledge_count || 0;
+        this.aiAssistant.usage = data?.usage || { requests: 0, tokens: 0, last_model: "" };
         this.aiAssistant.suggestion = data?.suggestion || false;
     },
 

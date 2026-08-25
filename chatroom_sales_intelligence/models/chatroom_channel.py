@@ -11,6 +11,11 @@ class ChatroomChannel(models.Model):
         [('green', "Verde"), ('yellow', "Amarillo"), ('red', "Rojo")],
         compute='_compute_management_alert')
     management_days_stagnant = fields.Integer(compute='_compute_management_alert')
+    stagnation_score = fields.Selection([
+        ('healthy', 'Saludable'), ('warning', 'Precaución'), ('critical', 'Crítico'),
+        ('stagnant', 'Estancada'), ('dead', 'Muerta'),
+    ], compute='_compute_management_alert')
+    stagnation_capital = fields.Float(compute='_compute_management_alert')
 
     def _ai_build_conversation(self, extra_system=None):
         conversation = super()._ai_build_conversation(extra_system=extra_system)
@@ -53,6 +58,8 @@ class ChatroomChannel(models.Model):
                 'stage_color': lead.stage_id.color,
                 'probability': lead.probability,
                 'user_name': lead.user_id.name or 'Sin asignar',
+                'stagnation_score': lead.stagnation_score if 'stagnation_score' in lead._fields else False,
+                'stagnation_capital': lead.estimated_capital_trapped if 'estimated_capital_trapped' in lead._fields else 0.0,
             } for lead in leads]
         data['active_opportunities'] = active_opportunities
         return data
@@ -78,8 +85,18 @@ class ChatroomChannel(models.Model):
     def _compute_management_alert(self):
         for rec in self:
             lead = rec._get_relevant_lead()
-            rec.management_alert_state = lead.management_alert_state if lead else 'green'
-            rec.management_days_stagnant = lead.days_since_last_management if lead else 0
+            # Conservamos el semáforo legado para no cambiar el significado
+            # de los indicadores existentes en Chatroom. El análisis nuevo
+            # se expone aparte en stagnation_score y en la ficha comercial.
+            alert = lead.management_alert_state if lead else 'green'
+            days = lead.days_since_last_management if lead else 0
+            score = lead.stagnation_score if lead and 'stagnation_score' in lead._fields else (
+                'healthy' if alert == 'green' else 'warning' if alert == 'yellow' else 'critical')
+            capital = lead.estimated_capital_trapped if lead and 'estimated_capital_trapped' in lead._fields else 0.0
+            rec.management_alert_state = alert
+            rec.management_days_stagnant = days
+            rec.stagnation_score = score
+            rec.stagnation_capital = capital
 
     def get_commercial_intelligence(self):
         """Paquete de datos para el panel lateral deslizable: se arma en
@@ -110,6 +127,11 @@ class ChatroomChannel(models.Model):
             'lead_create_date': fields.Datetime.to_string(lead.create_date) if lead else False,
             'days_since_last_management': lead.days_since_last_management if lead else False,
             'management_alert_state': lead.management_alert_state if lead else 'green',
+            'stagnation_score': lead.stagnation_score if lead and 'stagnation_score' in lead._fields else False,
+            'stagnation_days_in_stage': lead.days_in_stage if lead and 'days_in_stage' in lead._fields else False,
+            'stagnation_days_without_activity': lead.days_without_activity if lead and 'days_without_activity' in lead._fields else False,
+            'stagnation_capital': lead.estimated_capital_trapped if lead and 'estimated_capital_trapped' in lead._fields else 0.0,
+            'stagnation_next_action': lead.next_action_required if lead and 'next_action_required' in lead._fields else False,
             'commercial_total_sales': partner.commercial_total_sales,
             'commercial_invoice_count': partner.commercial_invoice_count,
             'commercial_avg_ticket': partner.commercial_avg_ticket,

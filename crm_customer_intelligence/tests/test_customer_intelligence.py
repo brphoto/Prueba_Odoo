@@ -163,6 +163,21 @@ class TestCrmCustomerIntelligence(TransactionCase):
         self.assertEqual(partner.rfm_frequency, 0)
         self.assertEqual(partner.rfm_monetary_value, 0.0)
 
+    def test_manual_rfm_category_survives_without_history(self):
+        partner = self.env['res.partner'].create({'name': "Cliente clasificado manualmente"})
+        partner.write({'rfm_manual_category': 'b'})
+
+        self.assertEqual(partner.rfm_category, 'b')
+        self.assertEqual(partner.rfm_category_origin, 'manual')
+        self.assertIn('fijada manualmente', partner.rfm_explanation)
+
+        self.env['res.partner']._cron_compute_rfm_scores()
+        self.assertEqual(partner.rfm_category, 'b')
+
+        partner.write({'rfm_manual_category': False})
+        self.env['res.partner']._cron_compute_rfm_scores()
+        self.assertEqual(partner.rfm_category, 'none')
+
     def test_rfm_dashboard_comparison_includes_approved_history(self):
         historical_date = fields.Date.add(fields.Date.context_today(self), days=-120)
         csv_text = (

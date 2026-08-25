@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_lead_stagnation_form" model="ir.ui.view">
+        <field name="name">crm.lead.form.stagnation.management</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="before">
+                <group string="Análisis de estancamiento" name="stagnation_analysis">
+                    <group>
+                        <field name="stagnation_score" widget="badge"
+                               decoration-success="stagnation_score == 'healthy'"
+                               decoration-warning="stagnation_score == 'warning'"
+                               decoration-danger="stagnation_score in ('critical', 'stagnant', 'dead')"/>
+                        <field name="days_in_stage"/>
+                        <field name="days_over_limit" invisible="days_over_limit &lt;= 0"/>
+                        <field name="max_days_allowed"/>
+                        <field name="last_activity_date"/>
+                        <field name="days_without_activity"/>
+                    </group>
+                    <group>
+                        <field name="estimated_capital_trapped" widget="monetary"/>
+                        <field name="real_vs_fake_score" widget="progressbar"/>
+                        <field name="purge_recommendation" widget="badge"
+                               decoration-danger="purge_recommendation == 'purge'"
+                               decoration-warning="purge_recommendation in ('push', 'review', 'downgrade')"/>
+                        <field name="stagnation_reason" invisible="stagnation_score == 'healthy'"/>
+                    </group>
+                    <field name="next_action_required" readonly="1"/>
+                </group>
+                <div class="d-flex gap-2 mb-2" invisible="stagnation_score == 'healthy'">
+                    <button name="action_recompute_stagnation" type="object" string="Recalcular análisis" class="btn btn-secondary"/>
+                    <button name="action_open_purge_wizard" type="object" string="Abrir depuración" class="btn btn-primary"
+                            groups="crm_stagnation_management.group_crm_stagnation_manager"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_crm_lead_stagnation_list" model="ir.ui.view">
+        <field name="name">crm.lead.list.stagnation.management</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_case_tree_view_oppor"/>
+        <field name="arch" type="xml">
+            <field name="expected_revenue" position="after">
+                <field name="stagnation_score" widget="badge" optional="show"
+                       decoration-success="stagnation_score == 'healthy'"
+                       decoration-warning="stagnation_score == 'warning'"
+                       decoration-danger="stagnation_score in ('critical', 'stagnant', 'dead')"/>
+                <field name="days_in_stage" optional="show"/>
+                <field name="estimated_capital_trapped" widget="monetary" optional="show"/>
+                <field name="real_vs_fake_score" optional="hide"/>
+                <field name="purge_recommendation" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_crm_lead_stagnation_search" model="ir.ui.view">
+        <field name="name">crm.lead.search.stagnation.management</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.view_crm_case_opportunities_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='open_opportunities']" position="after">
+                <filter string="Con precaución" name="stagnation_warning" domain="[('stagnation_score', '=', 'warning')]"/>
+                <filter string="Estancadas" name="stagnation_stagnant" domain="[('stagnation_score', 'in', ('critical', 'stagnant', 'dead'))]"/>
+                <filter string="Para depurar" name="stagnation_purge" domain="[('purge_recommendation', '=', 'purge')]"/>
+            </xpath>
+            <xpath expr="//group" position="inside">
+                <filter string="Nivel de estancamiento" name="group_stagnation" context="{'group_by': 'stagnation_score'}"/>
+                <filter string="Motivo de estancamiento" name="group_stagnation_reason" context="{'group_by': 'stagnation_reason'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_crm_lead_stagnation_graph" model="ir.ui.view">
+        <field name="name">crm.lead.graph.stagnation</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <graph string="Capital atrapado por estancamiento" type="bar">
+                <field name="stage_id" type="row"/>
+                <field name="stagnation_score" type="col"/>
+                <field name="estimated_capital_trapped" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_crm_lead_stagnation_pivot" model="ir.ui.view">
+        <field name="name">crm.lead.pivot.stagnation</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <pivot string="Análisis de oportunidades estancadas">
+                <field name="stage_id" type="row"/>
+                <field name="user_id" type="row"/>
+                <field name="stagnation_score" type="col"/>
+                <field name="expected_revenue" type="measure"/>
+                <field name="estimated_capital_trapped" type="measure"/>
+                <field name="real_vs_fake_score" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_crm_stagnant_leads" model="ir.actions.act_window">
+        <field name="name">Oportunidades estancadas</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">list,kanban,graph,pivot,form</field>
+        <field name="view_ids" eval="[(5, 0, 0), (0, 0, {'view_mode': 'list', 'view_id': ref('crm_stagnation_management.view_crm_lead_stagnation_list')}), (0, 0, {'view_mode': 'graph', 'view_id': ref('crm_stagnation_management.view_crm_lead_stagnation_graph')}), (0, 0, {'view_mode': 'pivot', 'view_id': ref('crm_stagnation_management.view_crm_lead_stagnation_pivot')})]"/>
+        <field name="domain">[('active', '=', True), ('type', '=', 'opportunity'), ('stage_id.is_won', '=', False), ('stagnation_score', 'in', ('critical', 'stagnant', 'dead'))]</field>
+        <field name="context">{'search_default_stagnation_stagnant': 1}</field>
+    </record>
+
+    <record id="action_crm_stagnation_trend" model="ir.actions.act_window">
+        <field name="name">Tendencia de estancamiento</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="domain">[('active', '=', True), ('type', '=', 'opportunity')]</field>
+        <field name="context">{'group_by': ['date_last_stage_update:month', 'stagnation_score']}</field>
+    </record>
+
+    <record id="server_action_open_stagnation_purge" model="ir.actions.server">
+        <field name="name">Depurar oportunidades seleccionadas</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="binding_model_id" ref="crm.model_crm_lead"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">if not env.user.has_group('crm_stagnation_management.group_crm_stagnation_manager'):
+    raise UserError('Solo un administrador puede ejecutar la depuración.')
+action = env['crm.lead.purge.wizard'].with_context(active_ids=records.ids).create({}).action_open()</field>
+    </record>
+</odoo>

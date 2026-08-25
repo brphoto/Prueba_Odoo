@@ -20,9 +20,19 @@ class ChatroomAiTaskAction(models.Model):
         ('done', 'Completada'), ('skipped', 'Omitida'), ('error', 'Error'),
     ], default='pending', required=True, index=True)
     requires_approval = fields.Boolean(default=True)
+    risk_level = fields.Selection([
+        ('low', 'Bajo'), ('medium', 'Medio'), ('high', 'Alto'),
+    ], string='Riesgo', compute='_compute_risk_level', store=True)
     input_json = fields.Text(string='Entrada')
     output_json = fields.Text(string='Salida', readonly=True)
     error_message = fields.Text(string='Error', readonly=True)
+
+    @api.depends('key')
+    def _compute_risk_level(self):
+        high = {'send_whatsapp_reply', 'send_payment_link', 'create_quotation'}
+        medium = {'create_lead', 'create_activity', 'prepare_payment_link'}
+        for action in self:
+            action.risk_level = 'high' if action.key in high else 'medium' if action.key in medium else 'low'
 
 
 class ChatroomAiTask(models.Model):
@@ -57,7 +67,11 @@ class ChatroomAiTask(models.Model):
     partner_id = fields.Many2one(related='channel_id.partner_id', string='Cliente', store=True, readonly=True)
     user_id = fields.Many2one('res.users', string='Responsable', default=lambda self: self.env.user, index=True)
     company_id = fields.Many2one('res.company', string='Empresa', default=lambda self: self.env.company, index=True)
+    automation_id = fields.Many2one('chatroom.ai.automation', string='Automatización de origen', readonly=True, index=True)
     approval_required = fields.Boolean(string='Requiere aprobación', default=True)
+    risk_level = fields.Selection([
+        ('low', 'Bajo'), ('medium', 'Medio'), ('high', 'Alto'),
+    ], string='Nivel de riesgo', compute='_compute_risk_level', store=True)
     approved_by = fields.Many2one('res.users', readonly=True)
     approved_at = fields.Datetime(readonly=True)
     started_at = fields.Datetime(readonly=True)
@@ -69,12 +83,28 @@ class ChatroomAiTask(models.Model):
     action_ids = fields.One2many('chatroom.ai.task.action', 'task_id', string='Plan de acciones')
     audit_ids = fields.One2many('chatroom.ai.audit', 'task_id', string='Auditoría')
 
+    @api.depends('task_type', 'action_ids.risk_level', 'state')
+    def _compute_risk_level(self):
+        defaults = {
+            'collect_payment': 'high',
+            'sales_conversion': 'high',
+            'qualify_lead': 'medium',
+            'followup': 'medium',
+        }
+        rank = {'low': 0, 'medium': 1, 'high': 2}
+        for task in self:
+            level = defaults.get(task.task_type, 'low')
+            for action in task.action_ids:
+                if rank.get(action.risk_level, 0) > rank.get(level, 0):
+                    level = action.risk_level
+            task.risk_level = level
+
     @api.model
     def _json(self, value):
         return json.dumps(value, ensure_ascii=False, indent=2, default=str)
 
     @api.model
-    def create_from_channel(self, channel, task_type='orchestrate', prompt=False, approval_required=None):
+    def create_from_channel(self, channel, task_type='orchestrate', prompt=False, approval_required=None, automation=False):
         channel.ensure_one()
         icp = self.env['ir.config_parameter'].sudo()
         mode = icp.get_param('chatroom_ai_agent.mode', 'supervised')
@@ -89,6 +119,7 @@ class ChatroomAiTask(models.Model):
             'channel_id': channel.id,
             'approval_required': approval_required,
             'user_id': self.env.user.id,
+            'automation_id': automation.id if automation else False,
         })
         return task
 
@@ -200,7 +231,11 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             context = task._context()
             actions = task._ai_plan(context) or task._fallback_plan()
             task.action_ids.sudo().unlink()
-            max_actions = int(self.env['ir.config_parameter'].sudo().get_param('chatroom_ai_agent.max_actions', '8') or 8)
+            max_actions_value = self.env['ir.config_parameter'].sudo().get_param('chatroom_ai_agent.max_actions', '8') or '8'
+            try:
+                max_actions = max(int(max_actions_value), 1)
+            except (TypeError, ValueError):
+                max_actions = 8
             for index, action in enumerate(actions[:max(max_actions, 1)], 1):
                 tool = self.env['chatroom.ai.tool'].search([('key', '=', action['key']), ('active', '=', True)], limit=1)
                 task.env['chatroom.ai.task.action'].create({
@@ -340,6 +375,16 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                     result['status'] = 'skipped'
                     result['reason'] = _('No hay un presupuesto, pedido o factura pendiente para cobrar.')
                 else:
+                    limit_value = self.env['ir.config_parameter'].sudo().get_param('chatroom_ai_agent.max_payment_amount', '0') or '0'
+                    try:
+                        limit = float(limit_value)
+                    except (TypeError, ValueError):
+                        limit = 0.0
+                    amount = document.amount_total if 'amount_total' in document._fields else 0.0
+                    if limit > 0 and amount > limit:
+                        result['status'] = 'blocked'
+                        result['reason'] = _('El documento supera el límite de cobro automático configurado (%s).') % limit
+                        return result
                     channel.action_send_payment_link(document._name, document.id)
                     link = self.env['chatroom.payment.link'].search([
                         ('channel_id', '=', channel.id),
@@ -406,6 +451,9 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                     action.write({'state': 'running', 'error_message': False})
                     try:
                         output = task._execute_action(action)
+                        if output.get('status') == 'blocked':
+                            action.write({'state': 'error', 'output_json': task._json(output), 'error_message': output.get('reason')})
+                            raise UserError(output.get('reason') or _('La política de seguridad bloqueó esta acción.'))
                         action.write({'state': 'done' if output.get('status') != 'skipped' else 'skipped', 'output_json': task._json(output)})
                         task._audit(action.name, 'done', action=action, output=task._json(output))
                         outputs.append(output)
@@ -468,9 +516,13 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
 
     @api.model
     def _cron_run_pending(self):
-        tasks = self.sudo().search([('state', '=', 'planned'), ('active', '=', True), ('next_run_at', '<=', fields.Datetime.now()), ('attempts', '<', 3)], limit=20)
+        tasks = self.sudo().search([('state', 'in', ('draft', 'planned')), ('active', '=', True), ('next_run_at', '<=', fields.Datetime.now()), ('attempts', '<', 3)], limit=20)
         for task in tasks:
             try:
+                if task.state == 'draft':
+                    task.action_plan()
+                if task.state != 'planned':
+                    continue
                 task.action_run()
             except UserError:
                 self.env.cr.rollback()

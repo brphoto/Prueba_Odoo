@@ -56,6 +56,31 @@ class ChatroomAiQualityTest(models.Model):
                 raise UserError(_('La prueba de calidad fallo: %s') % exc) from exc
         return True
 
+    def action_run_selected(self):
+        """Ejecuta las pruebas seleccionadas sin detener toda la batería ante un fallo."""
+        passed = warning = failed = 0
+        for test in self:
+            try:
+                with self.env.cr.savepoint():
+                    test.action_run()
+                if test.last_state == 'passed':
+                    passed += 1
+                else:
+                    warning += 1
+            except UserError:
+                failed += 1
+        message = _('Aprobadas: %s. Para revisar: %s. Con error: %s.') % (passed, warning, failed)
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Batería de pruebas IA'),
+                'message': message,
+                'type': 'success' if not failed and not warning else 'warning',
+                'sticky': False,
+            },
+        }
+
 
 class ChatroomAiQualityResult(models.Model):
     _name = 'chatroom.ai.quality.result'

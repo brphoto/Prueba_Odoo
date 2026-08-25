@@ -178,17 +178,21 @@ class TestChatroomSalesIntelligence(TransactionCase):
         solo 2 (deja 1 pendiente y sigue en 'sending')."""
         self.env['ir.config_parameter'].sudo().set_param('chatroom_whatsapp.access_token', False)
         self.env['ir.config_parameter'].sudo().set_param('chatroom_whatsapp.phone_number_id', False)
+        category = self.env['crm.rfm.segment'].create({
+            'name': 'Categoría técnica de lote', 'code': 'test_batch_unique',
+            'definition_type': 'category', 'score_min': 0, 'score_max': 100,
+        })
         for i in range(3):
             partner = self.env['res.partner'].create({
                 'name': f"Cliente Lote {i}", 'phone': f"+57300210000{i}"})
-            partner.rfm_category = 'a'
+            partner.rfm_category = category.code
         campaign = self.env['chatroom.campaign'].create({
             'name': "Campaña con lotes",
             'template_id': self.env['chatroom.template'].create({
                 'name': 'test_campaign_template_5', 'language': 'es', 'body': "Hola.",
                 'status': 'approved',
             }).id,
-            'target_rfm_a': True, 'batch_size': 2,
+            'target_rfm_a': False, 'target_category_ids': [(6, 0, category.ids)], 'batch_size': 2,
         })
         campaign.action_send()
         expected_count = len(campaign.recipient_ids)

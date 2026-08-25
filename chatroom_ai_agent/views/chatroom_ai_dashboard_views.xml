@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_ai_dashboard_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.dashboard.form</field>
+        <field name="model">chatroom.ai.dashboard</field>
+        <field name="arch" type="xml">
+            <form string="Centro ejecutivo IA" create="0" delete="0" class="chatroom_ai_dashboard_form">
+                <header>
+                    <button name="action_refresh" type="object" string="Actualizar indicadores" class="btn-primary" icon="fa-refresh"/>
+                    <field name="last_refresh" readonly="1"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <div class="alert alert-info" role="alert">
+                        Panel único para operar IA con trazabilidad. Las acciones sensibles mantienen aprobación humana.
+                    </div>
+                    <div class="o_row chatroom_ai_dashboard_cards">
+                        <button name="action_open_pending" type="object" class="oe_stat_button" icon="fa-tasks">
+                            <field name="pending_tasks" widget="statinfo" string="Pendientes"/>
+                        </button>
+                        <button name="action_open_approvals" type="object" class="oe_stat_button" icon="fa-shield">
+                            <field name="approval_tasks" widget="statinfo" string="Aprobaciones"/>
+                        </button>
+                        <button name="action_open_failed" type="object" class="oe_stat_button" icon="fa-warning">
+                            <field name="failed_tasks" widget="statinfo" string="Fallidas"/>
+                        </button>
+                        <button name="action_open_high_risk" type="object" class="oe_stat_button" icon="fa-lock">
+                            <field name="high_risk_tasks" widget="statinfo" string="Alto riesgo"/>
+                        </button>
+                    </div>
+                    <group string="Rendimiento">
+                        <group>
+                            <field name="total_tasks" readonly="1"/>
+                            <field name="done_today" readonly="1"/>
+                            <field name="active_automations" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="memory_count" readonly="1"/>
+                            <field name="usage_requests" readonly="1"/>
+                            <field name="quality_pending" readonly="1"/>
+                        </group>
+                    </group>
+                    <separator string="Herramientas de control"/>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button name="action_open_quality" type="object" string="Pruebas de calidad" class="btn-secondary" icon="fa-check-circle"/>
+                        <button name="action_open_usage" type="object" string="Consumo y costos" class="btn-secondary" icon="fa-bar-chart"/>
+                        <button name="action_open_pending" type="object" string="Ver cola operativa" class="btn-secondary" icon="fa-list"/>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chatroom_ai_dashboard" model="ir.actions.act_window">
+        <field name="name">Centro ejecutivo IA</field>
+        <field name="res_model">chatroom.ai.dashboard</field>
+        <field name="view_mode">form</field>
+        <field name="res_id" ref="chatroom_ai_dashboard_main"/>
+        <field name="target">current</field>
+    </record>
+</odoo>

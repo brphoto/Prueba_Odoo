@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import _, models
+from odoo import _, fields, models
 from odoo.exceptions import UserError
 
 
@@ -16,7 +16,8 @@ class ChatroomChannel(models.Model):
             if memory:
                 context.append('Memoria empresarial autorizada:\n%s' % memory)
         if 'ai.knowledge.base' in self.env:
-            knowledge = self.env['ai.knowledge.base'].sudo().get_sales_context(self)
+            query = ' '.join((message.body or '') for message in self.message_ids.sorted('date')[-6:] if message.body)
+            knowledge = self.env['ai.knowledge.base'].sudo().get_sales_context(self, query=query)
             if knowledge:
                 context.append('Manuales internos autorizados:\n%s' % knowledge)
         if context and conversation:
@@ -38,12 +39,16 @@ class ChatroomChannel(models.Model):
             knowledge_count = self.env['ai.knowledge.base'].sudo().search_count([
                 ('active', '=', True), ('state', '=', 'indexed'),
             ])
+        usage = self.get_ai_usage_summary() if hasattr(self, 'get_ai_usage_summary') else {
+            'requests': 0, 'tokens': 0, 'last_model': '',
+        }
         return {
             'provider_ready': bool(self._ai_get_credentials()),
             'approval_required': self._ai_requires_approval(),
             'summary': self.ai_summary or '',
             'intent': self.ai_intent or '',
             'knowledge_count': knowledge_count,
+            'usage': usage,
             'suggestion': {
                 'id': suggestion.id,
                 'text': suggestion.suggested_text,
@@ -90,7 +95,13 @@ class ChatroomChannel(models.Model):
             raise UserError(_('Solo se puede editar una sugerencia en borrador.'))
         if not (text or '').strip():
             raise UserError(_('La respuesta no puede quedar vacía.'))
-        suggestion.write({'suggested_text': text.strip()})
+        normalized = text.strip()
+        suggestion.write({
+            'suggested_text': normalized,
+            'edited_by_human': normalized != (suggestion.suggested_text or '').strip(),
+            'edit_count': suggestion.edit_count + 1,
+            'last_reviewed_at': fields.Datetime.now(),
+        })
         return self.get_ai_assistant_data()
 
     def action_ai_discard_suggestion(self, suggestion_id):

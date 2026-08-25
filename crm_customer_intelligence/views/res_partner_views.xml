@@ -14,6 +14,11 @@
                         <span class="o_stat_text">Top Productos</span>
                     </div>
                 </button>
+                <button name="action_open_data_quality_duplicates" type="object"
+                        class="oe_stat_button" icon="fa-users"
+                        invisible="not duplicate_phone_count and not duplicate_email_count">
+                    <field name="duplicate_phone_count" widget="statinfo" string="Duplicados"/>
+                </button>
             </div>
             <notebook position="inside">
                 <page name="commercial_intelligence" string="Inteligencia Comercial">
@@ -23,6 +28,8 @@
                                    decoration-success="rfm_category == 'a'"
                                    decoration-warning="rfm_category == 'b'"
                                    decoration-muted="rfm_category in ('c', 'none')"/>
+                            <field name="rfm_manual_category"/>
+                            <field name="rfm_category_origin"/>
                             <field name="rfm_score"/>
                         </group>
                         <group string="Cómo se calculó">
@@ -37,6 +44,11 @@
                             <field name="commercial_avg_ticket"/>
                             <field name="commercial_invoice_count"/>
                             <field name="commercial_last_sale_date"/>
+                        </group>
+                        <group string="Calidad de datos">
+                            <field name="data_quality_state" widget="badge"/>
+                            <field name="duplicate_phone_count"/>
+                            <field name="duplicate_email_count"/>
                         </group>
                     </group>
                     <group string="Explicación de la clasificación"

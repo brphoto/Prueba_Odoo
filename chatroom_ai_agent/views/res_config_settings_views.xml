@@ -16,6 +16,10 @@
                                  help="Activa los ciclos automáticos definidos en el menú Agente IA &gt; Automatizaciones.">
                             <field name="chatroom_ai_agent_enabled"/>
                         </setting>
+                        <setting id="chatroom_ai_agent_event_orchestration_setting"
+                                 help="Prepara una tarea IA con cada mensaje entrante. La ejecución permanece sujeta a aprobación y auditoría.">
+                            <field name="chatroom_ai_agent_event_orchestration"/>
+                        </setting>
                         <setting id="chatroom_ai_agent_approval_setting"
                                  help="Recomendado: la IA puede preparar planes, pero un usuario autoriza cambios, cobros y envíos.">
                             <field name="chatroom_ai_agent_require_approval"/>
@@ -30,6 +34,10 @@
                         </setting>
                         <setting id="chatroom_ai_agent_max_actions_setting">
                             <field name="chatroom_ai_agent_max_actions"/>
+                        </setting>
+                        <setting id="chatroom_ai_agent_max_payment_amount_setting"
+                                 help="Protege cobros de alto valor. Usa 0 si todos deben requerir aprobación según las reglas normales.">
+                            <field name="chatroom_ai_agent_max_payment_amount"/>
                         </setting>
                     </block>
                 </app>

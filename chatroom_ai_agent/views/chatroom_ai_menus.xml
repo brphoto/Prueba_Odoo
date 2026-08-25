@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <menuitem id="menu_chatroom_ai_agent" name="Agente IA" parent="chatroom_whatsapp.menu_chatroom_root" sequence="25" groups="chatroom_ai_agent.group_chatroom_ai_agent_user"/>
+    <menuitem id="menu_chatroom_ai_dashboard" name="Resumen ejecutivo" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_dashboard" sequence="1"/>
     <menuitem id="menu_chatroom_ai_control" name="Centro de control" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_control" sequence="5"/>
     <menuitem id="menu_chatroom_ai_approvals" name="Aprobaciones pendientes" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_approvals" sequence="6"/>
     <menuitem id="menu_chatroom_ai_failed" name="Tareas fallidas" parent="menu_chatroom_ai_agent" action="action_chatroom_ai_failed" sequence="7"/>

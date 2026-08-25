@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="default_crm_stagnation_config" model="crm.stagnation.config">
+        <field name="name">Reglas comerciales generales</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+</odoo>

@@ -4,7 +4,7 @@
         <field name="name">chatroom.ai.suggestion.list</field><field name="model">chatroom.ai.suggestion</field>
         <field name="arch" type="xml"><list string="Sugerencias de IA">
             <field name="create_date"/><field name="channel_id"/><field name="partner_id"/>
-            <field name="intent" widget="badge"/><field name="confidence"/>
+            <field name="intent" widget="badge"/><field name="confidence"/><field name="edited_by_human" optional="hide"/>
             <field name="state" widget="badge"/><field name="approved_by"/><field name="sent_at"/>
         </list></field>
     </record>
@@ -20,7 +20,7 @@
             </header><sheet>
                 <div class="oe_title"><h1><field name="name"/></h1></div>
                 <group><group><field name="channel_id"/><field name="partner_id"/><field name="source"/><field name="source_detail"/></group>
-                    <group><field name="intent"/><field name="confidence"/><field name="approved_by"/><field name="sent_by"/></group></group>
+                    <group><field name="intent"/><field name="confidence"/><field name="edited_by_human"/><field name="edit_count"/><field name="last_reviewed_at"/><field name="approved_by"/><field name="sent_by"/></group></group>
                 <group string="Respuesta editable"><field name="suggested_text" nolabel="1"/></group>
                 <group string="Contexto y trazabilidad"><field name="message_context" readonly="1"/><field name="rejection_reason"/><field name="error_message" readonly="1"/></group>
             </sheet>

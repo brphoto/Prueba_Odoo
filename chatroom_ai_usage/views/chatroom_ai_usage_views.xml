@@ -127,6 +127,7 @@
         <field name="name">chatroom.ai.quality.test.list</field>
         <field name="model">chatroom.ai.quality.test</field>
         <field name="arch" type="xml"><list string="Pruebas de calidad" decoration-success="last_state == 'passed'" decoration-warning="last_state == 'warning'" decoration-danger="last_state == 'error'">
+            <header><button name="action_run_selected" type="object" string="Ejecutar seleccionadas" class="btn-primary"/></header>
             <button name="action_run" type="object" icon="fa-play" title="Ejecutar"/>
             <field name="name"/><field name="task_type"/><field name="channel_id"/>
             <field name="last_run"/><field name="last_score"/><field name="last_state" widget="badge"/>

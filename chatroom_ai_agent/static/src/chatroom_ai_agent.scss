@@ -42,3 +42,41 @@
         span, small { color: var(--chatroom-ui-text-muted, #667085); }
     }
 }
+
+.chatroom_ai_dashboard_form {
+    .chatroom_ai_dashboard_cards {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(150px, 1fr));
+        gap: 12px;
+        margin: 16px 0 24px;
+
+        .oe_stat_button {
+            min-height: 86px;
+            border: 1px solid var(--border-color, #dee2e6);
+            border-radius: 12px;
+            background: var(--o-view-background-color, #fff);
+            transition: transform .16s ease, box-shadow .16s ease;
+
+            &:hover, &:focus-visible {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 18px rgba(20, 30, 50, .12);
+            }
+        }
+    }
+
+    .alert {
+        border-radius: 10px;
+    }
+
+    @media (max-width: 900px) {
+        .chatroom_ai_dashboard_cards {
+            grid-template-columns: repeat(2, minmax(140px, 1fr));
+        }
+    }
+
+    @media (max-width: 540px) {
+        .chatroom_ai_dashboard_cards {
+            grid-template-columns: 1fr;
+        }
+    }
+}

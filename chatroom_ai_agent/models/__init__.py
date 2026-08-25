@@ -2,6 +2,8 @@ from . import chatroom_ai_audit
 from . import chatroom_ai_memory
 from . import chatroom_ai_tool
 from . import chatroom_ai_task
+from . import chatroom_ai_dashboard
+from . import chatroom_message
 from . import chatroom_ai_automation
 from . import chatroom_channel
 from . import res_config_settings

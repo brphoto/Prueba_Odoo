@@ -7,6 +7,10 @@ class TestChatroomAiAgent(TransactionCase):
 
     def setUp(self):
         super().setUp()
+        # Las pruebas del plan operativo deben ser deterministas y nunca
+        # depender de una API externa configurada en la base de desarrollo.
+        self.env['ir.config_parameter'].sudo().set_param(
+            'chatroom_whatsapp.ai_enabled', 'False')
         self.channel = self.env['chatroom.channel'].create({
             'channel_type': 'whatsapp',
             'external_id': 'ai-agent-test-001',

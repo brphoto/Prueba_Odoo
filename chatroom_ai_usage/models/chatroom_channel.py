@@ -12,6 +12,19 @@ _logger = logging.getLogger(__name__)
 class ChatroomChannel(models.Model):
     _inherit = 'chatroom.channel'
 
+    def get_ai_usage_summary(self):
+        self.ensure_one()
+        if 'chatroom.ai.usage.event' not in self.env:
+            return {'requests': 0, 'tokens': 0, 'last_model': ''}
+        events = self.env['chatroom.ai.usage.event'].sudo().search([
+            ('channel_id', '=', self.id),
+        ], order='request_date desc, id desc')
+        return {
+            'requests': len(events),
+            'tokens': sum(events.mapped('total_tokens')),
+            'last_model': events[:1].model if events else '',
+        }
+
     def _ai_get_credentials(self, task_type=None):
         credentials = super()._ai_get_credentials(task_type=task_type)
         if not credentials or 'chatroom.ai.provider.model' not in self.env:

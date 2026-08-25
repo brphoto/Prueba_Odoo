@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_stagnation_config_list" model="ir.ui.view">
+        <field name="name">crm.stagnation.config.list</field>
+        <field name="model">crm.stagnation.config</field>
+        <field name="arch" type="xml">
+            <list string="Reglas de estancamiento">
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="default_max_days"/>
+                <field name="notification_level"/>
+                <field name="notify_enabled" widget="boolean_toggle"/>
+                <field name="escalation_enabled" widget="boolean_toggle"/>
+                <field name="create_ai_tasks" widget="boolean_toggle"/>
+                <field name="last_run"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_crm_stagnation_config_form" model="ir.ui.view">
+        <field name="name">crm.stagnation.config.form</field>
+        <field name="model">crm.stagnation.config</field>
+        <field name="arch" type="xml">
+            <form string="Reglas de estancamiento">
+                <sheet>
+                    <div class="oe_title"><label for="name"/><h1><field name="name"/></h1></div>
+                    <group>
+                        <group string="Alcance">
+                            <field name="company_id"/>
+                            <field name="active"/>
+                            <field name="default_max_days"/>
+                        </group>
+                        <group string="Ejecución">
+                            <field name="last_run" readonly="1"/>
+                            <field name="last_count" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Semáforo y score">
+                            <group>
+                                <group string="Tiempo en etapa">
+                                    <field name="warning_ratio"/>
+                                    <field name="critical_ratio"/>
+                                    <field name="stagnant_ratio"/>
+                                    <field name="dead_ratio"/>
+                                    <field name="dead_no_activity_ratio"/>
+                                </group>
+                                <group string="Actividad y depuración">
+                                    <field name="high_activity_rate"/>
+                                    <field name="medium_activity_rate"/>
+                                    <field name="low_activity_rate"/>
+                                    <field name="min_score_to_purge"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Capital atrapado">
+                            <group>
+                                <field name="capital_warning_factor"/>
+                                <field name="capital_critical_factor"/>
+                                <field name="capital_stagnant_factor"/>
+                                <field name="capital_dead_factor"/>
+                            </group>
+                        </page>
+                        <page string="Alertas y escalamiento">
+                            <group>
+                                <group>
+                                    <field name="notify_enabled"/>
+                                    <field name="notification_level" invisible="not notify_enabled"/>
+                                    <field name="notification_repeat_days" invisible="not notify_enabled"/>
+                                </group>
+                                <group>
+                                    <field name="escalation_enabled"/>
+                                    <field name="escalation_after_days" invisible="not escalation_enabled"/>
+                                    <field name="require_reason"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Integración IA">
+                            <group>
+                                <field name="create_ai_tasks"/>
+                                <field name="ai_task_level" invisible="not create_ai_tasks"/>
+                            </group>
+                            <div class="alert alert-info" role="alert">
+                                La integración IA crea una tarea supervisada para revisar la oportunidad. No envía mensajes ni ejecuta pagos automáticamente.
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_crm_stagnation_config" model="ir.actions.act_window">
+        <field name="name">Reglas de estancamiento</field>
+        <field name="res_model">crm.stagnation.config</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

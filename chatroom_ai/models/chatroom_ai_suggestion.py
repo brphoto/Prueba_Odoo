@@ -24,6 +24,9 @@ class ChatroomAiSuggestion(models.Model):
     ], string='Intención')
     confidence = fields.Float(string='Confianza estimada', digits=(5, 2),
                               help='Referencia informativa del proveedor o del agente; no activa envíos por sí sola.')
+    edited_by_human = fields.Boolean(string='Editada por humano', readonly=True)
+    edit_count = fields.Integer(string='Ediciones', readonly=True)
+    last_reviewed_at = fields.Datetime(string='Última revisión', readonly=True)
     state = fields.Selection([
         ('draft', 'Borrador'), ('approved', 'Aprobada'), ('rejected', 'Descartada'),
         ('sent', 'Enviada'), ('error', 'Error'),
@@ -57,6 +60,7 @@ class ChatroomAiSuggestion(models.Model):
             suggestion.write({
                 'state': 'approved', 'approved_by': self.env.user.id,
                 'approved_at': fields.Datetime.now(), 'error_message': False,
+                'last_reviewed_at': fields.Datetime.now(),
             })
         return True
 

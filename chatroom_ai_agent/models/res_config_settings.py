@@ -15,6 +15,11 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='chatroom_ai_agent.require_approval',
         help='Las acciones que cambian datos o envían mensajes siempre conservan su aprobación propia.',
     )
+    chatroom_ai_agent_event_orchestration = fields.Boolean(
+        string='Crear tareas IA al recibir mensajes',
+        config_parameter='chatroom_ai_agent.event_orchestration',
+        help='Crea una tarea pendiente cuando llega un mensaje entrante y existe una automatización de conversación activa. No envía respuestas por sí sola.',
+    )
     chatroom_ai_agent_mode = fields.Selection([
         ('supervised', 'Supervisado: requiere aprobacion'),
         ('automatic', 'Automatico: ejecuta tareas autorizadas'),
@@ -29,6 +34,11 @@ class ResConfigSettings(models.TransientModel):
     chatroom_ai_agent_max_actions = fields.Integer(
         string='Maximo de acciones por tarea', default=8,
         config_parameter='chatroom_ai_agent.max_actions',
+    )
+    chatroom_ai_agent_max_payment_amount = fields.Float(
+        string='Límite de cobro automático', default=0.0,
+        config_parameter='chatroom_ai_agent.max_payment_amount',
+        help='0 desactiva el límite. Si un documento supera el valor, el agente lo bloquea para revisión humana.',
     )
 
     def action_open_ai_agent_control(self):

@@ -149,6 +149,20 @@ class ChatroomCampaign(models.Model):
             "en lotes de %(batch)s cada 5 minutos."
         ) % {'total': len(partners), 'batch': self.batch_size})
 
+    def action_preview_audience(self):
+        self.ensure_one()
+        partners = self._get_target_partners()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Previsualización de audiencia'),
+                'message': _('%s contacto(s) cumplen la segmentación, tienen teléfono y no solicitaron baja.') % len(partners),
+                'type': 'success' if partners else 'warning',
+                'sticky': False,
+            },
+        }
+
     def action_retry_failed(self):
         """Reencola fallos conservando la audiencia original de la campaña."""
         for campaign in self:

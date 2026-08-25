@@ -5,7 +5,7 @@
         <field name="model">ai.knowledge.base</field>
         <field name="arch" type="xml"><list>
             <field name="name"/><field name="pdf_filename"/><field name="chunk_count"/>
-            <field name="state"/><field name="active" widget="boolean_toggle"/>
+            <field name="indexed_at" optional="hide"/><field name="state"/><field name="active" widget="boolean_toggle"/>
         </list></field>
     </record>
     <record id="view_ai_knowledge_base_form" model="ir.ui.view">
@@ -14,9 +14,9 @@
         <field name="arch" type="xml"><form string="Base de conocimiento IA">
             <header><button name="action_index" type="object" string="Indexar manual" class="btn-primary"/>
                 <field name="state" widget="statusbar"/></header>
-            <sheet><group><field name="name"/><field name="active"/>
+            <sheet><group><field name="name"/><field name="active"/><field name="keyword_tags"/>
                 <field name="pdf_file" filename="pdf_filename"/><field name="pdf_filename" invisible="1"/>
-                <field name="chunk_count" readonly="1"/><field name="processing_error" readonly="1"/></group>
+                <field name="chunk_count" readonly="1"/><field name="indexed_at" readonly="1"/><field name="processing_error" readonly="1"/></group>
                 <field name="content_text" readonly="1" nolabel="1"/></sheet>
         </form></field>
     </record>
