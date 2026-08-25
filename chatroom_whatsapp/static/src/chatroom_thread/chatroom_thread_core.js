@@ -250,6 +250,7 @@ export class ChatroomThreadCore extends Component {
         this.state.messageSearchOpen = false;
         this.state.messageSearch = "";
         this.state.newMessages = 0;
+        this.state.messages = [];
         if (!channelId) {
             this.state.loading = false;
             this.state.messages = [];
