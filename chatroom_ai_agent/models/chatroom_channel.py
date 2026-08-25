@@ -5,6 +5,19 @@ from odoo import _, models
 class ChatroomChannel(models.Model):
     _inherit = 'chatroom.channel'
 
+    def _ai_requires_approval(self):
+        """El perfil del Agente IA gobierna las respuestas automáticas.
+
+        Las herramientas sensibles siguen teniendo su propia aprobación en
+        ``chatroom.ai.tool``. Si el parámetro del agente todavía no existe,
+        se conserva el comportamiento seguro del módulo base.
+        """
+        icp = self.env['ir.config_parameter'].sudo()
+        configured = icp.get_param('chatroom_ai_agent.require_approval')
+        if configured != '':
+            return configured == 'True'
+        return super()._ai_requires_approval()
+
     def get_ai_agent_data(self):
         self.ensure_one()
         can_use = self.env.user.has_group('chatroom_ai_agent.group_chatroom_ai_agent_user')

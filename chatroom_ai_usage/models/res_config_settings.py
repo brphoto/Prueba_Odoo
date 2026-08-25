@@ -55,6 +55,26 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='chatroom_whatsapp.ai_usage_auto_refresh',
         help='Crea un resumen diario y alerta a los administradores cuando se alcanza el presupuesto.',
     )
+    chatroom_ai_history_messages = fields.Integer(
+        string='Mensajes recientes para la IA', default=6,
+        config_parameter='chatroom_ai.history_messages',
+        help='Cantidad de mensajes recientes que se envian al proveedor. Un valor bajo reduce tokens y mantiene el contexto operativo.',
+    )
+    chatroom_ai_knowledge_context_max_chars = fields.Integer(
+        string='Máximo de conocimiento enviado (caracteres)', default=7000,
+        config_parameter='chatroom_ai.knowledge_context_max_chars',
+        help='Límite del contexto de manuales y datos relevantes. 7000 caracteres son aproximadamente 1750 tokens de entrada.',
+    )
+    chatroom_ai_knowledge_context_max_chunks = fields.Integer(
+        string='Fragmentos relevantes por consulta', default=3,
+        config_parameter='chatroom_ai.knowledge_context_max_chunks',
+        help='Cantidad de fragmentos indexados que se recuperan para cada pregunta.',
+    )
+    chatroom_ai_knowledge_product_limit = fields.Integer(
+        string='Productos coincidentes como máximo', default=5,
+        config_parameter='chatroom_ai.knowledge_product_limit',
+        help='La IA consulta productos vivos de Odoo solo cuando la pregunta contiene términos de producto.',
+    )
 
     @api.model
     def get_values(self):

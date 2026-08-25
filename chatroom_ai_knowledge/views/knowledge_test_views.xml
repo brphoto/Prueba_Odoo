@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_ai_knowledge_test_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.knowledge.test.form</field>
+        <field name="model">chatroom.ai.knowledge.test</field>
+        <field name="arch" type="xml">
+            <form string="Probar conocimiento IA">
+                <header>
+                    <button name="action_preview" type="object" string="Consultar base local" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="question" placeholder="Ej.: ¿Cuál es la garantía del producto?"/>
+                        <field name="channel_id"/>
+                        <field name="partner_id"/>
+                    </group>
+                    <group string="Medición de contexto">
+                        <field name="estimated_input_tokens"/>
+                        <field name="context_chars"/>
+                    </group>
+                    <group string="Fuentes encontradas">
+                        <field name="source_summary" nolabel="1" readonly="1"/>
+                        <field name="live_summary" nolabel="1" readonly="1"/>
+                    </group>
+                    <group string="Vista previa que recibiría la IA">
+                        <field name="context_preview" nolabel="1" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chatroom_ai_knowledge_test" model="ir.actions.act_window">
+        <field name="name">Probar conocimiento</field>
+        <field name="res_model">chatroom.ai.knowledge.test</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <menuitem id="menu_chatroom_ai_knowledge_test" name="Probar conocimiento"
+              parent="chatroom_ai_agent.menu_chatroom_ai_governance"
+              action="action_chatroom_ai_knowledge_test" sequence="20"/>
+</odoo>

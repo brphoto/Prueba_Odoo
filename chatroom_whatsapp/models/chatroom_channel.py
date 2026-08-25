@@ -2102,7 +2102,7 @@ class ChatroomChannel(models.Model):
 
     def _ai_build_conversation(self, extra_system=None):
         self.ensure_one()
-        history = self.message_ids.sorted('date')[-10:]
+        history = self.message_ids.sorted('date')[-self._ai_history_limit():]
         conversation = [
             {"role": "user" if m.direction == 'inbound' else "assistant",
              "content": m.body or ''}
@@ -2113,6 +2113,16 @@ class ChatroomChannel(models.Model):
             "Responde en español, de forma breve, cordial y orientada a "
             "avanzar la venta o resolver la consulta del cliente.")
         return [{"role": "system", "content": system_prompt}] + conversation
+
+    def _ai_history_limit(self):
+        """Cantidad acotada de mensajes que viajan al proveedor de IA."""
+        raw = self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_ai.history_messages', '6')
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            value = 6
+        return max(2, min(value, 20))
 
     def action_ai_suggest_reply(self):
         self.ensure_one()

@@ -139,7 +139,7 @@ class ChatroomAiTask(models.Model):
                     'body': (message.body or '')[:500],
                     'date': fields.Datetime.to_string(message.date) if message.date else False,
                 }
-                for message in (channel.message_ids.sorted('date')[-10:] if channel and 'message_ids' in channel._fields else [])
+                for message in (channel.message_ids.sorted('date')[-channel._ai_history_limit():] if channel and 'message_ids' in channel._fields else [])
                 if message.body
             ],
         }
@@ -177,6 +177,25 @@ class ChatroomAiTask(models.Model):
                 'amount_residual': invoice.amount_residual,
                 'due_date': fields.Date.to_string(invoice.invoice_date_due) if invoice.invoice_date_due else False,
             } for invoice in invoices]
+        # La base comercial es opcional: el agente funciona sin ella, pero si
+        # está instalada cada tarea recibe el conocimiento relevante y las
+        # fuentes vivas de Odoo sin tener que enviar todo el catálogo al modelo.
+        if 'ai.knowledge.base' in self.env:
+            try:
+                knowledge = self.env['ai.knowledge.base'].get_sales_context_details(
+                    channel=channel,
+                    query=self.prompt or '',
+                    partner=partner,
+                    company=self.company_id,
+                )
+                data['knowledge_context'] = knowledge.get('context', '')
+                data['knowledge_sources'] = knowledge.get('sources', [])
+                data['knowledge_live_sources'] = knowledge.get('live_sources', [])
+                data['knowledge_estimated_input_tokens'] = knowledge.get('estimated_input_tokens', 0)
+            except Exception:
+                # Una base de conocimiento incompleta no debe impedir una
+                # clasificación, seguimiento o respuesta segura.
+                data['knowledge_context'] = ''
         return data
 
     def _fallback_plan(self):
@@ -205,6 +224,12 @@ class ChatroomAiTask(models.Model):
 
     def _ai_plan(self, context):
         self.ensure_one()
+        # El plan local cubre las tareas operativas conocidas y no consume
+        # tokens. El planificador externo se habilita explícitamente desde
+        # Ajustes > Agente IA cuando se necesite razonamiento adicional.
+        if self.env['ir.config_parameter'].sudo().get_param(
+                'chatroom_ai_agent.ai_planning_enabled', 'False') != 'True':
+            return False
         channel = self.channel_id
         if not channel or not hasattr(channel, '_ai_get_credentials') or not channel._ai_get_credentials():
             return False
@@ -420,7 +445,7 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                     result['status'] = 'blocked'
                     result['reason'] = _('No existe un texto aprobado para enviar.')
                 else:
-                    channel.action_send_text(reply)
+                    channel.with_context(chatroom_ai_generated=True).action_send_text(reply)
         return result
 
     def action_approve(self):

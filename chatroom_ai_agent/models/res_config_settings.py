@@ -26,7 +26,12 @@ class ResConfigSettings(models.TransientModel):
     chatroom_ai_agent_event_orchestration = fields.Boolean(
         string='Crear tareas IA al recibir mensajes',
         config_parameter='chatroom_ai_agent.event_orchestration',
-        help='Crea una tarea pendiente cuando llega un mensaje entrante y existe una automatización de conversación activa. No envía respuestas por sí sola.',
+        help='Al recibir un mensaje crea y planifica la tarea de la automatización activa. En modo automático ejecuta únicamente acciones autorizadas; los envíos, cobros, cotizaciones y actividades conservan su aprobación.',
+    )
+    chatroom_ai_agent_ai_planning_enabled = fields.Boolean(
+        string='Usar planificador externo de IA',
+        config_parameter='chatroom_ai_agent.ai_planning_enabled',
+        help='Si está activo, el agente puede consultar el proveedor configurado para proponer planes no deterministas. Desactivado usa los planes locales y ahorra tokens.',
     )
     chatroom_ai_agent_mode = fields.Selection([
         ('supervised', 'Supervisado: requiere aprobacion'),
@@ -93,6 +98,7 @@ class ResConfigSettings(models.TransientModel):
                 'chatroom_ai_auto_reply_daily_limit': 30,
                 'chatroom_ai_auto_reply_escalate_negative': True,
                 'chatroom_ai_auto_reply_allow_outside_hours': False,
+                'chatroom_ai_agent_ai_planning_enabled': False,
             },
             'balanced': {
                 'chatroom_ai_agent_mode': 'automatic',
@@ -103,6 +109,7 @@ class ResConfigSettings(models.TransientModel):
                 'chatroom_ai_auto_reply_daily_limit': 50,
                 'chatroom_ai_auto_reply_escalate_negative': True,
                 'chatroom_ai_auto_reply_allow_outside_hours': False,
+                'chatroom_ai_agent_ai_planning_enabled': False,
             },
             'automatic': {
                 'chatroom_ai_agent_mode': 'automatic',
@@ -113,6 +120,7 @@ class ResConfigSettings(models.TransientModel):
                 'chatroom_ai_auto_reply_daily_limit': 20,
                 'chatroom_ai_auto_reply_escalate_negative': True,
                 'chatroom_ai_auto_reply_allow_outside_hours': False,
+                'chatroom_ai_agent_ai_planning_enabled': False,
             },
         }
         values = profiles.get(self.chatroom_ai_safety_profile)

@@ -1,0 +1,21 @@
+# -*- coding: utf-8 -*-
+{
+    'name': 'Chatroom IA - Centro de conocimiento',
+    'summary': 'Integra la base de conocimiento con el menú del Agente IA',
+    'description': '''Módulo puente opcional que organiza el conocimiento
+interno de Chatroom dentro del Agente IA sin mezclar la lógica comercial,
+de WhatsApp o de ventas.''',
+    'version': '19.0.1.0.1',
+    'author': 'Bryan Cando',
+    'license': 'LGPL-3',
+    'category': 'Productivity/Discuss',
+    'depends': ['chatroom_ai_agent', 'chatroom_sales_intelligence'],
+    'data': [
+        'security/ir.model.access.csv',
+        'views/knowledge_menu.xml',
+        'views/knowledge_test_views.xml',
+    ],
+    'installable': True,
+    'application': False,
+    'auto_install': True,
+}

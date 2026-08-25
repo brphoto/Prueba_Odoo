@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Reubica el menú existente; no crea un segundo modelo ni una segunda
+         base. El módulo puente solo se instala cuando ambos componentes
+         están disponibles. -->
+    <record id="chatroom_sales_intelligence.menu_ai_knowledge_base" model="ir.ui.menu">
+        <field name="name">Base de conocimiento IA</field>
+        <field name="parent_id" ref="chatroom_ai_agent.menu_chatroom_ai_governance"/>
+        <field name="sequence">10</field>
+    </record>
+    <record id="chatroom_sales_intelligence.menu_chatroom_commercial_knowledge" model="ir.ui.menu">
+        <field name="active">False</field>
+    </record>
+</odoo>

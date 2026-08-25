@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datetime import timedelta
+
 from odoo import api, fields, models
 
 
@@ -60,6 +62,11 @@ class ChatroomAiMemory(models.Model):
         if partner_id or channel_id:
             domain += ['|', ('partner_id', '=', partner_id or 0), ('channel_id', '=', channel_id or 0)]
         records = self.sudo().search(domain, order='importance desc, last_used desc, id desc', limit=limit)
+        # No escribimos en cada consulta IA: actualizar la fecha como máximo
+        # una vez por hora evita escrituras innecesarias y bloqueos de fila.
         if records:
-            records.write({'last_used': fields.Datetime.now()})
+            cutoff = fields.Datetime.now() - timedelta(hours=1)
+            records.filtered(lambda record: not record.last_used or record.last_used < cutoff).write({
+                'last_used': fields.Datetime.now()
+            })
         return '\n'.join('- %s' % record.content for record in records)

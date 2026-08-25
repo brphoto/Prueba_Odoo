@@ -1,13 +1,96 @@
 # -*- coding: utf-8 -*-
 from datetime import timedelta
 
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.fields import Datetime
 from odoo.tests import TransactionCase, tagged
 
 
 @tagged('post_install', '-at_install')
 class TestChatroomSalesIntelligence(TransactionCase):
+
+    def test_knowledge_requires_content_before_indexing(self):
+        with self.assertRaises(ValidationError):
+            self.env['ai.knowledge.base'].create({
+                'name': 'Conocimiento vacío test',
+                'source_type': 'text',
+            })
+
+    def test_knowledge_text_is_indexed_and_company_scoped(self):
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'Política de garantía test',
+            'source_type': 'text',
+            'source_text': 'La garantía comercial cubre defectos de fabricación por 12 meses.',
+            'keyword_tags': 'garantía, devolución',
+        })
+        manual.action_index()
+        self.assertEqual(manual.state, 'indexed')
+        self.assertIn('12 meses', manual.content_text)
+
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': '573000000099',
+        })
+        context = manual.get_sales_context(channel, query='garantía')
+        self.assertIn('La garantía comercial', context)
+        self.assertIn(self.env.company.name, context)
+
+    def test_knowledge_index_is_idempotent_and_context_is_bounded(self):
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'Manual de eficiencia IA test',
+            'source_type': 'text',
+            'source_text': 'Entrega estándar en 24 horas. ' + ('Detalle operativo. ' * 900),
+        })
+        manual.action_index()
+        first_digest = manual.source_digest
+        first_indexed_at = manual.indexed_at
+        manual.action_index()
+        self.assertEqual(manual.source_digest, first_digest)
+        self.assertEqual(manual.indexed_at, first_indexed_at)
+        manual.write({'source_text': 'Contenido actualizado de garantía.'})
+        self.assertEqual(manual.state, 'pending')
+        self.assertFalse(manual.content_text)
+        manual.action_index()
+        self.assertNotEqual(manual.source_digest, first_digest)
+        self.assertIn('actualizado', manual.content_text)
+
+        self.env['ir.config_parameter'].sudo().set_param(
+            'chatroom_ai.knowledge_context_max_chars', '3000')
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': '573000000101',
+        })
+        context = manual.get_sales_context(channel, query='entrega')
+        self.assertLessEqual(len(context), 3000)
+
+    def test_knowledge_does_not_send_unrelated_chunks(self):
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'Manual selectivo IA test', 'source_type': 'text',
+            'source_text': 'Política de garantía: cubre 12 meses.\n\n'
+                           + ('Relleno operativo. ' * 500)
+                           + '\n\nContenido administrativo sin relación.',
+        })
+        manual.action_index()
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': '573000000102',
+        })
+        context = manual.get_sales_context(channel, query='garantía')
+        self.assertIn('12 meses', context)
+        self.assertNotIn('Contenido administrativo sin relación', context)
+
+    def test_knowledge_context_reads_live_product_data(self):
+        if 'product.product' not in self.env:
+            self.skipTest('Módulo de productos no instalado')
+        product = self.env['product.product'].create({
+            'name': 'Producto vivo IA test', 'default_code': 'IA-LIVE-01',
+            'list_price': 37.5,
+        })
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': '573000000100',
+        })
+        context = self.env['ai.knowledge.base'].get_sales_context(
+            channel, query='precio Producto vivo IA test')
+        self.assertIn(product.display_name, context)
+        self.assertIn('37.50', context)
+        self.assertIn('Datos vivos de productos en Odoo', context)
 
     def test_chatroom_channel_resolves_pinned_lead_for_alert(self):
         partner = self.env['res.partner'].create({'name': "Cliente Chatroom"})

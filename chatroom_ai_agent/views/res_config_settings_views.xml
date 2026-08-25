@@ -20,6 +20,10 @@
                                  help="Prepara una tarea IA con cada mensaje entrante. La ejecución permanece sujeta a aprobación y auditoría.">
                             <field name="chatroom_ai_agent_event_orchestration"/>
                         </setting>
+                        <setting id="chatroom_ai_agent_ai_planning_setting"
+                                 help="Desactivado usa planes locales y ahorra tokens. Actívalo solo si necesitas que el proveedor externo proponga planes nuevos.">
+                            <field name="chatroom_ai_agent_ai_planning_enabled"/>
+                        </setting>
                         <setting id="chatroom_ai_agent_approval_setting"
                                  help="Recomendado: la IA puede preparar planes, pero un usuario autoriza cambios, cobros y envíos.">
                             <field name="chatroom_ai_agent_require_approval"/>

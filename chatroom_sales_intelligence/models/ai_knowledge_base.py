@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 import base64
+import hashlib
 import io
 import logging
 import re
+from datetime import timedelta
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -17,7 +19,28 @@ class AiKnowledgeBase(models.Model):
 
     name = fields.Char(required=True)
     active = fields.Boolean(default=True)
-    pdf_file = fields.Binary(string='Manual PDF', attachment=True, required=True)
+    company_id = fields.Many2one(
+        'res.company', string='Empresa', default=lambda self: self.env.company,
+        index=True, help='Vacío significa disponible para todas las empresas.')
+    source_type = fields.Selection([
+        ('text', 'Texto interno'),
+        ('pdf', 'Documento PDF'),
+    ], string='Tipo de conocimiento', default='text', required=True)
+    category = fields.Selection([
+        ('general', 'General'),
+        ('products', 'Productos y servicios'),
+        ('sales', 'Ventas'),
+        ('support', 'Soporte'),
+        ('payments', 'Pagos y facturación'),
+        ('policies', 'Políticas y condiciones'),
+    ], string='Categoría', default='general', required=True)
+    priority = fields.Integer(string='Prioridad', default=10)
+    source_text = fields.Text(
+        string='Contenido interno',
+        help='Escribe aquí políticas, preguntas frecuentes, procesos y datos '
+             'que no viven en una tabla de Odoo. La IA usará este contenido '
+             'después de indexarlo.')
+    pdf_file = fields.Binary(string='Manual PDF', attachment=True)
     pdf_filename = fields.Char(string='Nombre del archivo')
     content_text = fields.Text(string='Texto indexado', readonly=True)
     chunk_count = fields.Integer(readonly=True)
@@ -27,35 +50,106 @@ class AiKnowledgeBase(models.Model):
     processing_error = fields.Text(readonly=True)
     keyword_tags = fields.Char(string='Palabras clave', help='Términos separados por coma para priorizar este manual.')
     indexed_at = fields.Datetime(string='Indexado el', readonly=True)
+    source_digest = fields.Char(string='Huella de fuente', readonly=True, copy=False)
+    usage_count = fields.Integer(string='Consultas', readonly=True, copy=False)
+    last_used_at = fields.Datetime(string='Última consulta', readonly=True, copy=False)
+
+    @api.constrains('source_type', 'pdf_file', 'source_text')
+    def _check_knowledge_source(self):
+        for manual in self:
+            if manual.source_type == 'pdf' and not manual.pdf_file:
+                raise ValidationError(_('Selecciona un archivo PDF para indexar este conocimiento.'))
+            if manual.source_type == 'text' and not (manual.source_text or '').strip():
+                raise ValidationError(_('Escribe el contenido interno antes de indexar.'))
+
+    def write(self, vals):
+        source_changed = bool({'source_type', 'source_text', 'pdf_file', 'pdf_filename'} & set(vals))
+        result = super().write(vals)
+        if source_changed:
+            # La versión anterior no vuelve a estar disponible para la IA
+            # hasta que el usuario pulse Indexar. Así nunca se mezclan datos
+            # viejos y nuevos ni se hace una llamada extra al proveedor.
+            super(AiKnowledgeBase, self).write({
+                'state': 'pending', 'source_digest': False,
+                'content_text': False, 'chunk_count': 0,
+                'processing_error': False, 'indexed_at': False,
+            })
+        return result
 
     def action_index(self):
         for manual in self:
             try:
-                raw = base64.b64decode(manual.pdf_file or b'')
-                try:
-                    from pypdf import PdfReader
-                    reader = PdfReader(io.BytesIO(raw))
-                    text = '\n'.join(page.extract_text() or '' for page in reader.pages)
-                except ImportError:
-                    text = raw.decode('utf-8', errors='ignore')
+                digest = manual._get_source_digest()
+                # Indexar es una operación local y no consume tokens, pero no
+                # tiene sentido volver a leer un PDF o reconstruir sus
+                # fragmentos si la fuente no cambió.
+                if (manual.state == 'indexed' and manual.source_digest == digest
+                        and manual.content_text):
+                    continue
+                if manual.source_type == 'text':
+                    text = manual.source_text or ''
+                else:
+                    raw = base64.b64decode(manual.pdf_file or b'')
+                    try:
+                        from pypdf import PdfReader
+                        reader = PdfReader(io.BytesIO(raw))
+                        text = '\n'.join(page.extract_text() or '' for page in reader.pages)
+                    except ImportError:
+                        raise UserError(_('Para indexar PDF instala la librería pypdf en el entorno de Odoo.'))
                 if not text.strip():
-                    raise UserError(_('No se pudo extraer texto del PDF.'))
+                    raise UserError(_('No se encontró texto utilizable en la fuente seleccionada.'))
                 chunks = [text[index:index + 4000] for index in range(0, len(text), 4000)]
                 manual.write({
                     'content_text': '\n\n'.join(chunks), 'chunk_count': len(chunks),
                     'state': 'indexed', 'processing_error': False,
                     'indexed_at': fields.Datetime.now(),
+                    'source_digest': digest,
                 })
             except Exception as error:
                 _logger.exception('No se pudo indexar el manual IA %s', manual.id)
                 manual.write({'state': 'error', 'processing_error': str(error)})
         return True
 
+    def _get_source_digest(self):
+        """Huella local para evitar reprocesar una fuente sin cambios."""
+        self.ensure_one()
+        if self.source_type == 'pdf':
+            source = base64.b64decode(self.pdf_file or b'')
+        else:
+            source = (self.source_text or '').encode('utf-8')
+        return hashlib.sha256(
+            ('%s:' % (self.source_type or 'text')).encode('utf-8') + source
+        ).hexdigest()
+
     @api.model
     def get_sales_context(self, channel, query=''):
-        manuals = self.search([('active', '=', True), ('state', '=', 'indexed')])
-        if not manuals:
-            return ''
+        return self.get_sales_context_details(channel, query=query).get('context', '')
+
+    @api.model
+    def get_sales_context_details(self, channel=False, query='', partner=False, company=False):
+        """Recupera contexto y devuelve trazabilidad para revisión humana.
+
+        La recuperación sigue siendo local por palabras clave; no llama al
+        proveedor de IA. ``get_sales_context`` conserva la API anterior para
+        que los demás módulos no tengan que conocer estos detalles.
+        """
+        icp = self.env['ir.config_parameter'].sudo()
+
+        def bounded_param(key, default, minimum, maximum):
+            try:
+                value = int(icp.get_param(key, default))
+            except (TypeError, ValueError):
+                value = default
+            return max(minimum, min(value, maximum))
+
+        max_chars = bounded_param('chatroom_ai.knowledge_context_max_chars', 7000, 3000, 12000)
+        max_chunks = bounded_param('chatroom_ai.knowledge_context_max_chunks', 3, 1, 5)
+        company = (channel.company_id if channel else False) or company or self.env.company
+        partner = (channel.partner_id if channel else False) or partner
+        manuals = self.search([
+            ('active', '=', True), ('state', '=', 'indexed'),
+            '|', ('company_id', '=', False), ('company_id', '=', company.id),
+        ], order='priority desc, name')
         terms = set(re.findall(r'[\wáéíóúñü]{4,}', (query or '').lower()))
         stopwords = {'para', 'como', 'esta', 'este', 'cliente', 'quiero', 'necesito', 'tiene', 'desde', 'con', 'una', 'uno', 'sobre', 'debe'}
         terms -= stopwords
@@ -66,15 +160,104 @@ class AiKnowledgeBase(models.Model):
             for chunk in chunks:
                 score = sum(1 for term in terms if term in chunk.lower())
                 score += sum(2 for term in terms if term in manual_terms)
-                ranked.append((score, manual.name, chunk))
+                ranked.append((score, manual.name, chunk, manual.id))
         ranked.sort(key=lambda item: item[0], reverse=True)
-        selected = ranked[:6] if terms else ranked[:3]
-        text = '\n\n'.join(f'[{name}]\n{chunk}' for _score, name, chunk in selected)
-        partner = channel.partner_id
-        customer_context = ''
+        # Si la pregunta contiene términos, no enviamos manuales sin ninguna
+        # coincidencia. Esto evita pagar contexto irrelevante en cada turno.
+        if terms:
+            ranked = [item for item in ranked if item[0] > 0]
+        selected = ranked[:max_chunks]
+        selected_manual_ids = {item[3] for item in selected}
+        selected_manuals = self.browse(selected_manual_ids)
+        now = fields.Datetime.now()
+        stale_usage = selected_manuals.filtered(
+            lambda manual: not manual.last_used_at
+            or manual.last_used_at < now - timedelta(hours=1))
+        for manual in stale_usage:
+            manual.sudo().write({'usage_count': manual.usage_count + 1, 'last_used_at': now})
+        text = '\n\n'.join(f'[{name}]\n{chunk}' for _score, name, chunk, _manual_id in selected)
+        context_parts = []
+        company_data = [
+            'Empresa: %s' % (company.name or ''),
+            'Moneda: %s' % (company.currency_id.name or '') if company.currency_id else '',
+            'Teléfono: %s' % (company.phone or ''),
+            'Correo: %s' % (company.email or ''),
+            'Dirección: %s' % ', '.join(filter(None, [company.street, company.city, company.country_id.name])),
+        ]
+        context_parts.append('Datos actuales de la empresa en Odoo:\n%s' % '\n'.join(item for item in company_data if item.split(': ', 1)[-1]))
+
+        product_context = self._get_product_context(company, query)
+        if product_context:
+            context_parts.append(product_context)
         if partner:
-            customer_context = (
+            context_parts.append(
+                'Ficha comercial actual del cliente:\n' +
                 f'Cliente: {partner.name}; categoría RFM: {getattr(partner, "rfm_category", "")}; '
-                f'productos comprados: {getattr(partner, "commercial_top_product_summary", "")}'
+                f'productos comprados: {getattr(partner, "commercial_top_product_summary", "")}.'
             )
-        return f'{customer_context}\n\nManuales internos relevantes:\n{text}'[:12000]
+        if text:
+            context_parts.append('Manuales y políticas internas relevantes:\n%s' % text)
+        context = '\n\n'.join(context_parts)[:max_chars]
+        sources = []
+        for manual_id in selected_manual_ids:
+            manual = self.browse(manual_id)
+            rows = [item for item in selected if item[3] == manual_id]
+            sources.append({
+                'id': manual.id, 'name': manual.name, 'category': manual.category,
+                'score': max((item[0] for item in rows), default=0),
+                'chunks': len(rows),
+            })
+        sources.sort(key=lambda item: (-item['score'], item['name']))
+        return {
+            'context': context,
+            'sources': sources,
+            'live_sources': [
+                'Empresa y moneda',
+                'Productos coincidentes de Odoo' if product_context else '',
+                'Ficha RFM del cliente' if partner else '',
+            ],
+            'estimated_input_tokens': max(1, (len(context) + 3) // 4) if context else 0,
+            'context_chars': len(context),
+        }
+
+    def _get_product_context(self, company, query):
+        """Consulta productos vivos de Odoo; nunca copia un catálogo completo."""
+        if 'product.product' not in self.env or not query:
+            return ''
+        stopwords = {
+            'para', 'como', 'esta', 'este', 'cliente', 'quiero', 'necesito',
+            'tiene', 'desde', 'con', 'una', 'uno', 'sobre', 'debe', 'precio',
+            'cuanto', 'cuánto', 'disponible', 'stock', 'producto',
+        }
+        terms = [term for term in re.findall(r'[\wáéíóúñü]{3,}', query.lower())
+                 if term not in stopwords][:6]
+        if not terms:
+            return ''
+        product_domain = []
+        for term in terms:
+            term_domain = ['|', ('name', 'ilike', term), ('default_code', 'ilike', term)]
+            product_domain = term_domain if not product_domain else ['|'] + product_domain + term_domain
+        icp = self.env['ir.config_parameter'].sudo()
+        try:
+            product_limit = int(icp.get_param('chatroom_ai.knowledge_product_limit', 5))
+        except (TypeError, ValueError):
+            product_limit = 5
+        product_limit = max(1, min(product_limit, 8))
+        products = self.env['product.product'].search(
+            product_domain, order='name asc', limit=product_limit)
+        if not products:
+            return ''
+        currency = company.currency_id.name if company.currency_id else ''
+        rows = []
+        for product in products:
+            product_company = product.with_company(company)
+            rows.append(
+                '- %s | código: %s | precio de venta: %.2f %s | disponible: %.2f' % (
+                    product.display_name,
+                    product.default_code or 'sin código',
+                    product_company.lst_price,
+                    currency,
+                    product_company.qty_available,
+                )
+            )
+        return 'Datos vivos de productos en Odoo (consultados ahora):\n%s' % '\n'.join(rows)

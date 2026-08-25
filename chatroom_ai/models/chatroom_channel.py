@@ -19,8 +19,12 @@ class ChatroomChannel(models.Model):
             if memory:
                 context.append('Memoria empresarial autorizada:\n%s' % memory)
         if 'ai.knowledge.base' in self.env:
-            query = ' '.join((message.body or '') for message in self.message_ids.sorted('date')[-6:] if message.body)
-            knowledge = self.env['ai.knowledge.base'].sudo().get_sales_context(self, query=query)
+            query = ' '.join(
+                (message.body or '')
+                for message in self.message_ids.sorted('date')[-self._ai_history_limit():]
+                if message.body
+            )
+            knowledge = self.env['ai.knowledge.base'].get_sales_context(self, query=query)
             if knowledge:
                 context.append('Manuales internos autorizados:\n%s' % knowledge)
         if context and conversation:
@@ -128,6 +132,50 @@ class ChatroomChannel(models.Model):
             self._ai_guard_notification(reason, priority='2' if 'urgencia' in reason.lower() else '1')
         return suggestion
 
+    def _ai_local_reply(self):
+        """Respuestas deterministas para casos simples y de bajo riesgo.
+
+        Se ejecuta antes del proveedor externo. No usa tokens ni se activa
+        para preguntas mezcladas con otros temas; en esos casos continúa el
+        flujo normal de IA con sus controles de confianza.
+        """
+        self.ensure_one()
+        inbound = self.env['chatroom.message'].search([
+            ('channel_id', '=', self.id), ('direction', '=', 'inbound'),
+        ], order='date desc, id desc', limit=1)
+        text = re.sub(r'\s+', ' ', (inbound.body or '').strip().lower())
+        text = re.sub(r'[^\wáéíóúñü ]', '', text)
+        if not text:
+            return False
+        if re.fullmatch(r'(hola|buenas|buenos días|buenas tardes|buenas noches|hello|hi)', text):
+            name = self.partner_id.name.split(' ')[0] if self.partner_id and self.partner_id.name else ''
+            greeting = _('Hola') + (', %s' % name if name else '') + _('. ¿En qué podemos ayudarte?')
+            return greeting
+        if re.fullmatch(r'(gracias|muchas gracias|gracias por la atención|ok gracias)', text):
+            return _('Con gusto. Quedamos atentos para ayudarte.')
+        return False
+
+    def _ai_deliver_guarded_reply(self, reply, confidence, intent=False, reason=False):
+        """Registra, aprueba y envía una respuesta ya validada."""
+        self.ensure_one()
+        suggestion = self._ai_create_guarded_suggestion(
+            reply, confidence, 'allowed',
+            reason or _('Respuesta aprobada por la guardia automatica.'),
+            intent=intent)
+        if self._ai_requires_approval():
+            return {'status': 'awaiting_approval', 'suggestion_id': suggestion.id}
+        try:
+            self.with_context(chatroom_ai_generated=True).action_send_text(reply)
+        except Exception as exc:
+            suggestion.write({'state': 'error', 'error_message': str(exc)})
+            raise
+        suggestion.write({
+            'state': 'sent', 'sent_by': self.env.user.id,
+            'sent_at': fields.Datetime.now(),
+        })
+        self.ai_suggested_reply = False
+        return {'status': 'sent', 'suggestion_id': suggestion.id}
+
     def action_ai_auto_reply_safe(self):
         """Genera o envia una respuesta pasando por una politica segura.
 
@@ -149,8 +197,33 @@ class ChatroomChannel(models.Model):
             self._ai_guard_notification(reason)
             return {'status': 'human_review', 'reason': reason}
 
-        now = fields.Datetime.now()
         message_model = self.env['chatroom.message']
+        # Idempotencia: si ya se respondió al último mensaje entrante, no
+        # volvemos a llamar al proveedor ni duplicamos el mensaje.
+        latest_inbound = message_model.search([
+            ('channel_id', '=', self.id), ('direction', '=', 'inbound'),
+        ], order='date desc, id desc', limit=1)
+        latest_ai = message_model.search([
+            ('channel_id', '=', self.id), ('direction', '=', 'outbound'),
+            ('ai_generated', '=', True),
+        ], order='date desc, id desc', limit=1) if 'ai_generated' in message_model._fields else False
+        already_answered = bool(
+            latest_inbound and latest_ai and (
+                latest_ai.date > latest_inbound.date
+                or (latest_ai.date == latest_inbound.date and latest_ai.id > latest_inbound.id)
+            )
+        )
+        if already_answered:
+            return {'status': 'already_replied', 'reason': _('El último mensaje entrante ya tiene respuesta automática.')}
+
+        # Saludos y agradecimientos no necesitan consumir tokens.
+        local_reply = self._ai_local_reply()
+        if local_reply:
+            return self._ai_deliver_guarded_reply(
+                local_reply, 1.0, intent='consulta',
+                reason=_('Respuesta local para una interacción sencilla; no consumió tokens.'))
+
+        now = fields.Datetime.now()
         if 'ai_generated' in message_model._fields:
             latest = message_model.search([
                 ('channel_id', '=', self.id), ('direction', '=', 'outbound'),
@@ -224,21 +297,9 @@ class ChatroomChannel(models.Model):
                 confidence, 'human_review', reason, intent=intent)
             return {'status': 'human_review', 'suggestion_id': suggestion.id, 'reason': reason}
 
-        suggestion = self._ai_create_guarded_suggestion(
-            reply, confidence, 'allowed', _('Respuesta aprobada por la guardia automatica.'), intent=intent)
-        if self._ai_requires_approval():
-            return {'status': 'awaiting_approval', 'suggestion_id': suggestion.id}
-        try:
-            self.with_context(chatroom_ai_generated=True).action_send_text(reply)
-        except Exception as exc:
-            suggestion.write({'state': 'error', 'error_message': str(exc)})
-            raise
-        suggestion.write({
-            'state': 'sent', 'sent_by': self.env.user.id,
-            'sent_at': fields.Datetime.now(),
-        })
-        self.ai_suggested_reply = False
-        return {'status': 'sent', 'suggestion_id': suggestion.id}
+        return self._ai_deliver_guarded_reply(
+            reply, confidence, intent=intent,
+            reason=_('Respuesta aprobada por la guardia automatica.'))
 
     def action_ai_prepare_suggestion(self, model_id=None):
         self.ensure_one()

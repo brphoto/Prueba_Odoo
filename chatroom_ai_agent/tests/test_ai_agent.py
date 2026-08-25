@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from unittest.mock import patch
+
 from odoo.tests import TransactionCase, tagged
 
 
@@ -11,6 +13,8 @@ class TestChatroomAiAgent(TransactionCase):
         # depender de una API externa configurada en la base de desarrollo.
         self.env['ir.config_parameter'].sudo().set_param(
             'chatroom_whatsapp.ai_enabled', 'False')
+        self.env['ir.config_parameter'].sudo().set_param(
+            'chatroom_ai_agent.event_orchestration', 'False')
         self.channel = self.env['chatroom.channel'].create({
             'channel_type': 'whatsapp',
             'external_id': 'ai-agent-test-001',
@@ -30,12 +34,53 @@ class TestChatroomAiAgent(TransactionCase):
         self.assertTrue(task.output_json)
         self.assertTrue(task.audit_ids)
 
+    def test_task_context_exposes_optional_knowledge_telemetry(self):
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            self.channel, task_type='orchestrate',
+            prompt='¿Qué productos y condiciones comerciales existen?',
+        )
+        context = task._context()
+        if 'ai.knowledge.base' in self.env:
+            self.assertIn('knowledge_context', context)
+            self.assertIn('knowledge_sources', context)
+            self.assertIn('knowledge_estimated_input_tokens', context)
+
     def test_memory_is_deduplicated(self):
         memory_model = self.env['chatroom.ai.memory']
         first = memory_model.remember('Cliente prefiere contacto por WhatsApp', channel=self.channel, memory_type='preference')
         second = memory_model.remember('Cliente prefiere contacto por WhatsApp', channel=self.channel, memory_type='preference')
         self.assertEqual(first, second)
         self.assertEqual(memory_model.search_count([('channel_id', '=', self.channel.id)]), 1)
+
+    def test_simple_greeting_is_answered_locally_without_provider(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.ai_enabled', 'False')
+        icp.set_param('chatroom_whatsapp.ai_require_approval', 'False')
+        icp.set_param('chatroom_ai_agent.require_approval', 'False')
+        self.env['chatroom.message'].create({
+            'channel_id': self.channel.id, 'direction': 'inbound',
+            'message_type': 'text', 'body': 'Hola',
+        })
+        with patch.object(type(self.channel), 'action_send_text', return_value=True):
+            result = self.channel.action_ai_auto_reply_safe()
+        self.assertEqual(result['status'], 'sent')
+        suggestion = self.env['chatroom.ai.suggestion'].browse(result['suggestion_id'])
+        self.assertEqual(suggestion.confidence, 1.0)
+        self.assertIn('no consumió tokens', suggestion.safety_reason)
+
+    def test_auto_reply_is_idempotent_after_latest_inbound(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.ai_enabled', 'False')
+        self.env['chatroom.message'].create({
+            'channel_id': self.channel.id, 'direction': 'inbound',
+            'message_type': 'text', 'body': 'Consulta nueva',
+        })
+        self.env['chatroom.message'].with_context(chatroom_ai_generated=True).create({
+            'channel_id': self.channel.id, 'direction': 'outbound',
+            'message_type': 'text', 'body': 'Respuesta anterior',
+        })
+        result = self.channel.action_ai_auto_reply_safe()
+        self.assertEqual(result['status'], 'already_replied')
 
     def test_sales_conversion_plan_is_approval_protected(self):
         task = self.env['chatroom.ai.task'].create_from_channel(
@@ -64,6 +109,55 @@ class TestChatroomAiAgent(TransactionCase):
         self.assertGreaterEqual(automation.last_run_count, 0)
         self.assertTrue(automation.last_run)
         self.assertFalse(automation.last_error)
+
+    def test_inbound_message_plans_task_for_active_automation(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_ai_agent.event_orchestration', 'True')
+        icp.set_param('chatroom_ai_agent.enabled', 'True')
+        icp.set_param('chatroom_ai_agent.mode', 'supervised')
+        automation = self.env['chatroom.ai.automation'].create({
+            'name': 'Orquestación al recibir consulta',
+            'trigger': 'open_conversation',
+            'task_type': 'classify_customer',
+            'approval_required': True,
+            'active': True,
+        })
+        self.env['chatroom.message'].create({
+            'channel_id': self.channel.id, 'direction': 'inbound',
+            'message_type': 'text', 'body': 'Necesito ayuda con mi cuenta',
+        })
+        task = self.env['chatroom.ai.task'].search([
+            ('channel_id', '=', self.channel.id),
+            ('automation_id', '=', automation.id),
+        ], order='id desc', limit=1)
+        self.assertTrue(task)
+        self.assertEqual(task.state, 'awaiting_approval')
+        self.assertEqual(task.action_ids.mapped('key'), ['classify_customer'])
+
+    def test_inbound_message_executes_only_authorized_plan_in_automatic_mode(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_ai_agent.event_orchestration', 'True')
+        icp.set_param('chatroom_ai_agent.enabled', 'True')
+        icp.set_param('chatroom_ai_agent.mode', 'automatic')
+        icp.set_param('chatroom_ai_agent.require_approval', 'False')
+        automation = self.env['chatroom.ai.automation'].create({
+            'name': 'Clasificación automática segura',
+            'trigger': 'open_conversation',
+            'task_type': 'classify_customer',
+            'approval_required': False,
+            'active': True,
+        })
+        self.env['chatroom.message'].create({
+            'channel_id': self.channel.id, 'direction': 'inbound',
+            'message_type': 'text', 'body': 'Quiero conocer mi categoría',
+        })
+        task = self.env['chatroom.ai.task'].search([
+            ('channel_id', '=', self.channel.id),
+            ('automation_id', '=', automation.id),
+        ], order='id desc', limit=1)
+        self.assertTrue(task)
+        self.assertEqual(task.state, 'done')
+        self.assertFalse(task.action_ids.filtered('requires_approval'))
 
     def test_commercial_automation_triggers_are_available(self):
         automation_model = self.env['chatroom.ai.automation']

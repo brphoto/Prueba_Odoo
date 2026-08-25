@@ -50,6 +50,26 @@
                     <setting id="chatroom_ai_usage_days_setting">
                         <field name="chatroom_ai_usage_days"/>
                     </setting>
+                    <setting id="chatroom_ai_context_efficiency_setting"
+                             string="Contexto eficiente"
+                             help="Controla cuánta información se envía en cada consulta. El contenido indexado permanece local y no se reenvía completo.">
+                        <div class="row mt-2">
+                            <label for="chatroom_ai_history_messages" class="col-lg-5 o_light_label"/>
+                            <field name="chatroom_ai_history_messages"/>
+                        </div>
+                        <div class="row mt-2">
+                            <label for="chatroom_ai_knowledge_context_max_chars" class="col-lg-5 o_light_label"/>
+                            <field name="chatroom_ai_knowledge_context_max_chars"/>
+                        </div>
+                        <div class="row mt-2">
+                            <label for="chatroom_ai_knowledge_context_max_chunks" class="col-lg-5 o_light_label"/>
+                            <field name="chatroom_ai_knowledge_context_max_chunks"/>
+                        </div>
+                        <div class="row mt-2">
+                            <label for="chatroom_ai_knowledge_product_limit" class="col-lg-5 o_light_label"/>
+                            <field name="chatroom_ai_knowledge_product_limit"/>
+                        </div>
+                    </setting>
                     <setting id="chatroom_ai_monthly_budget_setting"
                              help="Referencia local para comparar el gasto; no cambia los limites de OpenAI.">
                         <field name="chatroom_ai_monthly_budget"/>
