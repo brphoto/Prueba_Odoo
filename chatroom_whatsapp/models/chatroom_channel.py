@@ -1560,6 +1560,8 @@ class ChatroomChannel(models.Model):
         """Devuelve un límite seguro para el PDF sin permitir valores extremos."""
         raw_limit = self.env['ir.config_parameter'].sudo().get_param(
             'chatroom_whatsapp.transcript_pdf_max_messages', '500')
+        if not raw_limit:
+            return 500
         try:
             return max(50, min(int(raw_limit), 5000))
         except (TypeError, ValueError):
