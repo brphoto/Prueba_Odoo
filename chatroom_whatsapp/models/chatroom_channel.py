@@ -2354,6 +2354,71 @@ class ChatroomChannel(models.Model):
         return {'type': 'ir.actions.act_window', 'view_mode': view_mode, **vals}
 
     @api.model
+    def get_chatter_context(self, model_name, record_id):
+        """Return Chatroom conversations related to any record with a contact.
+
+        The native chatter is shared by CRM, Sales, Purchases, Invoicing,
+        Contacts and other applications. The partner lookup lives here so
+        those forms do not need individual customizations. Regular access
+        rights and record rules are intentionally preserved.
+        """
+        if not model_name or model_name not in self.env or not record_id:
+            return {'partner_id': False, 'partner_name': False, 'channels': []}
+
+        model = self.env[model_name]
+        record = model.browse(int(record_id)).exists()
+        if not record:
+            return {'partner_id': False, 'partner_name': False, 'channels': []}
+        record.check_access('read')
+
+        partner = record if model_name == 'res.partner' else self._partner_from_record(record)
+        if not partner:
+            return {'partner_id': False, 'partner_name': False, 'channels': []}
+
+        channels = self.search(
+            [('partner_id', '=', partner.id)],
+            order='last_message_date desc, id desc',
+            limit=20,
+        )
+        fields_to_read = [
+            'display_name', 'channel_type', 'last_message_preview',
+            'last_message_date', 'unread_count', 'message_count', 'state',
+            'manual_urgent', 'is_pinned', 'is_favorite', 'partner_id',
+            'assigned_user_id', 'assigned_user_initials', 'assigned_user_color',
+            'stage_name',
+        ]
+        return {
+            'partner_id': partner.id,
+            'partner_name': partner.display_name,
+            'channels': channels.read(fields_to_read),
+        }
+
+    @api.model
+    def _partner_from_record(self, record):
+        """Find the most useful res.partner field on a generic business
+        record without imposing dependencies on every Odoo application."""
+        preferred_names = (
+            'partner_id', 'commercial_partner_id', 'customer_id',
+            'contact_id', 'client_id',
+        )
+        fields_by_name = record._fields
+        candidate_names = [
+            name for name in preferred_names
+            if name in fields_by_name
+            and getattr(fields_by_name[name], 'comodel_name', None) == 'res.partner'
+        ]
+        if not candidate_names:
+            candidate_names = [
+                name for name, field in fields_by_name.items()
+                if getattr(field, 'comodel_name', None) == 'res.partner'
+            ]
+        for name in candidate_names:
+            partner = record[name]
+            if partner:
+                return partner[:1]
+        return self.env['res.partner']
+
+    @api.model
     def action_get_embedded_menu_action(self, xmlid):
         """Devuelve una acción de menú preparada para abrirse sobre el chat.
 

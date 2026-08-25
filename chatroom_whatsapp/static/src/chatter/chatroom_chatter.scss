@@ -1,0 +1,84 @@
+.o-mail-Chatter-chatroom {
+    .fa-comments {
+        color: currentColor;
+    }
+}
+
+.o-chatroom-chatter {
+    border-top: 1px solid var(--border-color, #dee2e6);
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    background: var(--o-view-background-color, #fff);
+    max-height: 52vh;
+    overflow-y: auto;
+
+    &__heading {
+        padding-bottom: .75rem;
+        border-bottom: 1px solid var(--border-color, #dee2e6);
+    }
+
+    &__state {
+        padding: 1.25rem .25rem .5rem;
+        text-align: center;
+    }
+
+    &__list {
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+        padding-top: .75rem;
+    }
+
+    &__thread {
+        margin-top: .85rem;
+        min-height: 360px;
+
+        .o_chatroom_thread {
+            width: 100%;
+            max-height: 70vh;
+        }
+    }
+
+    &__conversation {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        width: 100%;
+        padding: .7rem .75rem;
+        border: 1px solid var(--border-color, #dee2e6);
+        border-radius: .5rem;
+        color: inherit;
+        background: var(--o-view-background-color, #fff);
+        text-align: left;
+        transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+
+        &:hover, &:focus-visible {
+            border-color: var(--o-brand-odoo, #714b67);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+            background: var(--o-webclient-background-color, #f8f9fa);
+            outline: none;
+        }
+
+        &--selected {
+            border-color: var(--o-brand-odoo, #714b67);
+            box-shadow: inset 3px 0 0 var(--o-brand-odoo, #714b67);
+            background: var(--o-webclient-background-color, #f8f9fa);
+        }
+    }
+
+    &__icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 2rem;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        color: #fff;
+        background: #159e72;
+    }
+
+    &__body {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+}

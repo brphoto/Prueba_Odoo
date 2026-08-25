@@ -6,41 +6,105 @@
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.crm_lead_view_form"/>
         <field name="arch" type="xml">
-            <div name="button_box" position="inside">
-                <button name="action_view_chatroom_channels" type="object"
-                        class="oe_stat_button" icon="fa-whatsapp"
-                        invisible="not chatroom_channel_count">
-                    <field name="chatroom_channel_count" widget="statinfo" string="WhatsApp"/>
-                </button>
-            </div>
-            <!-- Se inserta antes del notebook (no adentro de group
-                 "lead_partner"/"opportunity_partner": esos dos son
-                 mutuamente excluyentes según type=lead/opportunity, y
-                 esta info tiene que verse en los dos casos). -->
-            <xpath expr="//notebook" position="before">
-                <div class="alert alert-info d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2"
-                     role="alert" invisible="not chatroom_channel_count">
-                    <span>
-                        <i class="fa fa-whatsapp text-success" title="WhatsApp" aria-hidden="true"/>
-                        <b>Último WhatsApp:</b>
-                        <field name="chatroom_last_message_preview" nolabel="1" readonly="1" class="d-inline ms-1"/>
-                    </span>
+            <!-- La información contextual vive en pestañas para que la
+                 ficha nativa de CRM conserve su lectura principal y el
+                 usuario llegue a WhatsApp, RFM o estancamiento sin
+                 desplazarse por una página larga. -->
+            <xpath expr="//notebook" position="inside">
+                <page name="chatroom_whatsapp" string="WhatsApp" invisible="1">
+                    <div class="alert alert-info d-flex align-items-center justify-content-between flex-wrap gap-2"
+                         role="alert" invisible="not partner_id">
+                        <span>
+                            <i class="fa fa-whatsapp text-success me-1" title="WhatsApp" aria-hidden="true"/>
+                            <b>Última conversación:</b>
+                            <field name="chatroom_last_message_preview" nolabel="1" readonly="1" class="d-inline ms-1"/>
+                        </span>
+                        <button name="action_view_chatroom_channels" type="object"
+                                class="btn btn-sm btn-success" string="Abrir conversación" icon="fa-comments"/>
+                    </div>
+                    <div class="alert alert-light" role="alert" invisible="partner_id">
+                        Asocia un contacto para habilitar el historial de WhatsApp.
+                    </div>
+                    <group invisible="not partner_id">
+                        <group string="Resumen de conversación">
+                            <field name="partner_id" readonly="1"/>
+                            <field name="chatroom_channel_count" readonly="1" string="Conversaciones"/>
+                        </group>
+                        <group string="Última actividad">
+                            <field name="chatroom_last_message_date" readonly="1"/>
+                            <field name="chatroom_last_message_preview" readonly="1"/>
+                        </group>
+                    </group>
+                    <separator string="Acceso rápido" invisible="not chatroom_channel_count"/>
                     <button name="action_view_chatroom_channels" type="object"
-                            class="btn btn-sm btn-success" string="Abrir conversación"/>
-                </div>
-                <group invisible="not rfm_category or rfm_category == 'none'">
-                    <group string="Clasificación del cliente (RFM/ABC)">
-                        <field name="rfm_category" widget="badge"
-                               decoration-success="rfm_category == 'a'"
-                               decoration-warning="rfm_category == 'b'"
-                               decoration-muted="rfm_category in ('c', 'none')"/>
-                        <field name="rfm_score"/>
+                            string="Ver conversaciones de WhatsApp" class="btn-secondary"
+                            icon="fa-whatsapp" invisible="not chatroom_channel_count"/>
+                </page>
+                <page name="commercial_intelligence" string="Inteligencia comercial">
+                    <group>
+                        <group string="Clasificación RFM / ABC">
+                            <field name="rfm_category" widget="badge"
+                                   decoration-success="rfm_category == 'a'"
+                                   decoration-warning="rfm_category == 'b'"
+                                   decoration-muted="rfm_category in ('c', 'none')"/>
+                            <field name="rfm_manual_category"/>
+                            <field name="rfm_category_origin"/>
+                            <field name="rfm_score"/>
+                        </group>
+                        <group string="Comportamiento de compra">
+                            <field name="rfm_recency_days"/>
+                            <field name="rfm_frequency"/>
+                            <field name="rfm_monetary_value"/>
+                            <field name="rfm_last_purchase_date"/>
+                            <field name="rfm_last_computed_at"/>
+                        </group>
                     </group>
                     <group string="Histórico de compras">
-                        <field name="commercial_total_sales"/>
-                        <field name="commercial_last_sale_date"/>
+                        <group>
+                            <field name="commercial_total_sales"/>
+                            <field name="commercial_invoice_count"/>
+                        </group>
+                        <group>
+                            <field name="commercial_avg_ticket"/>
+                            <field name="commercial_last_sale_date"/>
+                        </group>
                     </group>
-                </group>
+                    <group string="Producto y explicación">
+                        <field name="commercial_top_product_summary" readonly="1"/>
+                        <field name="rfm_explanation" readonly="1" nolabel="1" widget="text"/>
+                    </group>
+                </page>
+                <page name="pipeline_health" string="Salud de la oportunidad"
+                      invisible="type != 'opportunity'">
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <button name="action_recompute_stagnation" type="object"
+                                string="Actualizar análisis" class="btn-secondary" icon="fa-refresh"/>
+                        <button name="action_open_purge_wizard" type="object"
+                                string="Revisar depuración" class="btn-secondary" icon="fa-filter"/>
+                    </div>
+                    <group>
+                        <group string="Estado de la etapa">
+                            <field name="stagnation_score" widget="badge"
+                                   decoration-success="stagnation_score == 'healthy'"
+                                   decoration-warning="stagnation_score == 'warning'"
+                                   decoration-danger="stagnation_score in ('critical', 'stagnant', 'dead')"/>
+                            <field name="days_in_stage"/>
+                            <field name="max_days_allowed"/>
+                            <field name="days_over_limit"/>
+                        </group>
+                        <group string="Riesgo comercial">
+                            <field name="estimated_capital_trapped"/>
+                            <field name="real_vs_fake_score" widget="progressbar"/>
+                            <field name="purge_recommendation" widget="badge"/>
+                            <field name="stagnation_reason"/>
+                        </group>
+                    </group>
+                    <group string="Gestión y próxima acción">
+                        <field name="last_activity_date"/>
+                        <field name="days_without_activity"/>
+                        <field name="next_action_required" nolabel="1" readonly="1"/>
+                    </group>
+                </page>
             </xpath>
         </field>
     </record>

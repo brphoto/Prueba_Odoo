@@ -108,7 +108,7 @@
     </record>
 
     <menuitem id="menu_chatroom_control_center" name="Centro de control"
-              parent="chatroom_whatsapp.menu_chatroom_config"
+              parent="chatroom_whatsapp.menu_chatroom_operation"
               action="action_server_chatroom_control_center" sequence="1"
               groups="chatroom_whatsapp.group_chatroom_manager"/>
 </odoo>

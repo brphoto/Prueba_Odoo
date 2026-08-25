@@ -54,7 +54,7 @@ Requisitos
     'icon': '/chatroom_whatsapp/static/description/icon.png',
 
     'category': 'Discuss',
-    'version': '19.0.2.1.12',
+    'version': '19.0.2.1.14',
 
     # sale/purchase/crm/account eran opcionales hasta esta versión (el
     # módulo revisaba 'modelo' in self.env por todos lados para no
@@ -107,6 +107,9 @@ Requisitos
 
     'assets': {
         'web.assets_backend': [
+            'chatroom_whatsapp/static/src/chatter/chatroom_chatter.js',
+            'chatroom_whatsapp/static/src/chatter/chatroom_chatter.xml',
+            'chatroom_whatsapp/static/src/chatter/chatroom_chatter.scss',
             'chatroom_whatsapp/static/src/views/embedded_record_open.js',
             'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread_core.js',
             'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread_core.xml',

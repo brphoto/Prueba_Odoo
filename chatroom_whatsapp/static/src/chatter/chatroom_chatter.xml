@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+
+    <t t-name="chatroom_whatsapp.ChatroomChatter" owl="1">
+        <section class="o-chatroom-chatter p-3">
+            <div class="o-chatroom-chatter__heading d-flex align-items-center justify-content-between gap-2">
+                <div>
+                    <div class="fw-bold">
+                        <i class="fa fa-comments-o me-2" aria-hidden="true"/>
+                        Chatroom
+                    </div>
+                    <small class="text-muted" t-if="state.partnerName">
+                        Conversaciones de <t t-esc="state.partnerName"/>
+                    </small>
+                </div>
+                <button t-if="hasChannels" type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        t-on-click="openAllConversations">
+                    Ver todas
+                </button>
+            </div>
+
+            <div t-if="state.loading" class="o-chatroom-chatter__state text-muted">
+                <i class="fa fa-spinner fa-spin me-2"/> Consultando Chatroom...
+            </div>
+            <div t-elif="state.error" class="o-chatroom-chatter__state text-muted">
+                <i class="fa fa-lock me-2"/>
+                No hay acceso a las conversaciones de este contacto.
+            </div>
+            <div t-elif="!hasChannels" class="o-chatroom-chatter__state text-muted">
+                <i class="fa fa-comment-o me-2"/>
+                Este contacto todavía no tiene conversaciones en Chatroom.
+            </div>
+            <div t-else="" class="o-chatroom-chatter__workspace">
+                <div class="o-chatroom-chatter__list">
+                <t t-foreach="state.channels" t-as="channel" t-key="channel.id">
+                    <button type="button" class="o-chatroom-chatter__conversation"
+                            t-att-class="{'o-chatroom-chatter__conversation--selected': state.selectedChannelId === channel.id}"
+                            t-on-click="() => this.openConversation(channel)">
+                        <span class="o-chatroom-chatter__icon" aria-hidden="true">
+                            <i class="fa fa-whatsapp" t-if="channel.channel_type === 'whatsapp'"/>
+                            <i class="fa fa-comments-o" t-else=""/>
+                        </span>
+                        <span class="o-chatroom-chatter__body text-start">
+                            <span class="d-flex align-items-center gap-2">
+                                <strong class="text-truncate" t-esc="channel.display_name"/>
+                                <span t-if="channel.unread_count" class="badge text-bg-success rounded-pill"
+                                      t-esc="channel.unread_count"/>
+                            </span>
+                            <span class="d-block text-muted small text-truncate">
+                                <t t-esc="channel.last_message_preview || 'Sin mensajes registrados'"/>
+                            </span>
+                            <span class="d-block text-muted smaller">
+                                <t t-esc="channelLabel(channel)"/> · <t t-esc="formatDate(channel.last_message_date)"/>
+                            </span>
+                        </span>
+                        <i class="fa fa-chevron-right text-muted" aria-hidden="true"/>
+                    </button>
+                </t>
+                </div>
+                <div t-if="state.selectedChannelId" class="o-chatroom-chatter__thread">
+                    <ChatroomThreadCore
+                        channelId="state.selectedChannelId"
+                        emptyMessage="'Selecciona una conversación para empezar.'"/>
+                </div>
+            </div>
+        </section>
+    </t>
+
+    <t t-name="chatroom_whatsapp.ChatterPatch" t-inherit="mail.Chatter" t-inherit-mode="extension">
+        <xpath expr="//*[contains(@class, 'o-mail-Chatter-activity')]" position="before">
+            <button t-if="chatroomAvailable"
+                    class="o-mail-Chatter-chatroom btn text-nowrap me-1"
+                    t-att-class="{
+                        'btn-primary': state.composerType === 'chatroom',
+                        'btn-secondary': state.composerType !== 'chatroom',
+                        'active': state.composerType === 'chatroom',
+                        'my-2': !props.compactHeight,
+                    }"
+                    data-hotkey="shift+w+2"
+                    t-on-click="() => this.toggleComposer('chatroom')">
+                <i class="fa fa-comments me-1" aria-hidden="true"/>
+                <span>Chatroom</span>
+            </button>
+        </xpath>
+        <xpath expr="//t[@t-if='state.composerType']/Composer" position="attributes">
+            <attribute name="t-if">['message', 'note'].includes(state.composerType)</attribute>
+        </xpath>
+        <xpath expr="//t[@t-if='state.composerType']/Composer" position="after">
+            <ChatroomChatter
+                model="props.threadModel"
+                resId="props.threadId"
+                thread="state.thread"
+                webRecord="props.record"
+                t-if="state.composerType === 'chatroom'"/>
+        </xpath>
+    </t>
+
+</templates>

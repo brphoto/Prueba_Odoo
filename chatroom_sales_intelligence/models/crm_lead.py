@@ -10,6 +10,23 @@ class CrmLead(models.Model):
 
     rfm_score = fields.Integer(related='partner_id.rfm_score', readonly=True)
     rfm_category = fields.Selection(related='partner_id.rfm_category', readonly=True)
+    rfm_manual_category = fields.Selection(
+        related='partner_id.rfm_manual_category', readonly=True)
+    rfm_category_origin = fields.Selection(
+        related='partner_id.rfm_category_origin', readonly=True)
+    rfm_recency_days = fields.Integer(
+        related='partner_id.rfm_recency_days', readonly=True)
+    rfm_frequency = fields.Integer(
+        related='partner_id.rfm_frequency', readonly=True)
+    rfm_monetary_value = fields.Monetary(
+        related='partner_id.rfm_monetary_value', readonly=True,
+        currency_field='company_currency')
+    rfm_last_purchase_date = fields.Date(
+        related='partner_id.rfm_last_purchase_date', readonly=True)
+    rfm_last_computed_at = fields.Datetime(
+        related='partner_id.rfm_last_computed_at', readonly=True)
+    rfm_explanation = fields.Text(
+        related='partner_id.rfm_explanation', readonly=True)
     commercial_total_sales = fields.Monetary(
         related='partner_id.commercial_total_sales', readonly=True,
         # crm.lead usa 'company_currency' como currency_field propio
@@ -18,6 +35,13 @@ class CrmLead(models.Model):
         currency_field='company_currency')
     commercial_last_sale_date = fields.Date(
         related='partner_id.commercial_last_sale_date', readonly=True)
+    commercial_avg_ticket = fields.Monetary(
+        related='partner_id.commercial_avg_ticket', readonly=True,
+        currency_field='company_currency')
+    commercial_invoice_count = fields.Integer(
+        related='partner_id.commercial_invoice_count', readonly=True)
+    commercial_top_product_summary = fields.Char(
+        related='partner_id.commercial_top_product_summary', readonly=True)
 
     chatroom_channel_count = fields.Integer(compute='_compute_chatroom_channel_data')
     chatroom_last_message_preview = fields.Char(compute='_compute_chatroom_channel_data')
