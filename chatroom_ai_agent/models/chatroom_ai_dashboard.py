@@ -23,6 +23,10 @@ class ChatroomAiDashboard(models.Model):
     suggestions_pending_feedback = fields.Integer(string='Respuestas sin valorar', compute='_compute_metrics')
     suggestions_unsafe = fields.Integer(string='Respuestas marcadas no usar', compute='_compute_metrics')
     ai_sent_today = fields.Integer(string='Mensajes IA hoy', compute='_compute_metrics')
+    feedback_helpful = fields.Integer(string='Respuestas utiles', compute='_compute_metrics')
+    feedback_edited = fields.Integer(string='Respuestas editadas', compute='_compute_metrics')
+    feedback_unsafe = fields.Integer(string='Respuestas inseguras', compute='_compute_metrics')
+    feedback_quality_percent = fields.Float(string='Calidad favorable (%)', compute='_compute_metrics')
 
     @api.depends('last_refresh')
     def _compute_metrics(self):
@@ -45,10 +49,20 @@ class ChatroomAiDashboard(models.Model):
                 dashboard.suggestions_pending_feedback = suggestions.search_count([
                     ('state', 'in', ('approved', 'sent')), ('feedback_state', '=', 'pending'),
                 ])
-                dashboard.suggestions_unsafe = suggestions.search_count([('feedback_state', '=', 'unsafe')])
+                dashboard.feedback_helpful = suggestions.search_count([('feedback_state', '=', 'helpful')])
+                dashboard.feedback_edited = suggestions.search_count([('feedback_state', '=', 'edited')])
+                dashboard.feedback_unsafe = suggestions.search_count([('feedback_state', '=', 'unsafe')])
+                dashboard.suggestions_unsafe = dashboard.feedback_unsafe
+                evaluated = dashboard.feedback_helpful + dashboard.feedback_edited + dashboard.feedback_unsafe
+                dashboard.feedback_quality_percent = round(
+                    dashboard.feedback_helpful / evaluated * 100.0, 2) if evaluated else 0.0
             else:
                 dashboard.suggestions_pending_feedback = 0
                 dashboard.suggestions_unsafe = 0
+                dashboard.feedback_helpful = 0
+                dashboard.feedback_edited = 0
+                dashboard.feedback_unsafe = 0
+                dashboard.feedback_quality_percent = 0.0
             dashboard.ai_sent_today = self.env['chatroom.message'].sudo().search_count([
                 ('direction', '=', 'outbound'), ('ai_generated', '=', True),
                 ('date', '>=', start),

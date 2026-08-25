@@ -4,6 +4,10 @@
         <field name="name">crm.lead.form.stagnation.management</field>
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <!-- La ficha de oportunidad ya muestra estos indicadores dentro de la
+             pestaña "Salud de la oportunidad". Se conserva este registro por
+             compatibilidad, pero se desactiva para evitar duplicar la vista. -->
+        <field name="active">False</field>
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="before">
                 <group string="Análisis de estancamiento" name="stagnation_analysis">

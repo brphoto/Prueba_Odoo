@@ -9,53 +9,134 @@
                     <button name="action_refresh" type="object" string="Actualizar" class="btn-secondary" icon="fa-refresh"/>
                 </header>
                 <sheet>
-                    <div class="oe_title">
-                        <h1>Centro de control</h1>
-                        <p class="text-muted">Revisa las integraciones de Chatroom desde un solo lugar.</p>
+                    <div class="oe_title o_chatroom_control_hero">
+                        <div class="o_chatroom_control_hero_copy">
+                            <h1>Centro de control</h1>
+                            <p class="text-muted">Revisa las integraciones de Chatroom desde un solo lugar.</p>
+                        </div>
                     </div>
                     <div class="alert alert-info" role="alert">
                         <field name="status_summary" nolabel="1" class="fw-bold"/>
                     </div>
+                    <div class="o_chatroom_control_section_header">
+                        <div>
+                            <h2>Accesos principales</h2>
+                            <span>Entra directamente a las áreas que más utilizas.</span>
+                        </div>
+                    </div>
+                    <div class="o_chatroom_quick_actions">
+                        <button name="action_open_chatroom" type="object" string="Abrir Chatroom"
+                                class="o_chatroom_quick_action o_chatroom_quick_action_primary" icon="fa-comments"/>
+                        <button name="action_open_calendar" type="object" string="Calendario"
+                                class="o_chatroom_quick_action" icon="fa-calendar"/>
+                        <button name="action_open_rfm_dashboard" type="object" string="Dashboard RFM"
+                                class="o_chatroom_quick_action" icon="fa-line-chart"/>
+                        <button name="action_open_payments" type="object" string="PayPhone"
+                                class="o_chatroom_quick_action" icon="fa-credit-card"/>
+                        <button name="action_open_settings" type="object" string="Ajustes generales"
+                                class="o_chatroom_quick_action" icon="fa-sliders"/>
+                        <button name="action_open_users" type="object" string="Usuarios y roles"
+                                class="o_chatroom_quick_action" icon="fa-users" groups="base.group_system"/>
+                        <button name="action_open_groups" type="object" string="Grupos y permisos"
+                                class="o_chatroom_quick_action" icon="fa-shield" groups="base.group_system"/>
+                    </div>
                     <separator string="Actividad comercial"/>
-                    <group col="4" class="o_chatroom_control_metrics">
-                        <button name="action_open_opportunities" type="object" class="oe_stat_button" icon="fa-star">
-                            <field name="opportunity_count" widget="statinfo" string="Oportunidades"/>
+                    <div class="o_chatroom_metric_grid o_chatroom_metric_grid_four">
+                        <button name="action_open_opportunities" type="object" class="o_chatroom_metric_card">
+                            <i class="fa fa-star" aria-hidden="true"/>
+                            <span class="o_chatroom_metric_content">
+                                <field name="opportunity_count" nolabel="1"/>
+                                <small>Oportunidades</small>
+                            </span>
+                            <i class="fa fa-chevron-right o_chatroom_metric_arrow" aria-hidden="true"/>
                         </button>
-                        <button name="action_open_sales_orders" type="object" class="oe_stat_button" icon="fa-file-text-o">
-                            <field name="sales_order_count" widget="statinfo" string="Ventas"/>
+                        <button name="action_open_sales_orders" type="object" class="o_chatroom_metric_card">
+                            <i class="fa fa-file-text-o" aria-hidden="true"/>
+                            <span class="o_chatroom_metric_content">
+                                <field name="sales_order_count" nolabel="1"/>
+                                <small>Ventas</small>
+                            </span>
+                            <i class="fa fa-chevron-right o_chatroom_metric_arrow" aria-hidden="true"/>
                         </button>
-                        <button name="action_open_purchase_orders" type="object" class="oe_stat_button" icon="fa-shopping-cart">
-                            <field name="purchase_order_count" widget="statinfo" string="Compras"/>
+                        <button name="action_open_purchase_orders" type="object" class="o_chatroom_metric_card">
+                            <i class="fa fa-shopping-cart" aria-hidden="true"/>
+                            <span class="o_chatroom_metric_content">
+                                <field name="purchase_order_count" nolabel="1"/>
+                                <small>Compras</small>
+                            </span>
+                            <i class="fa fa-chevron-right o_chatroom_metric_arrow" aria-hidden="true"/>
                         </button>
-                        <button name="action_open_invoices" type="object" class="oe_stat_button" icon="fa-dollar">
-                            <field name="invoice_count" widget="statinfo" string="Facturas"/>
+                        <button name="action_open_invoices" type="object" class="o_chatroom_metric_card">
+                            <i class="fa fa-dollar" aria-hidden="true"/>
+                            <span class="o_chatroom_metric_content">
+                                <field name="invoice_count" nolabel="1"/>
+                                <small>Facturas</small>
+                            </span>
+                            <i class="fa fa-chevron-right o_chatroom_metric_arrow" aria-hidden="true"/>
                         </button>
-                    </group>
+                    </div>
                     <separator string="Indicadores operativos"/>
-                    <group col="5" class="o_chatroom_control_metrics">
-                        <button name="action_open_open_conversations" type="object" class="oe_stat_button" icon="fa-comments">
-                            <field name="open_conversation_count" widget="statinfo" string="Conversaciones"/>
+                    <div class="o_chatroom_metric_grid o_chatroom_metric_grid_five">
+                        <button name="action_open_open_conversations" type="object" class="o_chatroom_metric_card">
+                            <i class="fa fa-comments" aria-hidden="true"/>
+                            <span class="o_chatroom_metric_content">
+                                <field name="open_conversation_count" nolabel="1"/>
+                                <small>Conversaciones</small>
+                            </span>
+                            <i class="fa fa-chevron-right o_chatroom_metric_arrow" aria-hidden="true"/>
                         </button>
-                        <button name="action_open_sla_conversations" type="object" class="oe_stat_button" icon="fa-clock-o">
-                            <field name="sla_attention_count" widget="statinfo" string="SLA"/>
+                        <button name="action_open_sla_conversations" type="object" class="o_chatroom_metric_card">
+                            <i class="fa fa-clock-o" aria-hidden="true"/>
+                            <span class="o_chatroom_metric_content">
+                                <field name="sla_attention_count" nolabel="1"/>
+                                <small>SLA</small>
+                            </span>
+                            <i class="fa fa-chevron-right o_chatroom_metric_arrow" aria-hidden="true"/>
                         </button>
-                        <button name="action_open_pending_payments" type="object" class="oe_stat_button" icon="fa-credit-card">
-                            <field name="pending_payment_count" widget="statinfo" string="Pagos pendientes"/>
+                        <button name="action_open_pending_payments" type="object" class="o_chatroom_metric_card">
+                            <i class="fa fa-credit-card" aria-hidden="true"/>
+                            <span class="o_chatroom_metric_content">
+                                <field name="pending_payment_count" nolabel="1"/>
+                                <small>Pagos pendientes</small>
+                            </span>
+                            <i class="fa fa-chevron-right o_chatroom_metric_arrow" aria-hidden="true"/>
                         </button>
-                        <button name="action_open_rfm_rules" type="object" class="oe_stat_button" icon="fa-filter">
-                            <field name="rfm_rule_count" widget="statinfo" string="Reglas RFM"/>
+                        <button name="action_open_rfm_rules" type="object" class="o_chatroom_metric_card">
+                            <i class="fa fa-filter" aria-hidden="true"/>
+                            <span class="o_chatroom_metric_content">
+                                <field name="rfm_rule_count" nolabel="1"/>
+                                <small>Reglas RFM</small>
+                            </span>
+                            <i class="fa fa-chevron-right o_chatroom_metric_arrow" aria-hidden="true"/>
                         </button>
-                        <button name="action_open_reactivation_customers" type="object" class="oe_stat_button" icon="fa-users">
-                            <field name="rfm_reactivation_count" widget="statinfo" string="Para reactivar"/>
+                        <button name="action_open_reactivation_customers" type="object" class="o_chatroom_metric_card">
+                            <i class="fa fa-users" aria-hidden="true"/>
+                            <span class="o_chatroom_metric_content">
+                                <field name="rfm_reactivation_count" nolabel="1"/>
+                                <small>Para reactivar</small>
+                            </span>
+                            <i class="fa fa-chevron-right o_chatroom_metric_arrow" aria-hidden="true"/>
                         </button>
-                    </group>
+                    </div>
                     <separator string="Equipo y permisos"/>
-                    <group col="3" class="o_chatroom_control_metrics">
-                        <field name="chatroom_agent_count"/>
-                        <field name="chatroom_supervisor_count"/>
-                        <field name="chatroom_manager_count"/>
-                    </group>
-                    <group col="2">
+                    <div class="o_chatroom_team_grid">
+                        <div class="o_chatroom_team_card">
+                            <i class="fa fa-user-o" aria-hidden="true"/>
+                            <span>Agentes Chatroom</span>
+                            <field name="chatroom_agent_count" nolabel="1"/>
+                        </div>
+                        <div class="o_chatroom_team_card">
+                            <i class="fa fa-user-circle-o" aria-hidden="true"/>
+                            <span>Supervisores Chatroom</span>
+                            <field name="chatroom_supervisor_count" nolabel="1"/>
+                        </div>
+                        <div class="o_chatroom_team_card">
+                            <i class="fa fa-shield" aria-hidden="true"/>
+                            <span>Administradores Chatroom</span>
+                            <field name="chatroom_manager_count" nolabel="1"/>
+                        </div>
+                    </div>
+                    <group col="2" class="o_chatroom_control_status_groups">
                         <group string="Canales y operación">
                             <field name="whatsapp_status" widget="badge"
                                    decoration-success="whatsapp_status == 'ready'"
@@ -79,7 +160,7 @@
                         </group>
                     </group>
                     <separator string="Accesos rápidos"/>
-                    <div class="d-flex flex-wrap gap-2">
+                    <div class="d-flex flex-wrap gap-2" invisible="1">
                         <button name="action_open_chatroom" type="object" string="Abrir Chatroom" class="btn-primary" icon="fa-comments"/>
                         <button name="action_open_settings" type="object" string="Ajustes generales" class="btn-secondary" icon="fa-sliders"/>
                         <button name="action_open_payments" type="object" string="Configurar PayPhone" class="btn-secondary" icon="fa-credit-card"/>
@@ -90,6 +171,17 @@
                     </div>
                 </sheet>
             </form>
+        </field>
+    </record>
+
+    <record id="view_chatroom_control_center_hide_legacy_quick_actions" model="ir.ui.view">
+        <field name="name">chatroom.control.center.hide.legacy.quick.actions</field>
+        <field name="model">chatroom.control.center</field>
+        <field name="inherit_id" ref="chatroom_control_center.view_chatroom_control_center_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//separator[last()]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
         </field>
     </record>
 

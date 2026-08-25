@@ -15,6 +15,9 @@
                     <i t-attf-class="fa {{ aiAssistant.open ? 'fa-chevron-down' : 'fa-chevron-right' }}"/>
                 </div>
                 <div class="o_chatroom_ai_assistant_body" t-if="aiAssistant.open">
+                    <div class="alert alert-danger py-1 px-2 mb-2" t-if="aiAssistant.aiPaused">
+                        <i class="fa fa-pause"/> IA pausada por seguridad o por atencion humana. Reactivala desde el control de la conversacion despues de revisar el caso.
+                    </div>
                     <div class="alert alert-warning py-2 px-2 mb-2" t-if="!aiAssistant.providerReady and !aiAssistant.loading">
                         Configura el proveedor en Ajustes de Chatroom WhatsApp para consultar IA.
                     </div>
@@ -76,7 +79,7 @@
                             </button>
                         </div>
                         <div class="o_chatroom_ai_assistant_feedback mt-2"
-                             t-if="aiAssistant.suggestion.state in ('approved', 'sent') &amp;&amp; aiAssistant.suggestion.feedback_state == 'pending'">
+                             t-if="(aiAssistant.suggestion.state == 'approved' || aiAssistant.suggestion.state == 'sent') &amp;&amp; aiAssistant.suggestion.feedback_state == 'pending'">
                             <small class="d-block mb-1">Â¿CÃ³mo fue esta respuesta?</small>
                             <button type="button" class="btn btn-sm btn-outline-success"
                                     t-att-disabled="aiAssistant.busy" t-on-click="rateAiHelpful">

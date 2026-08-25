@@ -95,3 +95,200 @@
         }
     }
 }
+
+/* Panel ejecutivo: tarjetas propias para evitar la superposición de
+   etiquetas que produce oe_stat_button en formularios anchos. */
+.chatroom_ai_dashboard_form .o_form_sheet {
+    width: calc(100% - 48px) !important;
+    max-width: none !important;
+    margin: 16px 24px;
+    padding: 28px 32px 36px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 8px 28px rgba(15, 23, 42, .08);
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_hero h1 {
+    margin: 0 0 6px;
+    color: #1f2937;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.chatroom_ai_dashboard_form .alert {
+    margin: 18px 0 22px;
+    border: 0;
+    border-left: 4px solid #76506f;
+    border-radius: 10px;
+    background: #f0e7ef;
+    color: #493347;
+}
+
+.chatroom_ai_dashboard_form .o_form_separator {
+    margin: 26px 0 12px;
+    color: #1f2937;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_quick_actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_quick_action {
+    min-height: 44px;
+    padding: 10px 15px;
+    border: 1px solid #dbe3ee;
+    border-radius: 9px;
+    background: #fff;
+    color: #334155;
+    font-weight: 600;
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_quick_action:hover {
+    border-color: #76506f;
+    box-shadow: 0 5px 14px rgba(118, 80, 111, .14);
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_quick_action_primary {
+    border-color: #76506f;
+    background: #76506f;
+    color: #fff;
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_cards {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 16px;
+    margin: 0 0 28px;
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_metric_card {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    min-height: 104px;
+    margin: 0 !important;
+    padding: 17px 15px;
+    border: 1px solid #dbe3ee;
+    border-radius: 14px;
+    background: linear-gradient(145deg, #fff 0%, #f7f9fc 100%);
+    color: #1f2937;
+    text-align: left;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, .04);
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_metric_card:hover {
+    border-color: #b68cac;
+    box-shadow: 0 9px 22px rgba(81, 52, 76, .12);
+    transform: translateY(-2px);
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_metric_card > .fa:first-child {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+    background: #f0e7ef;
+    color: #76506f;
+    font-size: 18px;
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_metric_content {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_metric_content .o_field_widget {
+    color: #172033;
+    font-size: 27px;
+    font-weight: 750;
+    line-height: 1.05;
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_metric_content small {
+    overflow: hidden;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_metric_arrow {
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_performance_grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_performance_card {
+    display: flex;
+    min-height: 76px;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 13px 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 11px;
+    background: #f8fafc;
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_performance_card > span {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.chatroom_ai_dashboard_form .chatroom_ai_dashboard_performance_card .o_field_widget {
+    color: #172033;
+    font-size: 21px;
+    font-weight: 750;
+    line-height: 1.1;
+}
+
+@media (max-width: 1200px) {
+    .chatroom_ai_dashboard_form .chatroom_ai_dashboard_cards {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .chatroom_ai_dashboard_form .chatroom_ai_dashboard_performance_grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 800px) {
+    .chatroom_ai_dashboard_form .o_form_sheet {
+        width: calc(100% - 20px) !important;
+        margin: 10px;
+        padding: 20px 16px 28px;
+    }
+
+    .chatroom_ai_dashboard_form .chatroom_ai_dashboard_cards,
+    .chatroom_ai_dashboard_form .chatroom_ai_dashboard_performance_grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    .chatroom_ai_dashboard_form .chatroom_ai_dashboard_cards,
+    .chatroom_ai_dashboard_form .chatroom_ai_dashboard_performance_grid {
+        grid-template-columns: 1fr;
+    }
+}

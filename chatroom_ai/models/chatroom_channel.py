@@ -53,6 +53,7 @@ class ChatroomChannel(models.Model):
             'knowledge_count': knowledge_count,
             'usage': usage,
             'safety_policy': self._ai_safety_policy(),
+            'ai_paused': self.ai_paused,
             'suggestion': {
                 'id': suggestion.id,
                 'text': suggestion.suggested_text,

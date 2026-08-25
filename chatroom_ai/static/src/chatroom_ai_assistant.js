@@ -20,6 +20,7 @@ patch(ContactPanel.prototype, {
             usage: { requests: 0, tokens: 0, last_model: "" },
             safetyPolicy: { enabled: true, min_confidence: 0.80, cooldown_minutes: 15, daily_limit: 30, escalate_negative: true },
             budget: false,
+            aiPaused: false,
             suggestion: false,
             error: "",
         });
@@ -41,6 +42,7 @@ patch(ContactPanel.prototype, {
         this.aiAssistant.usage = { requests: 0, tokens: 0, last_model: "" };
         this.aiAssistant.safetyPolicy = { enabled: true, min_confidence: 0.80, cooldown_minutes: 15, daily_limit: 30, escalate_negative: true };
         this.aiAssistant.budget = false;
+        this.aiAssistant.aiPaused = false;
         this.aiAssistant.error = "";
     },
 
@@ -70,6 +72,7 @@ patch(ContactPanel.prototype, {
         this.aiAssistant.usage = data?.usage || { requests: 0, tokens: 0, last_model: "" };
         this.aiAssistant.safetyPolicy = data?.safety_policy || this.aiAssistant.safetyPolicy;
         this.aiAssistant.budget = data?.budget || false;
+        this.aiAssistant.aiPaused = Boolean(data?.ai_paused);
         this.aiAssistant.suggestion = data?.suggestion || false;
     },
 

@@ -10,43 +10,60 @@
                     <field name="last_refresh" readonly="1"/>
                 </header>
                 <sheet>
-                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <div class="oe_title chatroom_ai_dashboard_hero"><h1><field name="name"/></h1></div>
                     <div class="alert alert-info" role="alert">
                         Panel único para operar IA con trazabilidad. Las acciones sensibles mantienen aprobación humana.
                     </div>
-                    <div class="o_row chatroom_ai_dashboard_cards">
-                        <button name="action_open_pending" type="object" class="oe_stat_button" icon="fa-tasks">
-                            <field name="pending_tasks" widget="statinfo" string="Pendientes"/>
+                    <div class="chatroom_ai_dashboard_quick_actions">
+                        <button name="action_open_quality" type="object" string="Pruebas de calidad" class="chatroom_ai_dashboard_quick_action chatroom_ai_dashboard_quick_action_primary" icon="fa-check-circle"/>
+                        <button name="action_open_usage" type="object" string="Consumo y costos" class="chatroom_ai_dashboard_quick_action" icon="fa-bar-chart"/>
+                        <button name="action_open_pending" type="object" string="Ver cola operativa" class="chatroom_ai_dashboard_quick_action" icon="fa-list"/>
+                    </div>
+                    <separator string="Indicadores IA"/>
+                    <div class="chatroom_ai_dashboard_cards chatroom_ai_dashboard_cards_five">
+                        <button name="action_open_pending" type="object" class="chatroom_ai_dashboard_metric_card">
+                            <i class="fa fa-tasks" title="Tareas pendientes" aria-hidden="true"/>
+                            <span class="chatroom_ai_dashboard_metric_content"><field name="pending_tasks" nolabel="1"/><small>Pendientes</small></span>
+                            <i class="fa fa-chevron-right chatroom_ai_dashboard_metric_arrow" title="Abrir detalle" aria-hidden="true"/>
                         </button>
-                        <button name="action_open_approvals" type="object" class="oe_stat_button" icon="fa-shield">
-                            <field name="approval_tasks" widget="statinfo" string="Aprobaciones"/>
+                        <button name="action_open_approvals" type="object" class="chatroom_ai_dashboard_metric_card">
+                            <i class="fa fa-shield" title="Aprobaciones" aria-hidden="true"/>
+                            <span class="chatroom_ai_dashboard_metric_content"><field name="approval_tasks" nolabel="1"/><small>Aprobaciones</small></span>
+                            <i class="fa fa-chevron-right chatroom_ai_dashboard_metric_arrow" title="Abrir detalle" aria-hidden="true"/>
                         </button>
-                        <button name="action_open_failed" type="object" class="oe_stat_button" icon="fa-warning">
-                            <field name="failed_tasks" widget="statinfo" string="Fallidas"/>
+                        <button name="action_open_failed" type="object" class="chatroom_ai_dashboard_metric_card">
+                            <i class="fa fa-warning" title="Tareas fallidas" aria-hidden="true"/>
+                            <span class="chatroom_ai_dashboard_metric_content"><field name="failed_tasks" nolabel="1"/><small>Fallidas</small></span>
+                            <i class="fa fa-chevron-right chatroom_ai_dashboard_metric_arrow" title="Abrir detalle" aria-hidden="true"/>
                         </button>
-                        <button name="action_open_high_risk" type="object" class="oe_stat_button" icon="fa-lock">
-                            <field name="high_risk_tasks" widget="statinfo" string="Alto riesgo"/>
+                        <button name="action_open_high_risk" type="object" class="chatroom_ai_dashboard_metric_card">
+                            <i class="fa fa-lock" title="Tareas de alto riesgo" aria-hidden="true"/>
+                            <span class="chatroom_ai_dashboard_metric_content"><field name="high_risk_tasks" nolabel="1"/><small>Alto riesgo</small></span>
+                            <i class="fa fa-chevron-right chatroom_ai_dashboard_metric_arrow" title="Abrir detalle" aria-hidden="true"/>
                         </button>
-                        <button name="action_open_suggestions" type="object" class="oe_stat_button" icon="fa-comments">
-                            <field name="suggestions_pending_feedback" widget="statinfo" string="Sin valorar"/>
+                        <button name="action_open_suggestions" type="object" class="chatroom_ai_dashboard_metric_card">
+                            <i class="fa fa-comments" title="Respuestas sin valorar" aria-hidden="true"/>
+                            <span class="chatroom_ai_dashboard_metric_content"><field name="suggestions_pending_feedback" nolabel="1"/><small>Sin valorar</small></span>
+                            <i class="fa fa-chevron-right chatroom_ai_dashboard_metric_arrow" title="Abrir detalle" aria-hidden="true"/>
                         </button>
                     </div>
-                    <group string="Rendimiento">
-                        <group>
-                            <field name="total_tasks" readonly="1"/>
-                            <field name="done_today" readonly="1"/>
-                            <field name="active_automations" readonly="1"/>
-                        </group>
-                        <group>
-                            <field name="memory_count" readonly="1"/>
-                            <field name="usage_requests" readonly="1"/>
-                            <field name="quality_pending" readonly="1"/>
-                            <field name="suggestions_unsafe" readonly="1"/>
-                            <field name="ai_sent_today" readonly="1"/>
-                        </group>
-                    </group>
+                    <separator string="Rendimiento"/>
+                    <div class="chatroom_ai_dashboard_performance_grid">
+                        <div class="chatroom_ai_dashboard_performance_card"><span>Tareas totales</span><field name="total_tasks" nolabel="1" readonly="1"/></div>
+                        <div class="chatroom_ai_dashboard_performance_card"><span>Completadas hoy</span><field name="done_today" nolabel="1" readonly="1"/></div>
+                        <div class="chatroom_ai_dashboard_performance_card"><span>Automatizaciones activas</span><field name="active_automations" nolabel="1" readonly="1"/></div>
+                        <div class="chatroom_ai_dashboard_performance_card"><span>Memorias activas</span><field name="memory_count" nolabel="1" readonly="1"/></div>
+                        <div class="chatroom_ai_dashboard_performance_card"><span>Solicitudes IA recientes</span><field name="usage_requests" nolabel="1" readonly="1"/></div>
+                        <div class="chatroom_ai_dashboard_performance_card"><span>Pruebas pendientes</span><field name="quality_pending" nolabel="1" readonly="1"/></div>
+                        <div class="chatroom_ai_dashboard_performance_card"><span>Respuestas no usar</span><field name="suggestions_unsafe" nolabel="1" readonly="1"/></div>
+                        <div class="chatroom_ai_dashboard_performance_card"><span>Mensajes IA hoy</span><field name="ai_sent_today" nolabel="1" readonly="1"/></div>
+                        <div class="chatroom_ai_dashboard_performance_card"><span>Respuestas útiles</span><field name="feedback_helpful" nolabel="1" readonly="1"/></div>
+                        <div class="chatroom_ai_dashboard_performance_card"><span>Respuestas editadas</span><field name="feedback_edited" nolabel="1" readonly="1"/></div>
+                        <div class="chatroom_ai_dashboard_performance_card"><span>Respuestas inseguras</span><field name="feedback_unsafe" nolabel="1" readonly="1"/></div>
+                        <div class="chatroom_ai_dashboard_performance_card"><span>Calidad favorable</span><field name="feedback_quality_percent" nolabel="1" readonly="1"/></div>
+                    </div>
                     <separator string="Herramientas de control"/>
-                    <div class="d-flex flex-wrap gap-2">
+                    <div class="d-flex flex-wrap gap-2" invisible="1">
                         <button name="action_open_quality" type="object" string="Pruebas de calidad" class="btn-secondary" icon="fa-check-circle"/>
                         <button name="action_open_usage" type="object" string="Consumo y costos" class="btn-secondary" icon="fa-bar-chart"/>
                         <button name="action_open_pending" type="object" string="Ver cola operativa" class="btn-secondary" icon="fa-list"/>
@@ -55,6 +72,17 @@
             </form>
         </field>
     </record>
+    <record id="view_chatroom_ai_dashboard_hide_legacy_tools" model="ir.ui.view">
+        <field name="name">chatroom.ai.dashboard.hide.legacy.tools</field>
+        <field name="model">chatroom.ai.dashboard</field>
+        <field name="inherit_id" ref="chatroom_ai_agent.view_chatroom_ai_dashboard_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//separator[last()]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+        </field>
+    </record>
+
     <record id="action_chatroom_ai_dashboard" model="ir.actions.act_window">
         <field name="name">Centro ejecutivo IA</field>
         <field name="res_model">chatroom.ai.dashboard</field>

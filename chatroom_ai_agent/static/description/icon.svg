@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="frame" x1="25" y1="20" x2="230" y2="238" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F2937"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="agent" x1="46" y1="36" x2="216" y2="218" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8B5CF6"/>
+      <stop offset=".55" stop-color="#4F46E5"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="171" y1="162" x2="204" y2="204" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#34D399"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+  </defs>
+
+  <!-- Marco compartido con los iconos de Chatroom -->
+  <rect x="24" y="18" width="208" height="220" rx="25" fill="#0B1220"/>
+  <rect x="25.5" y="19.5" width="205" height="217" rx="23.5" fill="url(#frame)" stroke="#475569" stroke-width="3"/>
+  <rect x="38" y="32" width="180" height="180" rx="9" fill="#111827" stroke="#334155" stroke-width="2"/>
+
+  <!-- Superficie principal del agente -->
+  <rect x="46" y="40" width="164" height="164" rx="18" fill="url(#agent)" filter="url(#shadow)"/>
+  <path d="M128 62c-30 0-54 19-54 43v26c0 24 24 43 54 43s54-19 54-43v-26c0-24-24-43-54-43z" fill="#F8FAFC"/>
+  <rect x="91" y="79" width="74" height="58" rx="20" fill="#EEF2FF" stroke="#4F46E5" stroke-width="4"/>
+  <circle cx="113" cy="108" r="7" fill="#4F46E5"/>
+  <circle cx="143" cy="108" r="7" fill="#4F46E5"/>
+  <path d="M113 125c9 7 21 7 30 0" fill="none" stroke="#7C3AED" stroke-width="4" stroke-linecap="round"/>
+  <path d="M128 79V69" stroke="#F8FAFC" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="128" cy="64" r="7" fill="#FBBF24" stroke="#F8FAFC" stroke-width="3"/>
+
+  <!-- Conexión y automatización -->
+  <path d="M79 151c-13 4-21 14-21 26M177 151c13 4 21 14 21 26" fill="none" stroke="#C4B5FD" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="56" cy="183" r="9" fill="#FBBF24"/>
+  <circle cx="200" cy="183" r="9" fill="#34D399"/>
+
+  <!-- Escudo: control humano y operación segura -->
+  <path d="M185 157l27 10v19c0 17-11 29-27 36-16-7-27-19-27-36v-19l27-10z" fill="url(#shield)" stroke="#ECFDF5" stroke-width="4"/>
+  <path d="m173 185 8 8 16-18" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

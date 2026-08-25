@@ -6,7 +6,7 @@
 Cada sugerencia queda como un registro auditable, con conversación de origen,
 intención, confianza, estado, aprobador y fecha de envío. No reemplaza el
 motor de WhatsApp ni obliga a instalar un proveedor de IA.''',
-    'version': '19.0.1.1.15',
+    'version': '19.0.1.1.16',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
     'category': 'Discuss',

@@ -88,6 +88,25 @@ class ChatroomAiSuggestion(models.Model):
             'feedback_by': self.env.user.id,
             'feedback_at': fields.Datetime.now(),
         })
+        if state == 'unsafe':
+            channels = self.mapped('channel_id')
+            channels.write({'ai_paused': True})
+            if 'chatroom.notification' in self.env:
+                for channel in channels:
+                    user = channel.assigned_user_id or self.env.user
+                    self.env['chatroom.notification'].sudo().create_deduplicated({
+                        'name': _('IA pausada por respuesta insegura'),
+                        'message': _('La conversacion %s quedo pausada para revision humana.') % channel.display_name,
+                        'notification_type': 'ai',
+                        'priority': '2',
+                        'user_id': user.id,
+                        'channel_id': channel.id,
+                        'partner_id': channel.partner_id.id,
+                        'res_model': 'chatroom.channel',
+                        'res_id': channel.id,
+                        'dedupe_key': 'ai-unsafe:%s' % channel.id,
+                        'escalation_level': 2,
+                    })
         return True
 
     def action_feedback_helpful(self):

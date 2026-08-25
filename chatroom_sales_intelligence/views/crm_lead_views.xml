@@ -6,6 +6,14 @@
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.crm_lead_view_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_recompute_stagnation" type="object"
+                        string="Actualizar análisis" class="btn-secondary"
+                        icon="fa-refresh" invisible="type != 'opportunity'"/>
+                <button name="action_open_purge_wizard" type="object"
+                        string="Revisar depuración" class="btn-secondary"
+                        icon="fa-filter" invisible="type != 'opportunity'"/>
+            </xpath>
             <!-- La información contextual vive en pestañas para que la
                  ficha nativa de CRM conserve su lectura principal y el
                  usuario llegue a WhatsApp, RFM o estancamiento sin
@@ -71,12 +79,13 @@
                     </group>
                     <group string="Producto y explicación">
                         <field name="commercial_top_product_summary" readonly="1"/>
-                        <field name="rfm_explanation" readonly="1" nolabel="1" widget="text"/>
+                        <field name="rfm_explanation" readonly="1" nolabel="1" widget="text"
+                               colspan="2" class="o_field_text w-100"/>
                     </group>
                 </page>
                 <page name="pipeline_health" string="Salud de la oportunidad"
                       invisible="type != 'opportunity'">
-                    <div class="d-flex flex-wrap gap-2 mb-3">
+                    <div class="d-flex flex-wrap gap-2 mb-3" invisible="1">
                         <button name="action_recompute_stagnation" type="object"
                                 string="Actualizar análisis" class="btn-secondary" icon="fa-refresh"/>
                         <button name="action_open_purge_wizard" type="object"
@@ -102,7 +111,8 @@
                     <group string="Gestión y próxima acción">
                         <field name="last_activity_date"/>
                         <field name="days_without_activity"/>
-                        <field name="next_action_required" nolabel="1" readonly="1"/>
+                        <field name="next_action_required" nolabel="1" readonly="1"
+                               colspan="2" class="o_field_text w-100"/>
                     </group>
                 </page>
             </xpath>
