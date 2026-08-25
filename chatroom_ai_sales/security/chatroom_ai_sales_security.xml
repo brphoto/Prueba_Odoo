@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="chatroom_ai_sales_event_rule_user" model="ir.rule">
+        <field name="name">Eventos de ventas autónomas por compañía</field>
+        <field name="model_id" ref="model_chatroom_ai_sales_event"/>
+        <field name="groups" eval="[(4, ref('chatroom_ai_agent.group_chatroom_ai_agent_user'))]"/>
+        <field name="domain_force">[('channel_id.company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

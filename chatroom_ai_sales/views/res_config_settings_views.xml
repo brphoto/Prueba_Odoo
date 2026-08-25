@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.chatroom.ai.sales</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Ventas autónomas" string="Ventas autónomas" name="chatroom_ai_sales">
+                    <block title="Venta conversacional por WhatsApp">
+                        <setting id="chatroom_ai_sales_enabled_setting"
+                                 help="Usa el catálogo y carrito de Chatroom para atender peticiones comerciales. Al guardarlo activa automáticamente el motor de carrito de WhatsApp.">
+                            <field name="chatroom_ai_sales_enabled"/>
+                        </setting>
+                        <setting id="chatroom_ai_sales_auto_confirm_setting"
+                                 help="Solo confirma después de una confirmación explícita y con límite de monto.">
+                            <field name="chatroom_ai_sales_auto_confirm"/>
+                        </setting>
+                        <setting id="chatroom_ai_sales_max_auto_amount_setting"
+                                 help="La confirmación automática queda bloqueada si el valor es cero o el pedido lo supera.">
+                            <field name="chatroom_ai_sales_max_auto_amount"/>
+                        </setting>
+                        <setting id="chatroom_ai_sales_auto_payment_link_setting"
+                                 help="Después de confirmar usa el conector instalado, como PayPhone, para enviar el enlace.">
+                            <field name="chatroom_ai_sales_auto_payment_link"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

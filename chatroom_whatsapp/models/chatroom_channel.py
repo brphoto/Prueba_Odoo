@@ -2407,8 +2407,18 @@ class ChatroomChannel(models.Model):
                     continue
                 self._add_to_cart(product, qty)
         elif action == 'checkout':
-            if self.cart_line_ids:
+            checkout_guard = getattr(self, '_ai_autonomous_checkout_guard', lambda: False)()
+            if checkout_guard:
+                reply = checkout_guard
+            elif self.cart_line_ids:
                 self.action_checkout_cart()
+                # La capa opcional de ventas autónomas puede reemplazar la
+                # respuesta del modelo después de confirmar o enviar un
+                # enlace de pago. Así se evita duplicar mensajes en WhatsApp.
+                override = getattr(self, 'ai_sales_reply_override', False)
+                if override:
+                    self.ai_sales_reply_override = False
+                    reply = '' if override == '__SUPPRESS__' else override
             elif not reply:
                 reply = _("Todavía no agregaste nada al carrito.")
 

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_chatroom_ai_sales_root" name="Ventas autónomas" parent="chatroom_ai_agent.menu_chatroom_ai_agent" sequence="35" groups="chatroom_ai_agent.group_chatroom_ai_agent_user"/>
+    <menuitem id="menu_chatroom_ai_sales_events" name="Actividad y auditoría" parent="menu_chatroom_ai_sales_root" action="action_chatroom_ai_sales_event" sequence="10" groups="chatroom_ai_agent.group_chatroom_ai_agent_user"/>
+</odoo>
