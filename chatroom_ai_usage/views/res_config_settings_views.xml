@@ -14,6 +14,7 @@
                              help="Selecciona un modelo sincronizado y evita escribir identificadores manualmente.">
                         <field name="chatroom_ai_model_id" options="{'no_create': True}"/>
                         <button name="action_sync_ai_models" type="object" string="Actualizar modelos" class="btn-secondary ms-2"/>
+                        <button name="action_test_ai_connection" type="object" string="Probar conexion" class="btn-secondary ms-2"/>
                     </setting>
                     <setting id="chatroom_ai_model_profiles_setting"
                              help="Permite usar un modelo economico para tareas rapidas y uno mas potente para el agente.">

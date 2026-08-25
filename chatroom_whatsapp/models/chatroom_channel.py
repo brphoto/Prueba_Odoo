@@ -1580,7 +1580,23 @@ class ChatroomChannel(models.Model):
         (mensajes, fechas, quién atendió) — para respaldo ante un
         reclamo, o para mandarle al cliente un resumen de lo hablado."""
         self.ensure_one()
-        return self.env.ref('chatroom_whatsapp.action_report_chatroom_channel').report_action(self)
+        wkhtml_state = self.env['ir.actions.report'].get_wkhtmltopdf_state()
+        if wkhtml_state != 'ok':
+            messages = {
+                'install': _("No se puede generar el PDF porque Odoo no encuentra wkhtmltopdf. Instala la version compatible y reinicia Odoo."),
+                'upgrade': _("No se puede generar el PDF porque la version de wkhtmltopdf es incompatible con Odoo."),
+                'workers': _("No se puede generar el PDF con la configuracion actual de procesos de Odoo."),
+                'broken': _("El renderizador PDF esta instalado, pero no responde correctamente."),
+            }
+            raise UserError(messages.get(
+                wkhtml_state,
+                _("El renderizador PDF no esta disponible (estado: %s).") % wkhtml_state,
+            ))
+        report = self.env.ref('chatroom_whatsapp.action_report_chatroom_channel')
+        return report.with_context(
+            chatroom_transcript_pdf=True,
+            force_report_rendering=True,
+        ).report_action(self)
 
     def _send_interactive_list(self, body, button_label, rows, message_type_body):
         """Base común para mensajes interactivos tipo 'lista' (hasta 10
@@ -2379,9 +2395,17 @@ class ChatroomChannel(models.Model):
                     return
 
             if self._ai_param_enabled('chatroom_whatsapp.ai_auto_reply'):
-                self.action_ai_suggest_reply()
-                if not self._ai_requires_approval():
-                    self.action_send_ai_suggestion()
+                # chatroom_ai aporta el guardia opcional. El modulo base no
+                # depende de el y conserva el comportamiento anterior cuando
+                # la capa avanzada no esta instalada o se desactiva.
+                safe_handler = getattr(self, 'action_ai_auto_reply_safe', None)
+                if safe_handler and self._ai_param_enabled(
+                        'chatroom_ai_agent.safe_auto_reply', default=True):
+                    safe_handler()
+                else:
+                    self.action_ai_suggest_reply()
+                    if not self._ai_requires_approval():
+                        self.action_send_ai_suggestion()
         except UserError as exc:
             _logger.warning("Automatización de IA omitida en canal %s: %s", self.id, exc)
         except Exception:  # noqa: BLE001 - no debe romper la ingesta del webhook

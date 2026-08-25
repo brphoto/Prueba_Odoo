@@ -14,8 +14,18 @@ class ChatroomChannel(models.Model):
             ('channel_id', '=', self.id),
             ('state', '!=', 'cancelled'),
         ], order='create_date desc, id desc', limit=1)
+        tasks = self.env['chatroom.ai.task'].sudo()
+        pending_domain = [('state', 'in', ('awaiting_approval', 'planned', 'running'))]
+        icp = self.env['ir.config_parameter'].sudo()
         return {
             'can_use': True,
+            'pending_count': tasks.search_count(pending_domain),
+            'approval_count': tasks.search_count([('state', '=', 'awaiting_approval')]),
+            'high_risk_count': tasks.search_count([
+                ('risk_level', '=', 'high'),
+                ('state', 'not in', ('done', 'cancelled')),
+            ]),
+            'mode': icp.get_param('chatroom_ai_agent.mode', 'supervised'),
             'task': {
                 'id': task.id,
                 'name': task.name,
@@ -23,6 +33,8 @@ class ChatroomChannel(models.Model):
                 'state_label': dict(task._fields['state'].selection).get(task.state, task.state),
                 'action_count': len(task.action_ids),
                 'result_summary': task.result_summary or '',
+                'risk_level': task.risk_level,
+                'approval_required': task.approval_required,
             } if task else False,
         }
 

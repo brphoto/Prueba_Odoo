@@ -4,7 +4,7 @@
         <field name="name">chatroom.ai.suggestion.list</field><field name="model">chatroom.ai.suggestion</field>
         <field name="arch" type="xml"><list string="Sugerencias de IA">
             <field name="create_date"/><field name="channel_id"/><field name="partner_id"/>
-            <field name="intent" widget="badge"/><field name="confidence"/><field name="edited_by_human" optional="hide"/>
+            <field name="intent" widget="badge"/><field name="confidence"/><field name="safety_decision" widget="badge"/><field name="feedback_state" widget="badge"/><field name="edited_by_human" optional="hide"/>
             <field name="state" widget="badge"/><field name="approved_by"/><field name="sent_at"/>
         </list></field>
     </record>
@@ -16,13 +16,17 @@
                 <button name="action_approve" type="object" string="Aprobar" class="btn-primary" invisible="state != 'draft'"/>
                 <button name="action_send" type="object" string="Enviar al cliente" class="btn-primary" invisible="state != 'approved'"/>
                 <button name="action_reject" type="object" string="Descartar" class="btn-secondary" invisible="state in ('sent', 'rejected')"/>
+                <button name="action_feedback_helpful" type="object" string="Marcar util" class="btn-secondary" invisible="state not in ('approved', 'sent')"/>
+                <button name="action_feedback_edited" type="object" string="RequiriÃ³ ediciÃ³n" class="btn-secondary" invisible="state not in ('approved', 'sent')"/>
+                <button name="action_feedback_unsafe" type="object" string="No usar" class="btn-secondary" invisible="state not in ('approved', 'sent')"/>
                 <field name="state" widget="statusbar" statusbar_visible="draft,approved,sent"/>
             </header><sheet>
                 <div class="oe_title"><h1><field name="name"/></h1></div>
                 <group><group><field name="channel_id"/><field name="partner_id"/><field name="source"/><field name="source_detail"/></group>
-                    <group><field name="intent"/><field name="confidence"/><field name="edited_by_human"/><field name="edit_count"/><field name="last_reviewed_at"/><field name="approved_by"/><field name="sent_by"/></group></group>
+                    <group><field name="intent"/><field name="confidence"/><field name="safety_decision"/><field name="safety_reason"/><field name="feedback_state"/><field name="feedback_by"/><field name="feedback_at"/><field name="edited_by_human"/><field name="edit_count"/><field name="last_reviewed_at"/><field name="approved_by"/><field name="sent_by"/></group></group>
                 <group string="Respuesta editable"><field name="suggested_text" nolabel="1"/></group>
                 <group string="Contexto y trazabilidad"><field name="message_context" readonly="1"/><field name="rejection_reason"/><field name="error_message" readonly="1"/></group>
+                <group string="RetroalimentaciÃ³n humana"><field name="feedback_notes" placeholder="QuÃ© deberÃ­a mejorar esta respuesta..."/></group>
             </sheet>
         </form></field>
     </record>

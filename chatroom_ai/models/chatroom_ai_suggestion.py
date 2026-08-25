@@ -24,6 +24,20 @@ class ChatroomAiSuggestion(models.Model):
     ], string='Intención')
     confidence = fields.Float(string='Confianza estimada', digits=(5, 2),
                               help='Referencia informativa del proveedor o del agente; no activa envíos por sí sola.')
+    safety_decision = fields.Selection([
+        ('not_checked', 'No evaluada'), ('allowed', 'Permitida'),
+        ('human_review', 'Revision humana'), ('blocked', 'Bloqueada'),
+    ], string='Control de seguridad', default='not_checked', readonly=True,
+       help='Resultado de los controles de consentimiento, horario, frecuencia y riesgo.')
+    safety_reason = fields.Text(string='Motivo del control de seguridad', readonly=True)
+    feedback_state = fields.Selection([
+        ('pending', 'Sin valorar'), ('helpful', 'Util'),
+        ('edited', 'RequiriÃ³ ediciÃ³n'), ('unsafe', 'No usar'),
+    ], string='EvaluaciÃ³n humana', default='pending', index=True,
+       help='Permite medir la calidad real de las respuestas antes de ampliar la automatizaciÃ³n.')
+    feedback_notes = fields.Text(string='Observaciones de calidad')
+    feedback_by = fields.Many2one('res.users', string='Evaluada por', readonly=True)
+    feedback_at = fields.Datetime(string='Evaluada el', readonly=True)
     edited_by_human = fields.Boolean(string='Editada por humano', readonly=True)
     edit_count = fields.Integer(string='Ediciones', readonly=True)
     last_reviewed_at = fields.Datetime(string='Última revisión', readonly=True)
@@ -68,12 +82,30 @@ class ChatroomAiSuggestion(models.Model):
         self.write({'state': 'rejected', 'rejection_reason': self[:1].rejection_reason or False})
         return True
 
+    def _set_feedback(self, state):
+        self.write({
+            'feedback_state': state,
+            'feedback_by': self.env.user.id,
+            'feedback_at': fields.Datetime.now(),
+        })
+        return True
+
+    def action_feedback_helpful(self):
+        return self._set_feedback('helpful')
+
+    def action_feedback_edited(self):
+        return self._set_feedback('edited')
+
+    def action_feedback_unsafe(self):
+        return self._set_feedback('unsafe')
+
     def action_send(self):
         for suggestion in self:
             if suggestion.state != 'approved':
                 raise UserError(_('Solo se puede enviar una sugerencia aprobada.'))
             try:
-                suggestion.channel_id.action_send_text(suggestion.suggested_text)
+                suggestion.channel_id.with_context(
+                    chatroom_ai_generated=True).action_send_text(suggestion.suggested_text)
             except Exception as exc:
                 suggestion.write({'state': 'error', 'error_message': str(exc)})
                 raise

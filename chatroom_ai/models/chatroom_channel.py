@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import json
+import re
+
 from odoo import _, fields, models
 from odoo.exceptions import UserError
 
@@ -49,14 +52,192 @@ class ChatroomChannel(models.Model):
             'intent': self.ai_intent or '',
             'knowledge_count': knowledge_count,
             'usage': usage,
+            'safety_policy': self._ai_safety_policy(),
             'suggestion': {
                 'id': suggestion.id,
                 'text': suggestion.suggested_text,
                 'state': suggestion.state,
                 'intent': suggestion.intent or '',
                 'confidence': suggestion.confidence,
+                'safety_decision': suggestion.safety_decision,
+                'safety_reason': suggestion.safety_reason or '',
+                'feedback_state': suggestion.feedback_state,
             } if suggestion else False,
         }
+
+    def _ai_safety_policy(self):
+        """Devuelve controles operativos, nunca credenciales."""
+        self.ensure_one()
+        icp = self.env['ir.config_parameter'].sudo()
+
+        def integer(key, default):
+            try:
+                return max(0, int(icp.get_param(key, default)))
+            except (TypeError, ValueError):
+                return default
+
+        try:
+            confidence = float(icp.get_param(
+                'chatroom_ai_agent.auto_reply_min_confidence', '0.80'))
+        except (TypeError, ValueError):
+            confidence = 0.80
+        return {
+            'enabled': self._ai_param_enabled('chatroom_ai_agent.safe_auto_reply', default=True),
+            'min_confidence': min(max(confidence, 0.0), 1.0),
+            'cooldown_minutes': integer('chatroom_ai_agent.auto_reply_cooldown_minutes', 15),
+            'daily_limit': integer('chatroom_ai_agent.auto_reply_daily_limit', 30),
+            'escalate_negative': self._ai_param_enabled(
+                'chatroom_ai_agent.auto_reply_escalate_negative', default=True),
+            'allow_outside_hours': self._ai_param_enabled(
+                'chatroom_ai_agent.auto_reply_allow_outside_hours', default=False),
+        }
+
+    def _ai_guard_notification(self, reason, priority='1'):
+        """Avisa al responsable sin hacer obligatorio el modulo de alertas."""
+        self.ensure_one()
+        if 'chatroom.notification' not in self.env:
+            return False
+        user = self.assigned_user_id or self.env.user
+        key = 'ai-guard:%s:%s' % (self.id, re.sub(r'\W+', '-', reason.lower())[:50])
+        return self.env['chatroom.notification'].sudo().create_deduplicated({
+            'name': _('Revision humana requerida por IA'),
+            'message': _('%s: %s') % (self.display_name, reason),
+            'notification_type': 'ai',
+            'priority': priority,
+            'user_id': user.id,
+            'channel_id': self.id,
+            'partner_id': self.partner_id.id,
+            'res_model': 'chatroom.channel',
+            'res_id': self.id,
+            'dedupe_key': key,
+            'escalation_level': 2 if priority == '2' else 1,
+        })
+
+    def _ai_create_guarded_suggestion(self, reply, confidence, decision, reason, intent=False):
+        suggestion = self.env['chatroom.ai.suggestion'].create_from_channel(self, reply)
+        suggestion.write({
+            'confidence': confidence,
+            'intent': intent or self.ai_intent or False,
+            'safety_decision': decision,
+            'safety_reason': reason,
+            'rejection_reason': reason if decision in ('blocked', 'human_review') else False,
+        })
+        self.ai_suggested_reply = reply
+        if decision in ('blocked', 'human_review'):
+            self._ai_guard_notification(reason, priority='2' if 'urgencia' in reason.lower() else '1')
+        return suggestion
+
+    def action_ai_auto_reply_safe(self):
+        """Genera o envia una respuesta pasando por una politica segura.
+
+        El proveedor debe devolver JSON con respuesta, confianza y si hace
+        falta una persona. Un formato inesperado siempre termina en revision;
+        nunca se envia texto que no haya pasado la validacion.
+        """
+        self.ensure_one()
+        policy = self._ai_safety_policy()
+        if not policy['enabled']:
+            return {'status': 'disabled'}
+        if self.ai_paused:
+            return {'status': 'human_active', 'reason': _('La IA esta pausada porque atiende un agente.')}
+        if self.partner_id and getattr(self.partner_id, 'whatsapp_opt_out', False):
+            return {'status': 'opted_out', 'reason': _('El contacto desactivo los mensajes.')}
+        if not policy['allow_outside_hours'] and hasattr(self, '_is_within_business_hours') \
+                and not self._is_within_business_hours():
+            reason = _('Fuera del horario de atencion; se requiere revision humana.')
+            self._ai_guard_notification(reason)
+            return {'status': 'human_review', 'reason': reason}
+
+        now = fields.Datetime.now()
+        message_model = self.env['chatroom.message']
+        if 'ai_generated' in message_model._fields:
+            latest = message_model.search([
+                ('channel_id', '=', self.id), ('direction', '=', 'outbound'),
+                ('ai_generated', '=', True),
+            ], order='date desc, id desc', limit=1)
+            if latest and policy['cooldown_minutes']:
+                elapsed = (now - latest.date).total_seconds() / 60.0
+                if elapsed < policy['cooldown_minutes']:
+                    remaining = max(1, int(policy['cooldown_minutes'] - elapsed))
+                    reason = _('Pausa preventiva: espera %s minuto(s) antes de otra respuesta IA.') % remaining
+                    self._ai_guard_notification(reason)
+                    return {'status': 'cooldown', 'reason': reason}
+            if policy['daily_limit']:
+                start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                daily_count = message_model.search_count([
+                    ('channel_id', '=', self.id), ('direction', '=', 'outbound'),
+                    ('ai_generated', '=', True),
+                    ('date', '>=', fields.Datetime.to_string(start)),
+                ])
+                if daily_count >= policy['daily_limit']:
+                    reason = _('Se alcanzo el limite diario de respuestas automaticas (%s).') % policy['daily_limit']
+                    self._ai_guard_notification(reason, priority='2')
+                    return {'status': 'daily_limit', 'reason': reason}
+
+        system_prompt = _(
+            'Responde SOLO JSON valido con esta estructura: '
+            '{"reply":"texto breve", "confidence":0.0, '
+            '"needs_human":false, "reason":"motivo", '
+            '"sentiment":"positive|neutral|negative", '
+            '"urgency":"low|normal|high|critical", '
+            '"intent":"consulta|venta|soporte|queja|otro"}. '
+            'No inventes precios, fechas, stock, estados de pago ni promesas. '
+            'Marca needs_human=true ante quejas, reclamos, pagos, urgencias, '
+            'datos faltantes o cualquier duda. La respuesta debe ser breve, '
+            'profesional y en espanol.')
+        raw = self._ai_chat_completion(
+            self._ai_build_conversation(extra_system=system_prompt), task_type='reply')
+        match = re.search(r'\{.*\}', raw or '', re.DOTALL)
+        try:
+            data = json.loads(match.group(0) if match else raw)
+        except (ValueError, TypeError, AttributeError):
+            reason = _('El proveedor devolvio un formato no valido; se necesita revision humana.')
+            self._ai_guard_notification(reason, priority='2')
+            return {'status': 'invalid_provider_response', 'reason': reason}
+
+        reply = (data.get('reply') or '').strip() if isinstance(data, dict) else ''
+        try:
+            confidence = min(max(float(data.get('confidence', 0.0)), 0.0), 1.0)
+        except (TypeError, ValueError, AttributeError):
+            confidence = 0.0
+        valid_intents = dict(self._fields['ai_intent'].selection)
+        intent = data.get('intent') if data.get('intent') in valid_intents else False
+        sentiment = data.get('sentiment') or 'neutral'
+        urgency = data.get('urgency') or 'normal'
+        needs_human = bool(data.get('needs_human'))
+        reason = (data.get('reason') or _('La IA solicito revision humana.')).strip()
+        if policy['escalate_negative'] and (sentiment == 'negative' or urgency in ('high', 'critical')):
+            needs_human = True
+            reason = _('Sentimiento negativo o urgencia detectada: %s') % reason
+        if not reply:
+            needs_human = True
+            reason = _('La IA no produjo una respuesta utilizable.')
+        if confidence < policy['min_confidence']:
+            needs_human = True
+            reason = _('Confianza %.0f%% inferior al minimo configurado de %.0f%%.') % (
+                confidence * 100, policy['min_confidence'] * 100)
+
+        if needs_human:
+            suggestion = self._ai_create_guarded_suggestion(
+                reply or _('La IA no genero texto; revisar la conversacion.'),
+                confidence, 'human_review', reason, intent=intent)
+            return {'status': 'human_review', 'suggestion_id': suggestion.id, 'reason': reason}
+
+        suggestion = self._ai_create_guarded_suggestion(
+            reply, confidence, 'allowed', _('Respuesta aprobada por la guardia automatica.'), intent=intent)
+        if self._ai_requires_approval():
+            return {'status': 'awaiting_approval', 'suggestion_id': suggestion.id}
+        try:
+            self.with_context(chatroom_ai_generated=True).action_send_text(reply)
+        except Exception as exc:
+            suggestion.write({'state': 'error', 'error_message': str(exc)})
+            raise
+        suggestion.write({
+            'state': 'sent', 'sent_by': self.env.user.id,
+            'sent_at': fields.Datetime.now(),
+        })
+        self.ai_suggested_reply = False
+        return {'status': 'sent', 'suggestion_id': suggestion.id}
 
     def action_ai_prepare_suggestion(self):
         self.ensure_one()
@@ -110,6 +291,13 @@ class ChatroomChannel(models.Model):
 
     def action_ai_send_suggestion(self, suggestion_id):
         self._get_ai_suggestion_for_action(suggestion_id).action_send()
+        return self.get_ai_assistant_data()
+
+    def action_ai_feedback_suggestion(self, suggestion_id, feedback_state):
+        suggestion = self._get_ai_suggestion_for_action(suggestion_id)
+        if feedback_state not in ('helpful', 'edited', 'unsafe'):
+            raise UserError(_('La evaluacion seleccionada no es valida.'))
+        suggestion._set_feedback(feedback_state)
         return self.get_ai_assistant_data()
 
     def action_create_ai_suggestion(self):

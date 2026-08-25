@@ -42,6 +42,9 @@
                             <strong>Respuesta preparada</strong>
                             <span class="badge" t-esc="suggestionStateLabel()"/>
                         </div>
+                        <div class="alert alert-warning py-1 px-2 mb-2" t-if="aiAssistant.suggestion.safety_reason">
+                            <i class="fa fa-shield"/> <t t-esc="aiAssistant.suggestion.safety_reason"/>
+                        </div>
                         <textarea class="form-control form-control-sm o_chatroom_ai_assistant_text"
                                   t-if="aiAssistant.suggestion.state == 'draft'"
                                   t-model="aiAssistant.suggestion.text" rows="4"/>
@@ -72,11 +75,31 @@
                                 Descartar
                             </button>
                         </div>
+                        <div class="o_chatroom_ai_assistant_feedback mt-2"
+                             t-if="aiAssistant.suggestion.state in ('approved', 'sent') &amp;&amp; aiAssistant.suggestion.feedback_state == 'pending'">
+                            <small class="d-block mb-1">Â¿CÃ³mo fue esta respuesta?</small>
+                            <button type="button" class="btn btn-sm btn-outline-success"
+                                    t-att-disabled="aiAssistant.busy" t-on-click="rateAiHelpful">
+                                <i class="fa fa-thumbs-up"/> Ãštil
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-warning"
+                                    t-att-disabled="aiAssistant.busy" t-on-click="rateAiEdited">
+                                <i class="fa fa-pencil"/> RequiriÃ³ ediciÃ³n
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    t-att-disabled="aiAssistant.busy" t-on-click="rateAiUnsafe">
+                                <i class="fa fa-ban"/> No usar
+                            </button>
+                        </div>
                     </div>
                     <div class="o_chatroom_ai_assistant_result" t-if="aiAssistant.summary">
                         <strong>Resumen</strong><div t-esc="aiAssistant.summary"/>
                     </div>
                     <div class="o_chatroom_ai_assistant_meta">
+                        <span t-if="aiAssistant.safetyPolicy"><i class="fa fa-lock"/> Guardia: <strong><t t-esc="aiAssistant.safetyPolicy.enabled ? 'activa' : 'desactivada'"/></strong></span>
+                        <span t-if="aiAssistant.safetyPolicy &amp;&amp; aiAssistant.safetyPolicy.enabled"><i class="fa fa-check-circle"/> Confianza minima: <strong t-esc="safetyConfidenceLabel()"/></span>
+                        <span t-if="aiAssistant.safetyPolicy &amp;&amp; aiAssistant.safetyPolicy.enabled"><i class="fa fa-clock-o"/> Limite: <strong><t t-esc="aiAssistant.safetyPolicy.daily_limit"/> / dia</strong></span>
+                        <span t-if="aiAssistant.budget"><i class="fa fa-credit-card"/> Saldo: <strong t-esc="budgetLabel()"/></span>
                         <span t-if="aiAssistant.intent"><i class="fa fa-tag"/> Intención: <strong t-esc="aiAssistant.intent"/></span>
                         <span><i class="fa fa-shield"/> Aprobación humana: <strong><t t-esc="aiAssistant.approvalRequired ? 'activa' : 'desactivada'"/></strong></span>
                         <span t-if="aiAssistant.knowledgeCount"><i class="fa fa-book"/> <t t-esc="aiAssistant.knowledgeCount"/> manuales</span>

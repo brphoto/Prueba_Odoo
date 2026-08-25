@@ -20,6 +20,9 @@ class ChatroomAiDashboard(models.Model):
     memory_count = fields.Integer(string='Memorias activas', compute='_compute_metrics')
     usage_requests = fields.Integer(string='Solicitudes IA recientes', compute='_compute_metrics')
     quality_pending = fields.Integer(string='Pruebas pendientes', compute='_compute_metrics')
+    suggestions_pending_feedback = fields.Integer(string='Respuestas sin valorar', compute='_compute_metrics')
+    suggestions_unsafe = fields.Integer(string='Respuestas marcadas no usar', compute='_compute_metrics')
+    ai_sent_today = fields.Integer(string='Mensajes IA hoy', compute='_compute_metrics')
 
     @api.depends('last_refresh')
     def _compute_metrics(self):
@@ -37,6 +40,19 @@ class ChatroomAiDashboard(models.Model):
             dashboard.memory_count = self.env['chatroom.ai.memory'].sudo().search_count([('active', '=', True)]) if 'chatroom.ai.memory' in self.env else 0
             dashboard.usage_requests = self.env['chatroom.ai.usage.event'].sudo().search_count([('request_date', '>=', now - timedelta(days=7))]) if 'chatroom.ai.usage.event' in self.env else 0
             dashboard.quality_pending = self.env['chatroom.ai.quality.test'].sudo().search_count([('active', '=', True), ('last_state', '=', 'pending')]) if 'chatroom.ai.quality.test' in self.env else 0
+            if 'chatroom.ai.suggestion' in self.env:
+                suggestions = self.env['chatroom.ai.suggestion'].sudo()
+                dashboard.suggestions_pending_feedback = suggestions.search_count([
+                    ('state', 'in', ('approved', 'sent')), ('feedback_state', '=', 'pending'),
+                ])
+                dashboard.suggestions_unsafe = suggestions.search_count([('feedback_state', '=', 'unsafe')])
+            else:
+                dashboard.suggestions_pending_feedback = 0
+                dashboard.suggestions_unsafe = 0
+            dashboard.ai_sent_today = self.env['chatroom.message'].sudo().search_count([
+                ('direction', '=', 'outbound'), ('ai_generated', '=', True),
+                ('date', '>=', start),
+            ]) if 'chatroom.message' in self.env and 'ai_generated' in self.env['chatroom.message']._fields else 0
 
     def _open_task_action(self, domain, title):
         self.ensure_one()
@@ -62,6 +78,17 @@ class ChatroomAiDashboard(models.Model):
     def action_open_quality(self):
         action = self.env.ref('chatroom_ai_usage.action_chatroom_ai_quality_test', raise_if_not_found=False)
         return action.read()[0] if action else self._notify(_('Pruebas de calidad'), _('Instala el módulo opcional de consumo de IA para usar esta sección.'), 'warning')
+
+    def action_open_suggestions(self):
+        action = self.env.ref('chatroom_ai.action_chatroom_ai_suggestion', raise_if_not_found=False)
+        if not action:
+            return self._notify(_('Sugerencias IA'), _('Instala el modulo Chatroom IA para usar esta seccion.'), 'warning')
+        result = action.read()[0]
+        result.update({
+            'name': _('Respuestas IA sin valorar'),
+            'domain': [('state', 'in', ('approved', 'sent')), ('feedback_state', '=', 'pending')],
+        })
+        return result
 
     def action_open_usage(self):
         action = self.env.ref('chatroom_ai_usage.action_chatroom_ai_usage_snapshot', raise_if_not_found=False)

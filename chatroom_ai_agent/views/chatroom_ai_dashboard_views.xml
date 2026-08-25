@@ -27,6 +27,9 @@
                         <button name="action_open_high_risk" type="object" class="oe_stat_button" icon="fa-lock">
                             <field name="high_risk_tasks" widget="statinfo" string="Alto riesgo"/>
                         </button>
+                        <button name="action_open_suggestions" type="object" class="oe_stat_button" icon="fa-comments">
+                            <field name="suggestions_pending_feedback" widget="statinfo" string="Sin valorar"/>
+                        </button>
                     </div>
                     <group string="Rendimiento">
                         <group>
@@ -38,6 +41,8 @@
                             <field name="memory_count" readonly="1"/>
                             <field name="usage_requests" readonly="1"/>
                             <field name="quality_pending" readonly="1"/>
+                            <field name="suggestions_unsafe" readonly="1"/>
+                            <field name="ai_sent_today" readonly="1"/>
                         </group>
                     </group>
                     <separator string="Herramientas de control"/>

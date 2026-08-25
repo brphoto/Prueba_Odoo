@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+import requests
+
 from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 
 class ResConfigSettings(models.TransientModel):
@@ -91,6 +94,37 @@ class ResConfigSettings(models.TransientModel):
     def action_sync_ai_models(self):
         self.ensure_one()
         return self.env['chatroom.ai.provider.model'].action_sync_from_provider()
+
+    def action_test_ai_connection(self):
+        """Valida endpoint y credencial sin consumir una respuesta del modelo."""
+        self.ensure_one()
+        icp = self.env['ir.config_parameter'].sudo()
+        api_key = (icp.get_param('chatroom_whatsapp.ai_api_key') or '').strip()
+        base = self.env['chatroom.ai.provider.model']._api_base()
+        if not api_key or not base:
+            raise UserError(_('Configura primero el endpoint y la API Key de IA.'))
+        try:
+            response = requests.get(
+                '%s/models' % base,
+                headers={'Authorization': 'Bearer %s' % api_key},
+                timeout=15,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            models_count = len(payload.get('data', [])) if isinstance(payload, dict) else 0
+        except (requests.RequestException, ValueError, TypeError) as exc:
+            raise UserError(_('No se pudo conectar con el proveedor de IA: %s') % exc) from exc
+        icp.set_param('chatroom_whatsapp.ai_last_health_check', fields.Datetime.now())
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('ConexiÃ³n IA correcta'),
+                'message': _('El endpoint respondiÃ³ correctamente y devolviÃ³ %s modelo(s).') % models_count,
+                'type': 'success',
+                'sticky': False,
+            },
+        }
 
     def action_refresh_ai_usage(self):
         self.ensure_one()

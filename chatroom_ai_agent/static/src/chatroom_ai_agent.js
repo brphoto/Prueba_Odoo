@@ -13,6 +13,7 @@ patch(ContactPanel.prototype, {
             task: false,
             error: "",
             canUse: null,
+            metrics: { pending_count: 0, approval_count: 0, high_risk_count: 0, mode: "supervised" },
         });
         onWillUpdateProps((nextProps) => {
             if (nextProps.channelId !== this.props.channelId) {
@@ -20,6 +21,7 @@ patch(ContactPanel.prototype, {
                 this.aiAgent.task = false;
                 this.aiAgent.error = "";
                 this.aiAgent.canUse = null;
+                this.aiAgent.metrics = { pending_count: 0, approval_count: 0, high_risk_count: 0, mode: "supervised" };
             }
         });
     },
@@ -49,6 +51,12 @@ patch(ContactPanel.prototype, {
                 "chatroom.channel", "get_ai_agent_data", [this.props.channelId]);
             this.aiAgent.task = data?.task || false;
             this.aiAgent.canUse = data?.can_use !== false;
+            this.aiAgent.metrics = data?.can_use === false ? this.aiAgent.metrics : {
+                pending_count: data?.pending_count || 0,
+                approval_count: data?.approval_count || 0,
+                high_risk_count: data?.high_risk_count || 0,
+                mode: data?.mode || "supervised",
+            };
         } catch (error) {
             this.aiAgent.error = error.data ? error.data.message : error.message;
         } finally {

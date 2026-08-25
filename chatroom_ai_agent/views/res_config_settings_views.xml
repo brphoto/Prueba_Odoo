@@ -40,6 +40,36 @@
                             <field name="chatroom_ai_agent_max_payment_amount"/>
                         </setting>
                     </block>
+                    <block title="Respuestas automaticas seguras">
+                        <setting id="chatroom_ai_safety_profile_setting"
+                                 help="Elige un perfil y Odoo rellenara los limites recomendados; despues puedes personalizar cada valor.">
+                            <field name="chatroom_ai_safety_profile"/>
+                        </setting>
+                        <setting id="chatroom_ai_safe_auto_reply_setting"
+                                 help="Conecta las respuestas automaticas con una guardia de consentimiento, horario, frecuencia y escalamiento.">
+                            <field name="chatroom_ai_safe_auto_reply"/>
+                        </setting>
+                        <setting id="chatroom_ai_auto_reply_min_confidence_setting"
+                                 help="La IA debe devolver una confianza igual o superior a este valor para responder sin intervencion humana.">
+                            <field name="chatroom_ai_auto_reply_min_confidence"/>
+                        </setting>
+                        <setting id="chatroom_ai_auto_reply_cooldown_setting"
+                                 help="Tiempo minimo entre respuestas generadas automaticamente en una misma conversacion.">
+                            <field name="chatroom_ai_auto_reply_cooldown_minutes"/>
+                        </setting>
+                        <setting id="chatroom_ai_auto_reply_daily_limit_setting"
+                                 help="Limite diario por conversacion para evitar bucles o consumo inesperado.">
+                            <field name="chatroom_ai_auto_reply_daily_limit"/>
+                        </setting>
+                        <setting id="chatroom_ai_auto_reply_escalate_negative_setting"
+                                 help="Las quejas, sentimientos negativos y urgencias quedan visibles para un agente.">
+                            <field name="chatroom_ai_auto_reply_escalate_negative"/>
+                        </setting>
+                        <setting id="chatroom_ai_auto_reply_hours_setting"
+                                 help="Si se desactiva, la IA respeta el horario configurado en Chatroom WhatsApp.">
+                            <field name="chatroom_ai_auto_reply_allow_outside_hours"/>
+                        </setting>
+                    </block>
                 </app>
             </xpath>
         </field>

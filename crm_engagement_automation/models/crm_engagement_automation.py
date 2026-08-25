@@ -42,6 +42,10 @@ class CrmEngagementAutomation(models.Model):
     last_run = fields.Datetime(string='Última ejecución', readonly=True, copy=False)
     last_preview_count = fields.Integer(string='Último resultado', readonly=True, copy=False)
 
+    preview_text = fields.Text(
+        string='Ejemplos de mensajes', readonly=True, copy=False,
+        help='Muestra ejemplos con las variables sustituidas antes de activar la automatizacion.')
+
     def _get_target_partners(self):
         self.ensure_one()
         domain = [
@@ -193,10 +197,24 @@ class CrmEngagementAutomation(models.Model):
     def action_preview(self):
         self.ensure_one()
         count = 0
+        examples = []
         today = fields.Date.context_today(self)
-        for step in self.step_ids:
-            count += len(self._candidate_events(step, today))
-        self.write({'last_preview_count': count})
+        execution_model = self.env['crm.engagement.execution']
+        for step in self.step_ids.sorted('sequence'):
+            candidates = self._candidate_events(step, today)
+            count += len(candidates)
+            for candidate in candidates[:10 - len(examples)]:
+                rendered = execution_model._render_message(
+                    step.message_body, candidate.get('context', {}))
+                examples.append('%s | %s\n%s' % (
+                    candidate['partner'].display_name, step.name, rendered))
+                if len(examples) >= 10:
+                    break
+            if len(examples) >= 10:
+                break
+        preview = '\n\n'.join(examples) if examples else _(
+            'No hay clientes o eventos que cumplan la regla para hoy.')
+        self.write({'last_preview_count': count, 'preview_text': preview})
         return {
             'type': 'ir.actions.client', 'tag': 'display_notification',
             'params': {

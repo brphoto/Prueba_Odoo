@@ -22,6 +22,12 @@
                     </div>
                     <t t-if="aiAgent.canUse !== false">
                     <p class="mb-2">Crea un plan de trabajo con contexto comercial, acciones autorizadas y trazabilidad.</p>
+                    <div class="o_chatroom_ai_agent_metrics mb-2">
+                        <span><strong t-esc="aiAgent.metrics.pending_count"/> pendientes</span>
+                        <span><strong t-esc="aiAgent.metrics.approval_count"/> por aprobar</span>
+                        <span t-if="aiAgent.metrics.high_risk_count"><strong t-esc="aiAgent.metrics.high_risk_count"/> alto riesgo</span>
+                    </div>
+                    <div class="alert alert-info py-1 px-2 mb-2">Modo: <strong t-esc="aiAgent.metrics.mode"/>. Las acciones sensibles conservan aprobacion.</div>
                     <div class="alert alert-danger py-2 px-2 mb-2" t-if="aiAgent.error">
                         <t t-esc="aiAgent.error"/>
                     </div>

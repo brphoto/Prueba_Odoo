@@ -3,7 +3,7 @@ import logging
 
 import requests
 
-from odoo import _, models
+from odoo import _, fields, models
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
@@ -11,6 +11,20 @@ _logger = logging.getLogger(__name__)
 
 class ChatroomChannel(models.Model):
     _inherit = 'chatroom.channel'
+
+    def get_ai_assistant_data(self):
+        data = super().get_ai_assistant_data()
+        snapshot = self.env['chatroom.ai.usage.snapshot'].sudo().search(
+            [], order='fetched_at desc, id desc', limit=1)
+        data['budget'] = {
+            'state': snapshot.budget_state,
+            'remaining': snapshot.budget_remaining,
+            'percent': snapshot.budget_percent,
+            'cost': snapshot.cost,
+            'currency': snapshot.currency or 'usd',
+            'fetched_at': fields.Datetime.to_string(snapshot.fetched_at) if snapshot else False,
+        } if snapshot else False
+        return data
 
     def get_ai_usage_summary(self):
         self.ensure_one()

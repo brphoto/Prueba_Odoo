@@ -18,6 +18,8 @@ patch(ContactPanel.prototype, {
             mode: "suggestion",
             knowledgeCount: 0,
             usage: { requests: 0, tokens: 0, last_model: "" },
+            safetyPolicy: { enabled: true, min_confidence: 0.80, cooldown_minutes: 15, daily_limit: 30, escalate_negative: true },
+            budget: false,
             suggestion: false,
             error: "",
         });
@@ -37,6 +39,8 @@ patch(ContactPanel.prototype, {
         this.aiAssistant.mode = "suggestion";
         this.aiAssistant.suggestion = false;
         this.aiAssistant.usage = { requests: 0, tokens: 0, last_model: "" };
+        this.aiAssistant.safetyPolicy = { enabled: true, min_confidence: 0.80, cooldown_minutes: 15, daily_limit: 30, escalate_negative: true };
+        this.aiAssistant.budget = false;
         this.aiAssistant.error = "";
     },
 
@@ -64,6 +68,8 @@ patch(ContactPanel.prototype, {
         this.aiAssistant.intent = data?.intent || "";
         this.aiAssistant.knowledgeCount = data?.knowledge_count || 0;
         this.aiAssistant.usage = data?.usage || { requests: 0, tokens: 0, last_model: "" };
+        this.aiAssistant.safetyPolicy = data?.safety_policy || this.aiAssistant.safetyPolicy;
+        this.aiAssistant.budget = data?.budget || false;
         this.aiAssistant.suggestion = data?.suggestion || false;
     },
 
@@ -104,6 +110,22 @@ patch(ContactPanel.prototype, {
             error: "error",
         };
         return labels[this.aiAssistant.suggestion?.state] || "";
+    },
+
+    safetyConfidenceLabel() {
+        return `${Math.round((this.aiAssistant.safetyPolicy?.min_confidence || 0) * 100)}%`;
+    },
+
+    budgetLabel() {
+        const budget = this.aiAssistant.budget;
+        if (!budget) {
+            return "";
+        }
+        if (budget.state === "no_limit") {
+            return "Sin limite configurado";
+        }
+        const remaining = Number(budget.remaining || 0).toFixed(2);
+        return `${remaining} ${(budget.currency || "usd").toUpperCase()} referencial`;
     },
 
     useAiSuggestion() {
@@ -226,5 +248,36 @@ patch(ContactPanel.prototype, {
         } finally {
             this.aiAssistant.busy = false;
         }
+    },
+
+    async rateAiSuggestion(feedbackState) {
+        const id = this.aiAssistant.suggestion?.id;
+        if (!id || this.aiAssistant.busy) {
+            return;
+        }
+        this.aiAssistant.busy = true;
+        try {
+            const data = await this.orm.call(
+                "chatroom.channel", "action_ai_feedback_suggestion",
+                [this.props.channelId, id, feedbackState]);
+            this._applyAiAssistantData(data);
+            this.notification.add("Evaluación guardada para las métricas de calidad.", { type: "success" });
+        } catch (error) {
+            this.aiAssistant.error = error.data ? error.data.message : error.message;
+        } finally {
+            this.aiAssistant.busy = false;
+        }
+    },
+
+    rateAiHelpful() {
+        return this.rateAiSuggestion("helpful");
+    },
+
+    rateAiEdited() {
+        return this.rateAiSuggestion("edited");
+    },
+
+    rateAiUnsafe() {
+        return this.rateAiSuggestion("unsafe");
     },
 });

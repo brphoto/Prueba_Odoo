@@ -60,6 +60,9 @@
                             <field name="tag_ids" widget="many2many_tags"/>
                         </group>
                     </group>
+                    <group string="Previsualizacion de envio" invisible="not preview_text">
+                        <field name="preview_text" nolabel="1" readonly="1" widget="text"/>
+                    </group>
                     <notebook>
                         <page name="reminders" string="Recordatorios">
                             <div class="alert alert-info" role="alert">

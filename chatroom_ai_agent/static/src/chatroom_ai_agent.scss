@@ -41,6 +41,21 @@
         strong { color: inherit; }
         span, small { color: var(--chatroom-ui-text-muted, #667085); }
     }
+
+    .o_chatroom_ai_agent_metrics {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+
+        span {
+            padding: 3px 7px;
+            border: 1px solid var(--chatroom-ui-border, #e5e7eb);
+            border-radius: 999px;
+            background: var(--chatroom-ui-surface, #fff);
+            color: var(--chatroom-ui-text, #344054);
+            font-size: .72rem;
+        }
+    }
 }
 
 .chatroom_ai_dashboard_form {

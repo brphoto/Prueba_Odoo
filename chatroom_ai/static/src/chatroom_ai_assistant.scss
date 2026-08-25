@@ -78,3 +78,13 @@
     line-height: 1.35;
     font-size: 0.82rem;
 }
+
+.o_chatroom_ai_assistant_feedback {
+    padding-top: 7px;
+    border-top: 1px solid var(--border-color, #dee2e6);
+
+    .btn {
+        margin-right: 4px;
+        margin-bottom: 3px;
+    }
+}
