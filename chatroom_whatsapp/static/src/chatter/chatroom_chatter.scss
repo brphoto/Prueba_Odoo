@@ -47,9 +47,21 @@
         flex-wrap: wrap;
         gap: .35rem;
         padding: .7rem 0 .15rem;
-        max-height: 7rem;
+        max-height: 2.75rem;
         overflow-y: auto;
         order: 4;
+
+        .text-muted.small {
+            flex: 0 0 auto;
+            font-size: .72rem;
+        }
+
+        .o-chatroom-chatter__related-button {
+            max-width: 15rem;
+            min-height: 1.9rem;
+            padding: .25rem .5rem;
+            font-size: .74rem;
+        }
     }
 
     &__related-button {
@@ -143,6 +155,17 @@
             width: 100%;
             max-height: 76vh;
         }
+    }
+
+    /* La conversación es el contenido principal del chatter. Los accesos
+       auxiliares no deben convertirlo en una página de botones. */
+    &__thread .o_chatroom_app,
+    &__thread .o_chatroom_thread {
+        min-height: 420px;
+    }
+
+    &__ai {
+        margin-top: .45rem;
     }
 
     &__conversation {

@@ -129,6 +129,16 @@ patch(ContactPanel.prototype, {
         return `${Math.round((this.aiAssistant.safetyPolicy?.min_confidence || 0) * 100)}%`;
     },
 
+    suggestionConfidenceLabel() {
+        const confidence = Number(this.aiAssistant.suggestion?.confidence || 0);
+        return `${Math.round(Math.max(0, Math.min(1, confidence)) * 100)}%`;
+    },
+
+    suggestionSourceLabel() {
+        const source = this.aiAssistant.suggestion?.source;
+        return source === "conversation" ? "Conversación" : source === "manual" ? "Generación manual" : "No indicada";
+    },
+
     budgetLabel() {
         const budget = this.aiAssistant.budget;
         if (!budget) {

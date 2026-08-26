@@ -60,6 +60,12 @@
                         <div class="alert alert-warning py-1 px-2 mb-2" t-if="aiAssistant.suggestion.safety_reason">
                             <i class="fa fa-shield"/> <t t-esc="aiAssistant.suggestion.safety_reason"/>
                         </div>
+                        <div class="o_chatroom_ai_assistant_trace" role="status">
+                            <span><i class="fa fa-check-circle"/> Confianza <strong t-esc="suggestionConfidenceLabel()"/></span>
+                            <span><i class="fa fa-database"/> Fuente <strong t-esc="suggestionSourceLabel()"/></span>
+                            <span t-if="aiAssistant.suggestion.estimated_context_tokens"><i class="fa fa-calculator"/> Contexto <strong><t t-esc="aiAssistant.suggestion.estimated_context_tokens"/> tokens</strong></span>
+                            <span t-if="aiAssistant.suggestion.knowledge_sources"><i class="fa fa-book"/> Conocimiento interno utilizado</span>
+                        </div>
                         <textarea class="form-control form-control-sm o_chatroom_ai_assistant_text"
                                   t-if="aiAssistant.suggestion.state == 'draft'"
                                   t-model="aiAssistant.suggestion.text" rows="4"/>

@@ -73,6 +73,23 @@
     background: rgba(0, 128, 96, 0.08);
 }
 
+.o_chatroom_ai_assistant_trace {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 10px;
+    margin: 0 0 8px;
+    padding: 6px 8px;
+    border: 1px solid color-mix(in srgb, var(--chatroom-ui-primary, #714b67) 16%, transparent);
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--chatroom-ui-primary, #714b67) 5%, transparent);
+    color: var(--o-muted-color, #667085);
+    font-size: .72rem;
+
+    span { white-space: nowrap; }
+    i { color: var(--chatroom-ui-primary, #714b67); margin-right: 3px; }
+    strong { color: var(--o-main-text-color, #344054); }
+}
+
 .o_chatroom_ai_assistant_text {
     white-space: pre-wrap;
     line-height: 1.35;

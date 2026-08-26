@@ -10,7 +10,7 @@
             </header>
             <field name="create_date"/><field name="company_id" optional="hide"/><field name="name"/><field name="notification_type" widget="badge"/>
             <field name="priority" widget="badge"/><field name="state" widget="badge"/><field name="user_id"/>
-            <field name="channel_id" optional="show"/><field name="snoozed_until" optional="show"/>
+            <field name="channel_id" optional="hide"/><field name="snoozed_until" optional="hide"/>
         </list></field>
     </record>
     <record id="view_chatroom_notification_form" model="ir.ui.view">

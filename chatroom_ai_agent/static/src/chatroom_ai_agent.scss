@@ -105,6 +105,31 @@
     max-width: none !important;
 }
 
+/* El centro ejecutivo IA también es una pantalla completa. El formulario
+   conserva la estética de Odoo, pero ya no queda encajonado en la columna
+   de ancho medio que se usa para formularios con chatter. */
+.o_form_view:has(form.chatroom_ai_dashboard_form),
+.o_form_view:has(.chatroom_ai_dashboard_form),
+.o_action_manager:has(.chatroom_ai_dashboard_form) .o_action,
+.o_action_manager:has(.chatroom_ai_dashboard_form) .o_form_view_container {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+}
+
+.o_form_view:has(form.chatroom_ai_dashboard_form) .o_form_sheet_bg,
+.o_form_view:has(.chatroom_ai_dashboard_form) .o_form_sheet_bg,
+.o_action_manager:has(.chatroom_ai_dashboard_form) .o_form_sheet_bg {
+    width: 100% !important;
+    max-width: none !important;
+}
+
+.o_form_view:has(.chatroom_ai_dashboard_form) .o_form_sheet {
+    width: calc(100% - 32px) !important;
+    max-width: none !important;
+    margin-inline: 16px;
+}
+
 .o_form_renderer.chatroom_ai_dashboard_form .o_form_sheet_bg,
 .o_form_renderer.o_chatroom_control_center .o_form_sheet_bg,
 .o_form_renderer:has(.chatroom_ai_dashboard_form) .o_form_sheet_bg,

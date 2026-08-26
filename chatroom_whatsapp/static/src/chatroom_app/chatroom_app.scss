@@ -212,6 +212,7 @@
     min-width: 0;
     overflow: visible;
     border-bottom: 1px solid var(--border-color, #dee2e6);
+    animation: chatroom-filter-panel-in 140ms ease-out;
 }
 
 .o_chatroom_filter_tools {
@@ -237,6 +238,28 @@
     min-width: 0;
     overflow-y: auto;
     overflow-x: hidden;
+}
+
+@keyframes chatroom-filter-panel-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 600px) {
+    /* En una columna estrecha las etiquetas largas se vuelven ilegibles.
+       Los títulos nativos siguen disponibles al mantener el cursor sobre el
+       icono y la barra conserva todos los accesos sin ocupar altura. */
+    .o_chatroom_app_toolbar .btn {
+        flex-basis: 48px;
+        width: 48px;
+        min-height: 42px;
+        font-size: 0;
+        white-space: nowrap;
+    }
+
+    .o_chatroom_app_toolbar .btn .fa {
+        font-size: 1rem;
+    }
 }
 
 .o_chatroom_app_list_item {

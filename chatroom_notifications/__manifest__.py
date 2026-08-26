@@ -4,7 +4,7 @@
     'description': '''Centro modular de alertas internas para conversaciones con SLA,
 fallos operativos y seguimientos. Las notificaciones son registros propios,
 con destinatario, prioridad, deduplicación, lectura, pausa y resolución.''',
-    'version': '19.0.1.0.1',
+    'version': '19.0.1.0.2',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
     'category': 'Discuss',

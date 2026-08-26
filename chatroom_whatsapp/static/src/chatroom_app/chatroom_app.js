@@ -14,7 +14,11 @@ const GLOBAL_BUS_CHANNEL = "chatroom_whatsapp_global";
 const PINNED_NUMBER_STORAGE_KEY = "chatroom_whatsapp.pinned_number_id";
 const SOUND_STORAGE_KEY = "chatroom_whatsapp.notification_sound";
 const INBOX_FILTERS_STORAGE_KEY = "chatroom_whatsapp.inbox_filters";
-const FILTERS_OPEN_STORAGE_KEY = "chatroom_whatsapp.filters_open";
+// Se cambia la clave para que las instalaciones que quedaron con el panel
+// abierto por una versión anterior vuelvan a una bandeja limpia y compacta.
+// El usuario puede abrirlo cuando lo necesite y su nueva preferencia sí queda
+// persistida durante las siguientes visitas.
+const FILTERS_OPEN_STORAGE_KEY = "chatroom_whatsapp.filters_open.v2";
 
 const CHANNEL_FIELDS = [
     "display_name",

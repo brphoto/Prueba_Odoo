@@ -2,7 +2,7 @@
 import requests
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 
 class ResConfigSettings(models.TransientModel):
@@ -85,6 +85,31 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='chatroom_ai.knowledge_product_limit',
         help='La IA consulta productos vivos de Odoo solo cuando la pregunta contiene términos de producto.',
     )
+
+    @api.constrains(
+        'chatroom_ai_usage_days', 'chatroom_ai_daily_token_limit',
+        'chatroom_ai_daily_request_limit', 'chatroom_ai_history_messages',
+        'chatroom_ai_knowledge_context_max_chars',
+        'chatroom_ai_knowledge_context_max_chunks',
+        'chatroom_ai_knowledge_product_limit',
+    )
+    def _check_ai_resource_limits(self):
+        """Evita configuraciones que disparen el consumo o rompan el contexto."""
+        for settings in self:
+            if not 1 <= settings.chatroom_ai_usage_days <= 31:
+                raise ValidationError(_('El periodo de consulta debe estar entre 1 y 31 días.'))
+            if settings.chatroom_ai_daily_token_limit < 0:
+                raise ValidationError(_('El límite diario de tokens no puede ser negativo.'))
+            if settings.chatroom_ai_daily_request_limit < 0:
+                raise ValidationError(_('El límite diario de solicitudes no puede ser negativo.'))
+            if not 1 <= settings.chatroom_ai_history_messages <= 30:
+                raise ValidationError(_('La cantidad de mensajes para la IA debe estar entre 1 y 30.'))
+            if not 1000 <= settings.chatroom_ai_knowledge_context_max_chars <= 16000:
+                raise ValidationError(_('El conocimiento enviado debe estar entre 1.000 y 16.000 caracteres.'))
+            if not 1 <= settings.chatroom_ai_knowledge_context_max_chunks <= 10:
+                raise ValidationError(_('Los fragmentos relevantes deben estar entre 1 y 10.'))
+            if not 1 <= settings.chatroom_ai_knowledge_product_limit <= 20:
+                raise ValidationError(_('Los productos coincidentes deben estar entre 1 y 20.'))
 
     @api.model
     def get_values(self):

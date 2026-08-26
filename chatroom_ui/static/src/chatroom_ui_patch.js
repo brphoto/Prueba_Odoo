@@ -78,6 +78,9 @@ patch(ChatroomApp.prototype, {
             roots.push(this.el);
         }
         const targets = [...roots, document.documentElement].filter(Boolean);
+        targets.forEach((target) => {
+            target.dataset.chatroomDensity = settings.message_density || "comfortable";
+        });
         targets.forEach((target) => Object.entries(variables).forEach(([name, value]) => {
             if (value !== undefined && value !== null && value !== "") {
                 target.style.setProperty(name, value);
@@ -124,6 +127,7 @@ patch(ChatroomApp.prototype, {
         ];
         targets.forEach((target) => names.forEach((name) => target.style.removeProperty(name)));
         delete document.documentElement.dataset.chatroomMobileCompact;
+        delete document.documentElement.dataset.chatroomDensity;
         window.removeEventListener("chatroom_ui_settings_updated", this._chatroomUiRefresh);
         window.removeEventListener("focus", this._chatroomUiRefresh);
     },

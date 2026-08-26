@@ -4,7 +4,7 @@
         <field name="name">chatroom.operations.dashboard.form</field>
         <field name="model">chatroom.operations.dashboard</field>
         <field name="arch" type="xml">
-            <form string="Panel operativo" create="0" edit="0">
+            <form string="Panel operativo" create="0" edit="0" class="chatroom_operations_dashboard_form">
                 <header><button name="action_refresh" type="object" string="Actualizar panel" class="btn-primary" icon="fa-refresh"/><button name="action_collect_metrics" type="object" string="Actualizar métricas" icon="fa-line-chart"/></header>
                 <sheet>
                     <div class="oe_title"><h1>Panel operativo de Chatroom</h1><field name="summary" class="text-muted"/></div>

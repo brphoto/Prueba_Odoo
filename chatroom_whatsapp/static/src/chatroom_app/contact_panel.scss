@@ -140,13 +140,34 @@
     border-bottom: 1px solid var(--border-color, #dee2e6);
 
     .btn {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 6px;
         width: 100%;
         min-width: 0;
         min-height: 34px;
-        border-radius: 14px;
+        padding: 7px 8px;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        color: var(--o-brand-primary, #714b67);
         font-size: 0.8em;
-        white-space: normal;
-        overflow-wrap: anywhere;
+        text-align: left;
+        white-space: nowrap;
+
+        &:hover,
+        &:focus-visible {
+            background: rgba(113, 75, 103, .08);
+            color: var(--o-brand-primary, #714b67);
+            box-shadow: none;
+        }
+
+        .fa {
+            flex: 0 0 14px;
+            color: var(--chatroom-ui-accent, #00a884);
+            text-align: center;
+        }
     }
 }
 

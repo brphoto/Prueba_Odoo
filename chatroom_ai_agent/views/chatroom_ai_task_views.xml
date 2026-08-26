@@ -14,11 +14,11 @@
                 <field name="name"/>
                 <field name="task_type"/>
                 <field name="partner_id"/>
-                <field name="channel_id"/>
+                <field name="channel_id" optional="hide"/>
                 <field name="state" widget="badge"/>
                 <field name="risk_level" widget="badge"/>
                 <field name="approval_required"/>
-                <field name="user_id"/>
+                <field name="user_id" optional="hide"/>
             </list>
         </field>
     </record>

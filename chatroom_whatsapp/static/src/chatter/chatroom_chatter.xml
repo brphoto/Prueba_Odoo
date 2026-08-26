@@ -159,7 +159,7 @@
     </t>
 
     <t t-name="chatroom_whatsapp.ChatterPatch" t-inherit="mail.Chatter" t-inherit-mode="extension">
-        <xpath expr="//*[contains(@class, 'o-mail-Chatter-activity')]" position="before">
+        <xpath expr="//*[hasclass('o-mail-Chatter-activity')]" position="before">
             <button t-if="chatroomAvailable"
                     class="o-mail-Chatter-chatroom btn text-nowrap me-1"
                     t-att-class="{

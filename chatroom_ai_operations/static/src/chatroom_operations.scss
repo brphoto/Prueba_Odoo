@@ -1,0 +1,86 @@
+/* Capa visual del panel operativo: misma jerarquía que los centros de
+   control, con un ancho aprovechable y lectura rápida de alertas. */
+.chatroom_operations_dashboard_form {
+    .o_form_sheet {
+        width: calc(100% - 32px) !important;
+        max-width: none !important;
+        margin: 16px;
+        padding: 28px 32px 36px;
+        border: 1px solid #dbe3ee;
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 8px 28px rgba(15, 23, 42, .08);
+    }
+
+    .oe_title h1 {
+        margin: 0 0 6px;
+        color: #1f2937;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -.02em;
+    }
+
+    .o_form_sheet > .o_group {
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin: 0 0 24px;
+    }
+
+    .o_form_sheet .oe_stat_button {
+        min-height: 90px;
+        width: 100%;
+        border: 1px solid #dbe3ee;
+        border-radius: 12px;
+        background: #f8fafc;
+        transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    }
+
+    .o_form_sheet .oe_stat_button:hover,
+    .o_form_sheet .oe_stat_button:focus-visible {
+        border-color: #b68cac;
+        box-shadow: 0 7px 18px rgba(81, 52, 76, .12);
+        transform: translateY(-1px);
+    }
+
+    .o_form_sheet .o_field_widget:not(.oe_stat_button) {
+        min-height: 42px;
+        padding: 10px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 9px;
+        background: #f8fafc;
+    }
+}
+
+.o_form_view:has(form.chatroom_operations_dashboard_form),
+.o_form_view:has(.chatroom_operations_dashboard_form),
+.o_action_manager:has(.chatroom_operations_dashboard_form) .o_action,
+.o_action_manager:has(.chatroom_operations_dashboard_form) .o_form_view_container {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+}
+
+.o_form_view:has(.chatroom_operations_dashboard_form) .o_form_sheet_bg,
+.o_action_manager:has(.chatroom_operations_dashboard_form) .o_form_sheet_bg {
+    width: 100% !important;
+    max-width: none !important;
+}
+
+@media (max-width: 1000px) {
+    .chatroom_operations_dashboard_form .o_form_sheet > .o_group {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .chatroom_operations_dashboard_form .o_form_sheet {
+        width: calc(100% - 20px) !important;
+        margin: 10px;
+        padding: 20px 16px 28px;
+    }
+
+    .chatroom_operations_dashboard_form .o_form_sheet > .o_group {
+        grid-template-columns: 1fr;
+    }
+}

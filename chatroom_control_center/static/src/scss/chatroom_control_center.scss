@@ -11,6 +11,26 @@
     background: #f4f6fa;
 }
 
+/* La vista de control es una pantalla completa, no un formulario con
+   chatter. Odoo puede limitar el renderer y reservar una columna a la
+   derecha; estos selectores llegan hasta los padres para eliminar ese
+   hueco sin afectar formularios normales. */
+.o_form_view:has(form.o_chatroom_control_center),
+.o_form_view:has(.o_chatroom_control_center),
+.o_action_manager:has(.o_chatroom_control_center) .o_action,
+.o_action_manager:has(.o_chatroom_control_center) .o_form_view_container {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+}
+
+.o_form_view:has(form.o_chatroom_control_center) .o_form_sheet_bg,
+.o_form_view:has(.o_chatroom_control_center) .o_form_sheet_bg,
+.o_action_manager:has(.o_chatroom_control_center) .o_form_sheet_bg {
+    width: 100% !important;
+    max-width: none !important;
+}
+
 /* Odoo limita el renderer completo, no solamente el sheet. */
 .o_form_renderer.o_chatroom_control_center,
 .o_form_renderer.chatroom_ai_dashboard_form,
@@ -53,6 +73,12 @@
     border-radius: 16px;
     box-shadow: 0 8px 28px rgba(15, 23, 42, .08);
     background: #fff;
+}
+
+.o_form_view:has(.o_chatroom_control_center) .o_form_sheet {
+    width: calc(100% - 32px) !important;
+    max-width: none !important;
+    margin-inline: 16px;
 }
 
 .o_chatroom_control_center .o_chatroom_control_hero {

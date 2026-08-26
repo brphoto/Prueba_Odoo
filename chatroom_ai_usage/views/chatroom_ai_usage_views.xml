@@ -139,8 +139,8 @@
         <field name="arch" type="xml"><list string="Solicitudes IA">
             <field name="company_id" optional="hide"/>
             <field name="request_date"/><field name="model"/><field name="task_type"/>
-            <field name="channel_id"/><field name="input_tokens"/>
-            <field name="output_tokens"/><field name="total_tokens"/><field name="success"/>
+            <field name="channel_id" optional="hide"/><field name="input_tokens" optional="hide"/>
+            <field name="output_tokens" optional="hide"/><field name="total_tokens"/><field name="success"/>
         </list></field>
     </record>
     <record id="view_chatroom_ai_usage_event_graph" model="ir.ui.view">
@@ -157,8 +157,8 @@
         <field name="arch" type="xml"><list string="Pruebas de calidad" decoration-success="last_state == 'passed'" decoration-warning="last_state == 'warning'" decoration-danger="last_state == 'error'">
             <header><button name="action_run_selected" type="object" string="Ejecutar seleccionadas" class="btn-primary"/></header>
             <button name="action_run" type="object" icon="fa-play" title="Ejecutar"/>
-            <field name="name"/><field name="task_type"/><field name="channel_id"/>
-            <field name="last_run"/><field name="last_score"/><field name="last_state" widget="badge"/>
+            <field name="name"/><field name="task_type"/><field name="channel_id" optional="hide"/>
+            <field name="last_run" optional="hide"/><field name="last_score"/><field name="last_state" widget="badge"/>
         </list></field>
     </record>
     <record id="view_chatroom_ai_quality_test_form" model="ir.ui.view">

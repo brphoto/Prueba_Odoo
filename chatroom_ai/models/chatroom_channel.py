@@ -67,6 +67,10 @@ class ChatroomChannel(models.Model):
                 'safety_decision': suggestion.safety_decision,
                 'safety_reason': suggestion.safety_reason or '',
                 'feedback_state': suggestion.feedback_state,
+                'source': suggestion.source or '',
+                'source_detail': suggestion.source_detail or '',
+                'knowledge_sources': suggestion.knowledge_sources or '',
+                'estimated_context_tokens': suggestion.estimated_context_tokens or 0,
             } if suggestion else False,
         }
 
