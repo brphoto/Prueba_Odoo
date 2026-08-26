@@ -108,11 +108,12 @@ class ChatroomNotification(models.Model):
     def _cron_create_sla_notifications(self):
         if 'chatroom.channel' not in self.env:
             return 0
-        channels = self.env['chatroom.channel'].sudo().search([
+        candidates = self.env['chatroom.channel'].sudo().search([
             ('state', 'in', ('open', 'pending')),
-            ('first_response_sla_state', 'in', ('yellow', 'red')),
             ('assigned_user_id', '!=', False),
         ])
+        channels = candidates.filtered(
+            lambda c: c.first_response_sla_state in ('yellow', 'red'))
         created = 0
         for channel in channels:
             level = 2 if channel.first_response_sla_state == 'red' else 1

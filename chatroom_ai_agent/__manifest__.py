@@ -25,9 +25,9 @@ pagos o WhatsApp a un único módulo.''',
         'views/chatroom_ai_memory_views.xml',
         'views/chatroom_ai_audit_views.xml',
         'views/chatroom_ai_automation_views.xml',
+        'views/chatroom_ai_menus.xml',
         'views/chatroom_ai_setup_views.xml',
         'views/res_config_settings_views.xml',
-        'views/chatroom_ai_menus.xml',
     ],
     'assets': {
         'web.assets_backend': [

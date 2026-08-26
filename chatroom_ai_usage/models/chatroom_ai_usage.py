@@ -82,7 +82,7 @@ class ChatroomAiUsageSnapshot(models.Model):
         system_group = self.env.ref('base.group_system', raise_if_not_found=False)
         if not todo or not system_group or self.budget_state not in ('warning', 'exceeded'):
             return
-        admins = system_group.users.sudo()
+        admins = system_group.all_user_ids.sudo()
         activity = self.env['mail.activity'].sudo()
         for user in admins:
             duplicate = activity.search_count([
