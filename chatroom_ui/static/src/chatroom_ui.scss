@@ -7,6 +7,7 @@
     --chatroom-ui-border: #e5e7eb;
     --chatroom-ui-text-muted: #667085;
     --chatroom-ui-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+    --chatroom-ui-focus-ring: 0 0 0 3px color-mix(in srgb, var(--chatroom-ui-primary) 18%, transparent);
 }
 
 .o_chatroom_app {
@@ -103,6 +104,7 @@
         border-bottom-color: var(--chatroom-ui-border);
         background: var(--chatroom-ui-surface-muted);
         scrollbar-width: thin;
+        scrollbar-color: color-mix(in srgb, var(--chatroom-ui-primary) 45%, transparent) transparent;
 
         .btn {
             flex: 0 0 64px;
@@ -122,6 +124,11 @@
                 background: color-mix(in srgb, var(--chatroom-ui-primary) 8%, transparent);
                 color: var(--chatroom-ui-primary);
             }
+
+            &:focus-visible {
+                outline: 0;
+                box-shadow: var(--chatroom-ui-focus-ring);
+            }
         }
     }
 
@@ -137,7 +144,7 @@
             &:focus {
                 border-color: var(--chatroom-ui-primary);
                 background: #fff;
-                box-shadow: 0 0 0 3px color-mix(in srgb, var(--chatroom-ui-primary) 12%, transparent);
+                box-shadow: var(--chatroom-ui-focus-ring);
             }
         }
     }
@@ -411,6 +418,19 @@
         min-height: 36px;
         border-radius: 10px;
         font-weight: 600;
+    }
+
+    // La densidad configurada en Ajustes se aplica a toda la experiencia.
+    &[data-chatroom-density="compact"] {
+        .o_chatroom_app_list_item { min-height: 64px; padding-block: 8px; }
+        .o_chatroom_thread_messages { padding-block: 12px; }
+        .o_chatroom_bubble { padding-block: 6px; }
+    }
+
+    &[data-chatroom-density="spacious"] {
+        .o_chatroom_app_list_item { min-height: 88px; padding-block: 15px; }
+        .o_chatroom_thread_messages { padding-block: 26px; }
+        .o_chatroom_bubble { padding-block: 11px; }
     }
 
     .o_chatroom_contact_docs {
