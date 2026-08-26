@@ -5,9 +5,23 @@
         <field name="model">chatroom.operations.dashboard</field>
         <field name="arch" type="xml">
             <form string="Panel operativo" create="0" edit="0" class="chatroom_operations_dashboard_form">
-                <header><button name="action_refresh" type="object" string="Actualizar panel" class="btn-primary" icon="fa-refresh"/><button name="action_collect_metrics" type="object" string="Actualizar métricas" icon="fa-line-chart"/></header>
+                <header>
+                    <button name="action_open_priority" type="object" string="Atender prioridad" class="btn-primary" icon="fa-bolt"/>
+                    <button name="action_open_setup" type="object" string="Siguiente paso" icon="fa-magic"/>
+                    <button name="action_refresh" type="object" string="Actualizar panel" icon="fa-refresh"/>
+                    <button name="action_collect_metrics" type="object" string="Actualizar métricas" icon="fa-line-chart"/>
+                </header>
                 <sheet>
-                    <div class="oe_title"><h1>Panel operativo de Chatroom</h1><field name="summary" class="text-muted"/></div>
+                    <div class="oe_title">
+                        <h1>Panel operativo de Chatroom</h1>
+                        <field name="summary" class="text-muted"/>
+                        <div class="o_row">
+                            <field name="priority_level" widget="badge"/>
+                            <field name="attention_count" string="Pendientes"/>
+                            <field name="next_action" class="text-muted"/>
+                        </div>
+                        <div class="o_row"><field name="setup_next_step" class="text-muted"/></div>
+                    </div>
                     <field name="company_id" invisible="1"/>
                     <group string="Atención inmediata" col="5">
                         <button name="action_open_conversations" type="object" class="oe_stat_button"><field name="active_conversations" widget="statinfo" string="Conversaciones activas"/></button>
@@ -27,6 +41,25 @@
                         <button name="action_open_stagnant_opportunities" type="object" class="oe_stat_button"><field name="stagnant_opportunities" widget="statinfo" string="Oportunidades estancadas"/></button>
                         <button name="action_open_demos" type="object" class="oe_stat_button"><field name="demo_count" widget="statinfo" string="Contactos demo"/></button>
                     </group>
+                    <group string="Seguimiento comercial" col="5">
+                        <button name="action_open_open_opportunities" type="object" class="oe_stat_button"><field name="open_opportunities" widget="statinfo" string="Oportunidades abiertas"/></button>
+                        <button name="action_open_overdue_activities" type="object" class="oe_stat_button"><field name="overdue_activities" widget="statinfo" string="Actividades vencidas"/></button>
+                        <button name="action_open_today_activities" type="object" class="oe_stat_button"><field name="today_activities" widget="statinfo" string="Actividades de hoy"/></button>
+                        <field name="pipeline_value" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                        <field name="stagnant_capital" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                    </group>
+                    <group string="IA y control de consumo" col="4">
+                        <button name="action_open_ai_usage_today" type="object" class="oe_stat_button"><field name="ai_requests_today" widget="statinfo" string="Solicitudes IA hoy"/></button>
+                        <button name="action_open_ai_usage_today" type="object" class="oe_stat_button"><field name="ai_tokens_today" widget="statinfo" string="Tokens IA hoy"/></button>
+                        <button name="action_open_ai_errors_today" type="object" class="oe_stat_button"><field name="ai_failed_today" widget="statinfo" string="Fallos IA hoy"/></button>
+                        <field name="ai_config_state" widget="badge"/>
+                    </group>
+                    <group string="Salud de integraciones" col="3">
+                        <field name="whatsapp_state" widget="badge"/>
+                        <field name="ai_config_state" widget="badge" string="IA"/>
+                        <field name="payphone_state" widget="badge"/>
+                    </group>
+                    <field name="currency_id" invisible="1"/>
                     <field name="refreshed_at"/>
                 </sheet>
             </form>
