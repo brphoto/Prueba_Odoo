@@ -99,17 +99,19 @@ class ResPartner(models.Model):
             vals['rfm_category'] = vals['rfm_manual_category'] or 'none'
         return super().write(vals)
 
-    @api.depends('phone', 'mobile', 'email')
+    # Odoo 19 unificó el teléfono móvil en ``res.partner.phone``. Mantener
+    # ``mobile`` aquí rompe la reconstrucción del registro al restaurar una
+    # base, porque el campo ya no existe en el modelo.
+    @api.depends('phone', 'email')
     def _compute_data_quality(self):
         Partner = self.env['res.partner'].sudo()
         for partner in self:
-            phone = partner.phone or partner.mobile
+            phone = partner.phone
             phone_count = 0
             email_count = 0
             if phone:
                 phone_count = Partner.search_count([
-                    ('id', '!=', partner.id), '|',
-                    ('phone', '=', phone), ('mobile', '=', phone),
+                    ('id', '!=', partner.id), ('phone', '=', phone),
                 ])
             if partner.email:
                 email_count = Partner.search_count([
@@ -122,9 +124,8 @@ class ResPartner(models.Model):
     def action_open_data_quality_duplicates(self):
         self.ensure_one()
         domain = [('id', '=', False)]
-        if self.phone or self.mobile:
-            phone = self.phone or self.mobile
-            domain = ['|', ('phone', '=', phone), ('mobile', '=', phone)]
+        if self.phone:
+            domain = [('phone', '=', self.phone)]
         elif self.email:
             domain = [('email', '=ilike', self.email)]
         return {

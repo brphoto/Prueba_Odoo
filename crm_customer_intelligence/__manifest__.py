@@ -50,7 +50,7 @@ ahora depende de este módulo (no al revés) para no duplicar la lógica.
     'icon': '/crm_customer_intelligence/static/description/icon.svg',
 
     'category': 'Sales/CRM',
-    'version': '19.0.4.0.4',
+    'version': '19.0.4.0.5',
 
     'depends': ['crm', 'sale', 'account', 'kpi_engine'],
 

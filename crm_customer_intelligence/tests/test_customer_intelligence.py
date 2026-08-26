@@ -11,6 +11,26 @@ from odoo.tests import TransactionCase, tagged
 @tagged('post_install', '-at_install')
 class TestCrmCustomerIntelligence(TransactionCase):
 
+    def test_data_quality_uses_odoo19_phone_field(self):
+        """La calidad de datos usa el teléfono compatible de Odoo 19.
+
+        Algunas bases pueden conservar ``mobile`` por una integración
+        adicional; la lógica de este módulo no debe depender de ese campo.
+        """
+        first = self.env['res.partner'].create({
+            'name': 'Contacto teléfono 1', 'phone': '+593 999 000 111',
+        })
+        second = self.env['res.partner'].create({
+            'name': 'Contacto teléfono 2', 'phone': '+593 999 000 111',
+        })
+
+        self.assertEqual(first.duplicate_phone_count, 1)
+        self.assertEqual(second.duplicate_phone_count, 1)
+        action = first.action_open_data_quality_duplicates()
+        self.assertEqual(action['domain'], [
+            ('phone', '=', '+593 999 000 111'),
+        ])
+
     def _create_posted_invoice(self, partner, product, price, invoice_date):
         country = self.env['res.country'].search([('code', '=', 'EC')], limit=1)
         document_type = self.env['l10n_latam.document.type'].search([

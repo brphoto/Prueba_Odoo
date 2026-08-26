@@ -75,7 +75,8 @@ class ChatroomTemplateVariable(models.Model):
         if source == 'contact_name':
             return partner.name or ''
         if source == 'contact_phone':
-            return partner.phone or partner.mobile or ''
+            # En Odoo 19 el teléfono móvil se guarda en ``phone``.
+            return partner.phone or ''
         if source == 'contact_email':
             return partner.email or ''
         if source == 'conversation_name':

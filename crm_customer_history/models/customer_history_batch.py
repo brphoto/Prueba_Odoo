@@ -200,11 +200,12 @@ class CrmCustomerHistoryBatch(models.Model):
             if phone not in phone_results:
                 candidates = cache.get('phone_candidates')
                 if candidates is None:
-                    candidates = Partner.search(['|', ('phone', '!=', False), ('mobile', '!=', False)])
+                    # Odoo 19 ya no expone ``res.partner.mobile``; el número
+                    # se encuentra en ``phone``.
+                    candidates = Partner.search([('phone', '!=', False)])
                     cache['phone_candidates'] = candidates
                 phone_results[phone] = next((partner for partner in candidates if (
                     phone in self.env['crm.customer.history.line'].normalize_phone(partner.phone)
-                    or phone in self.env['crm.customer.history.line'].normalize_phone(partner.mobile)
                 )), False)
             if phone_results[phone]:
                 return phone_results[phone], 'matched'
