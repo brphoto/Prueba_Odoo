@@ -96,6 +96,44 @@
     }
 }
 
+.o_chatroom_ai_setup_form {
+    .o_form_sheet {
+        max-width: 1180px;
+        margin: 16px auto;
+        padding: 28px 32px 36px;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: var(--o-view-background-color, #fff);
+        box-shadow: 0 8px 28px rgba(15, 23, 42, .08);
+    }
+
+    .o_chatroom_ai_setup_summary {
+        margin: 18px 0 24px;
+        padding: 14px 18px;
+        border: 1px solid #eadfea;
+        border-radius: 12px;
+        background: #faf7fa;
+    }
+
+    .o_chatroom_ai_setup_checks > .o_group {
+        min-height: 124px;
+        padding: 14px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #f8fafc;
+    }
+
+    .o_chatroom_ai_setup_checks .o_form_label {
+        font-weight: 600;
+    }
+
+    @media (max-width: 700px) {
+        .o_form_sheet { margin: 8px; padding: 20px 16px 26px; }
+        .o_chatroom_ai_setup_checks { display: block; }
+        .o_chatroom_ai_setup_checks > .o_group { margin-bottom: 10px; }
+    }
+}
+
 /* El límite de ancho de Odoo se aplica al renderer padre. */
 .o_form_renderer.chatroom_ai_dashboard_form,
 .o_form_renderer.o_chatroom_control_center,
@@ -110,11 +148,15 @@
    de ancho medio que se usa para formularios con chatter. */
 .o_form_view:has(form.chatroom_ai_dashboard_form),
 .o_form_view:has(.chatroom_ai_dashboard_form),
+.o_action_manager:has(form.chatroom_ai_dashboard_form),
+.o_action_manager:has(form.o_chatroom_control_center),
+.o_action_manager:has(.o_chatroom_control_center),
 .o_action_manager:has(.chatroom_ai_dashboard_form) .o_action,
 .o_action_manager:has(.chatroom_ai_dashboard_form) .o_form_view_container {
     width: 100% !important;
     max-width: none !important;
     min-width: 0 !important;
+    flex: 1 1 100% !important;
 }
 
 .o_form_view:has(form.chatroom_ai_dashboard_form) .o_form_sheet_bg,
@@ -128,6 +170,15 @@
     width: calc(100% - 32px) !important;
     max-width: none !important;
     margin-inline: 16px;
+}
+
+.o_action_manager:has(.chatroom_ai_dashboard_form) .o_form_view,
+.o_action_manager:has(.o_chatroom_control_center) .o_form_view,
+.o_action_manager:has(.chatroom_ai_dashboard_form) .o_form_renderer,
+.o_action_manager:has(.o_chatroom_control_center) .o_form_renderer {
+    width: 100% !important;
+    max-width: none !important;
+    flex: 1 1 100% !important;
 }
 
 .o_form_renderer.chatroom_ai_dashboard_form .o_form_sheet_bg,

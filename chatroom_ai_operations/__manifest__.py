@@ -6,7 +6,7 @@ configurar playbooks de comunicación y generar escenarios DEMO QA.
 
 El modo de playbook por defecto solo crea avisos internos. El envío automático
 requiere una plantilla WhatsApp aprobada, permisos y activación explícita.''',
-    'version': '19.0.1.0.2',
+    'version': '19.0.1.0.3',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
     'category': 'Discuss',

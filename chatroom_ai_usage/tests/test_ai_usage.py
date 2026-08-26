@@ -3,11 +3,25 @@ from unittest.mock import Mock, patch
 
 from odoo import fields
 from odoo.exceptions import UserError
+from odoo.exceptions import ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
 @tagged('post_install', '-at_install')
 class TestChatroomAiUsage(TransactionCase):
+
+    def test_resource_limits_reject_expensive_context_configuration(self):
+        with self.assertRaises(ValidationError):
+            self.env['res.config.settings'].create({
+                'chatroom_ai_history_messages': 31,
+            })
+
+    def test_resource_limits_allow_zero_daily_budgets(self):
+        settings = self.env['res.config.settings'].create({
+            'chatroom_ai_daily_token_limit': 0,
+            'chatroom_ai_daily_request_limit': 0,
+        })
+        settings._check_ai_resource_limits()
 
     def test_model_catalog_classifies_chat_models(self):
         model = self.env['chatroom.ai.provider.model']

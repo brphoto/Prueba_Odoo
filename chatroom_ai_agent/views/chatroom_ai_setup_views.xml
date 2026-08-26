@@ -4,7 +4,7 @@
         <field name="name">chatroom.ai.setup.form</field>
         <field name="model">chatroom.ai.setup</field>
         <field name="arch" type="xml">
-            <form string="Preparación del sistema comercial" create="0" edit="0">
+            <form string="Preparación del sistema comercial" create="0" edit="0" class="o_chatroom_ai_setup_form">
                 <header>
                     <button name="action_refresh" type="object" string="Volver a comprobar" class="btn-primary" icon="fa-refresh"/>
                 </header>
@@ -13,14 +13,16 @@
                     <div class="alert alert-info" role="alert">
                         Revisa estos puntos antes de activar la atención y las ventas automáticas.
                     </div>
+                    <div class="o_chatroom_ai_setup_summary">
                     <group col="4">
                         <field name="overall_state" widget="badge"/>
                         <field name="ready_count"/>
                         <field name="total_checks"/>
                         <field name="readiness_percent" widget="percentage"/>
                     </group>
+                    </div>
                     <separator string="Conexiones y datos"/>
-                    <group col="2">
+                    <group col="2" class="o_chatroom_ai_setup_checks">
                         <group string="WhatsApp"><field name="whatsapp_ready" widget="boolean"/><field name="whatsapp_detail" nolabel="1"/></group>
                         <group string="Proveedor IA"><field name="provider_ready" widget="boolean"/><field name="provider_detail" nolabel="1"/></group>
                         <group string="Base de conocimiento"><field name="knowledge_ready" widget="boolean"/><field name="knowledge_detail" nolabel="1"/></group>

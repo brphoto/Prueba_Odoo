@@ -66,7 +66,7 @@ agrega la capa visual que los muestra dentro del chat.
     'author': "Bryan Cando",
     'website': "https://github.com/brphoto/Prueba_Odoo",
     'license': 'LGPL-3',
-    'icon': '/chatroom_sales_intelligence/static/description/icon.png',
+    'icon': '/chatroom_sales_intelligence/static/description/icon.svg',
 
     'category': 'Sales/CRM',
     'version': '19.0.1.0.23',

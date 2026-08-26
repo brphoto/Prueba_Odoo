@@ -12,7 +12,12 @@ class TestChatroomAiOperations(TransactionCase):
         self.assertIsNotNone(dashboard.refreshed_at)
         self.assertEqual(dashboard.company_id, self.env.company)
         self.assertIsInstance(dashboard.active_conversations, int)
+        self.assertIsInstance(dashboard.unread_conversations, int)
+        self.assertIsInstance(dashboard.stagnant_opportunities, int)
         self.assertEqual(dashboard.action_open_failed_payments()['target'], 'new')
+        self.assertEqual(dashboard.action_open_pending_payments()['target'], 'new')
+        self.assertEqual(dashboard.action_open_conversations()['target'], 'new')
+        self.assertEqual(dashboard.action_open_stagnant_opportunities()['target'], 'new')
 
     def test_playbook_safe_mode_creates_internal_notification(self):
         partner = self.env.ref('base.partner_root')
