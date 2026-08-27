@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ai_knowledge_base_organization_form" model="ir.ui.view">
+        <field name="name">ai.knowledge.base.organization.form</field>
+        <field name="model">ai.knowledge.base</field>
+        <field name="inherit_id" ref="chatroom_sales_intelligence.view_ai_knowledge_base_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_organize" type="object" string="Organizar conocimiento" class="btn-secondary" icon="fa-magic"/>
+            </xpath>
+            <xpath expr="//field[@name='source_type']" position="after">
+                <field name="knowledge_format"/>
+                <field name="organization_state" widget="badge"/>
+            </xpath>
+            <xpath expr="//field[@name='content_text']" position="before">
+                <group string="Organización natural" class="o_chatroom_ai_knowledge_organization" col="2">
+                    <div class="alert alert-info" role="status" colspan="2">
+                        Escribe la información como la explicarías a un compañero. Organizar crea un resumen, puntos clave, preguntas frecuentes y reglas para la IA sin consumir tokens.
+                    </div>
+                    <field name="organized_summary" nolabel="1" placeholder="Resumen que utilizará la IA..."/>
+                    <field name="key_points" nolabel="1" placeholder="Puntos clave detectados..."/>
+                    <field name="faq_entries" nolabel="1" placeholder="Preguntas y respuestas detectadas..."/>
+                    <field name="operational_rules" nolabel="1" placeholder="Reglas y límites detectados..."/>
+                    <field name="organization_notes" nolabel="1" colspan="2" readonly="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_ai_knowledge_base_organization_list" model="ir.ui.view">
+        <field name="name">ai.knowledge.base.organization.list</field>
+        <field name="model">ai.knowledge.base</field>
+        <field name="inherit_id" ref="chatroom_sales_intelligence.view_ai_knowledge_base_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="before">
+                <field name="organization_state" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

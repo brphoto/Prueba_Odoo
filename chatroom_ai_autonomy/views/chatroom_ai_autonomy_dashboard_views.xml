@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_ai_dashboard_autonomy" model="ir.ui.view">
+        <field name="name">chatroom.ai.dashboard.autonomy</field>
+        <field name="model">chatroom.ai.dashboard</field>
+        <field name="inherit_id" ref="chatroom_ai_agent.view_chatroom_ai_dashboard_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('chatroom_ai_dashboard_quick_actions')]" position="inside">
+                <button name="action_open_exceptions" type="object" string="Bandeja de excepciones" class="chatroom_ai_dashboard_quick_action" icon="fa-warning"/>
+            </xpath>
+            <xpath expr="//div[hasclass('chatroom_ai_dashboard_cards')]" position="inside">
+                <button name="action_open_exceptions" type="object" class="chatroom_ai_dashboard_metric_card">
+                    <i class="fa fa-warning" title="Excepciones abiertas" aria-hidden="true"/>
+                    <span class="chatroom_ai_dashboard_metric_content"><field name="open_exceptions" nolabel="1"/><small>Excepciones</small></span>
+                    <i class="fa fa-chevron-right chatroom_ai_dashboard_metric_arrow" title="Abrir detalle" aria-hidden="true"/>
+                </button>
+            </xpath>
+            <xpath expr="//div[hasclass('chatroom_ai_dashboard_performance_grid')]" position="inside">
+                <div class="chatroom_ai_dashboard_performance_card"><span>Tareas autónomas</span><field name="autonomous_tasks" nolabel="1" readonly="1"/></div>
+                <div class="chatroom_ai_dashboard_performance_card"><span>Intervenciones humanas</span><field name="human_interventions" nolabel="1" readonly="1"/></div>
+                <div class="chatroom_ai_dashboard_performance_card"><span>Tasa autónoma (%)</span><field name="autonomy_rate" nolabel="1" readonly="1"/></div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -78,6 +78,8 @@
                         <field name="company_id"/>
                         <field name="sequence"/>
                         <field name="mode"/>
+                        <field name="auto_continue"/>
+                        <field name="max_chain_steps" invisible="not auto_continue"/>
                         <field name="scope"/>
                         <field name="min_confidence" help="La IA solicitará revisión cuando su confianza esté por debajo de este porcentaje."/>
                         <field name="daily_message_limit" help="Usa cero para permitir respuestas sin límite diario."/>
@@ -152,6 +154,14 @@
                     <field name="autonomy_confidence"/>
                     <field name="autonomy_evaluated_at"/>
                     <field name="autonomy_reason" nolabel="1" colspan="2"/>
+                    <field name="verification_state" widget="badge"/>
+                    <field name="verification_message" nolabel="1" colspan="2"/>
+                    <field name="next_action" colspan="2"/>
+                    <field name="next_task_type"/>
+                    <field name="needs_human"/>
+                    <field name="chain_parent_id"/>
+                    <field name="chain_step"/>
+                    <button name="action_create_next_task" type="object" string="Crear siguiente tarea" class="btn-primary" icon="fa-arrow-right" invisible="not next_task_type or needs_human"/>
                 </group>
             </xpath>
         </field>

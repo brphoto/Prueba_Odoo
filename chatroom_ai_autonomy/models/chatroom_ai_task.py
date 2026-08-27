@@ -24,6 +24,20 @@ class ChatroomAiTaskAutonomy(models.Model):
     autonomy_reason = fields.Text(string='Motivo de autonomía', readonly=True)
     autonomy_confidence = fields.Float(string='Confianza evaluada', readonly=True)
     autonomy_evaluated_at = fields.Datetime(string='Evaluada el', readonly=True)
+    verification_state = fields.Selection([
+        ('pending', 'Pendiente'), ('verified', 'Verificado'),
+        ('warning', 'Revisión requerida'),
+    ], string='Verificación del resultado', default='pending', readonly=True)
+    verification_message = fields.Text(string='Resultado de verificación', readonly=True)
+    next_action = fields.Char(string='Próxima acción sugerida', readonly=True)
+    next_task_type = fields.Selection([
+        ('followup', 'Seguimiento'), ('collect_payment', 'Cobranza'),
+        ('prepare_reply', 'Preparar respuesta'),
+    ], string='Tipo de siguiente tarea', readonly=True)
+    needs_human = fields.Boolean(string='Requiere intervención humana', readonly=True)
+    chain_parent_id = fields.Many2one(
+        'chatroom.ai.task', string='Tarea anterior', readonly=True, ondelete='set null')
+    chain_step = fields.Integer(string='Paso del flujo', default=0, readonly=True)
 
     @api.depends('channel_id', 'partner_id', 'company_id')
     def _compute_autonomy_context(self):
@@ -108,6 +122,28 @@ class ChatroomAiTaskAutonomy(models.Model):
             'state': 'simulated',
         })
 
+    def _autonomy_exception(self, exception_type, reason, recommended=False, severity='medium'):
+        self.ensure_one()
+        if 'chatroom.ai.autonomy.exception' not in self.env:
+            return False
+        existing = self.env['chatroom.ai.autonomy.exception'].sudo().search([
+            ('task_id', '=', self.id), ('state', 'in', ('open', 'in_progress')),
+            ('exception_type', '=', exception_type),
+        ], limit=1)
+        if existing:
+            return existing
+        return self.env['chatroom.ai.autonomy.exception'].sudo().create({
+            'name': _('Revisión: %s') % self.display_name,
+            'task_id': self.id,
+            'channel_id': self.channel_id.id if self.channel_id else False,
+            'partner_id': self.partner_id.id if self.partner_id else False,
+            'policy_id': self.autonomy_policy_id.id if self.autonomy_policy_id else False,
+            'exception_type': exception_type,
+            'severity': severity,
+            'reason': reason,
+            'recommended_action': recommended or _('Revisar la conversación y decidir si se aprueba, edita o reintenta.'),
+        })
+
     def _autonomy_apply_to_plan(self, requested_approval=True):
         self.ensure_one()
         policy = self._autonomy_policy()
@@ -158,6 +194,14 @@ class ChatroomAiTaskAutonomy(models.Model):
             values.update({'approval_required': True, 'state': 'awaiting_approval', 'error_message': reason})
         self.write(values)
         self._audit('Autonomía evaluada', 'done', message=reason)
+        if decision == 'approval':
+            self._autonomy_exception(
+                'approval', reason,
+                _('Revisar el plan, aprobarlo si corresponde y ejecutar la tarea.'), 'medium')
+        elif decision == 'blocked':
+            self._autonomy_exception(
+                'blocked', reason,
+                _('Ajustar la política o continuar manualmente desde la conversación.'), 'high')
         return decision == 'allow'
 
     def action_plan(self):
@@ -167,6 +211,98 @@ class ChatroomAiTaskAutonomy(models.Model):
             if task.state in ('awaiting_approval', 'planned') and task.action_ids:
                 task._autonomy_apply_to_plan(requested.get(task.id, True))
         return result
+
+    def _autonomy_verify_result(self):
+        """Verify that important tools left a usable Odoo result."""
+        self.ensure_one()
+        if self.state != 'done':
+            return
+        try:
+            import json
+            outputs = json.loads(self.output_json or '[]')
+        except (TypeError, ValueError):
+            outputs = []
+        warnings = []
+        next_action = _('Revisar el resultado de la tarea.')
+        next_type = False
+        for output in outputs:
+            if output.get('status') == 'blocked':
+                warnings.append(output.get('reason') or _('Una acción fue bloqueada.'))
+            if output.get('lead_id') and 'crm.lead' in self.env and not self.env['crm.lead'].browse(output['lead_id']).exists():
+                warnings.append(_('La oportunidad reportada ya no existe.'))
+            if output.get('order_id') and 'sale.order' in self.env and not self.env['sale.order'].browse(output['order_id']).exists():
+                warnings.append(_('La cotización reportada ya no existe.'))
+            if output.get('link_id') and 'chatroom.payment.link' in self.env and not self.env['chatroom.payment.link'].browse(output['link_id']).exists():
+                warnings.append(_('El enlace de pago reportado ya no existe.'))
+            if output.get('reply'):
+                next_action = _('Revisar y enviar la respuesta preparada.')
+                next_type = 'prepare_reply'
+            elif output.get('link_id'):
+                next_action = _('Verificar el pago y continuar el seguimiento.')
+                next_type = 'collect_payment'
+            elif output.get('order_name'):
+                next_action = _('Dar seguimiento a la cotización %s.') % output['order_name']
+                next_type = 'followup'
+            elif output.get('lead_name'):
+                next_action = _('Dar seguimiento a la oportunidad %s.') % output['lead_name']
+                next_type = 'followup'
+            elif output.get('invoices') is not None and output.get('invoices'):
+                next_action = _('Enviar recordatorio de cobranza y revisar el saldo.')
+                next_type = 'collect_payment'
+        if next_type == self.task_type:
+            next_type = False
+        if warnings:
+            message = ' '.join(dict.fromkeys(warnings))
+            self.write({
+                'verification_state': 'warning',
+                'verification_message': message,
+                'needs_human': True,
+                'next_action': _('Revisar la excepción antes de continuar.'),
+                'next_task_type': False,
+            })
+            self._autonomy_exception('verification', message, next_action, 'high')
+        else:
+            self.write({
+                'verification_state': 'verified',
+                'verification_message': _('Las salidas importantes fueron verificadas en Odoo.'),
+                'needs_human': False,
+                'next_action': next_action,
+                'next_task_type': next_type,
+            })
+            policy = self._autonomy_policy()
+            if policy and policy.mode == 'autonomous' and policy.auto_continue and next_type:
+                self._autonomy_continue(next_type, next_action, policy)
+
+    def _autonomy_continue(self, task_type, prompt, policy):
+        self.ensure_one()
+        if self.chain_step >= policy.max_chain_steps:
+            self._autonomy_exception(
+                'verification',
+                _('El flujo alcanzó el máximo de %s pasos autónomos.') % policy.max_chain_steps,
+                _('Revisar el resultado y continuar manualmente si corresponde.'), 'medium')
+            return False
+        next_task = self.env['chatroom.ai.task'].sudo().create_from_channel(
+            self.channel_id, task_type=task_type, prompt=prompt,
+            approval_required=False)
+        next_task.write({'chain_parent_id': self.id, 'chain_step': self.chain_step + 1})
+        next_task.action_plan()
+        if next_task.state == 'planned':
+            next_task.action_run()
+        return next_task
+
+    def action_create_next_task(self):
+        self.ensure_one()
+        if not self.channel_id or not self.next_task_type:
+            raise UserError(_('Esta tarea no tiene una siguiente acción automática disponible.'))
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            self.channel_id, task_type=self.next_task_type,
+            prompt=self.next_action, approval_required=True)
+        task.action_plan()
+        return {
+            'type': 'ir.actions.act_window', 'name': _('Siguiente tarea IA'),
+            'res_model': 'chatroom.ai.task', 'res_id': task.id,
+            'view_mode': 'form', 'target': 'current',
+        }
 
     def _autonomy_guard_before_run(self):
         self.ensure_one()
@@ -190,4 +326,7 @@ class ChatroomAiTaskAutonomy(models.Model):
         for task in self:
             if task.state in ('draft', 'planned', 'failed'):
                 task._autonomy_guard_before_run()
-        return super().action_run()
+        result = super().action_run()
+        for task in self:
+            task._autonomy_verify_result()
+        return result

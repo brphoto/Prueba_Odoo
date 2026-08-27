@@ -40,6 +40,21 @@ class AiKnowledgeBase(models.Model):
         help='Escribe aquí políticas, preguntas frecuentes, procesos y datos '
              'que no viven en una tabla de Odoo. La IA usará este contenido '
              'después de indexarlo.')
+    knowledge_format = fields.Selection([
+        ('natural', 'Texto natural'), ('faq', 'Preguntas frecuentes'),
+        ('policy', 'Política o regla'), ('product', 'Producto o servicio'),
+        ('playbook', 'Procedimiento comercial'),
+    ], string='Cómo organizarlo', default='natural', required=True,
+        help='Ayuda a ordenar el contenido para que la IA encuentre respuestas y reglas sin escribir código.')
+    organization_state = fields.Selection([
+        ('raw', 'Sin organizar'), ('organized', 'Organizado localmente'),
+    ], string='Organización', default='raw', readonly=True)
+    organized_summary = fields.Text(string='Resumen organizado', readonly=True)
+    key_points = fields.Text(string='Puntos clave', readonly=True)
+    faq_entries = fields.Text(string='Preguntas y respuestas detectadas', readonly=True)
+    operational_rules = fields.Text(string='Reglas operativas detectadas', readonly=True)
+    organized_text = fields.Text(string='Contenido estructurado para la IA', readonly=True)
+    organization_notes = fields.Text(string='Notas de organización', readonly=True)
     pdf_file = fields.Binary(string='Manual PDF', attachment=True)
     pdf_filename = fields.Char(string='Nombre del archivo')
     content_text = fields.Text(string='Texto indexado', readonly=True)
@@ -118,6 +133,10 @@ class AiKnowledgeBase(models.Model):
                     'content_text': False, 'chunk_count': 0,
                     'processing_error': False, 'indexed_at': False,
                     'last_reviewed_at': False,
+                    'organization_state': 'raw', 'organized_summary': False,
+                    'key_points': False, 'faq_entries': False,
+                    'operational_rules': False, 'organized_text': False,
+                    'organization_notes': False,
                     'version': (manual.version or 0) + 1,
                     'source_updated_at': fields.Datetime.now(),
                 })
@@ -197,6 +216,80 @@ class AiKnowledgeBase(models.Model):
             except Exception as error:
                 _logger.exception('No se pudo indexar el manual IA %s', manual.id)
                 manual.write({'state': 'error', 'processing_error': str(error)})
+        return True
+
+    @staticmethod
+    def _organize_natural_text(text, knowledge_format='natural'):
+        """Turn everyday notes into a predictable local knowledge card.
+
+        Organizing is deterministic and local: it is reproducible and does
+        not send the company's source material to an AI provider.
+        """
+        clean = re.sub(r'\r\n?', '\n', text or '')
+        lines = [re.sub(r'\s+', ' ', line).strip() for line in clean.split('\n')]
+        lines = [line for line in lines if line]
+        if not lines:
+            return {'summary': '', 'points': '', 'faq': '', 'rules': '', 'structured': ''}
+        paragraphs = [part.strip() for part in re.split(r'\n\s*\n+', clean) if part.strip()]
+        summary = re.sub(r'\s+', ' ', paragraphs[0] if paragraphs else ' '.join(lines[:3])).strip()[:700]
+        bullets, questions, rules = [], [], []
+        for index, line in enumerate(lines):
+            normalized = line.lstrip('-*•0123456789. ').strip()
+            if len(normalized) >= 12 and (line.startswith(('-', '*', '•')) or line[:1].isdigit()):
+                bullets.append(normalized[:500])
+            if '?' in line or line.lower().startswith(('pregunta:', '¿')):
+                answer = lines[index + 1] if index + 1 < len(lines) else ''
+                questions.append('Pregunta: %s\nRespuesta: %s' % (line, answer))
+            if re.search(r'\b(si|no|debe|deben|permitido|prohibido|máximo|mínimo|horario|precio|tarifa|usd)\b|\$', line, re.IGNORECASE):
+                rules.append(normalized[:500])
+        points = list(dict.fromkeys(bullets or lines[1:6]))[:12]
+        questions = list(dict.fromkeys(questions))[:10]
+        rules = list(dict.fromkeys(rules))[:12]
+        label = {
+            'faq': 'Preguntas frecuentes', 'policy': 'Políticas y condiciones',
+            'product': 'Producto o servicio', 'playbook': 'Procedimiento comercial',
+        }.get(knowledge_format, 'Conocimiento general')
+        parts = [
+            '[TIPO: %s]\n%s' % (label, summary),
+            '[RESUMEN]\n%s' % summary,
+            '[PUNTOS CLAVE]\n%s' % '\n'.join('- %s' % item for item in points),
+        ]
+        if questions:
+            parts.append('[PREGUNTAS FRECUENTES]\n%s' % '\n\n'.join(questions))
+        if rules:
+            parts.append('[REGLAS OPERATIVAS]\n%s' % '\n'.join('- %s' % item for item in rules))
+        parts.append('[CONTENIDO ORIGINAL]\n%s' % clean.strip())
+        return {
+            'summary': summary,
+            'points': '\n'.join('- %s' % item for item in points),
+            'faq': '\n\n'.join(questions),
+            'rules': '\n'.join('- %s' % item for item in rules),
+            'structured': '\n\n'.join(parts),
+        }
+
+    def action_organize(self):
+        for manual in self:
+            if manual.state != 'indexed' or not manual.content_text:
+                manual.action_index()
+            source = manual.source_text if manual.source_type == 'text' else manual.content_text
+            if not (source or '').strip():
+                manual.write({
+                    'organization_state': 'raw',
+                    'organization_notes': _('No hay contenido para organizar. Escribe texto o indexa un PDF primero.'),
+                })
+                continue
+            organized = self._organize_natural_text(source, manual.knowledge_format)
+            manual.write({
+                'organization_state': 'organized',
+                'organized_summary': organized['summary'],
+                'key_points': organized['points'],
+                'faq_entries': organized['faq'],
+                'operational_rules': organized['rules'],
+                'organized_text': organized['structured'],
+                'content_text': organized['structured'],
+                'chunk_count': max(1, (len(organized['structured']) + 3999) // 4000),
+                'organization_notes': _('Organizado localmente: no consume tokens. Puedes editar el texto original y volver a organizarlo.'),
+            })
         return True
 
     def _get_source_digest(self):

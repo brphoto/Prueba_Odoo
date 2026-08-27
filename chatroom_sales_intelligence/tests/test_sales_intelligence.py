@@ -36,6 +36,49 @@ class TestChatroomSalesIntelligence(TransactionCase):
         self.assertIn('La garantía comercial', context)
         self.assertIn(self.env.company.name, context)
 
+    def test_knowledge_organizes_natural_notes_without_provider(self):
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'Conocimiento natural QA',
+            'source_type': 'text',
+            'knowledge_format': 'policy',
+            'source_text': (
+                'La implementación de Odoo cuesta USD 20 por hora.\n\n'
+                '- Incluye CRM, ventas y WhatsApp.\n'
+                '- El cliente debe aprobar el alcance.\n\n'
+                '¿Cuánto cuesta?\nLa tarifa referencial es USD 20 por hora.'
+            ),
+        })
+        manual.action_organize()
+        self.assertEqual(manual.organization_state, 'organized')
+        self.assertEqual(manual.state, 'indexed')
+        self.assertIn('USD 20', manual.organized_summary)
+        self.assertIn('PUNTOS CLAVE', manual.organized_text)
+        self.assertIn('PREGUNTAS FRECUENTES', manual.organized_text)
+        self.assertIn('REGLAS OPERATIVAS', manual.organized_text)
+        self.assertIn('no consume tokens', manual.organization_notes)
+
+    def test_knowledge_reorganizes_pdf_after_local_extraction(self):
+        try:
+            from reportlab.pdfgen import canvas
+        except ImportError:
+            self.skipTest('reportlab no está instalado en el entorno de pruebas')
+        stream = BytesIO()
+        pdf = canvas.Canvas(stream)
+        pdf.drawString(72, 720, 'Garantía: doce meses para defectos de fabricación')
+        pdf.drawString(72, 700, 'Pregunta: ¿cuánto dura?')
+        pdf.drawString(72, 680, 'Respuesta: dura doce meses.')
+        pdf.save()
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'Manual PDF organizado QA', 'source_type': 'pdf',
+            'pdf_filename': 'manual_organizado.pdf',
+            'pdf_file': base64.b64encode(stream.getvalue()),
+            'knowledge_format': 'faq',
+        })
+        manual.action_organize()
+        self.assertEqual(manual.state, 'indexed')
+        self.assertEqual(manual.organization_state, 'organized')
+        self.assertIn('PREGUNTAS FRECUENTES', manual.organized_text)
+
     def test_knowledge_pdf_uses_available_reader_and_preserves_text(self):
         """A PDF must work with the PyPDF2 fallback used by this server."""
         try:

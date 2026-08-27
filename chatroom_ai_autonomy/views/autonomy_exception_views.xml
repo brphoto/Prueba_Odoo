@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_ai_autonomy_exception_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.autonomy.exception.list</field>
+        <field name="model">chatroom.ai.autonomy.exception</field>
+        <field name="arch" type="xml">
+            <list string="Bandeja de excepciones" decoration-danger="severity == 'high'" decoration-warning="severity == 'medium'">
+                <field name="create_date"/>
+                <field name="name"/>
+                <field name="exception_type" widget="badge"/>
+                <field name="severity" widget="badge"/>
+                <field name="partner_id"/>
+                <field name="channel_id" optional="hide"/>
+                <field name="state" widget="badge"/>
+                <field name="user_id"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_autonomy_exception_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.autonomy.exception.form</field>
+        <field name="model">chatroom.ai.autonomy.exception</field>
+        <field name="arch" type="xml">
+            <form string="Excepción del agente IA">
+                <header>
+                    <button name="action_start" type="object" string="Tomar en revisión" class="btn-secondary" invisible="state != 'open'"/>
+                    <button name="action_resolve" type="object" string="Resolver" class="btn-primary" invisible="state in ('resolved', 'ignored')"/>
+                    <button name="action_ignore" type="object" string="Ignorar" class="btn-secondary" invisible="state in ('resolved', 'ignored')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="open,in_progress,resolved"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <div class="alert alert-warning" role="alert">
+                        Esta bandeja reúne únicamente lo que necesita una decisión humana o una revisión operativa.
+                    </div>
+                    <group col="2">
+                        <field name="exception_type" widget="badge"/>
+                        <field name="severity" widget="badge"/>
+                        <field name="task_id"/>
+                        <field name="policy_id"/>
+                        <field name="partner_id"/>
+                        <field name="channel_id"/>
+                        <field name="user_id"/>
+                        <field name="resolved_at"/>
+                    </group>
+                    <group string="Qué ocurrió"><field name="reason" nolabel="1"/></group>
+                    <group string="Qué hacer ahora"><field name="recommended_action" nolabel="1"/></group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_autonomy_exception_search" model="ir.ui.view">
+        <field name="name">chatroom.ai.autonomy.exception.search</field>
+        <field name="model">chatroom.ai.autonomy.exception</field>
+        <field name="arch" type="xml">
+            <search string="Excepciones del agente">
+                <field name="name"/><field name="partner_id"/><field name="task_id"/>
+                <filter name="open" string="Abiertas" domain="[('state', 'in', ('open', 'in_progress'))]"/>
+                <filter name="high" string="Alta prioridad" domain="[('severity', '=', 'high')]"/>
+                <filter name="approval" string="Aprobación" domain="[('exception_type', '=', 'approval')]"/>
+                <group><filter name="group_state" string="Estado" context="{'group_by': 'state'}"/><filter name="group_type" string="Tipo" context="{'group_by': 'exception_type'}"/></group>
+            </search>
+        </field>
+    </record>
+    <record id="action_chatroom_ai_autonomy_exception" model="ir.actions.act_window">
+        <field name="name">Bandeja de excepciones</field>
+        <field name="res_model">chatroom.ai.autonomy.exception</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_chatroom_ai_autonomy_exception_search"/>
+        <field name="context">{'search_default_open': 1}</field>
+    </record>
+    <menuitem id="menu_chatroom_ai_autonomy_exceptions" name="Bandeja de excepciones" parent="chatroom_ai_autonomy.menu_chatroom_ai_autonomy_root" action="action_chatroom_ai_autonomy_exception" sequence="3" groups="chatroom_ai_autonomy.group_chatroom_ai_autonomy_user"/>
+</odoo>

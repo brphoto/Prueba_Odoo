@@ -48,6 +48,12 @@ class ChatroomAiAutonomyPolicy(models.Model):
     daily_message_limit = fields.Integer(string='Mensajes automáticos diarios', default=20)
     require_human_negative = fields.Boolean(string='Escalar sentimiento negativo', default=True)
     require_human_discount = fields.Boolean(string='Escalar descuentos', default=True)
+    auto_continue = fields.Boolean(
+        string='Continuar flujo automáticamente', default=False,
+        help='Después de una tarea verificada, crea y ejecuta la siguiente acción permitida.')
+    max_chain_steps = fields.Integer(
+        string='Máximo de pasos encadenados', default=3,
+        help='Límite de seguridad para evitar ciclos autónomos.')
     description = fields.Text(string='Criterio de uso')
     risk_level = fields.Selection([
         ('low', 'Bajo'), ('medium', 'Medio'), ('high', 'Alto'),
@@ -76,13 +82,15 @@ class ChatroomAiAutonomyPolicy(models.Model):
                 policy.operational_summary = _(
                     'La IA funciona como asistente y no ejecuta operaciones sensibles.')
 
-    @api.constrains('min_confidence', 'daily_message_limit', 'max_order_amount')
+    @api.constrains('min_confidence', 'daily_message_limit', 'max_order_amount', 'max_chain_steps')
     def _check_operational_limits(self):
         for record in self:
             if not 0.0 <= record.min_confidence <= 1.0:
                 raise ValidationError(_('La confianza mínima debe estar entre 0% y 100%.'))
             if record.daily_message_limit < 0:
                 raise ValidationError(_('El límite diario no puede ser negativo.'))
+            if record.max_chain_steps < 1 or record.max_chain_steps > 10:
+                raise ValidationError(_('El máximo de pasos encadenados debe estar entre 1 y 10.'))
             if record.max_order_amount < 0:
                 raise ValidationError(_('El monto máximo no puede ser negativo.'))
 

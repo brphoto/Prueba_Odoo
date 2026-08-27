@@ -4,7 +4,7 @@
     'description': '''Organiza las fuentes vivas de Odoo, permite simular consultas
 de IA con trazabilidad y controla las acciones comerciales del agente mediante
 políticas configurables y aprobación humana.''',
-    'version': '19.0.1.0.2',
+    'version': '19.0.1.0.3',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
     'category': 'Productivity/Discuss',
@@ -16,6 +16,8 @@ políticas configurables y aprobación humana.''',
         'security/chatroom_ai_autonomy_security.xml',
         'security/ir.model.access.csv',
         'views/chatroom_ai_autonomy_views.xml',
+        'views/autonomy_exception_views.xml',
+        'views/chatroom_ai_autonomy_dashboard_views.xml',
         'views/chatroom_ai_autonomy_templates.xml',
         'views/chatroom_ai_autonomy_menus.xml',
     ],

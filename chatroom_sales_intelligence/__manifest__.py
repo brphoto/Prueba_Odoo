@@ -87,6 +87,7 @@ agrega la capa visual que los muestra dentro del chat.
         'views/chat_automation_rule_views.xml',
         'views/res_config_settings_views.xml',
         'views/ai_knowledge_base_views.xml',
+        'views/ai_knowledge_organization_views.xml',
     ],
 
     'assets': {

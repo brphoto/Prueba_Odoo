@@ -186,3 +186,58 @@ class TestChatroomAiAutonomy(TransactionCase):
         self.assertEqual(task.state, 'awaiting_approval')
         self.assertEqual(task.autonomy_decision, 'approval')
         self.assertTrue(task.approval_required)
+        self.assertTrue(self.env['chatroom.ai.autonomy.exception'].search_count([
+            ('task_id', '=', task.id), ('state', '=', 'open'),
+        ]))
+
+    def test_autonomous_flow_can_continue_with_a_bounded_chain(self):
+        partner = self.env.ref('base.partner_root')
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp',
+            'external_id': 'autonomy-chain-%s' % self.env.user.id,
+            'partner_id': partner.id,
+        })
+        self.env['ir.config_parameter'].sudo().set_param('chatroom_ai_agent.mode', 'automatic')
+        policy = self.env['chatroom.ai.autonomy.policy'].create({
+            'name': 'QA cadena limitada', 'mode': 'autonomous',
+            'scope': 'channels', 'channel_ids': [(6, 0, [channel.id])],
+            'allow_lead': True, 'allow_activity': True,
+            'auto_continue': True, 'max_chain_steps': 2,
+        })
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            channel, task_type='qualify_lead', approval_required=False)
+        task.action_plan()
+        task.action_run()
+        self.assertEqual(task.state, 'done')
+        self.assertEqual(task.verification_state, 'verified')
+        chained = self.env['chatroom.ai.task'].search([
+            ('chain_parent_id', '=', task.id),
+        ])
+        self.assertTrue(chained)
+        self.assertTrue(all(item.chain_step <= policy.max_chain_steps for item in chained))
+
+    def test_task_verification_marks_missing_result_and_creates_exception(self):
+        task = self.env['chatroom.ai.task'].create({
+            'name': 'QA verificación de resultado',
+            'task_type': 'qualify_lead',
+            'state': 'done',
+            'output_json': '[{"action":"create_lead","lead_id":99999999}]',
+        })
+        task._autonomy_verify_result()
+        self.assertEqual(task.verification_state, 'warning')
+        self.assertTrue(task.needs_human)
+        self.assertTrue(self.env['chatroom.ai.autonomy.exception'].search_count([
+            ('task_id', '=', task.id), ('exception_type', '=', 'verification'),
+        ]))
+
+    def test_task_verification_exposes_next_action_for_reply(self):
+        task = self.env['chatroom.ai.task'].create({
+            'name': 'QA siguiente acción',
+            'task_type': 'prepare_reply',
+            'state': 'done',
+            'output_json': '[{"action":"prepare_reply","reply":"Hola, ¿en qué podemos ayudarte?"}]',
+        })
+        task._autonomy_verify_result()
+        self.assertEqual(task.verification_state, 'verified')
+        self.assertEqual(task.next_task_type, 'prepare_reply')
+        self.assertIn('enviar', task.next_action.lower())

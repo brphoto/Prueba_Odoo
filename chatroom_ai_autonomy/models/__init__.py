@@ -8,3 +8,5 @@ from . import message_template
 from . import setup_wizard
 from . import automation
 from . import chatroom_ai_task
+from . import autonomy_exception
+from . import chatroom_ai_dashboard
