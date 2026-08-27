@@ -119,3 +119,70 @@ class TestChatroomAiAutonomy(TransactionCase):
 
         policy.write({'mode': 'assist', 'allow_order': False, 'allow_quotation': False})
         self.assertEqual(policy.risk_level, 'low')
+
+    def test_policy_scope_prioritizes_channel_then_partner_then_global(self):
+        partner = self.env.ref('base.partner_root')
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp',
+            'external_id': 'autonomy-scope-%s' % self.env.user.id,
+            'partner_id': partner.id,
+        })
+        global_policy = self.env['chatroom.ai.autonomy.policy'].create({
+            'name': 'QA global', 'scope': 'global', 'mode': 'approval',
+        })
+        partner_policy = self.env['chatroom.ai.autonomy.policy'].create({
+            'name': 'QA cliente', 'scope': 'partners', 'partner_ids': [(6, 0, [partner.id])],
+            'mode': 'autonomous',
+        })
+        self.assertEqual(
+            self.env['chatroom.ai.autonomy.policy'].get_active_policy(
+                self.env.company, partner=partner), partner_policy)
+        channel_policy = self.env['chatroom.ai.autonomy.policy'].create({
+            'name': 'QA canal', 'scope': 'channels', 'channel_ids': [(6, 0, [channel.id])],
+            'mode': 'autonomous', 'sequence': 99,
+        })
+        self.assertEqual(
+            self.env['chatroom.ai.autonomy.policy'].get_active_policy(
+                self.env.company, channel=channel, partner=partner), channel_policy)
+        self.assertNotEqual(global_policy, channel_policy)
+
+    def test_agent_task_is_released_only_by_autonomous_policy(self):
+        partner = self.env.ref('base.partner_root')
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp',
+            'external_id': 'autonomy-task-%s' % self.env.user.id,
+            'partner_id': partner.id,
+        })
+        self.env['ir.config_parameter'].sudo().set_param('chatroom_ai_agent.mode', 'automatic')
+        policy = self.env['chatroom.ai.autonomy.policy'].create({
+            'name': 'QA tareas autónomas', 'mode': 'autonomous',
+            'scope': 'channels', 'channel_ids': [(6, 0, [channel.id])],
+            'allow_lead': True, 'allow_activity': True,
+        })
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            channel, task_type='qualify_lead', approval_required=False)
+        task.action_plan()
+        self.assertEqual(task.state, 'planned')
+        self.assertEqual(task.autonomy_decision, 'allow')
+        self.assertEqual(task.autonomy_policy_id, policy)
+        self.assertFalse(task.action_ids.filtered(lambda action: action.key == 'create_lead').requires_approval)
+
+    def test_agent_task_stays_pending_when_policy_requires_approval(self):
+        partner = self.env.ref('base.partner_root')
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp',
+            'external_id': 'autonomy-approval-%s' % self.env.user.id,
+            'partner_id': partner.id,
+        })
+        self.env['ir.config_parameter'].sudo().set_param('chatroom_ai_agent.mode', 'automatic')
+        self.env['chatroom.ai.autonomy.policy'].create({
+            'name': 'QA requiere revisión', 'mode': 'approval',
+            'scope': 'channels', 'channel_ids': [(6, 0, [channel.id])],
+            'allow_lead': True,
+        })
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            channel, task_type='qualify_lead', approval_required=False)
+        task.action_plan()
+        self.assertEqual(task.state, 'awaiting_approval')
+        self.assertEqual(task.autonomy_decision, 'approval')
+        self.assertTrue(task.approval_required)

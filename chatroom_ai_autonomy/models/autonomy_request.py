@@ -9,6 +9,8 @@ class ChatroomAiAutonomyRequest(models.Model):
     _description = 'Evaluación y trazabilidad de autonomía IA'
     _order = 'create_date desc, id desc'
 
+    task_id = fields.Many2one('chatroom.ai.task', string='Tarea del agente', ondelete='set null', index=True)
+
     name = fields.Char(string='Evaluación', required=True)
     channel_id = fields.Many2one('chatroom.channel', string='Conversación', ondelete='set null', index=True)
     partner_id = fields.Many2one(related='channel_id.partner_id', string='Cliente', store=True)
@@ -16,7 +18,8 @@ class ChatroomAiAutonomyRequest(models.Model):
     action_key = fields.Selection([
         ('reply', 'Responder'), ('create_quotation', 'Crear cotización'),
         ('confirm_order', 'Confirmar pedido'), ('send_payment_link', 'Enviar link de pago'),
-        ('notify_delivery', 'Notificar entrega'),
+        ('notify_delivery', 'Notificar entrega'), ('create_lead', 'Crear oportunidad'),
+        ('create_activity', 'Crear actividad'),
     ], string='Acción', required=True)
     amount = fields.Monetary(string='Monto', currency_field='currency_id')
     currency_id = fields.Many2one('res.currency', default=lambda self: self.env.company.currency_id)

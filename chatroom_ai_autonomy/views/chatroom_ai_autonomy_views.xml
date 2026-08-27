@@ -48,6 +48,7 @@
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="mode"/>
+                <field name="scope"/>
                 <field name="company_id"/>
                 <field name="allow_order"/>
                 <field name="allow_payment"/>
@@ -77,8 +78,15 @@
                         <field name="company_id"/>
                         <field name="sequence"/>
                         <field name="mode"/>
+                        <field name="scope"/>
                         <field name="min_confidence" help="La IA solicitará revisión cuando su confianza esté por debajo de este porcentaje."/>
                         <field name="daily_message_limit" help="Usa cero para permitir respuestas sin límite diario."/>
+                    </group>
+                    <group string="Segmentación" class="o_chatroom_ai_policy_section" col="2">
+                        <field name="channel_ids" invisible="scope != 'channels'" widget="many2many_tags"/>
+                        <field name="partner_ids" invisible="scope != 'partners'" widget="many2many_tags"/>
+                        <label for="scope" string="Prioridad"/>
+                        <div class="text-muted">Canal directo &gt; canal seleccionado &gt; cliente seleccionado &gt; política global.</div>
                     </group>
                     <group string="Acciones permitidas" class="o_chatroom_ai_policy_section o_chatroom_ai_policy_actions" col="3">
                         <field name="allow_reply"/>
@@ -86,6 +94,8 @@
                         <field name="allow_order"/>
                         <field name="allow_payment"/>
                         <field name="allow_delivery"/>
+                        <field name="allow_lead"/>
+                        <field name="allow_activity"/>
                     </group>
                     <group string="Límites y escalamiento" class="o_chatroom_ai_policy_section" col="2">
                         <field name="max_order_amount" help="Cero significa sin límite monetario explícito."/>
@@ -130,4 +140,20 @@
         </field>
     </record>
     <record id="action_chatroom_ai_autonomy_simulator" model="ir.actions.act_window"><field name="name">Simulador seguro</field><field name="res_model">chatroom.ai.autonomy.simulator</field><field name="view_mode">form</field><field name="target">new</field></record>
+    <record id="view_chatroom_ai_task_autonomy" model="ir.ui.view">
+        <field name="name">chatroom.ai.task.autonomy</field>
+        <field name="model">chatroom.ai.task</field>
+        <field name="inherit_id" ref="chatroom_ai_agent.view_chatroom_ai_task_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Control de autonomía" class="o_chatroom_ai_task_autonomy" col="2">
+                    <field name="autonomy_policy_id"/>
+                    <field name="autonomy_decision" widget="badge"/>
+                    <field name="autonomy_confidence"/>
+                    <field name="autonomy_evaluated_at"/>
+                    <field name="autonomy_reason" nolabel="1" colspan="2"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
 </odoo>

@@ -7,3 +7,4 @@ from . import chatroom_channel
 from . import message_template
 from . import setup_wizard
 from . import automation
+from . import chatroom_ai_task

@@ -16,6 +16,18 @@ class ChatroomAiAutonomyPolicy(models.Model):
     company_id = fields.Many2one(
         'res.company', string='Empresa', default=lambda self: self.env.company,
         required=True, index=True)
+    scope = fields.Selection([
+        ('global', 'Toda la empresa'),
+        ('channels', 'Canales seleccionados'),
+        ('partners', 'Clientes seleccionados'),
+    ], string='Aplicar a', default='global', required=True,
+        help='Define dónde aplica esta política. Una política asignada directamente al canal tiene prioridad.')
+    channel_ids = fields.Many2many(
+        'chatroom.channel', 'chatroom_ai_policy_channel_rel',
+        'policy_id', 'channel_id', string='Canales')
+    partner_ids = fields.Many2many(
+        'res.partner', 'chatroom_ai_policy_partner_rel',
+        'policy_id', 'partner_id', string='Clientes')
     mode = fields.Selection([
         ('assist', 'Asistente: prepara y sugiere'),
         ('approval', 'Controlado: requiere aprobación'),
@@ -26,6 +38,8 @@ class ChatroomAiAutonomyPolicy(models.Model):
     allow_order = fields.Boolean(string='Confirmar pedidos', default=False)
     allow_payment = fields.Boolean(string='Enviar links de pago', default=False)
     allow_delivery = fields.Boolean(string='Notificar entregas', default=True)
+    allow_lead = fields.Boolean(string='Crear oportunidades', default=True)
+    allow_activity = fields.Boolean(string='Crear actividades', default=True)
     max_order_amount = fields.Monetary(
         string='Monto máximo por pedido', currency_field='currency_id', default=0.0)
     currency_id = fields.Many2one(
@@ -43,7 +57,8 @@ class ChatroomAiAutonomyPolicy(models.Model):
 
     @api.depends(
         'mode', 'allow_reply', 'allow_quotation', 'allow_order',
-        'allow_payment', 'allow_delivery', 'max_order_amount',
+        'allow_payment', 'allow_delivery', 'allow_lead', 'allow_activity',
+        'max_order_amount', 'scope',
         'require_human_negative', 'require_human_discount')
     def _compute_operational_summary(self):
         for policy in self:
@@ -72,11 +87,30 @@ class ChatroomAiAutonomyPolicy(models.Model):
                 raise ValidationError(_('El monto máximo no puede ser negativo.'))
 
     @api.model
-    def get_active_policy(self, company=False):
+    def get_active_policy(self, company=False, channel=False, partner=False):
         company = company or self.env.company
-        return self.sudo().search([
+        policies = self.sudo().search([
             ('active', '=', True), ('company_id', '=', company.id),
-        ], order='sequence, id', limit=1)
+        ], order='sequence, id')
+        if channel:
+            direct = channel.autonomy_policy_id if 'autonomy_policy_id' in channel._fields else self.browse()
+            if direct and direct.active and direct.company_id == company:
+                return direct.sudo()
+            scoped = self.sudo().search([
+                ('active', '=', True), ('company_id', '=', company.id),
+                ('scope', '=', 'channels'), ('channel_ids', 'in', channel.id),
+            ], order='sequence, id', limit=1)
+            if scoped:
+                return scoped[0]
+        if partner:
+            scoped = self.sudo().search([
+                ('active', '=', True), ('company_id', '=', company.id),
+                ('scope', '=', 'partners'), ('partner_ids', 'in', partner.id),
+            ], order='sequence, id', limit=1)
+            if scoped:
+                return scoped[0]
+        global_policies = policies.filtered(lambda policy: policy.scope == 'global')
+        return global_policies[0] if global_policies else self.browse()
 
     def evaluate(self, action_key, amount=0.0, confidence=1.0, channel=False):
         self.ensure_one()
@@ -86,6 +120,8 @@ class ChatroomAiAutonomyPolicy(models.Model):
             'confirm_order': self.allow_order,
             'send_payment_link': self.allow_payment,
             'notify_delivery': self.allow_delivery,
+            'create_lead': self.allow_lead,
+            'create_activity': self.allow_activity,
         }.get(action_key, False)
         if not allowed:
             return {'decision': 'blocked', 'reason': _('La política no permite esta acción.')}
@@ -102,6 +138,8 @@ class ChatroomAiAutonomyPolicy(models.Model):
                 return {'decision': 'approval', 'reason': _('Se alcanzó el límite diario de respuestas automáticas (%s).') % self.daily_message_limit}
         if action_key in ('confirm_order', 'send_payment_link') and self.max_order_amount and amount > self.max_order_amount:
             return {'decision': 'approval', 'reason': _('El monto supera el límite autorizado de %s.') % self.max_order_amount}
-        if self.mode in ('assist', 'approval') and action_key in ('confirm_order', 'send_payment_link', 'create_quotation'):
+        if self.mode in ('assist', 'approval') and action_key in (
+                'confirm_order', 'send_payment_link', 'create_quotation',
+                'create_lead', 'create_activity'):
             return {'decision': 'approval', 'reason': _('La política exige aprobación humana para acciones comerciales.')}
         return {'decision': 'allow', 'reason': _('Acción autorizada por la política.')}

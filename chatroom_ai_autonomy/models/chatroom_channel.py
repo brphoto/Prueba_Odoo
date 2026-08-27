@@ -37,7 +37,8 @@ class ChatroomChannel(models.Model):
 
     def get_ai_assistant_data(self):
         data = super().get_ai_assistant_data()
-        policy = self.autonomy_policy_id or self.env['chatroom.ai.autonomy.policy'].get_active_policy(self.company_id)
+        policy = self.autonomy_policy_id or self.env['chatroom.ai.autonomy.policy'].get_active_policy(
+            self.company_id, channel=self, partner=self.partner_id)
         profile = self.env['chatroom.ai.knowledge.profile'].sudo().search([
             ('company_id', '=', self.company_id.id), ('active', '=', True),
             ('state', '=', 'ready'),
@@ -59,7 +60,8 @@ class ChatroomChannel(models.Model):
     def _ai_deliver_guarded_reply(self, reply, confidence, intent=False, reason=False):
         """Apply the optional autonomy policy to automatic replies."""
         self.ensure_one()
-        policy = self.autonomy_policy_id or self.env['chatroom.ai.autonomy.policy'].get_active_policy(self.company_id)
+        policy = self.autonomy_policy_id or self.env['chatroom.ai.autonomy.policy'].get_active_policy(
+            self.company_id, channel=self, partner=self.partner_id)
         if policy:
             result = policy.evaluate('reply', confidence=confidence, channel=self)
             if result['decision'] != 'allow':
@@ -75,7 +77,8 @@ class ChatroomChannel(models.Model):
 
     def _autonomy_evaluate(self, action_key, amount=0.0, confidence=1.0):
         self.ensure_one()
-        policy = self.autonomy_policy_id or self.env['chatroom.ai.autonomy.policy'].get_active_policy(self.company_id)
+        policy = self.autonomy_policy_id or self.env['chatroom.ai.autonomy.policy'].get_active_policy(
+            self.company_id, channel=self, partner=self.partner_id)
         if not policy:
             return {'decision': 'approval', 'reason': _('No hay una política activa de autonomía.')}
         return policy.evaluate(action_key, amount=amount, confidence=confidence, channel=self)
@@ -91,7 +94,8 @@ class ChatroomChannel(models.Model):
         self.ensure_one()
         if not self._sales_param_enabled('chatroom_ai_sales.auto_confirm'):
             return super()._sales_after_checkout(order)
-        policy = self.autonomy_policy_id or self.env['chatroom.ai.autonomy.policy'].get_active_policy(self.company_id)
+        policy = self.autonomy_policy_id or self.env['chatroom.ai.autonomy.policy'].get_active_policy(
+            self.company_id, channel=self, partner=self.partner_id)
         if not policy:
             return super()._sales_after_checkout(order)
         confirmation = policy.evaluate('confirm_order', amount=order.amount_total, channel=self)
