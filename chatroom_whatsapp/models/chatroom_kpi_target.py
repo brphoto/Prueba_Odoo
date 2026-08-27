@@ -5,7 +5,7 @@ from odoo.exceptions import ValidationError
 
 class ChatroomKpiTarget(models.Model):
     _name = 'chatroom.kpi.target'
-    _inherit = ['kpi.target.mixin']
+    _inherit = ['kpi.target.mixin', 'mail.thread', 'mail.activity.mixin']
     _description = 'Objetivo de KPI de Chatroom'
     _order = 'kpi_id, scope_type, id'
 

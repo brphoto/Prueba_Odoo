@@ -55,6 +55,28 @@ class TestChatroomAiUsage(TransactionCase):
         self.assertEqual(sandbox.delivery_state, 'simulated')
         self.assertIn('No se llamó a WhatsApp', sandbox.delivery_note)
 
+    def test_sandbox_playground_supports_multi_turn_local_chat_without_tokens(self):
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'sandbox-playground-001',
+        })
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Laboratorio QA multi-turno', 'channel_id': channel.id,
+            'execution_mode': 'local', 'prompt': 'Responde en español y no inventes información.',
+        })
+        sandbox.write({'draft_message': 'Hola'})
+        action = sandbox.action_send_test_message()
+        self.assertEqual(action['res_id'], sandbox.id)
+        self.assertEqual(sandbox.conversation_line_ids.mapped('speaker'), ['customer', 'assistant'])
+        self.assertEqual(sandbox.input_tokens, 0)
+        sandbox.write({'draft_message': '¿Cuál es la tarifa por hora?'})
+        sandbox.action_send_test_message()
+        self.assertEqual(len(sandbox.conversation_line_ids), 4)
+        self.assertEqual(sandbox.message_count, 4)
+        self.assertIn('USD 20', sandbox.conversation_line_ids[-1].body)
+        self.assertFalse(self.env['chatroom.ai.usage.event'].search_count([
+            ('channel_id', '=', channel.id),
+        ]))
+
     def test_selected_model_overrides_manual_fallback(self):
         icp = self.env['ir.config_parameter'].sudo()
         icp.set_param('chatroom_whatsapp.ai_enabled', 'True')
@@ -71,6 +93,31 @@ class TestChatroomAiUsage(TransactionCase):
         self.assertIn('respuestas', selected.usage_roles)
         channel = self.env['chatroom.channel'].create({'channel_type': 'whatsapp', 'external_id': 'usage-test-001'})
         self.assertEqual(channel._ai_get_credentials()[2], 'test-selector-model')
+
+    def test_sandbox_provider_mode_uses_selected_model_without_delivery(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.ai_enabled', 'True')
+        icp.set_param('chatroom_whatsapp.ai_provider_url', 'https://example.test/v1/chat/completions')
+        icp.set_param('chatroom_whatsapp.ai_api_key', 'test-key')
+        selected = self.env['chatroom.ai.provider.model'].create({
+            'name': 'playground-provider-model', 'model_id': 'playground-provider-model',
+            'provider': 'openai', 'supports_chat': True, 'active': True,
+        })
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'sandbox-playground-provider-001',
+        })
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Laboratorio proveedor QA', 'channel_id': channel.id,
+            'execution_mode': 'provider', 'provider_model_id': selected.id,
+            'prompt': 'Responde en español y no inventes información.',
+        })
+        sandbox.write({'draft_message': 'Necesito una cotización de Odoo'})
+        with patch.object(type(channel), '_ai_chat_completion', return_value='Respuesta IA de prueba') as completion:
+            sandbox.action_send_test_message()
+        self.assertEqual(completion.call_args.kwargs['model_id'], selected.id)
+        self.assertEqual(sandbox.state, 'done')
+        self.assertEqual(len(sandbox.conversation_line_ids), 2)
+        self.assertEqual(sandbox.delivery_state, 'not_run')
 
     def test_conversation_panel_exposes_safe_model_catalog(self):
         icp = self.env['ir.config_parameter'].sudo()

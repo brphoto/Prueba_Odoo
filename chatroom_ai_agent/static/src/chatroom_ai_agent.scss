@@ -142,6 +142,134 @@
     }
 }
 
+.o_chatroom_ai_task_prompt,
+.o_chatroom_ai_task_payload,
+.o_chatroom_ai_automation_textarea {
+    width: 100%;
+    min-width: 0;
+
+    .o_field_widget,
+    .o_field_text,
+    textarea {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+}
+
+.o_chatroom_ai_task_prompt {
+    margin-bottom: 8px;
+    padding: 12px 14px;
+    border: 1px solid #dbe3ee;
+    border-radius: 10px;
+    background: #fbfcfe;
+
+    textarea {
+        min-height: 110px;
+        resize: vertical;
+        line-height: 1.55;
+    }
+}
+
+.o_chatroom_ai_task_payload {
+    margin: 8px 0 14px;
+    padding: 10px 12px;
+    border: 1px solid #dbe3ee;
+    border-radius: 10px;
+    background: #f8fafc;
+
+    textarea {
+        min-height: 220px;
+        resize: vertical;
+        color: #334155;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+    }
+}
+
+.o_chatroom_ai_automation_textarea textarea {
+    min-height: 110px;
+    resize: vertical;
+    line-height: 1.5;
+}
+
+/* Auditoría: ficha compacta y legible. Los payloads técnicos quedan en
+   páginas propias para que nunca reduzcan los campos a una columna estrecha. */
+.o_chatroom_ai_audit_form {
+    .o_chatroom_ai_audit_title {
+        margin-bottom: 18px;
+
+        h1 { margin-bottom: 4px; }
+    }
+
+    .o_chatroom_ai_audit_overview {
+        gap: 24px;
+        margin-bottom: 8px;
+
+        > .o_inner_group {
+            min-width: 0;
+            padding: 16px 18px;
+            border: 1px solid #e1e6ee;
+            border-radius: 12px;
+            background: #fbfcfe;
+        }
+    }
+
+    .o_chatroom_ai_audit_long_text,
+    .o_chatroom_ai_audit_payload {
+        width: 100%;
+        min-width: 0;
+
+        .o_field_widget,
+        .o_field_text,
+        textarea {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+        }
+    }
+
+    .o_chatroom_ai_audit_long_text textarea {
+        min-height: 110px;
+        resize: vertical;
+        line-height: 1.55;
+    }
+
+    .o_chatroom_ai_audit_payload {
+        margin-top: 10px;
+        padding: 12px;
+        border: 1px solid #dbe3ee;
+        border-radius: 10px;
+        background: #f8fafc;
+
+        textarea {
+            min-height: 300px;
+            resize: vertical;
+            color: #334155;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+    }
+
+    .o_chatroom_ai_audit_hint,
+    .o_chatroom_ai_audit_payload_hint {
+        margin-top: 8px;
+        color: #687386;
+        font-size: 12px;
+        line-height: 1.45;
+    }
+
+    @media (max-width: 800px) {
+        .o_chatroom_ai_audit_overview { display: block; }
+        .o_chatroom_ai_audit_overview > .o_inner_group { margin-bottom: 10px; }
+        .o_chatroom_ai_audit_payload textarea { min-height: 220px; }
+    }
+}
+
 .chatroom_ai_dashboard_form {
     .chatroom_ai_dashboard_cards {
         display: grid;

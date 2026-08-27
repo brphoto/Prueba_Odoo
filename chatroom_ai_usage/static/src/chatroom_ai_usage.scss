@@ -1,0 +1,120 @@
+.o_chatroom_ai_quality_test_form {
+    .o_chatroom_ai_quality_intro {
+        margin: 12px 0 20px;
+        padding: 12px 14px;
+        border-left: 3px solid #76506f;
+        border-radius: 8px;
+        background: #faf7fb;
+        color: #687386;
+        line-height: 1.5;
+    }
+
+    .o_chatroom_ai_quality_text,
+    .o_chatroom_ai_quality_output {
+        width: 100%;
+        min-width: 0;
+        padding: 12px 14px;
+        border: 1px solid #dbe3ee;
+        border-radius: 10px;
+        background: #f8fafc;
+
+        .o_field_widget,
+        .o_field_text,
+        textarea {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+    }
+
+    .o_chatroom_ai_quality_output textarea { min-height: 220px; }
+}
+
+.o_chatroom_ai_sandbox_form {
+    .o_chatroom_ai_sandbox_intro {
+        margin: 12px 0 20px;
+        padding: 12px 14px;
+        border-left: 3px solid #2c83c9;
+        border-radius: 8px;
+        background: #eef7ff;
+        color: #55718a;
+        line-height: 1.5;
+    }
+
+    .o_chatroom_ai_sandbox_text,
+    .o_chatroom_ai_sandbox_output,
+    .o_chatroom_ai_sandbox_error {
+        width: 100%;
+        min-width: 0;
+        padding: 12px 14px;
+        border: 1px solid #dbe3ee;
+        border-radius: 10px;
+        background: #f8fafc;
+
+        .o_field_widget,
+        .o_field_text,
+        textarea {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+        }
+
+        textarea {
+            min-height: 130px;
+            resize: vertical;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+    }
+
+    .o_chatroom_ai_sandbox_output textarea { min-height: 230px; }
+    .o_chatroom_ai_sandbox_error textarea { min-height: 100px; }
+
+    .o_chatroom_ai_sandbox_chat_help {
+        margin: 8px 0 14px;
+        padding: 10px 12px;
+        border-left: 3px solid #76506f;
+        border-radius: 8px;
+        background: #faf7fb;
+        color: #5e6878;
+        line-height: 1.5;
+    }
+
+    .o_chatroom_ai_sandbox_chat_input {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        margin-bottom: 16px;
+        padding: 12px;
+        border: 1px solid #dbe3ee;
+        border-radius: 10px;
+        background: #f8fafc;
+
+        .o_field_widget,
+        textarea {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        textarea {
+            min-height: 70px;
+            resize: vertical;
+        }
+    }
+
+    .o_chatroom_ai_sandbox_chat_input button {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    .o_chatroom_ai_sandbox_chat_input + .o_field_one2many {
+        width: 100%;
+    }
+}

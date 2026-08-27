@@ -221,52 +221,216 @@
     <record id="view_chatroom_ai_quality_test_list" model="ir.ui.view">
         <field name="name">chatroom.ai.quality.test.list</field>
         <field name="model">chatroom.ai.quality.test</field>
-        <field name="arch" type="xml"><list string="Pruebas de calidad" decoration-success="last_state == 'passed'" decoration-warning="last_state == 'warning'" decoration-danger="last_state == 'error'">
-            <header><button name="action_run_selected" type="object" string="Ejecutar seleccionadas" class="btn-primary"/></header>
-            <button name="action_run" type="object" icon="fa-play" title="Ejecutar"/>
-            <field name="name"/><field name="task_type"/><field name="channel_id" optional="hide"/>
-            <field name="last_run" optional="hide"/><field name="last_score"/><field name="last_state" widget="badge"/>
-        </list></field>
+        <field name="arch" type="xml">
+            <list string="Pruebas de calidad" decoration-success="last_state == 'passed'" decoration-warning="last_state == 'warning'" decoration-danger="last_state == 'error'">
+                <header><button name="action_run_selected" type="object" string="Ejecutar seleccionadas" class="btn-primary"/></header>
+                <button name="action_run" type="object" icon="fa-play" title="Ejecutar"/>
+                <field name="name" string="Prueba"/>
+                <field name="task_type" string="Tipo"/>
+                <field name="channel_id" string="Conversación" optional="hide"/>
+                <field name="last_run" string="Última ejecución" optional="hide"/>
+                <field name="last_score" string="Puntaje"/>
+                <field name="last_state" string="Resultado" widget="badge"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_quality_test_search" model="ir.ui.view">
+        <field name="name">chatroom.ai.quality.test.search</field>
+        <field name="model">chatroom.ai.quality.test</field>
+        <field name="arch" type="xml">
+            <search string="Pruebas de calidad">
+                <field name="name" string="Prueba"/>
+                <field name="task_type" string="Tipo"/>
+                <field name="channel_id" string="Conversación"/>
+                <filter name="pending" string="Pendientes" domain="[('last_state', '=', 'pending')]"/>
+                <filter name="passed" string="Aprobadas" domain="[('last_state', '=', 'passed')]"/>
+                <filter name="review" string="Para revisar" domain="[('last_state', '=', 'warning')]"/>
+                <filter name="errors" string="Con error" domain="[('last_state', '=', 'error')]"/>
+                <filter name="active" string="Activas" domain="[('active', '=', True)]"/>
+                <group>
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'task_type'}"/>
+                    <filter name="group_result" string="Resultado" context="{'group_by': 'last_state'}"/>
+                </group>
+            </search>
+        </field>
     </record>
     <record id="view_chatroom_ai_quality_test_form" model="ir.ui.view">
         <field name="name">chatroom.ai.quality.test.form</field>
         <field name="model">chatroom.ai.quality.test</field>
-        <field name="arch" type="xml"><form string="Prueba de calidad IA">
-            <header><button name="action_run" type="object" string="Ejecutar prueba" class="oe_highlight"/><field name="last_state" widget="statusbar"/></header>
-            <sheet><div class="oe_title"><h1><field name="name"/></h1></div>
-                <group><group><field name="channel_id"/><field name="task_type"/><field name="active"/></group>
-                    <group><field name="expected_keywords"/><field name="last_run" readonly="1"/><field name="last_score" readonly="1"/></group></group>
-                <field name="prompt" placeholder="Criterios que debe seguir la respuesta..."/>
-                <group string="Ultima respuesta"><field name="last_output" readonly="1" nolabel="1" colspan="2" widget="text"/></group>
-                <field name="result_ids" readonly="1"><list><field name="run_date"/><field name="score"/><field name="state" widget="badge"/></list></field>
-            </sheet>
-        </form></field>
+        <field name="arch" type="xml">
+            <form string="Prueba de calidad IA" class="o_chatroom_ai_quality_test_form">
+                <header>
+                    <button name="action_run" type="object" string="Ejecutar prueba" class="oe_highlight" icon="fa-play"/>
+                    <field name="last_state" widget="statusbar" statusbar_visible="pending,passed,warning,error"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <div class="o_chatroom_ai_quality_intro">
+                        Ejecuta una respuesta controlada, mide si contiene las palabras esperadas y conserva cada resultado para comparar la calidad en el tiempo.
+                    </div>
+                    <group col="2">
+                        <group string="Escenario">
+                            <field name="channel_id" string="Conversación de prueba"/>
+                            <field name="task_type" string="Tipo de prueba"/>
+                            <field name="active" string="Activa"/>
+                        </group>
+                        <group string="Criterio de evaluación">
+                            <field name="expected_keywords" string="Palabras esperadas"/>
+                            <field name="last_run" string="Última ejecución" readonly="1"/>
+                            <field name="last_score" string="Último puntaje" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Configuración">
+                            <separator string="Instrucción adicional"/>
+                            <div class="o_chatroom_ai_quality_text">
+                                <field name="prompt" nolabel="1" widget="text" placeholder="Criterios que debe seguir la respuesta..."/>
+                            </div>
+                            <div class="text-muted">Las palabras esperadas se separan por coma. Si no defines palabras, la prueba se considera válida cuando la ejecución termina correctamente.</div>
+                        </page>
+                        <page string="Último resultado">
+                            <separator string="Respuesta generada"/>
+                            <div class="o_chatroom_ai_quality_output">
+                                <field name="last_output" readonly="1" nolabel="1" widget="text" placeholder="Todavía no se ha ejecutado esta prueba."/>
+                            </div>
+                        </page>
+                        <page string="Historial">
+                            <field name="result_ids" readonly="1">
+                                <list string="Ejecuciones anteriores">
+                                    <field name="run_date" string="Fecha"/>
+                                    <field name="score" string="Puntaje"/>
+                                    <field name="state" string="Resultado" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
     </record>
     <record id="view_chatroom_ai_quality_result_list" model="ir.ui.view">
         <field name="name">chatroom.ai.quality.result.list</field><field name="model">chatroom.ai.quality.result</field>
-        <field name="arch" type="xml"><list string="Historial de calidad"><field name="run_date"/><field name="test_id"/><field name="score"/><field name="state" widget="badge"/></list></field>
+        <field name="arch" type="xml"><list string="Historial de calidad"><field name="run_date" string="Fecha"/><field name="test_id" string="Prueba"/><field name="score" string="Puntaje"/><field name="state" string="Resultado" widget="badge"/></list></field>
     </record>
     <record id="view_chatroom_ai_sandbox_list" model="ir.ui.view">
         <field name="name">chatroom.ai.sandbox.list</field><field name="model">chatroom.ai.sandbox</field>
-        <field name="arch" type="xml"><list string="Simulador IA" decoration-success="state == 'done'" decoration-danger="state == 'error'">
-            <button name="action_run" type="object" icon="fa-play" title="Ejecutar sin enviar"/>
-            <field name="name"/><field name="channel_id"/><field name="scenario"/><field name="task_type"/><field name="state" widget="badge"/><field name="evaluation_state" widget="badge"/>
-            <field name="model_used" optional="hide"/><field name="write_date"/>
-        </list></field>
+        <field name="arch" type="xml">
+            <list string="Laboratorio de conversación IA" decoration-success="state == 'done'" decoration-danger="state == 'error'">
+                <button name="action_run" type="object" icon="fa-play" title="Ejecutar sin enviar"/>
+                <field name="name" string="Prueba"/>
+                <field name="channel_id" string="Conversación"/>
+                <field name="scenario" string="Escenario"/>
+                <field name="execution_mode" string="Modo" widget="badge"/>
+                <field name="task_type" string="Tipo"/>
+                <field name="state" string="Estado" widget="badge"/>
+                <field name="evaluation_state" string="Evaluación" widget="badge"/>
+                <field name="model_used" string="Modelo" optional="hide"/>
+                <field name="write_date" string="Actualizado"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_sandbox_search" model="ir.ui.view">
+        <field name="name">chatroom.ai.sandbox.search</field>
+        <field name="model">chatroom.ai.sandbox</field>
+        <field name="arch" type="xml">
+            <search string="Laboratorio de conversación IA">
+                <field name="name" string="Prueba"/>
+                <field name="channel_id" string="Conversación"/>
+                <field name="scenario" string="Escenario"/>
+                <field name="task_type" string="Tipo"/>
+                <filter name="completed" string="Completadas" domain="[('state', '=', 'done')]"/>
+                <filter name="errors" string="Con error" domain="[('state', '=', 'error')]"/>
+                <filter name="approved" string="Aprobadas" domain="[('evaluation_state', '=', 'passed')]"/>
+                <filter name="review" string="Para revisar" domain="[('evaluation_state', '=', 'warning')]"/>
+                <group>
+                    <filter name="group_scenario" string="Escenario" context="{'group_by': 'scenario'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_evaluation" string="Evaluación" context="{'group_by': 'evaluation_state'}"/>
+                </group>
+            </search>
+        </field>
     </record>
     <record id="view_chatroom_ai_sandbox_form" model="ir.ui.view">
         <field name="name">chatroom.ai.sandbox.form</field><field name="model">chatroom.ai.sandbox</field>
-        <field name="arch" type="xml"><form string="Simulador seguro de IA">
-            <header><button name="action_load_scenario" type="object" string="Cargar escenario" class="btn-secondary"/><button name="action_run" type="object" string="Probar IA (no enviar)" class="oe_highlight"/><button name="action_simulate_delivery" type="object" string="Simular entrega" class="btn-secondary" invisible="state != 'done'"/><field name="state" widget="statusbar"/></header>
-            <sheet><div class="alert alert-info" role="alert">Esta prueba solo consulta el modelo. No aprueba ni envia mensajes al cliente.</div>
-                <div class="oe_title"><h1><field name="name"/></h1></div>
-                <group><group><field name="channel_id"/><field name="scenario"/><field name="task_type"/><field name="expected_keywords"/></group>
-                    <group><field name="model_used" readonly="1"/><field name="input_tokens" readonly="1"/><field name="output_tokens" readonly="1"/></group></group>
-                <group string="Instruccion"><field name="prompt" nolabel="1" colspan="2" widget="text" placeholder="Ejemplo: responde con tono profesional y ofrece el siguiente paso..."/></group>
-                <group string="Resultado"><field name="output" nolabel="1" colspan="2" readonly="1" widget="text"/><field name="evaluation_state" widget="badge"/><field name="evaluation_note" readonly="1" nolabel="1"/><field name="delivery_state" widget="badge"/><field name="delivery_note" readonly="1" nolabel="1"/></group>
-                <group string="Error"><field name="error_message" nolabel="1" readonly="1"/></group>
-            </sheet>
-        </form></field>
+        <field name="arch" type="xml">
+            <form string="Laboratorio de conversación IA" class="o_chatroom_ai_sandbox_form">
+                <header>
+                    <button name="action_load_scenario" type="object" string="Cargar escenario" class="btn-secondary" icon="fa-lightbulb-o"/>
+                    <button name="action_run" type="object" string="Probar IA (no enviar)" class="oe_highlight" icon="fa-play"/>
+                    <button name="action_send_test_message" type="object" string="Enviar mensaje de prueba" class="oe_highlight" icon="fa-comment"/>
+                    <button name="action_simulate_delivery" type="object" string="Simular entrega" class="btn-secondary" icon="fa-paper-plane" invisible="state != 'done'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,done,error"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <div class="o_chatroom_ai_sandbox_intro" role="status">
+                        Escribe varios mensajes como cliente y recibe respuestas dentro de este chat. Nada se envía por WhatsApp.
+                    </div>
+                    <group col="2">
+                        <group string="Escenario">
+                            <field name="channel_id" string="Conversación"/>
+                            <field name="scenario" string="Escenario"/>
+                            <field name="task_type" string="Tipo de tarea"/>
+                            <field name="execution_mode" string="Modo de prueba"/>
+                            <field name="provider_model_id" string="Modelo" invisible="execution_mode != 'provider'"/>
+                            <field name="expected_keywords" string="Debe incluir"/>
+                        </group>
+                        <group string="Medición">
+                            <field name="message_count" string="Mensajes" readonly="1"/>
+                            <field name="model_used" string="Modelo utilizado" readonly="1"/>
+                            <field name="input_tokens" string="Tokens de entrada" readonly="1"/>
+                            <field name="output_tokens" string="Tokens de salida" readonly="1"/>
+                            <field name="evaluation_state" string="Evaluación" widget="badge" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Chat de prueba">
+                            <div class="o_chatroom_ai_sandbox_chat_help">
+                                <strong>Prueba como cliente:</strong> escribe «Hola», «¿Cuál es la tarifa?» o «¿Qué productos tienen?».
+                                Usa <strong>Modo local</strong> para practicar sin tokens o <strong>Proveedor IA</strong> para consultar el modelo configurado.
+                            </div>
+                            <div class="o_chatroom_ai_sandbox_chat_input">
+                                <field name="draft_message" nolabel="1" widget="text" placeholder="Escribe aquí el mensaje del cliente..."/>
+                                <button name="action_send_test_message" type="object" string="Enviar mensaje de prueba" class="oe_highlight" icon="fa-paper-plane"/>
+                            </div>
+                            <field name="conversation_line_ids" nolabel="1" readonly="1">
+                                <list string="Mensajes de la conversación" decoration-info="speaker == 'customer'" decoration-success="speaker == 'assistant'">
+                                    <field name="sequence" column_invisible="1"/>
+                                    <field name="speaker" string="Interlocutor" widget="badge"/>
+                                    <field name="body" string="Mensaje"/>
+                                    <field name="message_date" string="Fecha"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Instrucción">
+                            <separator string="Instrucción para la prueba"/>
+                            <div class="o_chatroom_ai_sandbox_text">
+                                <field name="prompt" nolabel="1" widget="text" placeholder="Ejemplo: responde con tono profesional y ofrece el siguiente paso..."/>
+                            </div>
+                        </page>
+                        <page string="Resultado">
+                            <separator string="Respuesta generada"/>
+                            <div class="o_chatroom_ai_sandbox_output">
+                                <field name="output" nolabel="1" readonly="1" widget="text" placeholder="Ejecuta la prueba para ver la respuesta."/>
+                            </div>
+                            <group col="2">
+                                <field name="evaluation_note" string="Evaluación automática" readonly="1"/>
+                                <field name="delivery_state" string="Entrega" widget="badge" readonly="1"/>
+                                <field name="delivery_note" string="Detalle de entrega" readonly="1"/>
+                            </group>
+                        </page>
+                        <page string="Diagnóstico">
+                            <separator string="Último error"/>
+                            <div class="o_chatroom_ai_sandbox_error">
+                                <field name="error_message" nolabel="1" readonly="1" widget="text" placeholder="Sin errores registrados."/>
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
     </record>
     <record id="action_chatroom_ai_provider_model" model="ir.actions.act_window">
         <field name="name">Modelos disponibles</field>
@@ -290,13 +454,17 @@
     <record id="action_chatroom_ai_quality_test" model="ir.actions.act_window">
         <field name="name">Pruebas de calidad</field><field name="res_model">chatroom.ai.quality.test</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_chatroom_ai_quality_test_search"/>
+        <field name="limit">40</field>
     </record>
     <record id="action_chatroom_ai_quality_result" model="ir.actions.act_window">
         <field name="name">Historial de calidad</field><field name="res_model">chatroom.ai.quality.result</field>
         <field name="view_mode">list</field>
     </record>
     <record id="action_chatroom_ai_sandbox" model="ir.actions.act_window">
-        <field name="name">Simulador IA</field><field name="res_model">chatroom.ai.sandbox</field>
+        <field name="name">Laboratorio de conversación IA</field><field name="res_model">chatroom.ai.sandbox</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_chatroom_ai_sandbox_search"/>
+        <field name="limit">40</field>
     </record>
 </odoo>

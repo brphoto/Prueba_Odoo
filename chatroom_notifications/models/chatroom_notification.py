@@ -67,7 +67,7 @@ class ChatroomNotification(models.Model):
 
     def action_mark_read(self):
         self.write({'state': 'read', 'read_at': fields.Datetime.now()})
-        return self._action_feedback(_('Notificaciones actualizadas'), _('%s marcada(s) como leÃ­da(s).') % len(self))
+        return self._action_feedback(_('Notificaciones actualizadas'), _('%s marcada(s) como leída(s).') % len(self))
 
     def action_snooze(self):
         self.write({

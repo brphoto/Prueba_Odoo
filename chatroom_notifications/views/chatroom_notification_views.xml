@@ -4,7 +4,7 @@
         <field name="name">chatroom.notification.list</field><field name="model">chatroom.notification</field>
         <field name="arch" type="xml"><list string="Notificaciones">
             <header>
-                <button name="action_mark_read" type="object" string="Marcar leÃ­das"/>
+                <button name="action_mark_read" type="object" string="Marcar leídas"/>
                 <button name="action_snooze" type="object" string="Posponer 1 hora"/>
                 <button name="action_resolve" type="object" string="Resolver" class="btn-primary"/>
             </header>

@@ -42,8 +42,10 @@
                         <group string="Objetivo">
                             <field name="trigger"/>
                             <field name="task_type"/>
-                            <field name="instruction" class="o_chatroom_ai_automation_instruction" nolabel="1"
-                                   placeholder="Escribe aquí el contexto o la instrucción para la IA..."/>
+                            <div class="o_chatroom_ai_automation_textarea">
+                                <field name="instruction" class="o_chatroom_ai_automation_instruction" nolabel="1"
+                                       placeholder="Escribe aquí el contexto o la instrucción para la IA..."/>
+                            </div>
                         </group>
                         <group string="Seguridad y alcance">
                             <field name="approval_required"/>
@@ -57,7 +59,9 @@
                         </group>
                     </group>
                     <group string="Como usarla" class="o_chatroom_ai_automation_context">
-                        <field name="description" nolabel="1" placeholder="Explica en lenguaje sencillo cuando usar esta automatizacion..."/>
+                        <div class="o_chatroom_ai_automation_textarea">
+                            <field name="description" nolabel="1" placeholder="Explica en lenguaje sencillo cuándo usar esta automatización..."/>
+                        </div>
                     </group>
                     <div class="alert alert-info" role="status">
                         Las automatizaciones de ejemplo llegan desactivadas para evitar envíos inesperados. Puedes pulsar «Ejecutar ahora» para probarlas manualmente; las acciones sensibles seguirán solicitando aprobación.

@@ -10,33 +10,88 @@
                 <field name="task_id" string="Tarea"/>
                 <field name="action_id" string="Acción"/>
                 <field name="user_id" string="Usuario"/>
-                <field name="message" string="Detalle"/>
+                <field name="duration_ms" string="Duración (ms)" optional="hide"/>
+                <field name="message" string="Detalle" optional="hide"/>
             </list>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_audit_search" model="ir.ui.view">
+        <field name="name">chatroom.ai.audit.search</field>
+        <field name="model">chatroom.ai.audit</field>
+        <field name="arch" type="xml">
+            <search string="Auditoría IA">
+                <field name="name" string="Operación"/>
+                <field name="task_id" string="Tarea"/>
+                <field name="action_id" string="Acción"/>
+                <field name="user_id" string="Usuario"/>
+                <filter name="completed" string="Completadas" domain="[('state', '=', 'done')]"/>
+                <filter name="errors" string="Con error" domain="[('state', '=', 'error')]"/>
+                <filter name="blocked" string="Bloqueadas" domain="[('state', '=', 'blocked')]"/>
+                <group>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_task" string="Tarea" context="{'group_by': 'task_id'}"/>
+                    <filter name="group_user" string="Usuario" context="{'group_by': 'user_id'}"/>
+                </group>
+            </search>
         </field>
     </record>
     <record id="view_chatroom_ai_audit_form" model="ir.ui.view">
         <field name="name">chatroom.ai.audit.form</field><field name="model">chatroom.ai.audit</field>
         <field name="arch" type="xml">
-            <form string="Auditoría IA" create="false" edit="false">
+            <form string="Auditoría IA" create="false" edit="false" delete="false" class="o_chatroom_ai_audit_form">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="started,done,error,blocked"/>
+                </header>
                 <sheet>
+                    <div class="oe_title o_chatroom_ai_audit_title">
+                        <h1><field name="name"/></h1>
+                        <div class="text-muted">Registro de trazabilidad del agente IA</div>
+                    </div>
                     <group class="o_chatroom_ai_audit_overview" col="2">
-                        <field name="create_date" string="Fecha"/>
-                        <field name="name" string="Operación"/>
-                        <field name="state" string="Estado"/>
-                        <field name="task_id" string="Tarea"/>
-                        <field name="action_id" string="Acción"/>
-                        <field name="tool_id" string="Herramienta"/>
-                        <field name="user_id" string="Usuario"/>
-                    </group>
-                    <group string="Detalle" class="o_chatroom_long_text">
-                        <field name="message" nolabel="1" widget="text"/>
+                        <group string="Resumen de la operación">
+                            <field name="create_date" string="Fecha"/>
+                            <field name="duration_ms" string="Duración (ms)"/>
+                            <field name="user_id" string="Usuario"/>
+                        </group>
+                        <group string="Origen y ejecución">
+                            <field name="task_id" string="Tarea"/>
+                            <field name="action_id" string="Acción"/>
+                            <field name="tool_id" string="Herramienta"/>
+                        </group>
                     </group>
                     <notebook>
-                        <page string="Entrada">
-                            <field name="input_json" nolabel="1" widget="text"/>
+                        <page string="Resumen">
+                            <separator string="Detalle de la operación"/>
+                            <div class="o_chatroom_ai_audit_long_text">
+                                <field name="message" nolabel="1" widget="text" placeholder="Sin detalle registrado."/>
+                            </div>
+                            <div class="o_chatroom_ai_audit_hint">
+                                Este registro es informativo y conserva lo que ocurrió durante la ejecución.
+                            </div>
                         </page>
-                        <page string="Salida">
-                            <field name="output_json" nolabel="1" widget="text"/>
+                        <page string="Entrada técnica">
+                            <separator string="Contexto recibido por el agente"/>
+                            <div class="o_chatroom_ai_audit_payload_hint">JSON de entrada para diagnóstico. Se muestra completo y no se modifica desde esta pantalla.</div>
+                            <div class="o_chatroom_ai_audit_payload">
+                                <field name="input_json" nolabel="1" widget="text" placeholder="No hay datos de entrada."/>
+                            </div>
+                        </page>
+                        <page string="Salida técnica">
+                            <separator string="Resultado devuelto por el agente"/>
+                            <div class="o_chatroom_ai_audit_payload_hint">JSON de salida para diagnóstico y auditoría. Revisa el resumen para una lectura rápida.</div>
+                            <div class="o_chatroom_ai_audit_payload">
+                                <field name="output_json" nolabel="1" widget="text" placeholder="No hay datos de salida."/>
+                            </div>
+                        </page>
+                        <page string="Trazabilidad">
+                            <group col="2">
+                                <field name="task_id" string="Tarea"/>
+                                <field name="action_id" string="Acción"/>
+                                <field name="tool_id" string="Herramienta"/>
+                                <field name="user_id" string="Usuario"/>
+                                <field name="create_date" string="Creado el"/>
+                                <field name="duration_ms" string="Duración (ms)"/>
+                            </group>
                         </page>
                     </notebook>
                 </sheet>
@@ -44,5 +99,11 @@
             </form>
         </field>
     </record>
-    <record id="action_chatroom_ai_audit" model="ir.actions.act_window"><field name="name">Auditoría IA</field><field name="res_model">chatroom.ai.audit</field><field name="view_mode">list,form</field></record>
+    <record id="action_chatroom_ai_audit" model="ir.actions.act_window">
+        <field name="name">Auditoría IA</field>
+        <field name="res_model">chatroom.ai.audit</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_chatroom_ai_audit_search"/>
+        <field name="limit">40</field>
+    </record>
 </odoo>

@@ -69,9 +69,10 @@
                         <strong>Falta aprobación humana.</strong>
                         Aprueba el plan para permitir acciones protegidas como crear oportunidades, cotizaciones, actividades o enviar mensajes.
                     </div>
-                    <group string="Solicitud" col="2" class="o_chatroom_ai_task_prompt">
-                        <field name="prompt" nolabel="1" colspan="2" widget="text" placeholder="Ejemplo: analiza la conversación, identifica lo que solicita el cliente y prepara una respuesta profesional con los datos reales de Odoo. No envíes nada."/>
-                    </group>
+                    <separator string="Solicitud"/>
+                    <div class="o_chatroom_ai_task_prompt">
+                        <field name="prompt" nolabel="1" widget="text" placeholder="Ejemplo: analiza la conversación, identifica lo que solicita el cliente y prepara una respuesta profesional con los datos reales de Odoo. No envíes nada."/>
+                    </div>
                     <notebook>
                         <page string="Plan y ejecución">
                             <field name="action_ids" context="{'default_task_id': id}">
@@ -98,9 +99,12 @@
                                 <field name="knowledge_context_chars"/>
                                 <field name="knowledge_estimated_input_tokens"/>
                             </group>
-                            <field name="input_context" nolabel="1" readonly="1" widget="text"/>
-                            <field name="plan_json" nolabel="1" readonly="1" widget="text"/>
-                            <field name="output_json" nolabel="1" readonly="1" widget="text"/>
+                            <separator string="Contexto enviado"/>
+                            <div class="o_chatroom_ai_task_payload"><field name="input_context" nolabel="1" readonly="1" widget="text" placeholder="No hay contexto registrado."/></div>
+                            <separator string="Plan técnico"/>
+                            <div class="o_chatroom_ai_task_payload"><field name="plan_json" nolabel="1" readonly="1" widget="text" placeholder="No hay plan registrado."/></div>
+                            <separator string="Salida técnica"/>
+                            <div class="o_chatroom_ai_task_payload"><field name="output_json" nolabel="1" readonly="1" widget="text" placeholder="No hay salida registrada."/></div>
                         </page>
                         <page string="Auditoría">
                             <field name="audit_ids" readonly="1">

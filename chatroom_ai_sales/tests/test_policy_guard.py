@@ -7,7 +7,7 @@ class TestChatroomAiSalesPolicyGuard(TransactionCase):
 
     def test_active_autonomy_policy_can_be_selected_for_sales(self):
         if 'chatroom.ai.autonomy.policy' not in self.env:
-            self.skipTest('El mÃ³dulo de autonomÃ­a es opcional.')
+            self.skipTest('El módulo de autonomía es opcional.')
         policy_model = self.env['chatroom.ai.autonomy.policy']
         policy_model.search([]).write({'active': False})
         policy_model.create({

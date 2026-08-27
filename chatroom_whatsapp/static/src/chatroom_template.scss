@@ -67,6 +67,7 @@
     .o_chatroom_template_section {
         margin: 0 0 28px !important;
 
+        > .o_chatroom_template_section_title,
         > .o_horizontal_separator {
             margin: 0 0 14px !important;
             color: var(--chatroom-template-ink);
@@ -82,10 +83,19 @@
         border-radius: 12px;
         background: #fff;
 
-        .o_field_text textarea,
-        .o_field_text {
+        > .o_field_widget,
+        > .o_chatroom_template_full_width_field,
+        .o_field_text,
+        .o_field_text textarea {
+            display: block !important;
+            grid-column: 1 / -1 !important;
+            width: 100% !important;
+            max-width: none !important;
+        }
+
+        .o_field_text,
+        .o_field_text textarea {
             min-height: 118px;
-            width: 100%;
             padding: 15px 17px;
             border: 1px solid #ccd5e2;
             border-radius: 9px;
@@ -103,7 +113,12 @@
         border-radius: 12px;
         background: var(--chatroom-template-soft);
 
+        > .o_field_widget,
+        > .o_chatroom_template_full_width_field,
         .o_field_one2many {
+            display: block !important;
+            width: 100% !important;
+            max-width: none !important;
             width: 100%;
             overflow-x: auto;
         }
@@ -141,11 +156,13 @@
         border-radius: 12px;
         background: var(--chatroom-template-soft);
 
+        > .o_chatroom_template_section_title,
         > .o_horizontal_separator {
             grid-column: 1 / -1;
         }
 
-        > .o_group {
+        > .o_chatroom_template_preview_input,
+        > .o_chatroom_template_preview_card {
             min-width: 0;
             margin: 0 !important;
             padding: 16px !important;
@@ -163,6 +180,14 @@
         border-radius: 8px;
     }
 
+    .o_chatroom_template_field_label {
+        display: block;
+        margin: 0 0 10px;
+        color: var(--chatroom-template-muted);
+        font-size: 12px;
+        font-weight: 700;
+    }
+
     .o_chatroom_template_preview_card {
         border-left: 4px solid var(--chatroom-template-primary) !important;
 
@@ -176,6 +201,9 @@
 
         .o_field_text,
         .o_field_widget {
+            display: block !important;
+            width: 100% !important;
+            max-width: none !important;
             color: var(--chatroom-template-ink);
             font-size: 15px;
             line-height: 1.65;

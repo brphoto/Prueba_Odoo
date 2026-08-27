@@ -7,23 +7,24 @@ class ChatroomAiQualityTest(models.Model):
     _name = 'chatroom.ai.quality.test'
     _description = 'Prueba de calidad de respuestas IA'
     _order = 'active desc, name'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
 
     name = fields.Char(string='Nombre', required=True)
     active = fields.Boolean(default=True)
-    channel_id = fields.Many2one('chatroom.channel', string='Conversacion de prueba', required=True)
+    channel_id = fields.Many2one('chatroom.channel', string='Conversación de prueba', required=True)
     task_type = fields.Selection([
         ('reply', 'Respuesta'), ('summary', 'Resumen'),
-        ('classification', 'Clasificacion'), ('next_action', 'Proxima accion'),
+        ('classification', 'Clasificación'), ('next_action', 'Próxima acción'),
         ('agent', 'Agente'),
     ], string='Tipo de prueba', default='reply', required=True)
-    prompt = fields.Text(string='Instruccion adicional')
-    expected_keywords = fields.Char(string='Palabras esperadas', help='Separalas por coma para medir cobertura basica.')
-    last_run = fields.Datetime(string='Ultima ejecucion', readonly=True)
-    last_score = fields.Float(string='Ultimo puntaje', readonly=True)
+    prompt = fields.Text(string='Instrucción adicional')
+    expected_keywords = fields.Char(string='Palabras esperadas', help='Sepáralas por coma para medir cobertura básica.')
+    last_run = fields.Datetime(string='Última ejecución', readonly=True)
+    last_score = fields.Float(string='Último puntaje', readonly=True)
     last_state = fields.Selection([
         ('pending', 'Pendiente'), ('passed', 'Aprobada'), ('warning', 'Revisar'), ('error', 'Error'),
     ], string='Resultado', default='pending', readonly=True)
-    last_output = fields.Text(string='Ultima respuesta', readonly=True)
+    last_output = fields.Text(string='Última respuesta', readonly=True)
     result_ids = fields.One2many('chatroom.ai.quality.result', 'test_id', string='Historial')
 
     def _score_output(self, output):

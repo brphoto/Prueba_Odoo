@@ -62,11 +62,13 @@
                             <field name="last_synced_at" string="Última sincronización" readonly="1"/>
                         </group>
                     </group>
-                    <group string="Mensaje aprobado" class="o_chatroom_template_section o_chatroom_template_body_section">
-                        <field name="body" string="Mensaje" nolabel="1" readonly="waba_template_id"/>
-                    </group>
-                    <group string="Variables del mensaje" class="o_chatroom_template_section o_chatroom_template_variables_section" invisible="not variable_count">
-                        <field name="variable_mapping_ids" nolabel="1">
+                    <div class="o_chatroom_template_section o_chatroom_template_body_section">
+                        <div class="o_chatroom_template_section_title">Mensaje aprobado</div>
+                        <field name="body" string="Mensaje" nolabel="1" class="o_chatroom_template_full_width_field" readonly="waba_template_id"/>
+                    </div>
+                    <div class="o_chatroom_template_section o_chatroom_template_variables_section" invisible="not variable_count">
+                        <div class="o_chatroom_template_section_title">Variables del mensaje</div>
+                        <field name="variable_mapping_ids" nolabel="1" class="o_chatroom_template_full_width_field">
                             <list editable="bottom">
                                 <field name="sequence"/>
                                 <field name="placeholder" readonly="1"/>
@@ -80,16 +82,18 @@
                             Detecta las variables después de escribir el cuerpo. Al enviar desde un chat,
                             Odoo completará estos campos automáticamente.
                         </div>
-                    </group>
-                    <group string="Vista previa" class="o_chatroom_template_section o_chatroom_template_preview_section">
-                        <group class="o_chatroom_template_preview_input">
+                    </div>
+                    <div class="o_chatroom_template_section o_chatroom_template_preview_section">
+                        <div class="o_chatroom_template_section_title">Vista previa</div>
+                        <div class="o_chatroom_template_preview_input">
+                            <div class="o_chatroom_template_field_label">Valores de ejemplo</div>
                             <field name="example_values" placeholder="Un valor por línea, en el mismo orden de {{1}}, {{2}}..."/>
-                        </group>
-                        <group class="o_chatroom_template_preview_card">
-                            <div class="o_form_label">Así recibirá el mensaje el cliente</div>
+                        </div>
+                        <div class="o_chatroom_template_preview_card">
+                            <div class="o_chatroom_template_field_label">Así recibirá el mensaje el cliente</div>
                             <field name="preview_body" readonly="1" nolabel="1"/>
-                        </group>
-                    </group>
+                        </div>
+                    </div>
                 </sheet>
             </form>
         </field>

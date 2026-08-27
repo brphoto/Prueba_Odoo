@@ -25,11 +25,11 @@
                             <field name="chatroom_ai_sales_auto_payment_link"/>
                         </setting>
                         <setting id="chatroom_ai_sales_validate_stock_setting"
-                                 help="Evita vender automÃ¡ticamente productos sin existencia disponible.">
+                                 help="Evita vender automáticamente productos sin existencia disponible.">
                             <field name="chatroom_ai_sales_validate_stock"/>
                         </setting>
                         <setting id="chatroom_ai_sales_validate_price_setting"
-                                 help="Evita confirmar si el precio cambiÃ³ desde que se armÃ³ el carrito.">
+                                 help="Evita confirmar si el precio cambió desde que se armó el carrito.">
                             <field name="chatroom_ai_sales_validate_price"/>
                         </setting>
                     </block>

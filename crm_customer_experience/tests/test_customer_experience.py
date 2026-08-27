@@ -10,12 +10,17 @@ class TestCustomerExperience(TransactionCase):
         cls.response_model = cls.env['crm.nps.response']
 
     def test_nps_categories_and_partner_summary(self):
+        baseline_total = self.response_model.search_count([])
+        baseline_promoters = self.response_model.search_count([('category', '=', 'promoter')])
+        baseline_detractors = self.response_model.search_count([('category', '=', 'detractor')])
         response = self.response_model.create({'partner_id': self.partner.id, 'score': 10, 'reason': 'Excelente atención'})
         self.assertEqual(response.category, 'promoter')
         self.partner.invalidate_recordset()
         self.assertEqual(self.partner.nps_score, 10)
         self.assertEqual(self.partner.nps_category, 'promoter')
-        self.assertEqual(self.response_model.global_nps(), 100.0)
+        expected_nps = ((baseline_promoters + 1 - baseline_detractors) /
+                        (baseline_total + 1) * 100.0)
+        self.assertEqual(self.response_model.global_nps(), expected_nps)
 
     def test_nps_boundaries(self):
         detractor = self.response_model.create({'partner_id': self.partner.id, 'score': 6})

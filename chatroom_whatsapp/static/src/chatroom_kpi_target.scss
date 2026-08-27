@@ -1,0 +1,72 @@
+.o_chatroom_kpi_target_form {
+    --chatroom-kpi-primary: #704c6c;
+    --chatroom-kpi-ink: #172033;
+    --chatroom-kpi-muted: #667085;
+    --chatroom-kpi-border: #d9e0ea;
+    --chatroom-kpi-soft: #f7f9fc;
+
+    .o_chatroom_kpi_target_sheet {
+        max-width: 1180px !important;
+        margin: 0 auto;
+        padding: 28px 38px 42px !important;
+        background: #fff;
+    }
+
+    .o_chatroom_kpi_target_banner {
+        margin: 0 0 22px !important;
+        border: 0 !important;
+        border-left: 4px solid #1aa6b7 !important;
+        border-radius: 8px !important;
+        padding: 12px 16px !important;
+        color: #17465a;
+        background: #e8f7fa !important;
+    }
+
+    .o_chatroom_kpi_target_hero {
+        margin: 0 0 24px !important;
+        padding: 0 0 18px;
+        border-bottom: 1px solid var(--chatroom-kpi-border);
+
+        h1 {
+            margin: 0 !important;
+            color: var(--chatroom-kpi-ink);
+            font-size: 28px !important;
+            font-weight: 700;
+        }
+    }
+
+    .o_chatroom_kpi_target_summary {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        margin: 0 0 24px !important;
+
+        > .o_group {
+            min-height: 150px;
+            margin: 0 !important;
+            padding: 18px 22px !important;
+            border: 1px solid var(--chatroom-kpi-border);
+            border-radius: 12px;
+            background: var(--chatroom-kpi-soft);
+            box-shadow: 0 3px 12px rgba(26, 39, 61, .05);
+        }
+    }
+
+    .o_chatroom_kpi_target_period {
+        margin: 0 !important;
+        padding: 18px 22px !important;
+        border: 1px solid var(--chatroom-kpi-border);
+        border-radius: 12px;
+        background: #fff;
+    }
+}
+
+@media (max-width: 900px) {
+    .o_chatroom_kpi_target_form .o_chatroom_kpi_target_sheet {
+        padding: 20px 18px 32px !important;
+    }
+
+    .o_chatroom_kpi_target_form .o_chatroom_kpi_target_summary {
+        grid-template-columns: 1fr;
+    }
+}

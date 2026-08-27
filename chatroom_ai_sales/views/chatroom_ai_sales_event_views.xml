@@ -5,35 +5,79 @@
         <field name="model">chatroom.ai.sales.event</field>
         <field name="arch" type="xml">
             <list string="Actividad de ventas autónomas">
-                <field name="create_date"/>
-                <field name="event"/>
-                <field name="partner_id"/>
-                <field name="channel_id"/>
-                <field name="order_id"/>
-                <field name="amount" widget="monetary"/>
+                <field name="create_date" string="Fecha"/>
+                <field name="event" string="Evento" widget="badge"/>
+                <field name="partner_id" string="Cliente"/>
+                <field name="channel_id" string="Conversación"/>
+                <field name="order_id" string="Pedido"/>
+                <field name="amount" string="Importe" widget="monetary"/>
                 <field name="currency_id" column_invisible="1"/>
-                <field name="details" optional="hide"/>
+                <field name="details" string="Detalle" optional="hide"/>
             </list>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_sales_event_search" model="ir.ui.view">
+        <field name="name">chatroom.ai.sales.event.search</field>
+        <field name="model">chatroom.ai.sales.event</field>
+        <field name="arch" type="xml">
+            <search string="Actividad de ventas autónomas">
+                <field name="name" string="Nombre"/>
+                <field name="event" string="Evento"/>
+                <field name="partner_id" string="Cliente"/>
+                <field name="channel_id" string="Conversación"/>
+                <field name="order_id" string="Pedido"/>
+                <filter name="blocked" string="Bloqueados" domain="[('event', '=', 'blocked')]"/>
+                <filter name="payments" string="Pagos" domain="[('event', 'in', ('payment_link_sent', 'payment_received'))]"/>
+                <filter name="orders" string="Pedidos" domain="[('event', 'in', ('quotation_created', 'order_confirmed'))]"/>
+                <group>
+                    <filter name="group_event" string="Evento" context="{'group_by': 'event'}"/>
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_channel" string="Conversación" context="{'group_by': 'channel_id'}"/>
+                </group>
+            </search>
         </field>
     </record>
     <record id="view_chatroom_ai_sales_event_form" model="ir.ui.view">
         <field name="name">chatroom.ai.sales.event.form</field>
         <field name="model">chatroom.ai.sales.event</field>
         <field name="arch" type="xml">
-            <form string="Evento de venta autónoma" create="0" edit="0">
+            <form string="Evento de venta autónoma" create="0" edit="0" delete="0" class="o_chatroom_ai_sales_event_form">
+                <header>
+                    <field name="event" widget="badge"/>
+                </header>
                 <sheet>
-                    <group>
-                        <field name="name"/>
-                        <field name="event"/>
-                        <field name="create_date"/>
-                        <field name="channel_id"/>
-                        <field name="partner_id"/>
-                        <field name="order_id"/>
-                        <field name="amount" widget="monetary"/>
-                        <field name="currency_id"/>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                        <div class="text-muted">Trazabilidad de una operación de venta autónoma</div>
+                    </div>
+                    <group col="2">
+                        <group string="Evento">
+                            <field name="event" string="Tipo de evento" widget="badge"/>
+                            <field name="create_date" string="Fecha"/>
+                            <field name="channel_id" string="Conversación"/>
+                            <field name="partner_id" string="Cliente"/>
+                        </group>
+                        <group string="Resultado comercial">
+                            <field name="order_id" string="Pedido"/>
+                            <field name="amount" string="Importe" widget="monetary"/>
+                            <field name="currency_id" string="Moneda"/>
+                        </group>
                     </group>
-                    <field name="details" nolabel="1"/>
+                    <notebook>
+                        <page string="Resumen">
+                            <div class="o_chatroom_ai_sales_event_hint">
+                                Este registro permite revisar qué ocurrió, con qué conversación se relacionó y cuál fue el resultado comercial.
+                            </div>
+                        </page>
+                        <page string="Detalle técnico">
+                            <separator string="Información registrada por la automatización"/>
+                            <div class="o_chatroom_ai_sales_event_details">
+                                <field name="details" nolabel="1" widget="text" placeholder="No hay detalle adicional registrado."/>
+                            </div>
+                        </page>
+                    </notebook>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>
@@ -41,6 +85,8 @@
         <field name="name">Actividad de ventas autónomas</field>
         <field name="res_model">chatroom.ai.sales.event</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_chatroom_ai_sales_event_search"/>
+        <field name="limit">40</field>
         <field name="help" type="html"><p>Auditoría de carritos, pedidos, confirmaciones, pagos y bloqueos.</p></field>
     </record>
 </odoo>

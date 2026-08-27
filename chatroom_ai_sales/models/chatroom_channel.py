@@ -79,7 +79,7 @@ class ChatroomChannel(models.Model):
         if cart_error:
             self.ai_sales_status = 'escalated'
             self.ai_sales_last_error = cart_error
-            self.ai_sales_reply_override = cart_error + ' ' + _('Un asesor continuarÃ¡ contigo.')
+            self.ai_sales_reply_override = cart_error + ' ' + _('Un asesor continuará contigo.')
             self._sales_log('blocked', cart_error, amount=self.cart_total)
             return cart_error
         # La política de autonomía, si está instalada, es el último control
@@ -140,11 +140,11 @@ class ChatroomChannel(models.Model):
         for cart_line in self.cart_line_ids:
             product = self.env['product.product'].browse(cart_line.product_id).exists()
             if not product or not product.active or not product.sale_ok:
-                return _('El producto %s ya no estÃ¡ disponible para la venta.') % (cart_line.product_name or cart_line.product_id)
+                return _('El producto %s ya no está disponible para la venta.') % (cart_line.product_name or cart_line.product_id)
             if validate_price and float_compare(
                     cart_line.price_unit, product.lst_price,
                     precision_rounding=currency.rounding):
-                return _('El precio de %s cambiÃ³ desde que se agregÃ³ al carrito; requiere revisiÃ³n.') % product.display_name
+                return _('El precio de %s cambió desde que se agregó al carrito; requiere revisión.') % product.display_name
             if validate_stock and product.type == 'consu' and product.is_storable:
                 available = product.with_company(self.company_id).free_qty
                 if available < cart_line.quantity:

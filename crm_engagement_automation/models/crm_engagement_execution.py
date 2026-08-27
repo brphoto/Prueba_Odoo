@@ -141,7 +141,7 @@ class CrmEngagementExecution(models.Model):
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
-                'title': _('AutomatizaciÃ³n procesada'),
+                'title': _('Automatización procesada'),
                 'message': _('%s ejecutadas, %s fallidas, %s omitidas.') % (
                     sent, failed, skipped),
                 'type': 'success' if not failed else 'warning',
@@ -154,7 +154,7 @@ class CrmEngagementExecution(models.Model):
             raise UserError(_('Solo un administrador puede aprobar recordatorios.'))
         pending = self.filtered(lambda execution: execution.state == 'pending_approval')
         if not pending:
-            raise UserError(_('Seleccione ejecuciones pendientes de aprobaciÃ³n.'))
+            raise UserError(_('Seleccione ejecuciones pendientes de aprobación.'))
         pending.write({'state': 'queued', 'error_message': False})
         return pending.action_execute()
 
