@@ -68,6 +68,22 @@ class ChatroomChannel(models.Model):
                 decision = 'human_review' if result['decision'] == 'approval' else 'blocked'
                 suggestion = self._ai_create_guarded_suggestion(
                     reply, confidence, decision, result['reason'], intent=intent)
+                if 'chatroom.ai.autonomy.exception' in self.env:
+                    exception_model = self.env['chatroom.ai.autonomy.exception'].sudo()
+                    existing = exception_model.search([
+                        ('channel_id', '=', self.id),
+                        ('exception_type', '=', 'approval' if decision == 'human_review' else 'blocked'),
+                        ('state', 'in', ('open', 'in_progress')),
+                    ], limit=1)
+                    if not existing:
+                        exception_model.create({
+                            'name': _('Intervención requerida: %s') % self.display_name,
+                            'channel_id': self.id, 'partner_id': self.partner_id.id,
+                            'exception_type': 'approval' if decision == 'human_review' else 'blocked',
+                            'severity': 'medium' if decision == 'human_review' else 'high',
+                            'reason': result['reason'],
+                            'recommended_action': _('Revisar la sugerencia antes de responder al cliente.'),
+                        })
                 return {
                     'status': 'awaiting_approval' if decision == 'human_review' else 'blocked',
                     'suggestion_id': suggestion.id, 'reason': result['reason'],

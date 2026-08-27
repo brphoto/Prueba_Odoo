@@ -26,6 +26,12 @@ class ChatroomAiProviderModel(models.Model):
     last_synced = fields.Datetime(string='Ultima sincronizacion', readonly=True)
     usage_roles = fields.Char(
         string='Usado para', compute='_compute_usage_roles')
+    health_state = fields.Selection([
+        ('unknown', 'Sin probar'), ('ok', 'Disponible'),
+        ('error', 'Con error'),
+    ], string='Salud', default='unknown', readonly=True)
+    health_message = fields.Char(string='Detalle de salud', readonly=True)
+    last_tested = fields.Datetime(string='Última prueba', readonly=True)
 
     @api.depends('model_id')
     def _compute_usage_roles(self):
@@ -135,3 +141,26 @@ class ChatroomAiProviderModel(models.Model):
                 'sticky': False,
             },
         }
+
+    def action_test_connection(self):
+        """Test one model without exposing the API key in the interface."""
+        for record in self:
+            icp = self.env['ir.config_parameter'].sudo()
+            key = icp.get_param('chatroom_whatsapp.ai_api_key')
+            base = self._api_base()
+            now = fields.Datetime.now()
+            if not key or not base:
+                record.write({'health_state': 'error', 'last_tested': now,
+                              'health_message': _('Falta endpoint o API Key.')})
+                continue
+            try:
+                response = requests.get(
+                    '%s/models/%s' % (base, record.model_id),
+                    headers={'Authorization': 'Bearer %s' % key}, timeout=15)
+                response.raise_for_status()
+                record.write({'health_state': 'ok', 'last_tested': now,
+                              'health_message': _('Modelo disponible.')})
+            except (requests.RequestException, ValueError) as exc:
+                record.write({'health_state': 'error', 'last_tested': now,
+                              'health_message': str(exc)[:250]})
+        return True

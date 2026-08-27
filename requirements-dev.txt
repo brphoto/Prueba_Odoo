@@ -1,0 +1,3 @@
+# Herramientas utilizadas por las pruebas funcionales y demos locales.
+-r requirements.txt
+reportlab>=4,<5

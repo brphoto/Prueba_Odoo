@@ -31,6 +31,30 @@ class TestChatroomAiUsage(TransactionCase):
         self.assertFalse(model._looks_like_chat_model('gpt-realtime'))
         self.assertTrue(model._is_recommended('gpt-4o-mini'))
 
+    def test_provider_health_reports_missing_configuration_without_http(self):
+        self.env['ir.config_parameter'].sudo().set_param('chatroom_whatsapp.ai_api_key', False)
+        self.env['ir.config_parameter'].sudo().set_param('chatroom_whatsapp.ai_provider_url', False)
+        model = self.env['chatroom.ai.provider.model'].create({
+            'name': 'health-test', 'model_id': 'health-test',
+            'provider': 'openai', 'supports_chat': True,
+        })
+        model.action_test_connection()
+        self.assertEqual(model.health_state, 'error')
+        self.assertIn('Falta', model.health_message)
+
+    def test_sandbox_evaluates_expected_keywords_and_delivery_is_non_destructive(self):
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'QA sandbox', 'scenario': 'product',
+            'expected_keywords': 'producto, catálogo', 'prompt': 'Consulta',
+        })
+        state, note = sandbox._evaluate_output('Tenemos producto y catálogo disponibles.')
+        self.assertEqual(state, 'passed')
+        self.assertIn('todos', note)
+        sandbox.write({'state': 'done', 'output': 'Mensaje de prueba'})
+        sandbox.action_simulate_delivery()
+        self.assertEqual(sandbox.delivery_state, 'simulated')
+        self.assertIn('No se llamó a WhatsApp', sandbox.delivery_note)
+
     def test_selected_model_overrides_manual_fallback(self):
         icp = self.env['ir.config_parameter'].sudo()
         icp.set_param('chatroom_whatsapp.ai_enabled', 'True')

@@ -1,2 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_chatroom_ai_knowledge_test_user,chatroom.ai.knowledge.test user,model_chatroom_ai_knowledge_test,chatroom_ai_agent.group_chatroom_ai_agent_user,1,1,1,1
+access_chatroom_ai_knowledge_composer_user,chatroom.ai.knowledge.composer user,model_chatroom_ai_knowledge_composer,chatroom_ai_agent.group_chatroom_ai_agent_user,1,1,1,1

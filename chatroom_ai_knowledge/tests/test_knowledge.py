@@ -14,3 +14,17 @@ class TestChatroomAiKnowledge(TransactionCase):
         self.assertEqual(action['res_model'], 'chatroom.ai.knowledge.test')
         self.assertEqual(action['res_id'], wizard.id)
         self.assertGreaterEqual(wizard.estimated_input_tokens, 0)
+
+    def test_composer_creates_and_organizes_natural_knowledge(self):
+        composer = self.env['chatroom.ai.knowledge.composer'].create({
+            'name': 'QA conocimiento comercial',
+            'category': 'sales',
+            'knowledge_format': 'policy',
+            'source_text': 'Somos implementadores de Odoo.\nTarifa: USD 20 por hora.\nPregunta: ¿Qué necesitamos para cotizar?\nAlcance, usuarios y fecha objetivo.',
+        })
+        action = composer.action_create()
+        manual = self.env['ai.knowledge.base'].browse(action['res_id'])
+        self.assertEqual(manual.state, 'indexed')
+        self.assertEqual(manual.organization_state, 'organized')
+        self.assertIn('USD 20', manual.organized_text)
+        self.assertIn('PREGUNTAS FRECUENTES', manual.organized_text)

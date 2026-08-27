@@ -92,6 +92,12 @@
                             </group>
                         </page>
                         <page string="Contexto técnico">
+                            <group string="Trazabilidad del conocimiento" col="2">
+                                <field name="knowledge_sources" nolabel="1"/>
+                                <field name="knowledge_live_sources" nolabel="1"/>
+                                <field name="knowledge_context_chars"/>
+                                <field name="knowledge_estimated_input_tokens"/>
+                            </group>
                             <field name="input_context" nolabel="1" readonly="1" widget="text"/>
                             <field name="plan_json" nolabel="1" readonly="1" widget="text"/>
                             <field name="output_json" nolabel="1" readonly="1" widget="text"/>

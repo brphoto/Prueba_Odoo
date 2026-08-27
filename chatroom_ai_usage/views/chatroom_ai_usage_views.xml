@@ -11,7 +11,7 @@
                 <field name="owned_by" optional="hide"/>
                 <field name="supports_chat"/>
                 <field name="last_synced"/>
-                <field name="active"/>
+                <field name="active"/><field name="health_state" widget="badge"/><field name="last_tested" optional="hide"/>
             </list>
         </field>
     </record>
@@ -19,7 +19,8 @@
         <field name="name">chatroom.ai.provider.model.form</field>
         <field name="model">chatroom.ai.provider.model</field>
         <field name="arch" type="xml">
-            <form string="Modelo de IA">
+                <form string="Modelo de IA">
+                    <header><button name="action_test_connection" type="object" string="Probar disponibilidad" class="btn-primary" icon="fa-heartbeat"/></header>
                 <sheet>
                     <div class="oe_title"><h1><field name="name"/></h1></div>
                     <group>
@@ -33,11 +34,14 @@
                             <field name="recommended"/>
                             <field name="active"/>
                             <field name="last_synced" readonly="1"/>
+                            <field name="health_state" widget="badge" readonly="1"/>
+                            <field name="last_tested" readonly="1"/>
                         </group>
                     </group>
                     <div class="alert alert-info" role="alert">
                         Los modelos se sincronizan desde el proveedor configurado. Chatroom solo muestra como compatibles los modelos de texto detectados.
                     </div>
+                    <field name="health_message" readonly="1"/>
                 </sheet>
             </form>
         </field>
@@ -183,20 +187,20 @@
         <field name="name">chatroom.ai.sandbox.list</field><field name="model">chatroom.ai.sandbox</field>
         <field name="arch" type="xml"><list string="Simulador IA" decoration-success="state == 'done'" decoration-danger="state == 'error'">
             <button name="action_run" type="object" icon="fa-play" title="Ejecutar sin enviar"/>
-            <field name="name"/><field name="channel_id"/><field name="task_type"/><field name="state" widget="badge"/>
+            <field name="name"/><field name="channel_id"/><field name="scenario"/><field name="task_type"/><field name="state" widget="badge"/><field name="evaluation_state" widget="badge"/>
             <field name="model_used" optional="hide"/><field name="write_date"/>
         </list></field>
     </record>
     <record id="view_chatroom_ai_sandbox_form" model="ir.ui.view">
         <field name="name">chatroom.ai.sandbox.form</field><field name="model">chatroom.ai.sandbox</field>
         <field name="arch" type="xml"><form string="Simulador seguro de IA">
-            <header><button name="action_run" type="object" string="Probar IA (no enviar)" class="oe_highlight"/><field name="state" widget="statusbar"/></header>
+            <header><button name="action_load_scenario" type="object" string="Cargar escenario" class="btn-secondary"/><button name="action_run" type="object" string="Probar IA (no enviar)" class="oe_highlight"/><button name="action_simulate_delivery" type="object" string="Simular entrega" class="btn-secondary" invisible="state != 'done'"/><field name="state" widget="statusbar"/></header>
             <sheet><div class="alert alert-info" role="alert">Esta prueba solo consulta el modelo. No aprueba ni envia mensajes al cliente.</div>
                 <div class="oe_title"><h1><field name="name"/></h1></div>
-                <group><group><field name="channel_id"/><field name="task_type"/></group>
+                <group><group><field name="channel_id"/><field name="scenario"/><field name="task_type"/><field name="expected_keywords"/></group>
                     <group><field name="model_used" readonly="1"/><field name="input_tokens" readonly="1"/><field name="output_tokens" readonly="1"/></group></group>
                 <group string="Instruccion"><field name="prompt" nolabel="1" placeholder="Ejemplo: responde con tono profesional y ofrece el siguiente paso..."/></group>
-                <group string="Resultado"><field name="output" nolabel="1" readonly="1" widget="text"/></group>
+                <group string="Resultado"><field name="output" nolabel="1" readonly="1" widget="text"/><field name="evaluation_state" widget="badge"/><field name="evaluation_note" readonly="1" nolabel="1"/><field name="delivery_state" widget="badge"/><field name="delivery_note" readonly="1" nolabel="1"/></group>
                 <group string="Error"><field name="error_message" nolabel="1" readonly="1"/></group>
             </sheet>
         </form></field>

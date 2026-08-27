@@ -249,8 +249,6 @@ class ChatroomAiTaskAutonomy(models.Model):
             elif output.get('invoices') is not None and output.get('invoices'):
                 next_action = _('Enviar recordatorio de cobranza y revisar el saldo.')
                 next_type = 'collect_payment'
-        if next_type == self.task_type:
-            next_type = False
         if warnings:
             message = ' '.join(dict.fromkeys(warnings))
             self.write({
@@ -270,7 +268,10 @@ class ChatroomAiTaskAutonomy(models.Model):
                 'next_task_type': next_type,
             })
             policy = self._autonomy_policy()
-            if policy and policy.mode == 'autonomous' and policy.auto_continue and next_type:
+            # Keep the suggested type visible for a human, but do not recurse
+            # forever when the next step would be the same task type.
+            if (policy and policy.mode == 'autonomous' and policy.auto_continue
+                    and next_type and next_type != self.task_type):
                 self._autonomy_continue(next_type, next_action, policy)
 
     def _autonomy_continue(self, task_type, prompt, policy):
@@ -285,9 +286,19 @@ class ChatroomAiTaskAutonomy(models.Model):
             self.channel_id, task_type=task_type, prompt=prompt,
             approval_required=False)
         next_task.write({'chain_parent_id': self.id, 'chain_step': self.chain_step + 1})
-        next_task.action_plan()
-        if next_task.state == 'planned':
-            next_task.action_run()
+        try:
+            next_task.action_plan()
+            if next_task.state == 'planned':
+                next_task.action_run()
+        except Exception as exc:
+            # A downstream provider or connector failure must become a visible
+            # exception in the operational queue, not erase the completed
+            # parent task or break the whole autonomous cycle.
+            self._autonomy_exception(
+                'error',
+                _('El siguiente paso no pudo ejecutarse: %s') % exc,
+                _('Revisar la tarea encadenada %s y continuar manualmente.') % next_task.display_name,
+                'high')
         return next_task
 
     def action_create_next_task(self):

@@ -62,6 +62,20 @@ class TestChatroomAiAgent(TransactionCase):
             self.assertIn('knowledge_sources', context)
             self.assertIn('knowledge_estimated_input_tokens', context)
 
+    def test_task_persists_knowledge_sources_for_human_review(self):
+        if 'ai.knowledge.base' not in self.env:
+            self.skipTest('Base de conocimiento no instalada')
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'Fuente visible QA', 'source_type': 'text',
+            'source_text': 'La tarifa de implementación es USD 20 por hora.',
+        })
+        manual.action_index()
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            self.channel, task_type='prepare_reply', prompt='tarifa implementación')
+        task.action_plan()
+        self.assertIn('Fuente visible QA', task.knowledge_sources)
+        self.assertGreaterEqual(task.knowledge_context_chars, 0)
+
     def test_memory_is_deduplicated(self):
         memory_model = self.env['chatroom.ai.memory']
         first = memory_model.remember('Cliente prefiere contacto por WhatsApp', channel=self.channel, memory_type='preference')

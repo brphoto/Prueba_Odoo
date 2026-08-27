@@ -26,6 +26,12 @@ class AiKnowledgeBase(models.Model):
         ('text', 'Texto interno'),
         ('pdf', 'Documento PDF'),
     ], string='Tipo de conocimiento', default='text', required=True)
+    publication_state = fields.Selection([
+        ('published', 'Publicado'), ('draft', 'Borrador'),
+        ('archived', 'Archivado'),
+    ], string='Disponibilidad para la IA', default='published', required=True,
+        help='Solo el conocimiento publicado se recupera en las respuestas de IA.')
+    published_at = fields.Datetime(string='Publicado el', readonly=True)
     category = fields.Selection([
         ('general', 'General'),
         ('products', 'Productos y servicios'),
@@ -57,6 +63,11 @@ class AiKnowledgeBase(models.Model):
     organization_notes = fields.Text(string='Notas de organización', readonly=True)
     pdf_file = fields.Binary(string='Manual PDF', attachment=True)
     pdf_filename = fields.Char(string='Nombre del archivo')
+    ocr_status = fields.Selection([
+        ('not_needed', 'No necesario'), ('required', 'Requiere OCR'),
+        ('processed', 'OCR procesado'), ('unavailable', 'OCR no disponible'),
+    ], string='OCR', default='not_needed', readonly=True)
+    ocr_text = fields.Text(string='Texto obtenido por OCR', readonly=True)
     content_text = fields.Text(string='Texto indexado', readonly=True)
     chunk_count = fields.Integer(readonly=True)
     state = fields.Selection([
@@ -133,6 +144,9 @@ class AiKnowledgeBase(models.Model):
                     'content_text': False, 'chunk_count': 0,
                     'processing_error': False, 'indexed_at': False,
                     'last_reviewed_at': False,
+                    'publication_state': 'draft', 'published_at': False,
+                    'ocr_status': 'required' if manual.source_type == 'pdf' else 'not_needed',
+                    'ocr_text': False,
                     'organization_state': 'raw', 'organized_summary': False,
                     'key_points': False, 'faq_entries': False,
                     'operational_rules': False, 'organized_text': False,
@@ -141,6 +155,17 @@ class AiKnowledgeBase(models.Model):
                     'source_updated_at': fields.Datetime.now(),
                 })
         return result
+
+    def action_publish(self):
+        for manual in self:
+            if manual.state != 'indexed':
+                raise UserError(_('Indexa el conocimiento antes de publicarlo para la IA.'))
+            manual.write({'publication_state': 'published', 'published_at': fields.Datetime.now()})
+        return True
+
+    def action_unpublish(self):
+        self.write({'publication_state': 'draft', 'published_at': False})
+        return True
 
     def action_mark_reviewed(self):
         """Confirma que la fuente sigue vigente sin pagar una reindexación."""
@@ -200,7 +225,7 @@ class AiKnowledgeBase(models.Model):
                     text = manual.source_text or ''
                 else:
                     raw = base64.b64decode(manual.pdf_file or b'')
-                    text = self._extract_pdf_text(raw)
+                    text = manual.ocr_text or self._extract_pdf_text(raw)
                 if not text.strip():
                     raise UserError(_(
                         'El PDF no contiene texto seleccionable. Si es un escaneo, conviértelo con OCR o carga una versión con texto.'
@@ -212,10 +237,45 @@ class AiKnowledgeBase(models.Model):
                     'indexed_at': fields.Datetime.now(),
                     'last_reviewed_at': fields.Datetime.now(),
                     'source_digest': digest,
+                    'ocr_status': 'processed' if manual.ocr_text else 'not_needed',
                 })
             except Exception as error:
                 _logger.exception('No se pudo indexar el manual IA %s', manual.id)
-                manual.write({'state': 'error', 'processing_error': str(error)})
+                manual.write({
+                    'state': 'error', 'processing_error': str(error),
+                    'ocr_status': 'required' if manual.source_type == 'pdf' else manual.ocr_status,
+                })
+        return True
+
+    def action_ocr(self):
+        """Try optional local OCR and keep a clear fallback when unavailable."""
+        for manual in self:
+            if manual.source_type != 'pdf' or not manual.pdf_file:
+                raise UserError(_('Selecciona un PDF antes de aplicar OCR.'))
+            try:
+                from pdf2image import convert_from_bytes
+                import pytesseract
+            except ImportError:
+                manual.write({
+                    'ocr_status': 'unavailable',
+                    'organization_notes': _('OCR no está instalado en el entorno. Instala pdf2image, pytesseract y Tesseract para procesar PDFs escaneados.'),
+                })
+                continue
+            try:
+                raw = base64.b64decode(manual.pdf_file or b'')
+                images = convert_from_bytes(raw, dpi=180, first_page=1, last_page=50)
+                text = '\n\n'.join(pytesseract.image_to_string(image, lang='spa+eng') for image in images).strip()
+                if not text:
+                    manual.write({'ocr_status': 'required', 'organization_notes': _('OCR no encontró texto legible en el PDF.')})
+                    continue
+                manual.write({
+                    'ocr_text': text, 'ocr_status': 'processed', 'state': 'pending',
+                    'content_text': False, 'chunk_count': 0, 'source_digest': False,
+                    'processing_error': False,
+                })
+                manual.action_index()
+            except Exception as error:
+                manual.write({'ocr_status': 'required', 'processing_error': str(error)})
         return True
 
     @staticmethod
@@ -352,6 +412,7 @@ class AiKnowledgeBase(models.Model):
         partner = (channel.partner_id if channel else False) or partner
         manuals = self.search([
             ('active', '=', True), ('state', '=', 'indexed'),
+            ('publication_state', '=', 'published'),
             '|', ('company_id', '=', False), ('company_id', '=', company.id),
         ], order='priority desc, name')
         terms = set(re.findall(r'[\wáéíóúñü]{4,}', (query or '').lower()))

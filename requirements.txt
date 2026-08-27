@@ -1,0 +1,20 @@
+# Dependencias Python de los módulos personalizados de Prueba_Odoo.
+# Instalar usando el mismo Python con el que se ejecuta Odoo.
+# Ejemplo en Windows:
+#   C:\Users\Bryan\Desktop\odoo19e\python\python.exe -m pip install -r requirements.txt
+
+# HTTP para OpenAI, PayPhone y conectores externos.
+requests>=2.31,<3
+
+# Lectura de texto en PDFs para la base de conocimiento.
+pypdf>=4,<7
+
+# OCR opcional para PDFs escaneados sin capa de texto.
+# Estas dos librerías se instalan aquí para dejar habilitado el flujo Python.
+# También se requiere instalar los binarios del sistema indicados en
+# README_DEPENDENCIAS.md (Tesseract y Poppler).
+pdf2image>=1.17,<2
+pytesseract>=0.3.10,<0.4
+
+# Mejora la extracción de texto de PDFs gestionados por Odoo.
+pdfminer.six>=20221105,<2027

@@ -61,6 +61,10 @@ class ChatroomAiTask(models.Model):
     prompt = fields.Text(string='Solicitud')
     plan_json = fields.Text(string='Plan técnico', readonly=True)
     input_context = fields.Text(string='Contexto utilizado', readonly=True)
+    knowledge_sources = fields.Text(string='Fuentes de conocimiento', readonly=True)
+    knowledge_live_sources = fields.Text(string='Datos vivos consultados', readonly=True)
+    knowledge_context_chars = fields.Integer(string='Caracteres de contexto', readonly=True)
+    knowledge_estimated_input_tokens = fields.Integer(string='Tokens estimados de entrada', readonly=True)
     output_json = fields.Text(string='Resultado técnico', readonly=True)
     result_summary = fields.Text(string='Resumen del resultado', readonly=True)
     result_preview = fields.Text(
@@ -319,6 +323,13 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                 'state': 'awaiting_approval' if needs_approval else 'planned',
                 'plan_json': task._json({'actions': actions}),
                 'input_context': task._json(context),
+                'knowledge_sources': '\n'.join(
+                    '- %s (v%s)' % (item.get('name') or 'Fuente', item.get('version', 1))
+                    for item in context.get('knowledge_sources', []) if item.get('name')),
+                'knowledge_live_sources': '\n'.join(
+                    '- %s' % item for item in context.get('knowledge_live_sources', []) if item),
+                'knowledge_context_chars': len(context.get('knowledge_context', '') or ''),
+                'knowledge_estimated_input_tokens': context.get('knowledge_estimated_input_tokens', 0),
                 'error_message': False,
             })
             task._audit('Plan generado', 'done', message=_('Se generó un plan de %s acción(es).') % len(actions))

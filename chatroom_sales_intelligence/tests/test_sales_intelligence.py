@@ -169,6 +169,35 @@ class TestChatroomSalesIntelligence(TransactionCase):
         self.assertEqual(manual.state, 'pending')
         self.assertTrue(manual.source_updated_at)
 
+    def test_knowledge_publication_can_be_withdrawn_and_restored(self):
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'Publicación controlada', 'source_type': 'text',
+            'source_text': 'La tarifa exclusiva QA_PUBLICA es USD 20 por hora.',
+        })
+        manual.action_index()
+        manual.action_unpublish()
+        self.assertEqual(manual.publication_state, 'draft')
+        self.assertNotIn('QA_PUBLICA', manual.get_sales_context(False, query='QA_PUBLICA'))
+        manual.action_publish()
+        self.assertEqual(manual.publication_state, 'published')
+        self.assertIn('QA_PUBLICA', manual.get_sales_context(False, query='QA_PUBLICA'))
+
+    def test_scanned_pdf_exposes_ocr_next_step(self):
+        try:
+            from reportlab.pdfgen import canvas
+        except ImportError:
+            self.skipTest('reportlab no está instalado en el entorno de pruebas')
+        stream = BytesIO()
+        pdf = canvas.Canvas(stream)
+        pdf.rect(72, 650, 220, 80, stroke=1, fill=0)
+        pdf.save()
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'OCR guiado QA', 'source_type': 'pdf',
+            'pdf_filename': 'ocr.pdf', 'pdf_file': base64.b64encode(stream.getvalue()),
+        })
+        manual.action_index()
+        self.assertEqual(manual.ocr_status, 'required')
+
     def test_knowledge_context_exposes_source_version(self):
         manual = self.env['ai.knowledge.base'].create({
             'name': 'Fuente trazable', 'source_type': 'text',
