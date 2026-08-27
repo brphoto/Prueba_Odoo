@@ -53,6 +53,17 @@
         strong { color: var(--chatroom-ui-primary, #714b67); }
     }
 
+    .o_chatroom_ai_agent_playbook {
+        padding: 9px;
+        border: 1px solid var(--chatroom-ui-border, #e5e7eb);
+        border-radius: 8px;
+        background: var(--chatroom-ui-surface, #fff);
+
+        label { color: var(--chatroom-ui-text, #344054); font-weight: 600; }
+        select { min-height: 34px; }
+        small { color: var(--chatroom-ui-text-muted, #667085); line-height: 1.35; }
+    }
+
     .o_chatroom_ai_agent_metrics {
         display: flex;
         flex-wrap: wrap;
@@ -66,6 +77,52 @@
             color: var(--chatroom-ui-text, #344054);
             font-size: .72rem;
         }
+    }
+}
+
+.o_chatroom_ai_playbook_form {
+    .o_chatroom_ai_playbook_intro {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 22px;
+        padding: 18px 20px;
+        border-left: 4px solid #76506f;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #faf7fb, #f4edf4);
+
+        h1 { margin: 0 0 4px; color: #312530; font-size: 24px; }
+        p { margin: 0; color: #6b6070; }
+    }
+
+    .o_chatroom_ai_playbook_intro_icon {
+        display: grid;
+        width: 44px;
+        height: 44px;
+        place-items: center;
+        border-radius: 12px;
+        background: #76506f;
+        color: #fff;
+        font-size: 19px;
+    }
+
+    .o_chatroom_ai_playbook_grid > .o_inner_group,
+    .o_chatroom_ai_playbook_scope,
+    .o_chatroom_ai_playbook_example,
+    .o_chatroom_ai_playbook_history {
+        padding: 16px 18px;
+        border: 1px solid #e1e6ee;
+        border-radius: 12px;
+        background: #fbfcfe;
+    }
+
+    .o_chatroom_ai_playbook_grid textarea,
+    .o_chatroom_ai_playbook_example textarea { min-height: 90px; }
+
+    .o_chatroom_ai_playbook_hint {
+        color: #687386;
+        font-size: 12px;
+        line-height: 1.4;
     }
 }
 

@@ -150,6 +150,46 @@ class TestChatroomAiAgent(TransactionCase):
         self.assertIn(('company_id', '=', self.env.company.id), pending_action['domain'])
         self.assertEqual(dashboard.company_id, self.env.company)
 
+    def test_playbook_examples_are_loaded_and_apply_to_current_chat(self):
+        playbook_model = self.env['chatroom.ai.playbook']
+        self.assertGreaterEqual(playbook_model.search_count([('is_example', '=', True)]), 9)
+        playbook = playbook_model.search([('name', '=', 'Diagnóstico de conversación')], limit=1)
+        self.assertTrue(playbook)
+        data = self.channel.get_ai_agent_data()
+        self.assertTrue(data['playbooks'])
+        self.assertIn(playbook.id, [item['id'] for item in data['playbooks']])
+        action = self.channel.action_ai_agent_apply_playbook(playbook.id)
+        self.assertEqual(action['target'], 'new')
+        task = self.env['chatroom.ai.task'].browse(action['res_id'])
+        self.assertEqual(task.playbook_id, playbook)
+        self.assertEqual(task.task_type, 'orchestrate')
+        self.assertTrue(task.action_ids)
+
+    def test_playbook_can_target_selected_partners_and_returns_task_list(self):
+        partner = self.env['res.partner'].create({'name': 'Cliente acción guardada'})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp',
+            'external_id': 'ai-playbook-partner-001',
+            'partner_id': partner.id,
+        })
+        playbook = self.env['chatroom.ai.playbook'].create({
+            'name': 'Prueba cliente específico',
+            'category': 'analysis',
+            'task_type': 'classify_customer',
+            'scope': 'partners',
+            'partner_ids': [(6, 0, [partner.id])],
+            'instruction': 'Clasifica este cliente y explica la prioridad.',
+            'approval_required': True,
+            'max_tasks': 5,
+        })
+        action = playbook.action_apply()
+        self.assertEqual(action['res_model'], 'chatroom.ai.task')
+        task = self.env['chatroom.ai.task'].search([
+            ('playbook_id', '=', playbook.id), ('channel_id', '=', channel.id),
+        ], limit=1)
+        self.assertTrue(task)
+        self.assertEqual(playbook.last_run_count, 1)
+
     def test_inbound_message_plans_task_for_active_automation(self):
         icp = self.env['ir.config_parameter'].sudo()
         icp.set_param('chatroom_ai_agent.event_orchestration', 'True')

@@ -11,6 +11,8 @@ patch(ContactPanel.prototype, {
             open: false,
             busy: false,
             task: false,
+            playbooks: [],
+            selectedPlaybookId: false,
             error: "",
             canUse: null,
             metrics: { pending_count: 0, approval_count: 0, high_risk_count: 0, mode: "supervised" },
@@ -19,6 +21,8 @@ patch(ContactPanel.prototype, {
             if (nextProps.channelId !== this.props.channelId) {
                 this.aiAgent.open = false;
                 this.aiAgent.task = false;
+                this.aiAgent.playbooks = [];
+                this.aiAgent.selectedPlaybookId = false;
                 this.aiAgent.error = "";
                 this.aiAgent.canUse = null;
                 this.aiAgent.metrics = { pending_count: 0, approval_count: 0, high_risk_count: 0, mode: "supervised" };
@@ -50,6 +54,7 @@ patch(ContactPanel.prototype, {
             const data = await this.orm.call(
                 "chatroom.channel", "get_ai_agent_data", [this.props.channelId]);
             this.aiAgent.task = data?.task || false;
+            this.aiAgent.playbooks = data?.playbooks || [];
             this.aiAgent.canUse = data?.can_use !== false;
             this.aiAgent.metrics = data?.can_use === false ? this.aiAgent.metrics : {
                 pending_count: data?.pending_count || 0,
@@ -73,6 +78,26 @@ patch(ContactPanel.prototype, {
         try {
             const action = await this.orm.call(
                 "chatroom.channel", "action_ai_agent_create_task", [this.props.channelId]);
+            await this.action.doAction(action, { onClose: () => this.loadAiAgent() });
+            await this.loadAiAgent();
+        } catch (error) {
+            this.aiAgent.error = error.data ? error.data.message : error.message;
+        } finally {
+            this.aiAgent.busy = false;
+        }
+    },
+
+    async applyAiPlaybook() {
+        const playbookId = Number(this.aiAgent.selectedPlaybookId || 0);
+        if (!this.props.channelId || !playbookId || this.aiAgent.busy) {
+            return;
+        }
+        this.aiAgent.busy = true;
+        this.aiAgent.error = "";
+        try {
+            const action = await this.orm.call(
+                "chatroom.channel", "action_ai_agent_apply_playbook",
+                [this.props.channelId, playbookId]);
             await this.action.doAction(action, { onClose: () => this.loadAiAgent() });
             await this.loadAiAgent();
         } catch (error) {

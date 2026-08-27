@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_ai_playbook_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.playbook.list</field>
+        <field name="model">chatroom.ai.playbook</field>
+        <field name="arch" type="xml">
+            <list string="Acciones guardadas" decoration-muted="not active">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="category"/>
+                <field name="task_type"/>
+                <field name="scope"/>
+                <field name="approval_required"/>
+                <field name="use_count" string="Aplicaciones"/>
+                <field name="last_run" optional="hide"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_ai_playbook_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.playbook.form</field>
+        <field name="model">chatroom.ai.playbook</field>
+        <field name="arch" type="xml">
+            <form string="Acción guardada del agente IA" class="o_chatroom_ai_playbook_form">
+                <header>
+                    <button name="action_apply" type="object" string="Aplicar acción" class="btn-primary"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </header>
+                <sheet>
+                    <div class="o_chatroom_ai_playbook_intro">
+                        <div class="o_chatroom_ai_playbook_intro_icon"><i class="fa fa-magic" title="Acción guardada" aria-hidden="true"/></div>
+                        <div>
+                            <h1><field name="name" placeholder="Ej.: Seguimiento de oportunidades"/></h1>
+                            <p>Guarda una instrucción reutilizable y aplícala a todos, a chats seleccionados o a clientes concretos.</p>
+                        </div>
+                    </div>
+                    <group class="o_chatroom_ai_playbook_grid">
+                        <group string="Qué debe hacer">
+                            <field name="category"/>
+                            <field name="task_type"/>
+                            <field name="description" placeholder="Explica el resultado que produce esta acción."/>
+                            <field name="instruction" placeholder="Escribe las reglas de trabajo para la IA. Incluye qué puede consultar, qué no debe inventar y qué resultado debe dejar preparado."/>
+                        </group>
+                        <group string="Seguridad y aplicación">
+                            <field name="scope"/>
+                            <field name="approval_required"/>
+                            <field name="max_tasks"/>
+                            <field name="max_attempts"/>
+                            <field name="company_id"/>
+                            <field name="is_example" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Selección del alcance" class="o_chatroom_ai_playbook_scope">
+                        <field name="channel_ids" widget="many2many_tags" invisible="scope != 'channels'"/>
+                        <field name="partner_ids" widget="many2many_tags" invisible="scope != 'partners'"/>
+                        <div class="o_chatroom_ai_playbook_hint" invisible="scope != 'all'">
+                            Se tomarán chats activos de la empresa hasta el límite configurado.
+                        </div>
+                        <div class="o_chatroom_ai_playbook_hint" invisible="scope != 'channels'">
+                            Solo se crearán tareas para los chats seleccionados que estén activos.
+                        </div>
+                        <div class="o_chatroom_ai_playbook_hint" invisible="scope != 'partners'">
+                            Se buscarán los chats activos relacionados con los clientes seleccionados.
+                        </div>
+                    </group>
+                    <group string="Ejemplo de uso" class="o_chatroom_ai_playbook_example">
+                        <field name="example_prompt" nolabel="1" placeholder="Ej.: Aplicar a chats con clientes sin compra durante 30 días."/>
+                    </group>
+                    <group string="Historial de aplicación" class="o_chatroom_ai_playbook_history">
+                        <field name="use_count" readonly="1"/>
+                        <field name="last_run" readonly="1"/>
+                        <field name="last_run_count" readonly="1"/>
+                        <field name="last_run_summary" readonly="1"/>
+                        <field name="last_error" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_chatroom_ai_playbook_search" model="ir.ui.view">
+        <field name="name">chatroom.ai.playbook.search</field>
+        <field name="model">chatroom.ai.playbook</field>
+        <field name="arch" type="xml">
+            <search string="Acciones guardadas">
+                <field name="name"/>
+                <field name="category"/>
+                <field name="task_type"/>
+                <filter name="active" string="Activas" domain="[('active', '=', True)]"/>
+                <filter name="examples" string="Ejemplos incluidos" domain="[('is_example', '=', True)]"/>
+                <group><filter name="group_category" string="Categoría" context="{'group_by': 'category'}"/><filter name="group_task_type" string="Tipo de acción" context="{'group_by': 'task_type'}"/></group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_chatroom_ai_playbook" model="ir.actions.act_window">
+        <field name="name">Acciones guardadas</field>
+        <field name="res_model">chatroom.ai.playbook</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_chatroom_ai_playbook_search"/>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+</odoo>

@@ -49,6 +49,7 @@
                             <field name="channel_id"/>
                             <field name="partner_id"/>
                             <field name="automation_id"/>
+                            <field name="playbook_id"/>
                             <field name="company_id"/>
                             <field name="next_run_at"/>
                         </group>
@@ -59,12 +60,12 @@
                         <field name="operational_status" readonly="1"/>
                         <field name="action_progress" readonly="1"/>
                     </group>
-                    <div class="alert alert-info" invisible="state != 'done'">
+                    <div class="alert alert-info" role="status" invisible="state != 'done'">
                         <strong>La tarea terminó.</strong>
                         Las respuestas preparadas quedan como borrador para revisión; no se envían a WhatsApp automáticamente.
                         Para enviar, revisa el texto en «Resultado para el agente» y usa la acción de envío desde la conversación.
                     </div>
-                    <div class="alert alert-warning" invisible="state != 'awaiting_approval'">
+                    <div class="alert alert-warning" role="alert" invisible="state != 'awaiting_approval'">
                         <strong>Falta aprobación humana.</strong>
                         Aprueba el plan para permitir acciones protegidas como crear oportunidades, cotizaciones, actividades o enviar mensajes.
                     </div>

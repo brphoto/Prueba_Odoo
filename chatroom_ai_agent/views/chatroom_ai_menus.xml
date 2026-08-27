@@ -9,6 +9,7 @@
     <menuitem id="menu_chatroom_ai_approvals" name="Aprobaciones pendientes" parent="menu_chatroom_ai_operation" action="action_chatroom_ai_approvals" sequence="6"/>
     <menuitem id="menu_chatroom_ai_failed" name="Tareas fallidas" parent="menu_chatroom_ai_operation" action="action_chatroom_ai_failed" sequence="7"/>
     <menuitem id="menu_chatroom_ai_tasks" name="Tareas" parent="menu_chatroom_ai_operation" action="action_chatroom_ai_task" sequence="10"/>
+    <menuitem id="menu_chatroom_ai_playbooks" name="Acciones guardadas" parent="menu_chatroom_ai_operation" action="action_chatroom_ai_playbook" sequence="12"/>
     <menuitem id="menu_chatroom_ai_automations" name="Automatizaciones" parent="menu_chatroom_ai_configuration" action="action_chatroom_ai_automation" sequence="20" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>
     <menuitem id="menu_chatroom_ai_tools" name="Herramientas autorizadas" parent="menu_chatroom_ai_configuration" action="action_chatroom_ai_tool" sequence="40" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>
     <menuitem id="menu_chatroom_ai_settings" name="Ajustes del agente IA" parent="menu_chatroom_ai_configuration" action="base_setup.action_general_configuration" sequence="60" groups="chatroom_ai_agent.group_chatroom_ai_agent_manager"/>

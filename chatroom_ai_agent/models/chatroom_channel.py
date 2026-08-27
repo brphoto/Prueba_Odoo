@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import _, models
+from odoo.exceptions import UserError
 
 
 class ChatroomChannel(models.Model):
@@ -33,6 +34,23 @@ class ChatroomChannel(models.Model):
         tasks = self.env['chatroom.ai.task'].sudo()
         pending_domain = [('state', 'in', ('awaiting_approval', 'planned', 'running'))]
         icp = self.env['ir.config_parameter'].sudo()
+        playbooks = []
+        if 'chatroom.ai.playbook' in self.env:
+            playbook_model = self.env['chatroom.ai.playbook'].sudo()
+            for playbook in playbook_model.search([
+                ('active', '=', True),
+                '|', ('company_id', '=', False), ('company_id', '=', self.company_id.id),
+            ], order='sequence, name', limit=20):
+                playbooks.append({
+                    'id': playbook.id,
+                    'name': playbook.name,
+                    'category': playbook.category,
+                    'task_type': playbook.task_type,
+                    'task_type_label': dict(playbook._fields['task_type'].selection).get(
+                        playbook.task_type, playbook.task_type),
+                    'description': playbook.description or '',
+                    'approval_required': playbook.approval_required,
+                })
         return {
             'can_use': True,
             'pending_count': tasks.search_count(pending_domain),
@@ -42,6 +60,7 @@ class ChatroomChannel(models.Model):
                 ('state', 'not in', ('done', 'cancelled')),
             ]),
             'mode': icp.get_param('chatroom_ai_agent.mode', 'supervised'),
+            'playbooks': playbooks,
             'task': {
                 'id': task.id,
                 'name': task.name,
@@ -54,6 +73,15 @@ class ChatroomChannel(models.Model):
                 'approval_required': task.approval_required,
             } if task else False,
         }
+
+    def action_ai_agent_apply_playbook(self, playbook_id):
+        self.ensure_one()
+        if 'chatroom.ai.playbook' not in self.env:
+            raise UserError(_('La biblioteca de acciones no está instalada.'))
+        playbook = self.env['chatroom.ai.playbook'].browse(int(playbook_id)).exists()
+        if not playbook or not playbook.active:
+            raise UserError(_('La acción guardada no está disponible.'))
+        return playbook.apply_to_channel(self)
 
     def action_ai_agent_create_task(self):
         self.ensure_one()

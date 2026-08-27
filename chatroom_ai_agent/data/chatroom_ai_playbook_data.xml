@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="playbook_welcome_reply" model="chatroom.ai.playbook">
+        <field name="name">Respuesta de bienvenida</field>
+        <field name="category">service</field>
+        <field name="task_type">prepare_reply</field>
+        <field name="description">Prepara una bienvenida profesional según el motivo de contacto.</field>
+        <field name="instruction">Analiza la conversación y prepara una respuesta breve, amable y profesional en español. Saluda usando el nombre disponible, reconoce la solicitud del cliente y haz una pregunta concreta para continuar. No inventes información y no envíes el mensaje.</field>
+        <field name="example_prompt">Aplicar a un chat nuevo para preparar la primera respuesta.</field>
+        <field name="approval_required">True</field>
+        <field name="is_example">True</field>
+    </record>
+    <record id="playbook_faq_company" model="chatroom.ai.playbook">
+        <field name="name">Responder con conocimiento de la empresa</field>
+        <field name="category">service</field>
+        <field name="task_type">prepare_reply</field>
+        <field name="description">Consulta los manuales indexados y prepara una respuesta basada en información confirmada.</field>
+        <field name="instruction">Usa primero el conocimiento indexado de la empresa y los datos vivos de Odoo. Responde en español claro y profesional. Si la información no está confirmada, dilo y solicita los datos faltantes. No inventes precios, existencias, plazos ni políticas. Prepara el texto para revisión humana; no lo envíes.</field>
+        <field name="example_prompt">¿Qué servicios ofrecemos, cuánto cuesta una hora y qué información necesitamos para cotizar?</field>
+        <field name="approval_required">True</field>
+        <field name="is_example">True</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="playbook_rfm_classification" model="chatroom.ai.playbook">
+        <field name="name">Clasificar clientes RFM/ABC</field>
+        <field name="category">analysis</field>
+        <field name="task_type">classify_customer</field>
+        <field name="description">Revisa la categoría y el score comercial del cliente para priorizar la atención.</field>
+        <field name="instruction">Revisa la información comercial disponible del cliente, su categoría RFM/ABC, score, recencia, frecuencia y monto. Devuelve una explicación breve de la prioridad y una recomendación de atención. No modifiques ventas ni envíes mensajes.</field>
+        <field name="example_prompt">Aplicar a todos los chats para identificar clientes prioritarios.</field>
+        <field name="approval_required">True</field>
+        <field name="is_example">True</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="playbook_conversation_triage" model="chatroom.ai.playbook">
+        <field name="name">Diagnóstico de conversación</field>
+        <field name="category">analysis</field>
+        <field name="task_type">orchestrate</field>
+        <field name="description">Clasifica al cliente, identifica la intención y propone el siguiente paso.</field>
+        <field name="instruction">Analiza toda la conversación reciente. Identifica la intención del cliente, el nivel de urgencia, la oportunidad comercial y la siguiente acción útil. Prepara una respuesta solo si aporta valor. No envíes mensajes ni crees documentos.</field>
+        <field name="example_prompt">Aplicar a chats pendientes para saber qué debe hacer el equipo.</field>
+        <field name="approval_required">True</field>
+        <field name="is_example">True</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="playbook_followup_opportunity" model="chatroom.ai.playbook">
+        <field name="name">Seguimiento de oportunidad</field>
+        <field name="category">retention</field>
+        <field name="task_type">followup</field>
+        <field name="description">Propone un seguimiento personalizado para una oportunidad sin gestión reciente.</field>
+        <field name="instruction">Revisa la oportunidad, la última actividad y la conversación. Propón el siguiente paso comercial y prepara un mensaje de seguimiento personalizado, breve y respetuoso. No prometas fechas ni descuentos. No envíes el mensaje y no cambies la etapa sin aprobación.</field>
+        <field name="example_prompt">Aplicar a oportunidades estancadas durante más de 7 días.</field>
+        <field name="approval_required">True</field>
+        <field name="is_example">True</field>
+        <field name="sequence">50</field>
+    </record>
+    <record id="playbook_reactivate_customer" model="chatroom.ai.playbook">
+        <field name="name">Reactivar cliente inactivo</field>
+        <field name="category">retention</field>
+        <field name="task_type">followup</field>
+        <field name="description">Prepara una comunicación basada en el historial y categoría del cliente.</field>
+        <field name="instruction">Revisa el historial comercial y la categoría RFM/ABC. Propón una razón útil para retomar contacto y prepara un mensaje personalizado en español. No uses presión, no inventes promociones y deja el texto como borrador para aprobación.</field>
+        <field name="example_prompt">Aplicar a clientes sin compra reciente y con score comercial relevante.</field>
+        <field name="approval_required">True</field>
+        <field name="is_example">True</field>
+        <field name="sequence">60</field>
+    </record>
+    <record id="playbook_sales_conversion" model="chatroom.ai.playbook">
+        <field name="name">Convertir consulta en oportunidad</field>
+        <field name="category">commercial</field>
+        <field name="task_type">sales_conversion</field>
+        <field name="description">Busca productos, crea una oportunidad y prepara la continuidad comercial.</field>
+        <field name="instruction">Analiza la necesidad del cliente, busca coincidencias en el catálogo de Odoo y crea o reutiliza una oportunidad comercial. Resume los productos encontrados y los datos faltantes para cotizar. No crees una cotización ni envíes mensajes sin aprobación humana.</field>
+        <field name="example_prompt">Aplicar a conversaciones donde el cliente solicita un producto o servicio.</field>
+        <field name="approval_required">True</field>
+        <field name="is_example">True</field>
+        <field name="sequence">70</field>
+    </record>
+    <record id="playbook_prepare_quote" model="chatroom.ai.playbook">
+        <field name="name">Preparar cotización comercial</field>
+        <field name="category">commercial</field>
+        <field name="task_type">sales_conversion</field>
+        <field name="description">Prepara la información para una cotización nativa de Ventas.</field>
+        <field name="instruction">Identifica productos, cantidades, requisitos y datos del cliente. Busca información real en Odoo y prepara una cotización nativa solo con productos confirmados. Si faltan datos, deja una lista de preguntas. Requiere aprobación antes de crear o enviar cualquier documento.</field>
+        <field name="example_prompt">Aplicar cuando el cliente ya indicó producto, cantidad y requerimientos.</field>
+        <field name="approval_required">True</field>
+        <field name="is_example">True</field>
+        <field name="sequence">80</field>
+    </record>
+    <record id="playbook_payment_followup" model="chatroom.ai.playbook">
+        <field name="name">Cobranza con enlace de pago</field>
+        <field name="category">collection</field>
+        <field name="task_type">collect_payment</field>
+        <field name="description">Consulta facturas pendientes y prepara un enlace del proveedor instalado, como PayPhone.</field>
+        <field name="instruction">Consulta las facturas pendientes del cliente, identifica el documento correcto y prepara el enlace de pago usando el conector configurado. Muestra documento, saldo y proveedor. No envíes el enlace hasta que un usuario autorizado lo apruebe.</field>
+        <field name="example_prompt">Aplicar a clientes con facturas vencidas o pagos pendientes.</field>
+        <field name="approval_required">True</field>
+        <field name="is_example">True</field>
+        <field name="sequence">90</field>
+    </record>
+</odoo>

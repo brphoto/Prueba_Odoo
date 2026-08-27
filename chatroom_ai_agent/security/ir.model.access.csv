@@ -14,3 +14,5 @@ access_chatroom_ai_automation_manager,chatroom.ai.automation manager,model_chatr
 access_chatroom_ai_dashboard_user,chatroom.ai.dashboard user,model_chatroom_ai_dashboard,chatroom_ai_agent.group_chatroom_ai_agent_user,1,0,0,0
 access_chatroom_ai_dashboard_manager,chatroom.ai.dashboard manager,model_chatroom_ai_dashboard,chatroom_ai_agent.group_chatroom_ai_agent_manager,1,1,1,1
 access_chatroom_ai_setup_user,chatroom.ai.setup user,model_chatroom_ai_setup,chatroom_ai_agent.group_chatroom_ai_agent_manager,1,1,1,1
+access_chatroom_ai_playbook_user,chatroom.ai.playbook user,model_chatroom_ai_playbook,chatroom_ai_agent.group_chatroom_ai_agent_user,1,0,0,0
+access_chatroom_ai_playbook_manager,chatroom.ai.playbook manager,model_chatroom_ai_playbook,chatroom_ai_agent.group_chatroom_ai_agent_manager,1,1,1,1

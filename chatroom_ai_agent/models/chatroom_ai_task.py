@@ -72,6 +72,7 @@ class ChatroomAiTask(models.Model):
     user_id = fields.Many2one('res.users', string='Responsable', default=lambda self: self.env.user, index=True)
     company_id = fields.Many2one('res.company', string='Empresa', default=lambda self: self.env.company, index=True)
     automation_id = fields.Many2one('chatroom.ai.automation', string='Automatización de origen', readonly=True, index=True)
+    playbook_id = fields.Many2one('chatroom.ai.playbook', string='Acción guardada de origen', readonly=True, index=True)
     approval_required = fields.Boolean(string='Requiere aprobación', default=True)
     risk_level = fields.Selection([
         ('low', 'Bajo'), ('medium', 'Medio'), ('high', 'Alto'),
@@ -139,7 +140,7 @@ class ChatroomAiTask(models.Model):
         return json.dumps(value, ensure_ascii=False, indent=2, default=str)
 
     @api.model
-    def create_from_channel(self, channel, task_type='orchestrate', prompt=False, approval_required=None, automation=False):
+    def create_from_channel(self, channel, task_type='orchestrate', prompt=False, approval_required=None, automation=False, playbook=False):
         channel.ensure_one()
         icp = self.env['ir.config_parameter'].sudo()
         mode = icp.get_param('chatroom_ai_agent.mode', 'supervised')
@@ -158,6 +159,7 @@ class ChatroomAiTask(models.Model):
             'max_attempts': automation.max_attempts if automation and automation.max_attempts else 3,
             'user_id': self.env.user.id,
             'automation_id': automation.id if automation else False,
+            'playbook_id': playbook.id if playbook else False,
         })
         return task
 
