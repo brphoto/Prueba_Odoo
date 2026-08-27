@@ -4,7 +4,7 @@
     'description': '''Organiza las fuentes vivas de Odoo, permite simular consultas
 de IA con trazabilidad y controla las acciones comerciales del agente mediante
 políticas configurables y aprobación humana.''',
-    'version': '19.0.1.0.3',
+    'version': '19.0.1.0.4',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
     'category': 'Productivity/Discuss',

@@ -8,6 +8,39 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 
+class ChatroomAiFunding(models.Model):
+    _name = 'chatroom.ai.funding'
+    _description = 'Fondos y conciliacion de IA'
+    _order = 'movement_date desc, id desc'
+
+    name = fields.Char(string='Descripcion', required=True, default=lambda self: _('Recarga de creditos'))
+    company_id = fields.Many2one(
+        'res.company', string='Empresa', required=True, index=True,
+        default=lambda self: self.env.company,
+    )
+    movement_date = fields.Date(string='Fecha', required=True, default=fields.Date.context_today, index=True)
+    movement_type = fields.Selection([
+        ('credit', 'Fondo / recarga'),
+        ('debit', 'Ajuste / retiro'),
+    ], string='Tipo de movimiento', required=True, default='credit')
+    amount = fields.Float(string='Importe', required=True, digits=(16, 6))
+    currency = fields.Char(string='Moneda', required=True, default='usd')
+    signed_amount = fields.Float(string='Importe neto', compute='_compute_signed_amount', store=True, digits=(16, 6))
+    reference = fields.Char(string='Referencia')
+    note = fields.Text(string='Nota')
+
+    @api.depends('movement_type', 'amount')
+    def _compute_signed_amount(self):
+        for record in self:
+            record.signed_amount = record.amount if record.movement_type == 'credit' else -record.amount
+
+    @api.constrains('amount')
+    def _check_amount(self):
+        for record in self:
+            if record.amount <= 0:
+                raise UserError(_('El importe del movimiento debe ser mayor que cero.'))
+
+
 class ChatroomAiUsageEvent(models.Model):
     _name = 'chatroom.ai.usage.event'
     _description = 'Consumo local de IA'
@@ -61,6 +94,19 @@ class ChatroomAiUsageSnapshot(models.Model):
     total_tokens = fields.Integer(string='Tokens totales')
     cost = fields.Float(string='Costo oficial', digits=(16, 6))
     currency = fields.Char(string='Moneda', default='usd')
+    funding_total = fields.Float(string='Fondos registrados', digits=(16, 6))
+    funding_debits = fields.Float(string='Ajustes / retiros', digits=(16, 6))
+    funding_net = fields.Float(string='Fondos netos', digits=(16, 6))
+    estimated_balance = fields.Float(string='Saldo de control estimado', digits=(16, 6))
+    funding_currency = fields.Char(string='Moneda de fondos', default='usd')
+    funding_entry_count = fields.Integer(string='Movimientos de fondos')
+    financial_state = fields.Selection([
+        ('unconfigured', 'Sin fondos registrados'),
+        ('available', 'Saldo de control disponible'),
+        ('exhausted', 'Consumo superior al fondo'),
+        ('mismatch', 'Revisar moneda'),
+    ], string='Estado financiero', default='unconfigured')
+    billing_reconciliation_note = fields.Text(string='Conciliación financiera')
     budget_limit = fields.Float(string='Presupuesto de referencia', digits=(16, 2))
     budget_remaining = fields.Float(string='Saldo estimado', digits=(16, 2))
     budget_percent = fields.Float(string='Porcentaje utilizado', digits=(16, 2))
@@ -135,14 +181,50 @@ class ChatroomAiUsageSnapshot(models.Model):
         }
 
     @api.model
-    def _fetch(self, path, key, start_ts, end_ts):
+    def _financial_values(self, cost, period_end):
+        """Calcula un control interno, no el saldo oficial de OpenAI."""
+        end_date = fields.Datetime.to_datetime(period_end).date()
+        movements = self.env['chatroom.ai.funding'].sudo().search([
+            ('company_id', '=', self.env.company.id),
+            ('movement_date', '<=', end_date),
+        ])
+        credits = sum(m.amount for m in movements if m.movement_type == 'credit')
+        debits = sum(m.amount for m in movements if m.movement_type == 'debit')
+        currencies = set((m.currency or 'usd').lower() for m in movements)
+        currency = next(iter(currencies), 'usd')
+        net = credits - debits
+        if currencies and len(currencies) > 1:
+            return {
+                'funding_total': credits, 'funding_debits': debits, 'funding_net': net,
+                'estimated_balance': 0.0, 'funding_currency': currency,
+                'funding_entry_count': len(movements), 'financial_state': 'mismatch',
+                'billing_reconciliation_note': _('Hay movimientos en más de una moneda. Registra los fondos en USD para compararlos con el costo oficial de OpenAI.'),
+            }
+        estimated = net - max(float(cost or 0.0), 0.0)
+        state = 'unconfigured' if not movements else 'available' if estimated >= 0 else 'exhausted'
+        if not movements:
+            note = _('No hay fondos registrados. Agrega cada recarga o ajuste en “Fondos y conciliación”.')
+        elif not cost:
+            note = _('El saldo de control usa los fondos registrados. Actualiza el costo oficial para obtener una comparación real del periodo consultado.')
+        else:
+            note = _('Control interno: fondos netos menos costo oficial del periodo. El saldo prepago real se confirma en la facturación de OpenAI.')
+        return {
+            'funding_total': credits, 'funding_debits': debits, 'funding_net': net,
+            'estimated_balance': estimated, 'funding_currency': currency,
+            'funding_entry_count': len(movements), 'financial_state': state,
+            'billing_reconciliation_note': note,
+        }
+
+    @api.model
+    def _fetch(self, path, key, start_ts, end_ts, group_by=None):
         params = {
             'start_time': start_ts,
             'end_time': end_ts,
             'bucket_width': '1d',
             'limit': 31,
-            'group_by': 'model',
         }
+        if group_by:
+            params['group_by'] = group_by
         response = requests.get(
             '%s/%s' % (self._api_base(), path),
             headers={'Authorization': 'Bearer %s' % key},
@@ -159,7 +241,7 @@ class ChatroomAiUsageSnapshot(models.Model):
         now = fields.Datetime.now()
         start = now - timedelta(days=self._days())
         local_count, local_tokens = self._local_totals(start, now)
-        snapshot = self.sudo().create({
+        values = {
             'name': _('IA - resumen local de los últimos %s días') % self._days(),
             'company_id': self.env.company.id,
             'fetched_at': now,
@@ -173,7 +255,10 @@ class ChatroomAiUsageSnapshot(models.Model):
             'model_breakdown': '{}',
             'state': 'partial',
             'error_message': _('Resumen local basado en las solicitudes registradas. Para costos oficiales configura la Admin API Key.'),
-        })
+        }
+        values.update(self._budget_values(0.0))
+        values.update(self._financial_values(0.0, now))
+        snapshot = self.sudo().create(values)
         snapshot._notify_budget_alert()
         return snapshot
 
@@ -211,6 +296,7 @@ class ChatroomAiUsageSnapshot(models.Model):
             'model_breakdown': '{}',
         }
         values.update(self._budget_values(0.0))
+        values.update(self._financial_values(0.0, now))
         if not admin_key:
             values.update({
                 'state': 'partial',
@@ -228,8 +314,8 @@ class ChatroomAiUsageSnapshot(models.Model):
         start_ts = int(datetime.utcnow().timestamp()) - (self._days() * 86400)
         end_ts = int(datetime.utcnow().timestamp()) + 1
         try:
-            usage = self._fetch('organization/usage/completions', admin_key, start_ts, end_ts)
-            costs = self._fetch('organization/costs', admin_key, start_ts, end_ts)
+            usage = self._fetch('organization/usage/completions', admin_key, start_ts, end_ts, group_by='model')
+            costs = self._fetch('organization/costs', admin_key, start_ts, end_ts, group_by='line_item')
             request_count = input_tokens = output_tokens = 0
             by_model = {}
             for bucket in usage.get('data', []):
@@ -259,6 +345,7 @@ class ChatroomAiUsageSnapshot(models.Model):
                 'error_message': False,
             })
             values.update(self._budget_values(cost))
+            values.update(self._financial_values(cost, now))
             snapshot = self.sudo().create(values)
             snapshot._notify_budget_alert()
             return {
@@ -287,5 +374,12 @@ class ChatroomAiUsageSnapshot(models.Model):
         return {
             'type': 'ir.actions.act_url',
             'url': 'https://platform.openai.com/usage',
+            'target': 'new',
+        }
+
+    def action_open_platform_billing(self):
+        return {
+            'type': 'ir.actions.act_url',
+            'url': 'https://platform.openai.com/account/billing',
             'target': 'new',
         }

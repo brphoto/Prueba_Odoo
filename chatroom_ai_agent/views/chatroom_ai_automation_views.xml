@@ -25,6 +25,7 @@
         <field name="arch" type="xml">
             <form string="Automatización IA" class="o_chatroom_ai_automation_form">
                 <header>
+                    <button name="action_preview_scope" type="object" string="Previsualizar alcance" icon="fa-eye"/>
                     <button name="action_run_now" type="object" string="Ejecutar ahora" class="btn-primary"/>
                     <field name="active" widget="boolean_toggle"/>
                 </header>
@@ -40,7 +41,7 @@
                         <group string="Objetivo">
                             <field name="trigger"/>
                             <field name="task_type"/>
-                            <field name="instruction" nolabel="1"
+                            <field name="instruction" class="o_chatroom_ai_automation_instruction" nolabel="1"
                                    placeholder="Escribe aquí el contexto o la instrucción para la IA..."/>
                         </group>
                         <group string="Seguridad y alcance">
@@ -54,6 +55,12 @@
                             </div>
                         </group>
                     </group>
+                    <group string="Como usarla" class="o_chatroom_ai_automation_context">
+                        <field name="description" nolabel="1" placeholder="Explica en lenguaje sencillo cuando usar esta automatizacion..."/>
+                    </group>
+                    <div class="alert alert-info" role="status">
+                        Las automatizaciones de ejemplo llegan desactivadas para evitar envíos inesperados. Puedes pulsar «Ejecutar ahora» para probarlas manualmente; las acciones sensibles seguirán solicitando aprobación.
+                    </div>
                     <group string="Filtros opcionales" class="o_chatroom_ai_automation_filters">
                         <field name="only_unread"/>
                         <field name="only_unassigned"/>
@@ -62,9 +69,17 @@
                     <group string="Resultado de la última ejecución" class="o_chatroom_ai_automation_result">
                         <field name="last_run" readonly="1"/>
                         <field name="last_run_count" readonly="1"/>
+                        <field name="last_scanned_count" readonly="1"/>
+                        <field name="last_skipped_count" readonly="1"/>
+                        <field name="last_run_summary" readonly="1"/>
                         <field name="last_error" readonly="1" placeholder="Sin errores registrados."/>
                     </group>
                 </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
             </form>
         </field>
     </record>

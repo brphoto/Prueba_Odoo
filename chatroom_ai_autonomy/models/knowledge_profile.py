@@ -5,6 +5,7 @@ from odoo.exceptions import ValidationError
 
 class ChatroomKnowledgeProfile(models.Model):
     _name = 'chatroom.ai.knowledge.profile'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Perfil de conocimiento operativo de Chatroom'
     _order = 'sequence, name'
 

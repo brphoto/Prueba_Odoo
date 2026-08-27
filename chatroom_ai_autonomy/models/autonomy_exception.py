@@ -4,6 +4,7 @@ from odoo import _, fields, models
 
 class ChatroomAiAutonomyException(models.Model):
     _name = 'chatroom.ai.autonomy.exception'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Excepción operativa del agente IA'
     _order = 'severity desc, create_date desc, id desc'
 

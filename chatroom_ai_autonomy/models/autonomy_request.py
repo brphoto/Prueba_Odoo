@@ -6,6 +6,7 @@ from odoo import _, fields, models
 
 class ChatroomAiAutonomyRequest(models.Model):
     _name = 'chatroom.ai.autonomy.request'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Evaluación y trazabilidad de autonomía IA'
     _order = 'create_date desc, id desc'
 

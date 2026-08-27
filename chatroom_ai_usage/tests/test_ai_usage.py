@@ -204,3 +204,57 @@ class TestChatroomAiUsage(TransactionCase):
         })
         with self.assertRaises(UserError):
             channel._ai_chat_completion([{'role': 'user', 'content': 'Hola'}])
+
+    def test_funding_ledger_calculates_control_balance(self):
+        funding = self.env['chatroom.ai.funding']
+        funding.create({
+            'name': 'Recarga de prueba', 'movement_type': 'credit',
+            'amount': 10.0, 'currency': 'usd',
+        })
+        funding.create({
+            'name': 'Ajuste de prueba', 'movement_type': 'debit',
+            'amount': 1.0, 'currency': 'usd',
+        })
+        values = self.env['chatroom.ai.usage.snapshot']._financial_values(
+            2.5, fields.Datetime.now())
+        self.assertEqual(values['funding_total'], 10.0)
+        self.assertEqual(values['funding_debits'], 1.0)
+        self.assertEqual(values['funding_net'], 9.0)
+        self.assertEqual(values['estimated_balance'], 6.5)
+        self.assertEqual(values['financial_state'], 'available')
+
+    def test_funding_ledger_rejects_non_positive_amount(self):
+        with self.assertRaises(UserError):
+            self.env['chatroom.ai.funding'].create({
+                'name': 'Movimiento invalido', 'movement_type': 'credit',
+                'amount': 0.0,
+            })
+
+    def test_official_cost_is_reconciled_with_registered_funds(self):
+        self.env['chatroom.ai.funding'].create({
+            'name': 'Fondo oficial de prueba', 'movement_type': 'credit',
+            'amount': 10.0, 'currency': 'usd',
+        })
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.ai_admin_api_key', 'admin-test-key')
+        usage_model = self.env['chatroom.ai.usage.snapshot']
+        usage_payload = {'data': [{'results': [{
+            'num_model_requests': 2, 'input_tokens': 100,
+            'output_tokens': 40, 'model': 'gpt-test',
+        }]}]}
+        cost_payload = {'data': [{'results': [{
+            'amount': {'value': 0.06, 'currency': 'usd'},
+        }]}]}
+        with patch.object(type(usage_model), '_fetch', side_effect=[usage_payload, cost_payload]):
+            usage_model.action_refresh()
+        snapshot = usage_model.search([], order='id desc', limit=1)
+        self.assertEqual(snapshot.cost, 0.06)
+        self.assertEqual(snapshot.currency, 'usd')
+        self.assertEqual(snapshot.funding_net, 10.0)
+        self.assertAlmostEqual(snapshot.estimated_balance, 9.94, places=5)
+        self.assertEqual(snapshot.financial_state, 'available')
+
+    def test_billing_link_opens_official_platform(self):
+        action = self.env['chatroom.ai.usage.snapshot'].action_open_platform_billing()
+        self.assertEqual(action['type'], 'ir.actions.act_url')
+        self.assertIn('platform.openai.com/account/billing', action['url'])

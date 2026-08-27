@@ -7,11 +7,15 @@ from odoo.exceptions import ValidationError
 
 class ChatroomAiAutomation(models.Model):
     _name = 'chatroom.ai.automation'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Automatización del agente IA'
     _order = 'sequence, name'
 
-    name = fields.Char(required=True)
-    active = fields.Boolean(default=True)
+    name = fields.Char(required=True, tracking=True)
+    description = fields.Text(
+        string='Que hace esta automatizacion',
+        help='Explica en lenguaje sencillo cuando usar esta automatizacion y que resultado prepara.')
+    active = fields.Boolean(default=True, tracking=True)
     sequence = fields.Integer(default=10)
     trigger = fields.Selection([
         ('daily_review', 'Revisión periódica'),
@@ -20,7 +24,7 @@ class ChatroomAiAutomation(models.Model):
         ('pending_quote', 'Cotización pendiente'),
         ('pending_activity', 'Actividad vencida'),
         ('overdue_invoice', 'Factura pendiente'),
-    ], required=True, default='daily_review')
+    ], required=True, default='daily_review', tracking=True)
     task_type = fields.Selection([
         ('orchestrate', 'Orquestar solicitud'),
         ('classify_customer', 'Clasificar cliente'),
@@ -30,8 +34,8 @@ class ChatroomAiAutomation(models.Model):
         ('collect_payment', 'Preparar cobranza'),
         ('sales_conversion', 'Convertir conversación en venta'),
         ('daily_review', 'Revisión diaria'),
-    ], string='Tipo de tarea', required=True, default='daily_review')
-    approval_required = fields.Boolean(default=True)
+    ], string='Tipo de tarea', required=True, default='daily_review', tracking=True)
+    approval_required = fields.Boolean(default=True, tracking=True)
     max_tasks = fields.Integer(default=20)
     max_attempts = fields.Integer(
         string='Intentos máximos por tarea', default=3,
@@ -132,6 +136,8 @@ class ChatroomAiAutomation(models.Model):
         channels = self._channels_for(self)
         created = self._run_for_channels(channels)
         skipped = max(len(channels) - created, 0)
+        self.message_post(body=_('Ejecucion manual: %s tarea(s) creada(s), %s canal(es) revisado(s) y %s omitido(s).') % (
+            created, len(channels), skipped))
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
@@ -141,6 +147,30 @@ class ChatroomAiAutomation(models.Model):
                     created, len(channels), skipped),
                 'type': 'success' if created else 'warning',
                 'sticky': False,
+            },
+        }
+
+    def action_preview_scope(self):
+        """Show the number of conversations that would be evaluated, without creating tasks."""
+        self.ensure_one()
+        channels = self._channels_for(self)
+        filters = []
+        if self.only_unread:
+            filters.append(_('no leidas'))
+        if self.only_unassigned:
+            filters.append(_('sin asignar'))
+        if self.min_rfm_score:
+            filters.append(_('score RFM >= %s') % self.min_rfm_score)
+        detail = ', '.join(filters) or _('sin filtros adicionales')
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Previsualizacion de alcance'),
+                'message': _('Se revisarian %s conversacion(es), %s. No se creo ninguna tarea ni se envio ningun mensaje.') % (
+                    len(channels), detail),
+                'type': 'info',
+                'sticky': True,
             },
         }
 

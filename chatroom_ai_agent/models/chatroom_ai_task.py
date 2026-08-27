@@ -38,10 +38,11 @@ class ChatroomAiTaskAction(models.Model):
 
 class ChatroomAiTask(models.Model):
     _name = 'chatroom.ai.task'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Tarea operativa del agente IA'
     _order = 'priority desc, create_date desc, id desc'
 
-    name = fields.Char(string='Tarea', required=True, default=lambda self: _('Nueva tarea IA'))
+    name = fields.Char(string='Tarea', required=True, default=lambda self: _('Nueva tarea IA'), tracking=True)
     task_type = fields.Selection([
         ('orchestrate', 'Orquestar solicitud'),
         ('classify_customer', 'Clasificar cliente'),
@@ -56,7 +57,7 @@ class ChatroomAiTask(models.Model):
         ('draft', 'Borrador'), ('awaiting_approval', 'Esperando aprobación'),
         ('planned', 'Planificada'), ('running', 'Ejecutando'),
         ('done', 'Completada'), ('failed', 'Fallida'), ('cancelled', 'Cancelada'),
-    ], string='Estado', required=True, default='draft', index=True)
+    ], string='Estado', required=True, default='draft', index=True, tracking=True)
     priority = fields.Selection([('0', 'Normal'), ('1', 'Alta'), ('2', 'Urgente')], default='0', required=True)
     prompt = fields.Text(string='Solicitud')
     plan_json = fields.Text(string='Plan técnico', readonly=True)

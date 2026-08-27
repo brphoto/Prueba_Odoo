@@ -46,6 +46,7 @@
                     <setting id="chatroom_ai_admin_api_key_setting"
                              help="Clave administrativa separada para consultar uso y costos de la organizacion. Nunca se usa para responder mensajes.">
                         <field name="chatroom_ai_admin_api_key" password="True"/>
+                        <button name="action_open_ai_billing" type="object" string="Abrir facturación oficial" class="btn-secondary ms-2" icon="fa-credit-card"/>
                     </setting>
                     <setting id="chatroom_ai_usage_days_setting">
                         <field name="chatroom_ai_usage_days"/>
@@ -71,7 +72,7 @@
                         </div>
                     </setting>
                     <setting id="chatroom_ai_monthly_budget_setting"
-                             help="Referencia local para comparar el gasto; no cambia los limites de OpenAI.">
+                             help="Referencia local para alertas internas; no es el saldo prepago ni cambia los límites de OpenAI.">
                         <field name="chatroom_ai_monthly_budget"/>
                     </setting>
                     <setting id="chatroom_ai_daily_limits_setting"

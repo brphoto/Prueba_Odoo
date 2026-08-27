@@ -7,6 +7,7 @@ from odoo.exceptions import ValidationError
 
 class ChatroomAiMessageTemplate(models.Model):
     _name = 'chatroom.ai.message.template'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Plantilla personalizada del agente IA'
     _order = 'sequence, name'
 

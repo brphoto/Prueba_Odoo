@@ -8,11 +8,12 @@
         <field name="state">code</field>
         <field name="code">
 snapshot_model = env['chatroom.ai.usage.snapshot']
-snapshot_model.action_refresh_local()
+snapshot_model.action_refresh()
 action = env.ref('chatroom_ai_usage.action_chatroom_ai_usage_snapshot').read()[0]
         </field>
     </record>
-    <menuitem id="menu_chatroom_ai_usage_snapshots" name="Resumen de consumo" parent="menu_chatroom_ai_usage" action="action_chatroom_ai_usage_snapshot_auto" sequence="10"/>
+    <menuitem id="menu_chatroom_ai_usage_snapshots" name="Resumen y costos" parent="menu_chatroom_ai_usage" action="action_chatroom_ai_usage_snapshot_auto" sequence="10"/>
+    <menuitem id="menu_chatroom_ai_funding" name="Fondos y conciliación" parent="menu_chatroom_ai_usage" action="action_chatroom_ai_funding" sequence="15"/>
     <menuitem id="menu_chatroom_ai_provider_models" name="Modelos disponibles" parent="menu_chatroom_ai_usage" action="action_chatroom_ai_provider_model" sequence="20"/>
     <menuitem id="menu_chatroom_ai_usage_events" name="Actividad por solicitud" parent="menu_chatroom_ai_usage" action="action_chatroom_ai_usage_event" sequence="30"/>
     <menuitem id="menu_chatroom_ai_quality" name="Pruebas de calidad" parent="menu_chatroom_ai_quality_group" action="action_chatroom_ai_quality_test" sequence="40"/>

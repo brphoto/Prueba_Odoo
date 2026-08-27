@@ -185,5 +185,9 @@ class ResConfigSettings(models.TransientModel):
         self.ensure_one()
         return self.env['chatroom.ai.usage.snapshot'].action_refresh()
 
+    def action_open_ai_billing(self):
+        self.ensure_one()
+        return self.env['chatroom.ai.usage.snapshot'].action_open_platform_billing()
+
     def action_open_ai_sandbox(self):
         return self.env.ref('chatroom_ai_usage.action_chatroom_ai_sandbox').read()[0]

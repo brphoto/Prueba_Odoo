@@ -4,6 +4,8 @@
         <field name="name">Revisión diaria de conversaciones</field>
         <field name="trigger">daily_review</field>
         <field name="task_type">daily_review</field>
+        <field name="description">Revisa las conversaciones y prepara un resumen de pendientes, riesgos y proximas acciones para el equipo.</field>
+        <field name="instruction">Analiza las conversaciones recientes. Resume lo importante, detecta pendientes y propone una siguiente accion concreta. No envies mensajes.</field>
         <field name="approval_required">true</field>
         <field name="max_tasks">20</field>
         <field name="active">false</field>
@@ -12,6 +14,8 @@
         <field name="name">Seguimiento de conversaciones activas</field>
         <field name="trigger">open_conversation</field>
         <field name="task_type">followup</field>
+        <field name="description">Encuentra conversaciones activas y prepara un seguimiento personalizado para que el agente lo revise antes de enviarlo.</field>
+        <field name="instruction">Revisa el contexto de la conversacion, identifica que falta responder y prepara un mensaje de seguimiento claro. No lo envies automaticamente.</field>
         <field name="approval_required">true</field>
         <field name="max_tasks">10</field>
         <field name="active">false</field>
@@ -20,6 +24,8 @@
         <field name="name">Cobranza de facturas vencidas</field>
         <field name="trigger">overdue_invoice</field>
         <field name="task_type">collect_payment</field>
+        <field name="description">Detecta clientes con facturas vencidas y prepara una gestion de cobro con el detalle disponible en Odoo.</field>
+        <field name="instruction">Consulta las facturas vencidas del cliente y prepara una propuesta de cobranza respetuosa con monto, vencimiento y siguiente paso. Requiere aprobacion humana.</field>
         <field name="approval_required">true</field>
         <field name="max_tasks">10</field>
         <field name="active">false</field>
@@ -28,6 +34,8 @@
         <field name="name">Seguimiento de oportunidades abiertas</field>
         <field name="trigger">open_opportunity</field>
         <field name="task_type">followup</field>
+        <field name="description">Prioriza oportunidades abiertas y prepara el siguiente paso comercial segun su etapa y contexto.</field>
+        <field name="instruction">Analiza la oportunidad, su etapa, probabilidad y conversacion. Propone la accion comercial mas util y un mensaje listo para revision humana.</field>
         <field name="approval_required">true</field>
         <field name="max_tasks">10</field>
         <field name="active">false</field>
@@ -36,6 +44,8 @@
         <field name="name">Seguimiento de cotizaciones pendientes</field>
         <field name="trigger">pending_quote</field>
         <field name="task_type">followup</field>
+        <field name="description">Revisa cotizaciones pendientes y prepara un recordatorio comercial con informacion de la propuesta.</field>
+        <field name="instruction">Revisa la cotizacion pendiente y la conversacion del cliente. Prepara un seguimiento breve, personalizado y orientado a cerrar o aclarar dudas.</field>
         <field name="approval_required">true</field>
         <field name="max_tasks">10</field>
         <field name="active">false</field>
@@ -44,6 +54,8 @@
         <field name="name">Revisión de actividades vencidas</field>
         <field name="trigger">pending_activity</field>
         <field name="task_type">followup</field>
+        <field name="description">Identifica actividades vencidas asociadas a conversaciones y prepara una lista priorizada para retomarlas.</field>
+        <field name="instruction">Revisa la actividad vencida y el contexto del cliente. Propone una accion de recuperacion y un mensaje sugerido, sin enviarlo.</field>
         <field name="approval_required">true</field>
         <field name="max_tasks">10</field>
         <field name="active">false</field>

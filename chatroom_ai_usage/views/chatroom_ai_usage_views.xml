@@ -62,6 +62,9 @@
                 <field name="total_tokens"/>
                 <field name="cost"/>
                 <field name="currency"/>
+                <field name="funding_net" optional="hide"/>
+                <field name="estimated_balance" optional="hide"/>
+                <field name="financial_state" widget="badge" optional="hide"/>
                 <field name="budget_remaining" optional="hide"/>
                 <field name="budget_state" widget="badge" optional="hide"/>
                 <field name="local_request_count" optional="hide"/>
@@ -76,6 +79,7 @@
                 <header>
                     <button name="action_refresh_local_ui" type="object" string="Actualizar resumen local" class="btn-primary" icon="fa-refresh"/>
                     <button name="action_open_platform_usage" type="object" string="Abrir panel oficial" class="btn-secondary"/>
+                    <button name="action_open_platform_billing" type="object" string="Ver facturación" class="btn-secondary" icon="fa-credit-card"/>
                 </header>
                 <sheet>
                     <div class="oe_title"><h1><field name="name"/></h1></div>
@@ -104,11 +108,59 @@
                         <field name="budget_percent" readonly="1"/>
                         <field name="budget_state" widget="badge" readonly="1"/>
                     </group>
+                    <group string="Fondos y conciliación">
+                        <field name="funding_total" readonly="1"/>
+                        <field name="funding_debits" readonly="1"/>
+                        <field name="funding_net" readonly="1"/>
+                        <field name="funding_entry_count" readonly="1"/>
+                        <field name="funding_currency" readonly="1"/>
+                        <field name="estimated_balance" readonly="1"/>
+                        <field name="financial_state" widget="badge" readonly="1"/>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        <strong>Importante:</strong> el costo oficial proviene de OpenAI y se reconcilia con la factura. El saldo de control es una estimación interna basada en los fondos registrados; confirma el saldo prepago real en “Ver facturación”.
+                    </div>
+                    <field name="billing_reconciliation_note" readonly="1" nolabel="1"/>
                     <group string="Control local">
                         <field name="local_request_count" readonly="1"/>
                         <field name="local_total_tokens" readonly="1"/>
                     </group>
                     <group string="Solicitudes por modelo"><field name="model_breakdown" nolabel="1" readonly="1" widget="text"/></group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_funding_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.funding.list</field>
+        <field name="model">chatroom.ai.funding</field>
+        <field name="arch" type="xml">
+            <list string="Fondos y conciliación" decoration-success="movement_type == 'credit'" decoration-warning="movement_type == 'debit'">
+                <field name="movement_date"/>
+                <field name="name"/>
+                <field name="movement_type" widget="badge"/>
+                <field name="amount"/>
+                <field name="currency"/>
+                <field name="signed_amount"/>
+                <field name="reference" optional="hide"/>
+                <field name="company_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_funding_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.funding.form</field>
+        <field name="model">chatroom.ai.funding</field>
+        <field name="arch" type="xml">
+            <form string="Fondo o ajuste de IA">
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        Registra aquí las recargas, devoluciones o ajustes que ves en la facturación de OpenAI. Esto alimenta el saldo de control de Chatroom; no realiza pagos ni modifica tu cuenta de OpenAI.
+                    </div>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group><field name="movement_date"/><field name="movement_type"/><field name="amount"/><field name="currency"/></group>
+                        <group><field name="company_id"/><field name="reference"/><field name="signed_amount" readonly="1"/></group>
+                    </group>
+                    <field name="note" placeholder="Ejemplo: Recarga prepaga de USD 10 confirmada en Billing history."/>
                 </sheet>
             </form>
         </field>
@@ -214,6 +266,11 @@
         <field name="name">Consumo de IA</field>
         <field name="res_model">chatroom.ai.usage.snapshot</field>
         <field name="view_mode">graph,pivot,list,form</field>
+    </record>
+    <record id="action_chatroom_ai_funding" model="ir.actions.act_window">
+        <field name="name">Fondos y conciliación</field>
+        <field name="res_model">chatroom.ai.funding</field>
+        <field name="view_mode">list,form</field>
     </record>
     <record id="action_chatroom_ai_usage_event" model="ir.actions.act_window">
         <field name="name">Solicitudes de IA</field><field name="res_model">chatroom.ai.usage.event</field>

@@ -44,6 +44,10 @@ class ChatroomChannel(models.Model):
             'percent': snapshot.budget_percent,
             'cost': snapshot.cost,
             'currency': snapshot.currency or 'usd',
+            'funding_net': snapshot.funding_net,
+            'estimated_balance': snapshot.estimated_balance,
+            'financial_state': snapshot.financial_state,
+            'funding_currency': snapshot.funding_currency or 'usd',
             'fetched_at': fields.Datetime.to_string(snapshot.fetched_at) if snapshot else False,
         } if snapshot else False
         options, selected_id = self._ai_model_catalog(task_type='reply')

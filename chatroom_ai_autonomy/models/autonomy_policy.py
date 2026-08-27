@@ -7,6 +7,7 @@ from odoo.exceptions import ValidationError
 
 class ChatroomAiAutonomyPolicy(models.Model):
     _name = 'chatroom.ai.autonomy.policy'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Política de autonomía del agente IA'
     _order = 'sequence, name'
 
