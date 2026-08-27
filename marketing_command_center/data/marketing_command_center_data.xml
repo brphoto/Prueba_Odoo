@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="marketing_social_dashboard_main" model="marketing.social.dashboard">
+        <field name="name">Centro de mando de marketing</field>
+        <field name="period_days">30</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+</odoo>
