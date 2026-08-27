@@ -66,11 +66,17 @@
     }
 }
 
-.o_chatroom_ai_assistant_result {
+.o_chatroom_ai_assistant_summary {
     margin-top: 8px;
     padding: 8px;
     border-radius: 7px;
-    background: rgba(0, 128, 96, 0.08);
+    border: 1px solid color-mix(in srgb, var(--chatroom-ui-primary, #714b67) 22%, transparent);
+    background: color-mix(in srgb, var(--chatroom-ui-primary, #714b67) 6%, transparent);
+
+    .badge {
+        font-size: .68rem;
+        font-weight: 600;
+    }
 }
 
 .o_chatroom_ai_assistant_trace {

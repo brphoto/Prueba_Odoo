@@ -63,6 +63,9 @@ class ChatroomAiTask(models.Model):
     input_context = fields.Text(string='Contexto utilizado', readonly=True)
     output_json = fields.Text(string='Resultado técnico', readonly=True)
     result_summary = fields.Text(string='Resumen del resultado', readonly=True)
+    result_preview = fields.Text(
+        string='Resultado para el agente', readonly=True,
+        help='Resultado legible de las acciones ejecutadas. Las respuestas preparadas no se envían automáticamente.')
     error_message = fields.Text(string='Detalle del error', readonly=True)
     channel_id = fields.Many2one('chatroom.channel', string='Conversación', ondelete='cascade', index=True)
     partner_id = fields.Many2one(related='channel_id.partner_id', string='Cliente', store=True, readonly=True)
@@ -330,6 +333,38 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             'output_json': output or (action.output_json if action else False),
         })
 
+    @api.model
+    def _build_result_preview(self, outputs):
+        """Convert technical action output into a useful human summary."""
+        lines = []
+        for output in outputs or []:
+            if output.get('status') == 'skipped':
+                lines.append(_('Omitida: %s') % (output.get('reason') or _('no aplica')))
+                continue
+            if output.get('status') == 'blocked':
+                lines.append(_('Bloqueada: %s') % (output.get('reason') or _('requiere revisión')))
+                continue
+            if output.get('reply'):
+                lines.append(_('Respuesta preparada (no enviada):\n%s') % output['reply'])
+            elif output.get('category') is not None:
+                lines.append(_('Cliente clasificado: categoría %s, score %s.') % (
+                    output.get('category') or _('sin historial'), output.get('score', 0)))
+            elif output.get('intent'):
+                lines.append(_('Intención identificada: %s.') % output['intent'])
+            elif output.get('lead_name'):
+                lines.append(_('Oportunidad disponible: %s.') % output['lead_name'])
+            elif output.get('order_name'):
+                lines.append(_('Cotización disponible: %s.') % output['order_name'])
+            elif output.get('link_id'):
+                lines.append(_('Enlace de pago preparado: %s.') % output.get('document', _('documento')))
+            elif output.get('invoices') is not None:
+                lines.append(_('Facturas pendientes encontradas: %s.') % len(output['invoices']))
+            elif output.get('matches') is not None:
+                lines.append(_('Productos encontrados en el catálogo: %s.') % len(output['matches']))
+            else:
+                lines.append(_('Acción completada: %s.') % (output.get('action') or _('operación')))
+        return '\n\n'.join(lines) or _('No se generó un resultado visible.')
+
     def _execute_action(self, action):
         self.ensure_one()
         channel = self.channel_id
@@ -532,7 +567,11 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             if task.state not in ('planned', 'failed'):
                 continue
             if self.env['ir.config_parameter'].sudo().get_param('chatroom_ai_agent.mode', 'supervised') == 'simulation':
-                task.write({'state': 'done', 'completed_at': fields.Datetime.now(), 'result_summary': _('Simulacion: no se modificaron datos ni se enviaron mensajes.')})
+                task.write({
+                    'state': 'done', 'completed_at': fields.Datetime.now(),
+                    'result_summary': _('Simulación: no se modificaron datos ni se enviaron mensajes.'),
+                    'result_preview': _('Modo simulación: el plan se validó, pero no ejecutó cambios ni envió mensajes.'),
+                })
                 continue
             task.write({'state': 'running', 'started_at': fields.Datetime.now(), 'attempts': task.attempts + 1})
             try:
@@ -553,7 +592,13 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                         action.write({'state': 'error', 'error_message': str(exc)})
                         task._audit(action.name, 'error', action=action, message=str(exc))
                         raise
-                task.write({'state': 'done', 'completed_at': fields.Datetime.now(), 'output_json': task._json(outputs), 'result_summary': _('Se completaron %s acción(es).') % len(outputs), 'error_message': False})
+                task.write({
+                    'state': 'done', 'completed_at': fields.Datetime.now(),
+                    'output_json': task._json(outputs),
+                    'result_summary': _('Se completaron %s acción(es).') % len(outputs),
+                    'result_preview': self._build_result_preview(outputs),
+                    'error_message': False,
+                })
                 if task.partner_id:
                     self.env['chatroom.ai.memory'].sudo().remember(task.result_summary, partner=task.partner_id, channel=task.channel_id, memory_type='outcome', source='agent')
             except Exception as exc:
@@ -566,7 +611,10 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
         return True
 
     def action_retry(self):
-        self.write({'state': 'planned', 'error_message': False, 'next_run_at': fields.Datetime.now()})
+        self.write({
+            'state': 'planned', 'error_message': False,
+            'result_preview': False, 'next_run_at': fields.Datetime.now(),
+        })
         self.action_ids.filtered(lambda line: line.state == 'error').write({'state': 'pending', 'error_message': False})
         return True
 

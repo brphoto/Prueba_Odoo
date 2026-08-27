@@ -42,6 +42,17 @@
         span, small { color: var(--chatroom-ui-text-muted, #667085); }
     }
 
+    .o_chatroom_ai_agent_result {
+        padding: 7px 8px;
+        border-left: 3px solid var(--chatroom-ui-primary, #714b67);
+        border-radius: 5px;
+        background: color-mix(in srgb, var(--chatroom-ui-primary, #714b67) 7%, transparent);
+        white-space: pre-wrap;
+        color: var(--chatroom-ui-text, #344054);
+
+        strong { color: var(--chatroom-ui-primary, #714b67); }
+    }
+
     .o_chatroom_ai_agent_metrics {
         display: flex;
         flex-wrap: wrap;
@@ -55,6 +66,22 @@
             color: var(--chatroom-ui-text, #344054);
             font-size: .72rem;
         }
+    }
+}
+
+.o_chatroom_ai_task_result {
+    margin-top: 16px;
+    padding: 14px 16px;
+    border: 1px solid #d9c9d8;
+    border-left: 4px solid #76506f;
+    border-radius: 10px;
+    background: #fbf7fb;
+
+    .o_field_text textarea,
+    .o_field_text pre {
+        min-height: 86px;
+        white-space: pre-wrap;
+        line-height: 1.5;
     }
 }
 

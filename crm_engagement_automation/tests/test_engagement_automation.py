@@ -39,9 +39,14 @@ class TestEngagementAutomation(TransactionCase):
             'event_date': date.today(),
             'event_type': 'other',
         })
+        test_tag = self.env['res.partner.category'].create({
+            'name': 'QA evento determinista',
+        })
+        partner.category_id = test_tag
         automation = self.env['crm.engagement.automation'].create({
             'name': 'Eventos de prueba',
             'source_type': 'custom_event',
+            'tag_ids': [(6, 0, test_tag.ids)],
         })
         step = self.env['crm.engagement.automation.step'].create({
             'automation_id': automation.id,

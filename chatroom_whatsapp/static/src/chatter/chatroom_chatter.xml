@@ -80,8 +80,13 @@
                         <div t-if="state.aiError" class="alert alert-warning py-2 mt-2 mb-0" role="alert">
                             <t t-esc="state.aiError"/>
                         </div>
-                        <div t-if="selectedChannel.ai_summary" class="small mt-2">
-                            <strong>Resumen:</strong> <t t-esc="selectedChannel.ai_summary"/>
+                        <div t-if="selectedChannel.ai_summary" class="o-chatroom-chatter__ai-summary small mt-2">
+                            <div class="d-flex justify-content-between align-items-center gap-2">
+                                <strong><i class="fa fa-file-text-o me-1"/> Resumen interno</strong>
+                                <span class="badge rounded-pill text-bg-light">No se envía</span>
+                            </div>
+                            <div class="mt-1"><t t-esc="selectedChannel.ai_summary"/></div>
+                            <small class="text-muted d-block mt-1">Para redactar un mensaje, elige «Sugerencia de respuesta».</small>
                         </div>
                         <div t-if="selectedChannel.ai_intent" class="small mt-2">
                             <strong>Intención:</strong> <t t-esc="selectedChannel.ai_intent"/>

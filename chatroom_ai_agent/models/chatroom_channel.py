@@ -49,6 +49,7 @@ class ChatroomChannel(models.Model):
                 'state_label': dict(task._fields['state'].selection).get(task.state, task.state),
                 'action_count': len(task.action_ids),
                 'result_summary': task.result_summary or '',
+                'result_preview': task.result_preview or '',
                 'risk_level': task.risk_level,
                 'approval_required': task.approval_required,
             } if task else False,

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import base64
+from io import BytesIO
 from datetime import timedelta
 
 from odoo.exceptions import UserError, ValidationError
@@ -33,6 +35,46 @@ class TestChatroomSalesIntelligence(TransactionCase):
         context = manual.get_sales_context(channel, query='garantía')
         self.assertIn('La garantía comercial', context)
         self.assertIn(self.env.company.name, context)
+
+    def test_knowledge_pdf_uses_available_reader_and_preserves_text(self):
+        """A PDF must work with the PyPDF2 fallback used by this server."""
+        try:
+            from reportlab.pdfgen import canvas
+        except ImportError:
+            self.skipTest('reportlab no está instalado en el entorno de pruebas')
+        stream = BytesIO()
+        pdf = canvas.Canvas(stream)
+        pdf.drawString(72, 720, 'Odoo CRM - tarifa de implementacion USD 20 por hora')
+        pdf.drawString(72, 700, 'Soporte, desarrollo personalizado y WhatsApp')
+        pdf.save()
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'Manual PDF funcional test', 'source_type': 'pdf',
+            'pdf_filename': 'manual_prueba.pdf',
+            'pdf_file': base64.b64encode(stream.getvalue()),
+        })
+        manual.action_index()
+        self.assertEqual(manual.state, 'indexed')
+        self.assertGreaterEqual(manual.chunk_count, 1)
+        self.assertIn('USD 20', manual.content_text)
+        self.assertFalse(manual.processing_error)
+
+    def test_knowledge_pdf_without_selectable_text_explains_next_step(self):
+        try:
+            from reportlab.pdfgen import canvas
+        except ImportError:
+            self.skipTest('reportlab no está instalado en el entorno de pruebas')
+        stream = BytesIO()
+        pdf = canvas.Canvas(stream)
+        pdf.rect(72, 650, 220, 80, stroke=1, fill=0)
+        pdf.save()
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'PDF escaneado test', 'source_type': 'pdf',
+            'pdf_filename': 'escaneado.pdf',
+            'pdf_file': base64.b64encode(stream.getvalue()),
+        })
+        manual.action_index()
+        self.assertEqual(manual.state, 'error')
+        self.assertIn('texto seleccionable', manual.processing_error)
 
     def test_knowledge_has_review_lifecycle(self):
         manual = self.env['ai.knowledge.base'].create({

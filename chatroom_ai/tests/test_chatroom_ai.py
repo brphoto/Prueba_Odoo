@@ -49,3 +49,48 @@ class TestChatroomAiSuggestion(TransactionCase):
         self.assertEqual(data['suggestion']['text'], 'Texto corregido por el agente')
         discarded = self.channel.action_ai_discard_suggestion(suggestion.id)
         self.assertFalse(discarded['suggestion'])
+
+    def test_summary_is_internal_and_never_creates_sendable_suggestion(self):
+        self.channel.ai_suggested_reply = 'Respuesta anterior que no debe mezclarse'
+        with patch.object(type(self.channel), '_ai_chat_completion',
+                          return_value='El cliente solicita una cotización y espera confirmación del alcance.'):
+            summary = self.channel.action_ai_prepare_summary()
+        self.assertIn('cotización', summary)
+        self.assertEqual(self.channel.ai_summary, summary)
+        self.assertEqual(self.channel.ai_suggested_reply,
+                         'Respuesta anterior que no debe mezclarse')
+        self.assertFalse(self.env['chatroom.ai.suggestion'].search([
+            ('channel_id', '=', self.channel.id),
+        ]))
+
+    def test_intent_analysis_and_next_action_are_structured_and_supervised(self):
+        with patch.object(type(self.channel), '_ai_chat_completion',
+                          return_value='{"intent":"venta"}'):
+            intent = self.channel.action_ai_classify_intent()
+        self.assertEqual(intent, 'venta')
+        with patch.object(type(self.channel), '_ai_chat_completion',
+                          return_value='{"intent":"soporte","sentiment":"negative","urgency":"high"}'):
+            self.channel.action_ai_analyze()
+        self.assertEqual(self.channel.ai_intent, 'soporte')
+        self.assertEqual(self.channel.ai_sentiment, 'negative')
+        self.assertEqual(self.channel.ai_urgency, 'high')
+        with patch.object(type(self.channel), '_ai_chat_completion',
+                          return_value='Confirmar el alcance y enviar la cotización al cliente.'):
+            self.channel.action_ai_next_action()
+        self.assertIn('cotización', self.channel.ai_next_action)
+
+    def test_invalid_ai_analysis_falls_back_to_safe_values(self):
+        with patch.object(type(self.channel), '_ai_chat_completion',
+                          return_value='No puedo devolver JSON en este momento'):
+            self.channel.action_ai_analyze()
+        self.assertEqual(self.channel.ai_intent, 'otro')
+        self.assertEqual(self.channel.ai_sentiment, 'neutral')
+        self.assertEqual(self.channel.ai_urgency, 'normal')
+
+    def test_suggestion_feedback_is_a_quality_rating_not_customer_rating(self):
+        suggestion = self.env['chatroom.ai.suggestion'].create_from_channel(
+            self.channel, 'Respuesta que el agente puede revisar')
+        suggestion.action_approve()
+        data = self.channel.action_ai_feedback_suggestion(suggestion.id, 'helpful')
+        self.assertEqual(data['suggestion']['feedback_state'], 'helpful')
+        self.assertEqual(suggestion.feedback_by, self.env.user)

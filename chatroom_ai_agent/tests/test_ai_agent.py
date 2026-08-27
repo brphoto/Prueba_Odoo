@@ -35,7 +35,21 @@ class TestChatroomAiAgent(TransactionCase):
         task.action_run()
         self.assertEqual(task.state, 'done')
         self.assertTrue(task.output_json)
+        self.assertIn('Cliente clasificado', task.result_preview)
         self.assertTrue(task.audit_ids)
+
+    def test_completed_plan_exposes_human_result_in_channel_panel(self):
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            self.channel, task_type='orchestrate',
+            prompt='Revisa el contexto y prepara una respuesta.',
+        )
+        task.action_plan()
+        task.action_approve()
+        task.action_run()
+        data = self.channel.get_ai_agent_data()
+        self.assertEqual(data['task']['state'], 'done')
+        self.assertIn('result_preview', data['task'])
+        self.assertTrue(data['task']['result_preview'])
 
     def test_task_context_exposes_optional_knowledge_telemetry(self):
         task = self.env['chatroom.ai.task'].create_from_channel(

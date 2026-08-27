@@ -136,6 +136,37 @@ class AiKnowledgeBase(models.Model):
             },
         }
 
+    @staticmethod
+    def _extract_pdf_text(raw):
+        """Extract selectable text with either supported PDF library."""
+        if not raw:
+            raise UserError(_('El archivo PDF está vacío.'))
+        if not raw.lstrip().startswith(b'%PDF'):
+            raise UserError(_('El archivo seleccionado no parece ser un PDF válido.'))
+        try:
+            from pypdf import PdfReader
+        except ImportError:
+            try:
+                from PyPDF2 import PdfReader
+            except ImportError:
+                raise UserError(_('Para indexar PDF instala pypdf o PyPDF2 en el entorno de Odoo.'))
+        try:
+            reader = PdfReader(io.BytesIO(raw))
+            if getattr(reader, 'is_encrypted', False):
+                try:
+                    if not reader.decrypt(''):
+                        raise UserError(_('El PDF está protegido con contraseña y no se puede indexar.'))
+                except UserError:
+                    raise
+                except Exception:
+                    raise UserError(_('El PDF está protegido con contraseña y no se puede indexar.'))
+            return '\n'.join(page.extract_text() or '' for page in reader.pages)
+        except UserError:
+            raise
+        except Exception as error:
+            _logger.warning('PDF inválido o no legible para conocimiento IA: %s', error)
+            raise UserError(_('No se pudo leer el PDF. Verifica que no esté dañado y que tenga texto seleccionable.'))
+
     def action_index(self):
         for manual in self:
             try:
@@ -150,14 +181,11 @@ class AiKnowledgeBase(models.Model):
                     text = manual.source_text or ''
                 else:
                     raw = base64.b64decode(manual.pdf_file or b'')
-                    try:
-                        from pypdf import PdfReader
-                        reader = PdfReader(io.BytesIO(raw))
-                        text = '\n'.join(page.extract_text() or '' for page in reader.pages)
-                    except ImportError:
-                        raise UserError(_('Para indexar PDF instala la librería pypdf en el entorno de Odoo.'))
+                    text = self._extract_pdf_text(raw)
                 if not text.strip():
-                    raise UserError(_('No se encontró texto utilizable en la fuente seleccionada.'))
+                    raise UserError(_(
+                        'El PDF no contiene texto seleccionable. Si es un escaneo, conviértelo con OCR o carga una versión con texto.'
+                    ))
                 chunks = [text[index:index + 4000] for index in range(0, len(text), 4000)]
                 manual.write({
                     'content_text': '\n\n'.join(chunks), 'chunk_count': len(chunks),

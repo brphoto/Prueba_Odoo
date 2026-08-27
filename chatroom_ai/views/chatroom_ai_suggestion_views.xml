@@ -16,9 +16,9 @@
                 <button name="action_approve" type="object" string="Aprobar" class="btn-primary" invisible="state != 'draft'"/>
                 <button name="action_send" type="object" string="Enviar al cliente" class="btn-primary" invisible="state != 'approved'"/>
                 <button name="action_reject" type="object" string="Descartar" class="btn-secondary" invisible="state in ('sent', 'rejected')"/>
-                <button name="action_feedback_helpful" type="object" string="Marcar util" class="btn-secondary" invisible="state not in ('approved', 'sent')"/>
+                <button name="action_feedback_helpful" type="object" string="Fue útil" class="btn-secondary" invisible="state not in ('approved', 'sent')"/>
                 <button name="action_feedback_edited" type="object" string="Requirió edición" class="btn-secondary" invisible="state not in ('approved', 'sent')"/>
-                <button name="action_feedback_unsafe" type="object" string="No usar" class="btn-secondary" invisible="state not in ('approved', 'sent')"/>
+                <button name="action_feedback_unsafe" type="object" string="No es segura" class="btn-secondary" invisible="state not in ('approved', 'sent')"/>
                 <field name="state" widget="statusbar" statusbar_visible="draft,approved,sent"/>
             </header><sheet>
                 <div class="oe_title"><h1><field name="name"/></h1></div>

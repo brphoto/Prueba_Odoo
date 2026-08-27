@@ -106,11 +106,17 @@ patch(ContactPanel.prototype, {
 
     async runAiAction() {
         if (this.aiAssistant.mode === "summary") {
+            // Un resumen es material interno: nunca debe convivir con la
+            // tarjeta de respuesta ni parecer texto listo para enviar.
+            this.aiAssistant.suggestion = false;
             return this.prepareAiSummary();
         }
         if (this.aiAssistant.mode === "intent") {
+            this.aiAssistant.suggestion = false;
+            this.aiAssistant.summary = "";
             return this.classifyAiIntent();
         }
+        this.aiAssistant.summary = "";
         return this.prepareAiSuggestion();
     },
 
@@ -184,18 +190,22 @@ patch(ContactPanel.prototype, {
     },
 
     async prepareAiSuggestion() {
+        this.aiAssistant.summary = "";
         await this._runAiAssistant("action_ai_prepare_suggestion", (suggestion) => {
             this.aiAssistant.suggestion = suggestion;
         });
     },
 
     async prepareAiSummary() {
+        this.aiAssistant.suggestion = false;
         await this._runAiAssistant("action_ai_prepare_summary", (summary) => {
             this.aiAssistant.summary = summary || "";
         });
     },
 
     async classifyAiIntent() {
+        this.aiAssistant.summary = "";
+        this.aiAssistant.suggestion = false;
         await this._runAiAssistant("action_ai_classify_intent", (intent) => {
             this.aiAssistant.intent = intent || "otro";
         });

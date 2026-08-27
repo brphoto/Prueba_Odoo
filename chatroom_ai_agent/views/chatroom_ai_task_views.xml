@@ -56,8 +56,21 @@
                     <group string="Estado operativo" class="o_chatroom_ai_task_status">
                         <field name="attempts" readonly="1"/>
                         <field name="max_attempts"/>
+                        <field name="operational_status" readonly="1"/>
+                        <field name="action_progress" readonly="1"/>
                     </group>
-                    <group string="Solicitud"><field name="prompt" nolabel="1" placeholder="Describe qué debe resolver el agente..."/></group>
+                    <div class="alert alert-info" invisible="state != 'done'">
+                        <strong>La tarea terminó.</strong>
+                        Las respuestas preparadas quedan como borrador para revisión; no se envían a WhatsApp automáticamente.
+                        Para enviar, revisa el texto en «Resultado para el agente» y usa la acción de envío desde la conversación.
+                    </div>
+                    <div class="alert alert-warning" invisible="state != 'awaiting_approval'">
+                        <strong>Falta aprobación humana.</strong>
+                        Aprueba el plan para permitir acciones protegidas como crear oportunidades, cotizaciones, actividades o enviar mensajes.
+                    </div>
+                    <group string="Solicitud">
+                        <field name="prompt" nolabel="1" placeholder="Ejemplo: analiza la conversación, identifica lo que solicita el cliente y prepara una respuesta profesional con los datos reales de Odoo. No envíes nada."/>
+                    </group>
                     <notebook>
                         <page string="Plan y ejecución">
                             <field name="action_ids" context="{'default_task_id': id}">
@@ -71,7 +84,8 @@
                                     <field name="error_message" optional="hide"/>
                                 </list>
                             </field>
-                            <group>
+                            <group string="Resultado visible para el usuario" class="o_chatroom_ai_task_result">
+                                <field name="result_preview" readonly="1" placeholder="Aquí aparecerá qué hizo el agente y qué dejó preparado."/>
                                 <field name="result_summary" readonly="1"/>
                                 <field name="error_message" readonly="1"/>
                             </group>

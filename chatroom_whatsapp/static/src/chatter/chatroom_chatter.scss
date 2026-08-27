@@ -106,6 +106,17 @@
         white-space: pre-wrap;
     }
 
+    &__ai-summary {
+        padding: .55rem .65rem;
+        border: 1px solid color-mix(in srgb, var(--o-brand-odoo, #714b67) 22%, transparent);
+        border-left: 3px solid var(--o-brand-odoo, #714b67);
+        border-radius: .35rem;
+        background: color-mix(in srgb, var(--o-brand-odoo, #714b67) 6%, transparent);
+        white-space: pre-wrap;
+
+        .badge { font-size: .68rem; }
+    }
+
     &__list {
         display: flex;
         flex-direction: column;

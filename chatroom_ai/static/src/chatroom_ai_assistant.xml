@@ -98,23 +98,28 @@
                         </div>
                         <div class="o_chatroom_ai_assistant_feedback mt-2"
                              t-if="(aiAssistant.suggestion.state == 'approved' || aiAssistant.suggestion.state == 'sent') &amp;&amp; aiAssistant.suggestion.feedback_state == 'pending'">
-                            <small class="d-block mb-1">¿Cómo fue esta respuesta?</small>
+                            <small class="d-block mb-1"><i class="fa fa-star-o me-1"/>Evaluar calidad de la sugerencia (no califica al cliente)</small>
                             <button type="button" class="btn btn-sm btn-outline-success"
                                     t-att-disabled="aiAssistant.busy" t-on-click="rateAiHelpful">
-                                <i class="fa fa-thumbs-up"/> Útil
+                                <i class="fa fa-thumbs-up"/> Fue útil
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-warning"
                                     t-att-disabled="aiAssistant.busy" t-on-click="rateAiEdited">
-                                <i class="fa fa-pencil"/> Requirió edición
+                                <i class="fa fa-pencil"/> La edité
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-danger"
                                     t-att-disabled="aiAssistant.busy" t-on-click="rateAiUnsafe">
-                                <i class="fa fa-ban"/> No usar
+                                <i class="fa fa-ban"/> No es segura
                             </button>
                         </div>
                     </div>
-                    <div class="o_chatroom_ai_assistant_result" t-if="aiAssistant.summary">
-                        <strong>Resumen</strong><div t-esc="aiAssistant.summary"/>
+                    <div class="o_chatroom_ai_assistant_summary" t-if="aiAssistant.summary">
+                        <div class="d-flex justify-content-between align-items-center gap-2">
+                            <strong><i class="fa fa-file-text-o me-1"/> Resumen interno</strong>
+                            <span class="badge rounded-pill text-bg-light">No se envía</span>
+                        </div>
+                        <div class="o_chatroom_ai_assistant_text mt-2" t-esc="aiAssistant.summary"/>
+                        <small class="d-block mt-2 text-muted">Sirve para orientar al agente y revisar el caso. Para redactar un mensaje, elige «Respuesta sugerida».</small>
                     </div>
                     <div class="o_chatroom_ai_assistant_meta">
                         <span t-if="aiAssistant.safetyPolicy"><i class="fa fa-lock"/> Guardia: <strong><t t-esc="aiAssistant.safetyPolicy.enabled ? 'activa' : 'desactivada'"/></strong></span>

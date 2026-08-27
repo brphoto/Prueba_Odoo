@@ -35,6 +35,10 @@
                         <strong t-esc="aiAgent.task.name"/>
                         <span><t t-esc="aiAgent.task.action_count"/> acción(es) · <t t-esc="aiAgent.task.state_label"/></span>
                         <small t-if="aiAgent.task.result_summary" t-esc="aiAgent.task.result_summary"/>
+                        <div t-if="aiAgent.task.result_preview" class="o_chatroom_ai_agent_result mt-2">
+                            <strong><i class="fa fa-check-circle me-1"/> Resultado</strong>
+                            <div class="mt-1" t-esc="aiAgent.task.result_preview"/>
+                        </div>
                     </div>
                     <button type="button" class="btn btn-sm btn-primary w-100"
                             t-att-disabled="aiAgent.busy"
