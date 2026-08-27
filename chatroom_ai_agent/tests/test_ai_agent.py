@@ -370,3 +370,7 @@ class TestChatroomAiAgent(TransactionCase):
         self.assertLessEqual(checklist.ready_count, checklist.total_checks)
         self.assertGreaterEqual(checklist.readiness_percent, 0)
         self.assertLessEqual(checklist.readiness_percent, 100)
+        self.assertEqual(checklist.total_checks, 8)
+        self.assertTrue(checklist.python_dependencies_ready)
+        self.assertTrue(checklist.python_dependencies_detail)
+        self.assertIn('OCR Python', checklist.ocr_detail)

@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import importlib.util
+import shutil
+
 from odoo import _, api, fields, models
 
 
@@ -20,8 +23,12 @@ class ChatroomAiSetup(models.TransientModel):
     payment_detail = fields.Char(readonly=True)
     security_ready = fields.Boolean(string='Seguridad configurada', readonly=True)
     security_detail = fields.Char(readonly=True)
+    python_dependencies_ready = fields.Boolean(string='Dependencias Python', readonly=True)
+    python_dependencies_detail = fields.Char(string='Detalle de dependencias', readonly=True)
+    ocr_ready = fields.Boolean(string='OCR para PDF escaneado', readonly=True)
+    ocr_detail = fields.Char(string='Detalle de OCR', readonly=True)
     ready_count = fields.Integer(string='Comprobaciones correctas', readonly=True)
-    total_checks = fields.Integer(string='Comprobaciones totales', default=6, readonly=True)
+    total_checks = fields.Integer(string='Comprobaciones totales', default=8, readonly=True)
     readiness_percent = fields.Float(string='Preparación (%)', readonly=True)
     overall_state = fields.Selection([
         ('ready', 'Listo para operar'),
@@ -70,6 +77,17 @@ class ChatroomAiSetup(models.TransientModel):
         require_approval = icp.get_param('chatroom_ai_agent.require_approval', 'True') == 'True'
         safety_profile = icp.get_param('chatroom_ai_agent.safety_profile', 'supervised')
         security = require_approval or safety_profile == 'supervised'
+
+        required_python = ('requests', 'pypdf')
+        missing_python = [name for name in required_python
+                          if importlib.util.find_spec(name) is None]
+        python_ready = not missing_python
+        ocr_python = all(importlib.util.find_spec(name) is not None
+                          for name in ('pdf2image', 'pytesseract'))
+        tesseract_ready = bool(shutil.which('tesseract'))
+        poppler_ready = bool(shutil.which('pdftoppm'))
+        ocr_ready = ocr_python and tesseract_ready and poppler_ready
+
         values = {
             'refreshed_at': fields.Datetime.now(),
             'whatsapp_ready': whatsapp,
@@ -84,14 +102,24 @@ class ChatroomAiSetup(models.TransientModel):
             'payment_detail': _('Conector de links disponible') if payment else _('Instala el módulo de links de pago.'),
             'security_ready': security,
             'security_detail': _('Aprobación humana protegida') if security else _('Activa la aprobación humana.'),
+            'python_dependencies_ready': python_ready,
+            'python_dependencies_detail': _('requests y pypdf disponibles') if python_ready else _('Faltan: %s') % ', '.join(missing_python),
+            'ocr_ready': ocr_ready,
+            'ocr_detail': _('OCR Python, Tesseract y Poppler disponibles') if ocr_ready else _(
+                'OCR Python: %s · Tesseract: %s · Poppler: %s') % (
+                    _('listo') if ocr_python else _('falta'),
+                    _('listo') if tesseract_ready else _('falta'),
+                    _('listo') if poppler_ready else _('falta')),
         }
-        ready_count = sum(bool(values[field]) for field in (
+        checks = (
             'whatsapp_ready', 'provider_ready', 'knowledge_ready',
-            'sales_ready', 'payment_ready', 'security_ready'))
+            'sales_ready', 'payment_ready', 'security_ready',
+            'python_dependencies_ready', 'ocr_ready')
+        ready_count = sum(bool(values[field]) for field in checks)
         values.update({
             'ready_count': ready_count,
-            'readiness_percent': ready_count / 6.0 * 100,
-            'overall_state': 'ready' if ready_count == 6 else 'attention',
+            'readiness_percent': ready_count / 8.0 * 100,
+            'overall_state': 'ready' if ready_count == 8 else 'attention',
         })
         self.write(values)
         return self

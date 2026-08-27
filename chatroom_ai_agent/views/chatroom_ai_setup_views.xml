@@ -29,6 +29,8 @@
                         <group string="Ventas autónomas"><field name="sales_ready" widget="boolean"/><field name="sales_detail" nolabel="1"/></group>
                         <group string="Pagos"><field name="payment_ready" widget="boolean"/><field name="payment_detail" nolabel="1"/></group>
                         <group string="Seguridad"><field name="security_ready" widget="boolean"/><field name="security_detail" nolabel="1"/></group>
+                        <group string="Dependencias Python"><field name="python_dependencies_ready" widget="boolean"/><field name="python_dependencies_detail" nolabel="1"/></group>
+                        <group string="OCR de documentos"><field name="ocr_ready" widget="boolean"/><field name="ocr_detail" nolabel="1"/></group>
                     </group>
                     <field name="refreshed_at"/>
                 </sheet>
