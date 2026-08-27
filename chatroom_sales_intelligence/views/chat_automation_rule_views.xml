@@ -47,4 +47,13 @@
     </record>
     <menuitem id="menu_chat_automation_rule" name="Automatizaciones del chat"
               parent="menu_chatroom_commercial_automation" action="action_chat_automation_rule" sequence="20"/>
+    <record id="view_chat_automation_rule_ui" model="ir.ui.view">
+        <field name="name">chat.automation.rule.form.ui</field>
+        <field name="model">chat.automation.rule</field>
+        <field name="inherit_id" ref="view_chat_automation_rule_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes"><attribute name="class" add="o_chat_automation_rule_form" separator=" "/></xpath>
+            <xpath expr="//form/sheet" position="after"><chatter/></xpath>
+        </field>
+    </record>
 </odoo>

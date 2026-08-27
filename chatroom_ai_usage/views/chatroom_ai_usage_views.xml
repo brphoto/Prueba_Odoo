@@ -19,7 +19,7 @@
         <field name="name">chatroom.ai.provider.model.form</field>
         <field name="model">chatroom.ai.provider.model</field>
         <field name="arch" type="xml">
-                <form string="Modelo de IA">
+                <form string="Modelo de IA" class="o_chatroom_ai_provider_model_form">
                     <header><button name="action_test_connection" type="object" string="Probar disponibilidad" class="btn-primary" icon="fa-heartbeat"/></header>
                 <sheet>
                     <div class="oe_title"><h1><field name="name"/></h1></div>
@@ -43,6 +43,7 @@
                     </div>
                     <field name="health_message" readonly="1"/>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>
@@ -55,7 +56,9 @@
                 <field name="fetched_at"/>
                 <field name="period_start" optional="hide"/>
                 <field name="period_end" optional="hide"/>
-                <field name="state" widget="badge"/>
+                 <field name="state" widget="badge"/>
+                 <field name="source" widget="badge"/>
+                 <field name="official_sync_at" optional="hide"/>
                 <field name="request_count"/>
                 <field name="input_tokens" optional="hide"/>
                 <field name="output_tokens" optional="hide"/>
@@ -77,6 +80,8 @@
         <field name="arch" type="xml">
             <form string="Resumen de consumo de IA">
                 <header>
+                    <button name="action_refresh" type="object" string="Actualizar desde OpenAI" class="btn-primary" icon="fa-cloud-download"/>
+                    <button name="action_test_platform_connection" type="object" string="Probar conexión" class="btn-secondary" icon="fa-plug"/>
                     <button name="action_refresh_local_ui" type="object" string="Actualizar resumen local" class="btn-primary" icon="fa-refresh"/>
                     <button name="action_open_platform_usage" type="object" string="Abrir panel oficial" class="btn-secondary"/>
                     <button name="action_open_platform_billing" type="object" string="Ver facturación" class="btn-secondary" icon="fa-credit-card"/>
@@ -84,7 +89,7 @@
                 <sheet>
                     <div class="oe_title"><h1><field name="name"/></h1></div>
                     <div class="alert alert-warning" role="alert" invisible="state != 'partial'">
-                        Este resumen contiene consumo local. Configura una Admin API Key para consultar los costos oficiales de la organizacion.
+                        Este resumen contiene unicamente registros locales de Odoo. Configura una Admin API Key y pulsa "Actualizar uso y costos" para consultar OpenAI Platform.
                     </div>
                     <div class="alert alert-danger" role="alert" invisible="state != 'error'"><field name="error_message"/></div>
                     <group>
@@ -94,6 +99,8 @@
                             <field name="period_start" readonly="1"/>
                             <field name="period_end" readonly="1"/>
                             <field name="state" widget="badge" readonly="1"/>
+                            <field name="source" widget="badge" readonly="1"/>
+                            <field name="official_sync_at" readonly="1"/>
                         </group>
                         <group>
                             <field name="request_count" readonly="1"/>
@@ -150,7 +157,10 @@
         <field name="name">chatroom.ai.funding.form</field>
         <field name="model">chatroom.ai.funding</field>
         <field name="arch" type="xml">
-            <form string="Fondo o ajuste de IA">
+            <form string="Fondo o ajuste de IA" class="o_chatroom_ai_funding_form">
+                <header>
+                    <button name="action_open_platform_billing" type="object" string="Abrir facturacion oficial" class="btn-secondary" icon="fa-credit-card"/>
+                </header>
                 <sheet>
                     <div class="alert alert-info" role="alert">
                         Registra aquí las recargas, devoluciones o ajustes que ves en la facturación de OpenAI. Esto alimenta el saldo de control de Chatroom; no realiza pagos ni modifica tu cuenta de OpenAI.
@@ -162,6 +172,7 @@
                     </group>
                     <field name="note" placeholder="Ejemplo: Recarga prepaga de USD 10 confirmada en Billing history."/>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>
@@ -226,7 +237,7 @@
                 <group><group><field name="channel_id"/><field name="task_type"/><field name="active"/></group>
                     <group><field name="expected_keywords"/><field name="last_run" readonly="1"/><field name="last_score" readonly="1"/></group></group>
                 <field name="prompt" placeholder="Criterios que debe seguir la respuesta..."/>
-                <group string="Ultima respuesta"><field name="last_output" readonly="1" nolabel="1" widget="text"/></group>
+                <group string="Ultima respuesta"><field name="last_output" readonly="1" nolabel="1" colspan="2" widget="text"/></group>
                 <field name="result_ids" readonly="1"><list><field name="run_date"/><field name="score"/><field name="state" widget="badge"/></list></field>
             </sheet>
         </form></field>
@@ -251,8 +262,8 @@
                 <div class="oe_title"><h1><field name="name"/></h1></div>
                 <group><group><field name="channel_id"/><field name="scenario"/><field name="task_type"/><field name="expected_keywords"/></group>
                     <group><field name="model_used" readonly="1"/><field name="input_tokens" readonly="1"/><field name="output_tokens" readonly="1"/></group></group>
-                <group string="Instruccion"><field name="prompt" nolabel="1" placeholder="Ejemplo: responde con tono profesional y ofrece el siguiente paso..."/></group>
-                <group string="Resultado"><field name="output" nolabel="1" readonly="1" widget="text"/><field name="evaluation_state" widget="badge"/><field name="evaluation_note" readonly="1" nolabel="1"/><field name="delivery_state" widget="badge"/><field name="delivery_note" readonly="1" nolabel="1"/></group>
+                <group string="Instruccion"><field name="prompt" nolabel="1" colspan="2" widget="text" placeholder="Ejemplo: responde con tono profesional y ofrece el siguiente paso..."/></group>
+                <group string="Resultado"><field name="output" nolabel="1" colspan="2" readonly="1" widget="text"/><field name="evaluation_state" widget="badge"/><field name="evaluation_note" readonly="1" nolabel="1"/><field name="delivery_state" widget="badge"/><field name="delivery_note" readonly="1" nolabel="1"/></group>
                 <group string="Error"><field name="error_message" nolabel="1" readonly="1"/></group>
             </sheet>
         </form></field>

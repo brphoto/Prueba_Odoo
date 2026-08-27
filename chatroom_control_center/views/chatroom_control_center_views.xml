@@ -170,6 +170,7 @@
                         <button name="action_open_groups" type="object" string="Grupos y permisos" class="btn-secondary" icon="fa-shield" groups="base.group_system"/>
                     </div>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>

@@ -22,7 +22,7 @@
         <field name="name">chatroom.kpi.definition.form</field>
         <field name="model">chatroom.kpi.definition</field>
         <field name="arch" type="xml">
-            <form string="KPI de Chatroom">
+            <form string="KPI de Chatroom" class="o_chatroom_kpi_definition_form">
                 <header>
                     <button name="action_test_kpi" type="object" string="Probar KPI" class="btn-primary"/>
                     <button name="action_view_snapshots" type="object" string="Ver histórico" class="btn-secondary"/>
@@ -53,6 +53,7 @@
                         <div class="text-muted">La fórmula recibe value, record_count y period_days.</div>
                     </group>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>

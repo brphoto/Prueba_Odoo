@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_customer_experience" model="ir.ui.view">
+        <field name="name">res.partner.form.customer.experience</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="crm_customer_intelligence.view_partner_form_sales_intelligence"/>
+        <field name="arch" type="xml">
+            <page name="commercial_intelligence" position="inside">
+                <separator string="Experiencia del cliente"/>
+                <group>
+                    <group string="NPS y satisfacción">
+                        <field name="nps_score"/>
+                        <field name="nps_category" widget="badge"/>
+                        <field name="nps_response_count"/>
+                        <field name="nps_last_response_date"/>
+                    </group>
+                    <group string="Valor de vida (LTV)">
+                        <field name="ltv_value"/>
+                        <field name="ltv_average_ticket"/>
+                        <field name="ltv_annual_frequency"/>
+                        <field name="ltv_lifetime_years"/>
+                        <field name="ltv_first_sale_date"/>
+                        <field name="ltv_last_sale_date"/>
+                    </group>
+                </group>
+                <group string="Segmento estratégico">
+                    <field name="strategic_segment" widget="badge"/>
+                    <field name="strategic_segment_explanation" nolabel="1" readonly="1" widget="text"/>
+                </group>
+                <group string="Historial NPS" invisible="not nps_response_count">
+                    <field name="nps_response_ids" nolabel="1">
+                        <list create="0" delete="0">
+                            <field name="response_date"/><field name="score"/><field name="category" widget="badge"/><field name="source"/><field name="reason" optional="hide"/>
+                        </list>
+                    </field>
+                </group>
+            </page>
+        </field>
+    </record>
+    <record id="view_partner_search_customer_experience" model="ir.ui.view">
+        <field name="name">res.partner.search.customer.experience</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="crm_customer_intelligence.view_res_partner_filter_rfm"/>
+        <field name="arch" type="xml">
+            <filter name="group_rfm_category" position="after">
+                <filter name="group_strategic_segment" string="Segmento estratégico" context="{'group_by': 'strategic_segment'}"/>
+                <separator/>
+                <filter name="vip_risk" string="VIP en riesgo" domain="[('strategic_segment', '=', 'vip_risk')]"/>
+                <filter name="evangelists" string="Evangelistas" domain="[('strategic_segment', '=', 'evangelist')]"/>
+                <filter name="champions" string="Campeones" domain="[('strategic_segment', '=', 'champions')]"/>
+            </filter>
+        </field>
+    </record>
+</odoo>

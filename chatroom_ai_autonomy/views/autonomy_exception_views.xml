@@ -66,13 +66,7 @@
         <field name="model">chatroom.ai.autonomy.exception</field>
         <field name="inherit_id" ref="view_chatroom_ai_autonomy_exception_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//form/sheet" position="after">
-                <div class="oe_chatter">
-                    <field name="message_follower_ids"/>
-                    <field name="activity_ids"/>
-                    <field name="message_ids"/>
-                </div>
-            </xpath>
+            <xpath expr="//form/sheet" position="after"><chatter/></xpath>
         </field>
     </record>
     <record id="action_chatroom_ai_autonomy_exception" model="ir.actions.act_window">
@@ -83,4 +77,12 @@
         <field name="context">{'search_default_open': 1}</field>
     </record>
     <menuitem id="menu_chatroom_ai_autonomy_exceptions" name="Bandeja de excepciones" parent="chatroom_ai_autonomy.menu_chatroom_ai_autonomy_root" action="action_chatroom_ai_autonomy_exception" sequence="3" groups="chatroom_ai_autonomy.group_chatroom_ai_autonomy_user"/>
+    <record id="view_chatroom_ai_autonomy_exception_ui" model="ir.ui.view">
+        <field name="name">chatroom.ai.autonomy.exception.form.ui</field>
+        <field name="model">chatroom.ai.autonomy.exception</field>
+        <field name="inherit_id" ref="view_chatroom_ai_autonomy_exception_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes"><attribute name="class" add="o_chatroom_ai_autonomy_exception_form" separator=" "/></xpath>
+        </field>
+    </record>
 </odoo>

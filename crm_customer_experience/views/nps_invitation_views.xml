@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_nps_invitation_list" model="ir.ui.view">
+        <field name="name">crm.nps.invitation.list</field><field name="model">crm.nps.invitation</field>
+        <field name="arch" type="xml">
+            <list string="Invitaciones NPS" decoration-success="state == 'answered'">
+                <field name="create_date" string="Preparada el"/>
+                <field name="partner_id"/><field name="account_move_id"/><field name="sale_order_id" optional="hide"/>
+                <field name="state" widget="badge"/><field name="sent_date" optional="hide"/><field name="response_id"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_crm_nps_invitation_form" model="ir.ui.view">
+        <field name="name">crm.nps.invitation.form</field><field name="model">crm.nps.invitation</field>
+        <field name="arch" type="xml">
+            <form string="Invitación NPS">
+                <header><button name="action_open_survey" type="object" string="Abrir encuesta" class="btn-primary"/></header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="partner_id"/></h1></div>
+                    <group>
+                        <group string="Postventa"><field name="account_move_id"/><field name="sale_order_id"/><field name="company_id"/></group>
+                        <group string="Seguimiento"><field name="survey_id"/><field name="state" widget="statusbar"/><field name="sent_date"/><field name="response_id"/></group>
+                    </group>
+                    <div class="alert alert-info" role="alert">Esta cola prepara el NPS después del pago. El envío por WhatsApp o correo queda a cargo del canal configurado.</div>
+                </sheet><chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="action_crm_nps_invitation" model="ir.actions.act_window">
+        <field name="name">Invitaciones NPS</field><field name="res_model">crm.nps.invitation</field><field name="view_mode">list,form</field>
+    </record>
+</odoo>

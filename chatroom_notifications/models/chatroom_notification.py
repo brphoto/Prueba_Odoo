@@ -7,6 +7,7 @@ from odoo.exceptions import UserError
 
 class ChatroomNotification(models.Model):
     _name = 'chatroom.notification'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Notificación operativa de Chatroom'
     _order = 'priority desc, create_date desc, id desc'
 

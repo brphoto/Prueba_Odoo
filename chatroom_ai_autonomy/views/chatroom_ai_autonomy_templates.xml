@@ -85,13 +85,7 @@
         <field name="model">chatroom.ai.knowledge.profile</field>
         <field name="inherit_id" ref="chatroom_ai_autonomy.view_chatroom_ai_knowledge_profile_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//form/sheet" position="after">
-                <div class="oe_chatter">
-                    <field name="message_follower_ids"/>
-                    <field name="activity_ids"/>
-                    <field name="message_ids"/>
-                </div>
-            </xpath>
+            <xpath expr="//form/sheet" position="after"><chatter/></xpath>
         </field>
     </record>
     <record id="view_chatroom_ai_policy_chatter" model="ir.ui.view">
@@ -99,13 +93,7 @@
         <field name="model">chatroom.ai.autonomy.policy</field>
         <field name="inherit_id" ref="chatroom_ai_autonomy.view_chatroom_ai_autonomy_policy_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//form/sheet" position="after">
-                <div class="oe_chatter">
-                    <field name="message_follower_ids"/>
-                    <field name="activity_ids"/>
-                    <field name="message_ids"/>
-                </div>
-            </xpath>
+            <xpath expr="//form/sheet" position="after"><chatter/></xpath>
         </field>
     </record>
     <record id="view_chatroom_ai_request_chatter" model="ir.ui.view">
@@ -113,13 +101,7 @@
         <field name="model">chatroom.ai.autonomy.request</field>
         <field name="inherit_id" ref="chatroom_ai_autonomy.view_chatroom_ai_autonomy_request_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//form/sheet" position="after">
-                <div class="oe_chatter">
-                    <field name="message_follower_ids"/>
-                    <field name="activity_ids"/>
-                    <field name="message_ids"/>
-                </div>
-            </xpath>
+            <xpath expr="//form/sheet" position="after"><chatter/></xpath>
         </field>
     </record>
     <record id="view_chatroom_ai_message_template_chatter" model="ir.ui.view">
@@ -127,13 +109,7 @@
         <field name="model">chatroom.ai.message.template</field>
         <field name="inherit_id" ref="chatroom_ai_autonomy.view_chatroom_ai_message_template_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//form/sheet" position="after">
-                <div class="oe_chatter">
-                    <field name="message_follower_ids"/>
-                    <field name="activity_ids"/>
-                    <field name="message_ids"/>
-                </div>
-            </xpath>
+            <xpath expr="//form/sheet" position="after"><chatter/></xpath>
         </field>
     </record>
 </odoo>

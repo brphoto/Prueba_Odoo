@@ -44,9 +44,25 @@
                         </div>
                     </setting>
                     <setting id="chatroom_ai_admin_api_key_setting"
-                             help="Clave administrativa separada para consultar uso y costos de la organizacion. Nunca se usa para responder mensajes.">
+                             help="Clave administrativa separada con permiso api.usage.read para consultar uso y costos de la organizacion. Nunca se usa para responder mensajes.">
                         <field name="chatroom_ai_admin_api_key" password="True"/>
+                        <div class="text-muted mt-2">
+                            La clave normal de Chatroom no permite consultar el consumo financiero.
+                            Esta consulta es de solo lectura y no genera tokens.
+                        </div>
+                        <button name="action_test_ai_usage_connection" type="object" string="Probar conexión oficial" class="btn-primary mt-2" icon="fa-plug"/>
                         <button name="action_open_ai_billing" type="object" string="Abrir facturación oficial" class="btn-secondary ms-2" icon="fa-credit-card"/>
+                        <div class="row mt-2">
+                            <label for="chatroom_ai_usage_connection_status" class="col-lg-4 o_light_label"/>
+                            <field name="chatroom_ai_usage_connection_status" widget="badge" readonly="1"/>
+                        </div>
+                        <div class="row mt-2" invisible="not chatroom_ai_usage_last_sync">
+                            <label for="chatroom_ai_usage_last_sync" class="col-lg-4 o_light_label"/>
+                            <field name="chatroom_ai_usage_last_sync" readonly="1"/>
+                        </div>
+                        <div class="text-danger mt-2" invisible="not chatroom_ai_usage_last_error">
+                            <field name="chatroom_ai_usage_last_error" nolabel="1" readonly="1"/>
+                        </div>
                     </setting>
                     <setting id="chatroom_ai_usage_days_setting">
                         <field name="chatroom_ai_usage_days"/>
@@ -88,8 +104,8 @@
                         </div>
                     </setting>
                     <setting id="chatroom_ai_refresh_usage_setting"
-                             help="Consulta el costo oficial si hay Admin API Key; si no, muestra el consumo registrado localmente.">
-                        <button name="action_refresh_ai_usage" type="object" string="Actualizar consumo" class="btn-primary"/>
+                             help="Consulta uso y costos oficiales si hay Admin API Key; si no, muestra el consumo registrado localmente.">
+                        <button name="action_refresh_ai_usage" type="object" string="Actualizar uso y costos" class="btn-primary"/>
                     </setting>
                     <setting id="chatroom_ai_open_sandbox_setting"
                              help="Prueba respuestas y resumenes con el contexto de una conversacion sin enviarlos.">

@@ -13,6 +13,7 @@
     'assets': {
         'web.assets_backend': [
             'chatroom_ui/static/src/chatroom_ui.scss',
+            'chatroom_ui/static/src/chatroom_form_layout.scss',
             'chatroom_ui/static/src/chatroom_ui_settings.scss',
             'chatroom_ui/static/src/chatroom_ui_preview.js',
             'chatroom_ui/static/src/chatroom_ui_patch.js',

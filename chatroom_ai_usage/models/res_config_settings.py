@@ -41,6 +41,17 @@ class ResConfigSettings(models.TransientModel):
         string='Admin API Key para consumo',
         config_parameter='chatroom_whatsapp.ai_admin_api_key',
     )
+    chatroom_ai_usage_connection_status = fields.Selection([
+        ('missing_admin_key', 'Falta Admin API Key'),
+        ('ok', 'Conectado'),
+        ('error', 'Revisar permisos'),
+    ], string='Estado de consumo oficial', compute='_compute_ai_usage_connection_status')
+    chatroom_ai_usage_last_sync = fields.Datetime(
+        string='Última comprobación', compute='_compute_ai_usage_connection_status',
+    )
+    chatroom_ai_usage_last_error = fields.Text(
+        string='Detalle de la última comprobación', compute='_compute_ai_usage_connection_status',
+    )
     chatroom_ai_usage_days = fields.Integer(
         string='Periodo de consulta (dias)', default=31,
         config_parameter='chatroom_whatsapp.ai_usage_days',
@@ -132,6 +143,22 @@ class ResConfigSettings(models.TransientModel):
                 values[field_name] = False
         return values
 
+    def _compute_ai_usage_connection_status(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        status = icp.get_param('chatroom_whatsapp.ai_usage_last_status') or (
+            'ok' if (icp.get_param('chatroom_whatsapp.ai_admin_api_key') or '').strip()
+            else 'missing_admin_key'
+        )
+        for settings in self:
+            settings.chatroom_ai_usage_connection_status = status if status in (
+                'missing_admin_key', 'ok', 'error'
+            ) else 'missing_admin_key'
+            raw_date = icp.get_param('chatroom_whatsapp.ai_usage_last_sync') or False
+            settings.chatroom_ai_usage_last_sync = fields.Datetime.to_datetime(raw_date) if raw_date else False
+            settings.chatroom_ai_usage_last_error = icp.get_param(
+                'chatroom_whatsapp.ai_usage_last_error'
+            ) or False
+
     def set_values(self):
         super().set_values()
         values = {
@@ -184,6 +211,10 @@ class ResConfigSettings(models.TransientModel):
     def action_refresh_ai_usage(self):
         self.ensure_one()
         return self.env['chatroom.ai.usage.snapshot'].action_refresh()
+
+    def action_test_ai_usage_connection(self):
+        self.ensure_one()
+        return self.env['chatroom.ai.usage.snapshot'].action_test_platform_connection()
 
     def action_open_ai_billing(self):
         self.ensure_one()

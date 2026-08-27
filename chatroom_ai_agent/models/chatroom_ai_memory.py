@@ -6,6 +6,7 @@ from odoo import api, fields, models
 
 class ChatroomAiMemory(models.Model):
     _name = 'chatroom.ai.memory'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Memoria empresarial del agente IA'
     _order = 'importance desc, last_used desc, id desc'
 

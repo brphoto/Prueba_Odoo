@@ -31,7 +31,7 @@
         <field name="name">chatroom.payment.link.form</field>
         <field name="model">chatroom.payment.link</field>
         <field name="arch" type="xml">
-            <form string="Enlace de pago" create="false" edit="false">
+            <form string="Enlace de pago" create="false" edit="false" class="o_chatroom_payment_link_form">
                 <header>
                     <button name="action_resend" type="object" string="Reenviar enlace"
                             class="btn-primary" groups="chatroom_payment.group_chatroom_payment_agent,chatroom_payment.group_chatroom_payment_manager"
@@ -70,6 +70,7 @@
                     <field name="status_message" readonly="1"/>
                     <field name="error_message" invisible="not error_message"/>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>

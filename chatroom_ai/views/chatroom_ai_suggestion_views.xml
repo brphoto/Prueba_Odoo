@@ -27,10 +27,11 @@
                     <group string="Fuentes utilizadas"><field name="knowledge_sources" nolabel="1"/></group>
                 </group>
                 <group><field name="intent"/><field name="confidence"/><field name="safety_decision"/><field name="safety_reason"/><field name="feedback_state"/><field name="feedback_by"/><field name="feedback_at"/><field name="edited_by_human"/><field name="edit_count"/><field name="last_reviewed_at"/><field name="approved_by"/><field name="sent_by"/></group>
-                <group string="Respuesta para revisar" class="o_chatroom_ai_suggestion_reply"><field name="suggested_text" nolabel="1"/></group>
+                <group string="Respuesta para revisar" class="o_chatroom_ai_suggestion_reply"><field name="suggested_text" nolabel="1" colspan="2" widget="text"/></group>
                 <group string="Contexto y trazabilidad" class="o_chatroom_ai_suggestion_trace"><field name="message_context" readonly="1"/><field name="rejection_reason"/><field name="error_message" readonly="1"/></group>
                 <group string="Retroalimentación humana" class="o_chatroom_ai_suggestion_feedback"><field name="feedback_notes" placeholder="Qué debería mejorar esta respuesta..."/></group>
             </sheet>
+            <chatter/>
         </form></field>
     </record>
     <record id="action_chatroom_ai_suggestion" model="ir.actions.act_window">

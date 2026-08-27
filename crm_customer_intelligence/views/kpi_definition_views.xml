@@ -20,7 +20,7 @@
         <field name="name">crm.kpi.definition.form</field>
         <field name="model">crm.kpi.definition</field>
         <field name="arch" type="xml">
-            <form string="KPI configurable">
+            <form string="KPI configurable" class="o_crm_kpi_definition_form">
                 <header>
                     <button name="action_test_kpi" type="object" string="Probar KPI" class="btn-primary"/>
                     <button name="action_view_snapshots" type="object" string="Ver histórico" class="btn-secondary"/>
@@ -53,6 +53,7 @@
                         <div class="text-muted">La fórmula recibe value y record_count. Ejemplo: value / record_count para un promedio personalizado.</div>
                     </group>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>

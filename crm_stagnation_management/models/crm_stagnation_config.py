@@ -5,6 +5,7 @@ from odoo.exceptions import ValidationError
 
 class CrmStagnationConfig(models.Model):
     _name = 'crm.stagnation.config'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Reglas de oportunidades estancadas'
     _check_company_auto = True
     _order = 'company_id, id'

@@ -487,11 +487,6 @@
 }
 
 .o_chatroom_ai_automation_form {
-    .o_form_sheet {
-        max-width: 1180px;
-        margin: 0 auto;
-    }
-
     .o_chatroom_ai_automation_intro {
         display: flex;
         align-items: center;
@@ -552,28 +547,6 @@
 }
 
 /* Automatizaciones: formulario de ancho completo con configuración legible. */
-.o_form_view:has(form.o_chatroom_ai_automation_form),
-.o_action_manager:has(form.o_chatroom_ai_automation_form) .o_form_view,
-.o_action_manager:has(form.o_chatroom_ai_automation_form) .o_form_renderer,
-.o_form_renderer:has(form.o_chatroom_ai_automation_form) {
-    width: 100% !important;
-    max-width: none !important;
-    flex: 1 1 100% !important;
-}
-
-.o_form_view:has(form.o_chatroom_ai_automation_form) .o_form_sheet_bg,
-.o_form_renderer:has(form.o_chatroom_ai_automation_form) .o_form_sheet_bg {
-    width: 100% !important;
-    max-width: none !important;
-}
-
-.o_chatroom_ai_automation_form .o_form_sheet {
-    width: calc(100% - 48px) !important;
-    max-width: 1440px !important;
-    margin: 16px 24px;
-    padding: 26px 30px 34px;
-}
-
 .o_chatroom_ai_automation_form .o_chatroom_ai_automation_grid {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -592,12 +565,6 @@
 }
 
 @media (max-width: 800px) {
-    .o_chatroom_ai_automation_form .o_form_sheet {
-        width: calc(100% - 20px) !important;
-        margin: 10px;
-        padding: 20px 16px 28px;
-    }
-
     .o_chatroom_ai_automation_form .o_chatroom_ai_automation_grid {
         grid-template-columns: 1fr;
     }

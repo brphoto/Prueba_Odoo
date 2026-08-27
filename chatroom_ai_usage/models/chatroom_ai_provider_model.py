@@ -9,6 +9,7 @@ from odoo.exceptions import UserError
 
 class ChatroomAiProviderModel(models.Model):
     _name = 'chatroom.ai.provider.model'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Modelo disponible del proveedor de IA'
     _order = 'recommended desc, supports_chat desc, name'
 

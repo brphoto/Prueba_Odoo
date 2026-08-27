@@ -38,6 +38,20 @@ class TestChatroomAiAgent(TransactionCase):
         self.assertIn('Cliente clasificado', task.result_preview)
         self.assertTrue(task.audit_ids)
 
+    def test_predefined_automations_are_visible_and_preview_safe(self):
+        automations = self.env['chatroom.ai.automation'].with_context(
+            active_test=False).search([])
+        self.assertEqual(len(automations), 6)
+        self.assertTrue(all(record.description for record in automations))
+        self.assertTrue(all(record.instruction for record in automations))
+        self.assertTrue(all(record.approval_required for record in automations))
+        self.assertTrue(all(not record.active for record in automations))
+
+        preview = automations[0].action_preview_scope()
+        self.assertEqual(preview['type'], 'ir.actions.client')
+        self.assertEqual(preview['tag'], 'display_notification')
+        self.assertIn('No se creo ninguna tarea', preview['params']['message'])
+
     def test_completed_plan_exposes_human_result_in_channel_panel(self):
         task = self.env['chatroom.ai.task'].create_from_channel(
             self.channel, task_type='orchestrate',

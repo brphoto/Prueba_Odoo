@@ -5,6 +5,7 @@ from odoo.exceptions import UserError, ValidationError
 
 class ChatroomAiPlaybook(models.Model):
     _name = 'chatroom.ai.playbook'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Acción reutilizable del agente IA'
     _order = 'sequence, name'
 

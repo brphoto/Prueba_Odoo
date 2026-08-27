@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="survey_nps" model="survey.survey">
+            <field name="title">Encuesta NPS de satisfacción</field>
+            <field name="survey_type">survey</field>
+            <field name="access_mode">public</field>
+            <field name="questions_layout">one_page</field>
+            <field name="users_can_go_back">True</field>
+            <field name="description" type="html">
+                <p>Queremos mejorar. ¿Qué tan probable es que recomiendes nuestra empresa?</p>
+            </field>
+            <field name="description_done" type="html">
+                <p>Gracias por tu respuesta. La usaremos para mejorar tu experiencia.</p>
+            </field>
+        </record>
+        <record id="survey_nps_score" model="survey.question">
+            <field name="survey_id" ref="survey_nps"/>
+            <field name="sequence">1</field>
+            <field name="title">Del 0 al 10, ¿qué tan probable es que recomiendes nuestra empresa?</field>
+            <field name="question_type">scale</field>
+            <field name="scale_min">0</field>
+            <field name="scale_max">10</field>
+            <field name="scale_min_label">Nada probable</field>
+            <field name="scale_max_label">Muy probable</field>
+            <field name="constr_mandatory">True</field>
+        </record>
+        <record id="survey_nps_reason" model="survey.question">
+            <field name="survey_id" ref="survey_nps"/>
+            <field name="sequence">2</field>
+            <field name="title">¿Cuál es el principal motivo de tu puntuación?</field>
+            <field name="question_type">text_box</field>
+            <field name="validation_length_max">1000</field>
+        </record>
+    </data>
+</odoo>

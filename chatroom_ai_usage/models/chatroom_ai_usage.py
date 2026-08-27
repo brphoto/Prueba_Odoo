@@ -10,6 +10,7 @@ from odoo.exceptions import UserError
 
 class ChatroomAiFunding(models.Model):
     _name = 'chatroom.ai.funding'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Fondos y conciliacion de IA'
     _order = 'movement_date desc, id desc'
 
@@ -39,6 +40,13 @@ class ChatroomAiFunding(models.Model):
         for record in self:
             if record.amount <= 0:
                 raise UserError(_('El importe del movimiento debe ser mayor que cero.'))
+
+    def action_open_platform_billing(self):
+        return {
+            'type': 'ir.actions.act_url',
+            'url': 'https://platform.openai.com/settings/organization/billing/overview',
+            'target': 'new',
+        }
 
 
 class ChatroomAiUsageEvent(models.Model):
@@ -120,6 +128,15 @@ class ChatroomAiUsageSnapshot(models.Model):
     state = fields.Selection([
         ('ok', 'Actualizado'), ('partial', 'Solo consumo local'), ('error', 'Error'),
     ], default='ok', required=True)
+    source = fields.Selection([
+        ('openai', 'OpenAI Platform'),
+        ('local', 'Registro local de Odoo'),
+        ('unavailable', 'No disponible'),
+    ], string='Fuente del resumen', default='local', required=True, readonly=True)
+    official_sync_at = fields.Datetime(
+        string='Última consulta oficial', readonly=True,
+        help='Momento en que Odoo consultó los endpoints oficiales de uso y costos.',
+    )
     error_message = fields.Text(string='Detalle')
 
     def _notify_budget_alert(self):
@@ -231,9 +248,90 @@ class ChatroomAiUsageSnapshot(models.Model):
             params=params,
             timeout=30,
         )
-        response.raise_for_status()
+        if response.status_code >= 400:
+            detail = ''
+            try:
+                payload = response.json()
+                error_data = payload.get('error') if isinstance(payload, dict) else None
+                if isinstance(error_data, dict):
+                    detail = error_data.get('message') or ''
+                elif error_data:
+                    detail = str(error_data)
+            except (ValueError, TypeError):
+                detail = ''
+            detail = detail or response.text[:300] or response.reason
+            raise requests.HTTPError(
+                'HTTP %s en %s: %s' % (response.status_code, path, detail),
+                response=response,
+            )
         payload = response.json()
         return payload if isinstance(payload, dict) else {}
+
+    @api.model
+    def _admin_api_key(self):
+        return (self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_whatsapp.ai_admin_api_key') or '').strip()
+
+    @api.model
+    def _set_sync_status(self, status, error=False):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.ai_usage_last_status', status)
+        icp.set_param('chatroom_whatsapp.ai_usage_last_sync', fields.Datetime.now())
+        icp.set_param('chatroom_whatsapp.ai_usage_last_error', error or '')
+
+    @api.model
+    def action_test_platform_connection(self):
+        """Comprueba uso y costos oficiales sin generar una solicitud de IA."""
+        admin_key = self._admin_api_key()
+        if not admin_key:
+            self._set_sync_status('missing_admin_key', _(
+                'No se ha configurado la Admin API Key de OpenAI.'
+            ))
+            raise UserError(_(
+                'Falta la Admin API Key de OpenAI. La API Key normal de Chatroom sirve '
+                'para responder mensajes, pero no tiene el permiso api.usage.read para '
+                'consultar uso y costos de la organización.'
+            ))
+        end_ts = int(datetime.utcnow().timestamp()) + 1
+        start_ts = end_ts - 86400
+        try:
+            usage = self._fetch(
+                'organization/usage/completions', admin_key, start_ts, end_ts,
+                group_by='model',
+            )
+            costs = self._fetch(
+                'organization/costs', admin_key, start_ts, end_ts,
+                group_by='line_item',
+            )
+            requests_count = sum(
+                int(result.get('num_model_requests') or 0)
+                for bucket in usage.get('data', [])
+                for result in bucket.get('results', [])
+            )
+            cost = sum(
+                float((result.get('amount') or {}).get('value') or 0.0)
+                for bucket in costs.get('data', [])
+                for result in bucket.get('results', [])
+            )
+        except (requests.RequestException, ValueError, TypeError, KeyError) as exc:
+            self._set_sync_status('error', str(exc))
+            raise UserError(_(
+                'La Admin API Key no pudo consultar OpenAI Platform: %s. '
+                'Verifica que sea una clave administrativa de la organización y que '
+                'tenga acceso al proyecto.'
+            ) % exc) from exc
+        self._set_sync_status('ok')
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Conexión oficial correcta'),
+                'message': _('OpenAI respondió. Últimas 24 h: %s solicitudes | costo %.6f USD.') % (
+                    requests_count, cost),
+                'type': 'success',
+                'sticky': False,
+            },
+        }
 
     @api.model
     def action_refresh_local(self):
@@ -254,6 +352,7 @@ class ChatroomAiUsageSnapshot(models.Model):
             'currency': 'usd',
             'model_breakdown': '{}',
             'state': 'partial',
+            'source': 'local',
             'error_message': _('Resumen local basado en las solicitudes registradas. Para costos oficiales configura la Admin API Key.'),
         }
         values.update(self._budget_values(0.0))
@@ -280,7 +379,7 @@ class ChatroomAiUsageSnapshot(models.Model):
     @api.model
     def action_refresh(self):
         icp = self.env['ir.config_parameter'].sudo()
-        admin_key = icp.get_param('chatroom_whatsapp.ai_admin_api_key')
+        admin_key = self._admin_api_key()
         now = fields.Datetime.now()
         start = now - timedelta(days=self._days())
         local_count, local_tokens = self._local_totals(start, now)
@@ -298,8 +397,12 @@ class ChatroomAiUsageSnapshot(models.Model):
         values.update(self._budget_values(0.0))
         values.update(self._financial_values(0.0, now))
         if not admin_key:
+            self._set_sync_status('missing_admin_key', _(
+                'No se ha configurado la Admin API Key de OpenAI.'
+            ))
             values.update({
                 'state': 'partial',
+                'source': 'local',
                 'request_count': local_count,
                 'total_tokens': local_tokens,
                 'error_message': _('Configura una Admin API Key para consultar costos oficiales de la organización.'),
@@ -342,8 +445,11 @@ class ChatroomAiUsageSnapshot(models.Model):
                 'currency': currency,
                 'model_breakdown': json.dumps(by_model, ensure_ascii=False, indent=2),
                 'state': 'ok',
+                'source': 'openai',
+                'official_sync_at': now,
                 'error_message': False,
             })
+            self._set_sync_status('ok')
             values.update(self._budget_values(cost))
             values.update(self._financial_values(cost, now))
             snapshot = self.sudo().create(values)
@@ -353,7 +459,8 @@ class ChatroomAiUsageSnapshot(models.Model):
                 'params': {'title': _('Consumo de IA actualizado'), 'message': _('Solicitudes: %s | Costo: %.6f %s') % (request_count, cost, currency.upper()), 'type': 'success', 'sticky': False},
             }
         except (requests.RequestException, ValueError, TypeError, KeyError) as exc:
-            values.update({'state': 'error', 'error_message': str(exc)})
+            self._set_sync_status('error', str(exc))
+            values.update({'state': 'error', 'source': 'unavailable', 'error_message': str(exc)})
             self.sudo().create(values)
             raise UserError(_('No se pudo consultar el consumo de OpenAI Platform: %s') % exc) from exc
 
@@ -380,6 +487,6 @@ class ChatroomAiUsageSnapshot(models.Model):
     def action_open_platform_billing(self):
         return {
             'type': 'ir.actions.act_url',
-            'url': 'https://platform.openai.com/account/billing',
+            'url': 'https://platform.openai.com/settings/organization/billing/overview',
             'target': 'new',
         }

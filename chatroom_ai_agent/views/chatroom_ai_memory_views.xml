@@ -1,12 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="view_chatroom_ai_memory_list" model="ir.ui.view">
-        <field name="name">chatroom.ai.memory.list</field><field name="model">chatroom.ai.memory</field>
-        <field name="arch" type="xml"><list string="Memoria empresarial"><field name="last_used"/><field name="name"/><field name="memory_type" widget="badge"/><field name="partner_id"/><field name="channel_id"/><field name="importance" widget="badge"/><field name="active"/></list></field>
+        <field name="name">chatroom.ai.memory.list</field>
+        <field name="model">chatroom.ai.memory</field>
+        <field name="arch" type="xml">
+            <list string="Memoria empresarial"><field name="last_used"/><field name="name"/><field name="memory_type" widget="badge"/><field name="partner_id"/><field name="channel_id"/><field name="importance" widget="badge"/><field name="active"/></list>
+        </field>
     </record>
     <record id="view_chatroom_ai_memory_form" model="ir.ui.view">
-        <field name="name">chatroom.ai.memory.form</field><field name="model">chatroom.ai.memory</field>
-        <field name="arch" type="xml"><form string="Memoria IA"><sheet><group><group><field name="name"/><field name="memory_type"/><field name="importance"/><field name="active"/></group><group><field name="partner_id"/><field name="channel_id"/><field name="source"/><field name="last_used"/></group></group><field name="content" placeholder="Dato, preferencia o compromiso que la IA debe recordar..."/></sheet></form></field>
+        <field name="name">chatroom.ai.memory.form</field>
+        <field name="model">chatroom.ai.memory</field>
+        <field name="arch" type="xml">
+            <form string="Memoria IA" class="o_chatroom_ai_memory_form">
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" placeholder="Ej.: Horario de atención de la empresa"/></h1></div>
+                    <group class="o_chatroom_ai_record_overview" col="2">
+                        <group string="Clasificación"><field name="memory_type"/><field name="importance"/><field name="active"/></group>
+                        <group string="Alcance"><field name="partner_id"/><field name="channel_id"/><field name="source"/><field name="last_used" readonly="1"/></group>
+                    </group>
+                    <group string="Contenido que la IA debe recordar" class="o_chatroom_long_text"><field name="content" nolabel="1" widget="text" placeholder="Dato, preferencia o compromiso que la IA debe recordar..."/></group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
     </record>
     <record id="action_chatroom_ai_memory" model="ir.actions.act_window"><field name="name">Memoria empresarial</field><field name="res_model">chatroom.ai.memory</field><field name="view_mode">list,form</field></record>
 </odoo>

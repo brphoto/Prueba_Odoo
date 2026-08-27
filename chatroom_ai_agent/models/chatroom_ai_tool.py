@@ -4,6 +4,7 @@ from odoo import api, fields, models
 
 class ChatroomAiTool(models.Model):
     _name = 'chatroom.ai.tool'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Herramienta autorizada del agente IA'
     _order = 'sequence, name'
 

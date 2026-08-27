@@ -1,0 +1,49 @@
+/*
+ * Formularios Chatroom
+ *
+ * El layout principal sigue siendo el de Odoo: la hoja conserva su ancho
+ * nativo y mail decide si el chatter va al lado o debajo. Este archivo solo
+ * mejora la lectura de campos de texto largos; no cambia la posición del
+ * chatter ni fuerza anchos globales.
+ */
+.o_chatroom_ai_task_prompt,
+.o_chatroom_ai_task_result,
+.o_chatroom_long_text,
+.o_chatroom_ai_suggestion_reply {
+    min-width: 0;
+}
+
+.o_chatroom_ai_task_prompt .o_field_widget,
+.o_chatroom_ai_task_result .o_field_widget,
+.o_chatroom_long_text .o_field_widget,
+.o_chatroom_ai_suggestion_reply .o_field_widget {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.o_chatroom_ai_task_prompt .o_field_text,
+.o_chatroom_ai_task_result .o_field_text,
+.o_chatroom_long_text .o_field_text,
+.o_chatroom_ai_suggestion_reply .o_field_text {
+    min-width: 0;
+    width: 100%;
+}
+
+.o_chatroom_ai_task_prompt textarea,
+.o_chatroom_ai_task_result textarea,
+.o_chatroom_long_text textarea,
+.o_chatroom_ai_suggestion_reply textarea {
+    min-height: 120px;
+    width: 100%;
+    resize: vertical;
+    line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+    .o_chatroom_ai_task_prompt textarea,
+    .o_chatroom_ai_task_result textarea,
+    .o_chatroom_long_text textarea,
+    .o_chatroom_ai_suggestion_reply textarea {
+        min-height: 96px;
+    }
+}

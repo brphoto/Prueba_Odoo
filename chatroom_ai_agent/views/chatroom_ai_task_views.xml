@@ -26,7 +26,7 @@
         <field name="name">chatroom.ai.task.form</field>
         <field name="model">chatroom.ai.task</field>
         <field name="arch" type="xml">
-            <form string="Tarea IA">
+            <form string="Tarea IA" class="o_chatroom_ai_task_form">
                 <header>
                     <button name="action_plan" type="object" string="Generar plan" class="btn-secondary" invisible="state not in ('draft', 'failed')"/>
                     <button name="action_approve" type="object" string="Aprobar plan" class="btn-primary" invisible="state != 'awaiting_approval'"/>
@@ -37,7 +37,7 @@
                 </header>
                 <sheet>
                     <div class="oe_title"><h1><field name="name"/></h1></div>
-                    <group>
+                    <group class="o_chatroom_ai_task_overview" col="2">
                         <group>
                             <field name="task_type"/>
                             <field name="priority" widget="priority"/>
@@ -69,8 +69,8 @@
                         <strong>Falta aprobación humana.</strong>
                         Aprueba el plan para permitir acciones protegidas como crear oportunidades, cotizaciones, actividades o enviar mensajes.
                     </div>
-                    <group string="Solicitud">
-                        <field name="prompt" nolabel="1" placeholder="Ejemplo: analiza la conversación, identifica lo que solicita el cliente y prepara una respuesta profesional con los datos reales de Odoo. No envíes nada."/>
+                    <group string="Solicitud" col="2" class="o_chatroom_ai_task_prompt">
+                        <field name="prompt" nolabel="1" colspan="2" widget="text" placeholder="Ejemplo: analiza la conversación, identifica lo que solicita el cliente y prepara una respuesta profesional con los datos reales de Odoo. No envíes nada."/>
                     </group>
                     <notebook>
                         <page string="Plan y ejecución">
@@ -115,11 +115,7 @@
                         </page>
                     </notebook>
                 </sheet>
-                <div class="oe_chatter">
-                    <field name="message_follower_ids"/>
-                    <field name="activity_ids"/>
-                    <field name="message_ids"/>
-                </div>
+                <chatter/>
             </form>
         </field>
     </record>

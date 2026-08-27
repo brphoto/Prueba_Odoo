@@ -95,4 +95,13 @@
         <field name="res_model">crm.stagnation.config</field>
         <field name="view_mode">list,form</field>
     </record>
+    <record id="view_crm_stagnation_config_ui" model="ir.ui.view">
+        <field name="name">crm.stagnation.config.form.ui</field>
+        <field name="model">crm.stagnation.config</field>
+        <field name="inherit_id" ref="view_crm_stagnation_config_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes"><attribute name="class" add="o_crm_stagnation_config_form" separator=" "/></xpath>
+            <xpath expr="//form/sheet" position="after"><chatter/></xpath>
+        </field>
+    </record>
 </odoo>

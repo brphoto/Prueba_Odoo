@@ -7,6 +7,7 @@ from odoo import _, api, fields, models
 class ChatroomAiDashboard(models.Model):
     _name = 'chatroom.ai.dashboard'
     _description = 'Centro ejecutivo del agente IA'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
 
     name = fields.Char(string='Panel', required=True, default='Centro ejecutivo IA')
     company_id = fields.Many2one(

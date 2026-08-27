@@ -70,6 +70,7 @@
                         <button name="action_open_pending" type="object" string="Ver cola operativa" class="btn-secondary" icon="fa-list"/>
                     </div>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>

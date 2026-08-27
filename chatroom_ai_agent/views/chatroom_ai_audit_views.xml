@@ -2,11 +2,47 @@
 <odoo>
     <record id="view_chatroom_ai_audit_list" model="ir.ui.view">
         <field name="name">chatroom.ai.audit.list</field><field name="model">chatroom.ai.audit</field>
-        <field name="arch" type="xml"><list string="Auditoría IA"><field name="create_date"/><field name="name"/><field name="state" widget="badge"/><field name="task_id"/><field name="action_id"/><field name="user_id"/><field name="message"/></list></field>
+        <field name="arch" type="xml">
+            <list string="Auditoría IA">
+                <field name="create_date" string="Fecha"/>
+                <field name="name" string="Operación"/>
+                <field name="state" string="Estado" widget="badge"/>
+                <field name="task_id" string="Tarea"/>
+                <field name="action_id" string="Acción"/>
+                <field name="user_id" string="Usuario"/>
+                <field name="message" string="Detalle"/>
+            </list>
+        </field>
     </record>
     <record id="view_chatroom_ai_audit_form" model="ir.ui.view">
         <field name="name">chatroom.ai.audit.form</field><field name="model">chatroom.ai.audit</field>
-        <field name="arch" type="xml"><form string="Auditoría IA" create="false" edit="false"><sheet><group><field name="create_date"/><field name="name"/><field name="state"/><field name="task_id"/><field name="action_id"/><field name="tool_id"/><field name="user_id"/></group><field name="message"/><notebook><page string="Entrada"><field name="input_json" nolabel="1" widget="text"/></page><page string="Salida"><field name="output_json" nolabel="1" widget="text"/></page></notebook></sheet></form></field>
+        <field name="arch" type="xml">
+            <form string="Auditoría IA" create="false" edit="false">
+                <sheet>
+                    <group class="o_chatroom_ai_audit_overview" col="2">
+                        <field name="create_date" string="Fecha"/>
+                        <field name="name" string="Operación"/>
+                        <field name="state" string="Estado"/>
+                        <field name="task_id" string="Tarea"/>
+                        <field name="action_id" string="Acción"/>
+                        <field name="tool_id" string="Herramienta"/>
+                        <field name="user_id" string="Usuario"/>
+                    </group>
+                    <group string="Detalle" class="o_chatroom_long_text">
+                        <field name="message" nolabel="1" widget="text"/>
+                    </group>
+                    <notebook>
+                        <page string="Entrada">
+                            <field name="input_json" nolabel="1" widget="text"/>
+                        </page>
+                        <page string="Salida">
+                            <field name="output_json" nolabel="1" widget="text"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
     </record>
     <record id="action_chatroom_ai_audit" model="ir.actions.act_window"><field name="name">Auditoría IA</field><field name="res_model">chatroom.ai.audit</field><field name="view_mode">list,form</field></record>
 </odoo>

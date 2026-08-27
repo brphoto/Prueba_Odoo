@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<odoo noupdate="1">
+<odoo noupdate="0">
     <record id="automation_daily_review" model="chatroom.ai.automation">
         <field name="name">Revisión diaria de conversaciones</field>
         <field name="trigger">daily_review</field>

@@ -253,8 +253,17 @@ class TestChatroomAiUsage(TransactionCase):
         self.assertEqual(snapshot.funding_net, 10.0)
         self.assertAlmostEqual(snapshot.estimated_balance, 9.94, places=5)
         self.assertEqual(snapshot.financial_state, 'available')
+        self.assertEqual(snapshot.source, 'openai')
+        self.assertTrue(snapshot.official_sync_at)
+
+    def test_platform_connection_requires_admin_key(self):
+        self.env['ir.config_parameter'].sudo().set_param(
+            'chatroom_whatsapp.ai_admin_api_key', False,
+        )
+        with self.assertRaises(UserError):
+            self.env['chatroom.ai.usage.snapshot'].action_test_platform_connection()
 
     def test_billing_link_opens_official_platform(self):
         action = self.env['chatroom.ai.usage.snapshot'].action_open_platform_billing()
         self.assertEqual(action['type'], 'ir.actions.act_url')
-        self.assertIn('platform.openai.com/account/billing', action['url'])
+        self.assertIn('platform.openai.com/settings/organization/billing', action['url'])

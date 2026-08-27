@@ -8,6 +8,7 @@ from odoo import _, api, fields, models
 class ChatroomAiSetup(models.TransientModel):
     _name = 'chatroom.ai.setup'
     _description = 'Checklist de preparación del Agente IA'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
 
     name = fields.Char(default='Preparación del sistema comercial', readonly=True)
     refreshed_at = fields.Datetime(string='Última revisión', readonly=True)
@@ -118,7 +119,9 @@ class ChatroomAiSetup(models.TransientModel):
         ready_count = sum(bool(values[field]) for field in checks)
         values.update({
             'ready_count': ready_count,
-            'readiness_percent': ready_count / 8.0 * 100,
+            # El widget percentage de Odoo recibe un valor entre 0 y 1.
+            # Guardar 87.5 aquí producía 8750% en pantalla.
+            'readiness_percent': ready_count / 8.0,
             'overall_state': 'ready' if ready_count == 8 else 'attention',
         })
         self.write(values)

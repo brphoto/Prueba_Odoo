@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_experience_snapshot_list" model="ir.ui.view">
+        <field name="name">crm.experience.snapshot.list</field><field name="model">crm.experience.snapshot</field>
+        <field name="arch" type="xml">
+            <list string="NPS y LTV" decoration-danger="nps_value &lt; 0" decoration-success="nps_value &gt;= 50">
+                <field name="snapshot_date"/><field name="nps_value"/><field name="response_count"/>
+                <field name="average_ltv" widget="monetary"/><field name="average_rfm"/>
+                <field name="vip_risk_count"/><field name="evangelist_count"/><field name="champions_count"/><field name="lost_count"/>
+                <field name="currency_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_crm_experience_snapshot_form" model="ir.ui.view">
+        <field name="name">crm.experience.snapshot.form</field><field name="model">crm.experience.snapshot</field>
+        <field name="arch" type="xml">
+            <form string="Resumen NPS y LTV">
+                <header><button name="action_refresh" type="object" string="Actualizar indicadores" class="btn-primary"/></header>
+                <sheet>
+                    <div class="oe_title"><h1>Resumen NPS y LTV</h1><field name="snapshot_date"/></div>
+                    <group string="Indicadores principales">
+                        <group><field name="nps_value"/><field name="response_count"/><field name="promoter_count"/><field name="passive_count"/><field name="detractor_count"/></group>
+                        <group><field name="average_ltv" widget="monetary"/><field name="average_rfm"/><field name="currency_id"/></group>
+                    </group>
+                    <group string="Segmentos estratégicos"><field name="vip_risk_count"/><field name="evangelist_count"/><field name="champions_count"/><field name="lost_count"/></group>
+                    <div class="alert alert-info" role="alert">NPS = (promotores − detractores) ÷ respuestas × 100. El LTV usa facturas publicadas y la vida útil estimada configurada.</div>
+                </sheet><chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="action_crm_experience_snapshot" model="ir.actions.act_window">
+        <field name="name">NPS y LTV</field><field name="res_model">crm.experience.snapshot</field><field name="view_mode">list,graph,pivot,form</field>
+    </record>
+</odoo>

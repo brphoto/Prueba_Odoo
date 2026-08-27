@@ -34,6 +34,7 @@
                     </group>
                     <field name="refreshed_at"/>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>

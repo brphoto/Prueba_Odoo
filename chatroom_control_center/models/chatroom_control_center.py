@@ -4,6 +4,7 @@ from odoo import api, fields, models, _
 class ChatroomControlCenter(models.TransientModel):
     _name = 'chatroom.control.center'
     _description = 'Centro de control de Chatroom'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
 
     whatsapp_status = fields.Selection(
         selection=[

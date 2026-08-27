@@ -4,6 +4,7 @@ from odoo.exceptions import UserError
 
 class ChatroomPaymentLink(models.Model):
     _name = 'chatroom.payment.link'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Enlace de pago enviado desde Chatroom'
     _order = 'create_date desc, id desc'
 

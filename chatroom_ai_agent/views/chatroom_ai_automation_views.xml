@@ -9,6 +9,7 @@
                 <field name="name"/>
                 <field name="trigger"/>
                 <field name="task_type"/>
+                <field name="description" optional="hide"/>
                 <field name="approval_required"/>
                 <field name="max_attempts"/>
                 <field name="last_run"/>
@@ -75,11 +76,7 @@
                         <field name="last_error" readonly="1" placeholder="Sin errores registrados."/>
                     </group>
                 </sheet>
-                <div class="oe_chatter">
-                    <field name="message_follower_ids"/>
-                    <field name="activity_ids"/>
-                    <field name="message_ids"/>
-                </div>
+                <chatter/>
             </form>
         </field>
     </record>
@@ -88,5 +85,6 @@
         <field name="name">Automatizaciones IA</field>
         <field name="res_model">chatroom.ai.automation</field>
         <field name="view_mode">list,form</field>
+        <field name="context">{'active_test': False}</field>
     </record>
 </odoo>

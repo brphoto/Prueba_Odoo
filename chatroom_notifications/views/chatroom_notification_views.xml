@@ -45,4 +45,13 @@
         </search></field>
     </record>
     <menuitem id="menu_chatroom_notification" name="Notificaciones" parent="chatroom_whatsapp.menu_chatroom_operation" action="action_chatroom_notification" sequence="25" groups="chatroom_notifications.group_chatroom_notifications_user"/>
+    <record id="view_chatroom_notification_ui" model="ir.ui.view">
+        <field name="name">chatroom.notification.form.ui</field>
+        <field name="model">chatroom.notification</field>
+        <field name="inherit_id" ref="view_chatroom_notification_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes"><attribute name="class" add="o_chatroom_notification_form" separator=" "/></xpath>
+            <xpath expr="//form/sheet" position="after"><chatter/></xpath>
+        </field>
+    </record>
 </odoo>

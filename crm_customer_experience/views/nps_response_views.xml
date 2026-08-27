@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_nps_response_list" model="ir.ui.view">
+        <field name="name">crm.nps.response.list</field>
+        <field name="model">crm.nps.response</field>
+        <field name="arch" type="xml">
+            <list string="Respuestas NPS" decoration-danger="category == 'detractor'" decoration-success="category == 'promoter'">
+                <field name="response_date"/>
+                <field name="partner_id"/>
+                <field name="score"/>
+                <field name="category" widget="badge"/>
+                <field name="reason" optional="hide"/>
+                <field name="source"/>
+                <field name="sale_order_id" optional="hide"/>
+                <field name="account_move_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_crm_nps_response_form" model="ir.ui.view">
+        <field name="name">crm.nps.response.form</field>
+        <field name="model">crm.nps.response</field>
+        <field name="arch" type="xml">
+            <form string="Respuesta NPS">
+                <header>
+                    <button name="action_schedule_followup" type="object" string="Programar seguimiento"
+                            class="btn-primary" invisible="category != 'detractor'"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="partner_id" placeholder="Cliente"/></h1></div>
+                    <group>
+                        <group string="Satisfacción">
+                            <field name="score"/>
+                            <field name="category" widget="badge"/>
+                            <field name="response_date"/>
+                            <field name="source"/>
+                        </group>
+                        <group string="Trazabilidad">
+                            <field name="survey_user_input_id"/>
+                            <field name="sale_order_id"/>
+                            <field name="account_move_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <separator string="Comentario del cliente"/>
+                    <field name="reason" nolabel="1" placeholder="Escribe el motivo o comentario…" widget="text"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="view_crm_nps_response_search" model="ir.ui.view">
+        <field name="name">crm.nps.response.search</field>
+        <field name="model">crm.nps.response</field>
+        <field name="arch" type="xml">
+            <search string="Buscar respuestas NPS">
+                <field name="partner_id"/>
+                <field name="score"/>
+                <field name="category"/>
+                <filter name="detractors" string="Detractores" domain="[('category', '=', 'detractor')]"/>
+                <filter name="promoters" string="Promotores" domain="[('category', '=', 'promoter')]"/>
+                <separator/>
+                <filter name="group_category" string="Agrupar por clasificación" context="{'group_by': 'category'}"/>
+                <filter name="group_date" string="Agrupar por fecha" context="{'group_by': 'response_date'}"/>
+            </search>
+        </field>
+    </record>
+    <record id="action_crm_nps_response" model="ir.actions.act_window">
+        <field name="name">Respuestas NPS</field><field name="res_model">crm.nps.response</field>
+        <field name="view_mode">list,form</field><field name="search_view_id" ref="view_crm_nps_response_search"/>
+    </record>
+</odoo>

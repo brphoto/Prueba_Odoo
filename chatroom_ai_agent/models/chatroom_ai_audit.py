@@ -6,6 +6,7 @@ class ChatroomAiAudit(models.Model):
     _name = 'chatroom.ai.audit'
     _description = 'Auditoría del agente IA de Chatroom'
     _order = 'create_date desc, id desc'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
 
     name = fields.Char(string='Operación', required=True, index=True)
     task_id = fields.Many2one('chatroom.ai.task', string='Tarea', ondelete='cascade', index=True)
