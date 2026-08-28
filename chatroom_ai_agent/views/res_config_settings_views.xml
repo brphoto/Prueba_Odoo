@@ -44,6 +44,16 @@
                             <field name="chatroom_ai_agent_max_payment_amount"/>
                         </setting>
                     </block>
+                    <block title="Cotizaciones y reuniones desde conversaciones">
+                        <setting id="chatroom_ai_agent_quote_product_setting"
+                                 help="Producto fijo de Ventas que se añadirá cuando el agente prepare una cotización nativa.">
+                            <field name="chatroom_ai_agent_quote_product_id"/>
+                        </setting>
+                        <setting id="chatroom_ai_agent_quote_quantity_setting"
+                                 help="Cantidad inicial del producto en la cotización. El documento queda sujeto a aprobación humana.">
+                            <field name="chatroom_ai_agent_quote_quantity"/>
+                        </setting>
+                    </block>
                     <block title="Respuestas automaticas seguras">
                         <setting id="chatroom_ai_safety_profile_setting"
                                  help="Elige un perfil y Odoo rellenara los limites recomendados; despues puedes personalizar cada valor.">

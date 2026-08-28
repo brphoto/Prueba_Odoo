@@ -6,3 +6,5 @@ from . import marketing_social_interaction
 from . import marketing_social_dashboard
 from . import marketing_social_agent_message
 from . import marketing_social_agent
+from . import marketing_social_alert
+from . import marketing_social_import

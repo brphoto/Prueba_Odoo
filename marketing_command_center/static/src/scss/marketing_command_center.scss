@@ -1,0 +1,76 @@
+.o_marketing_command_dashboard,
+.o_marketing_agent_form {
+    .o_marketing_dashboard_intro,
+    .o_marketing_agent_intro {
+        margin: 12px 0 20px;
+        padding: 14px 16px;
+        border-left: 4px solid #0f766e;
+        border-radius: 8px;
+        background: #effaf8;
+        color: #3f5d63;
+        line-height: 1.55;
+    }
+
+    .o_marketing_dashboard_filters {
+        padding: 12px 14px;
+        border: 1px solid #dce5ee;
+        border-radius: 10px;
+        background: #f8fafc;
+    }
+
+    .o_marketing_dashboard_stats {
+        margin: 18px 0;
+        gap: 10px;
+    }
+
+    .o_marketing_dashboard_stats .oe_stat_button {
+        min-height: 82px;
+        border: 1px solid #dce5ee;
+        border-radius: 10px;
+        background: #ffffff;
+    }
+
+    .o_marketing_dashboard_help {
+        padding: 16px 18px;
+        border: 1px solid #e4eaf0;
+        border-radius: 10px;
+        background: #fbfcfe;
+
+        p { margin: 0 0 10px; }
+        p:last-child { margin-bottom: 0; }
+    }
+
+    .o_marketing_agent_input {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        margin-bottom: 16px;
+        padding: 12px;
+        border: 1px solid #dce5ee;
+        border-radius: 10px;
+        background: #f8fafc;
+
+        .o_field_widget,
+        textarea { flex: 1 1 auto; min-width: 0; }
+        textarea { min-height: 74px; resize: vertical; line-height: 1.5; }
+        button { flex: 0 0 auto; white-space: nowrap; }
+    }
+}
+
+.o_marketing_publication_kanban {
+    .o_kanban_record {
+        min-height: 120px;
+        padding: 14px;
+        border: 1px solid #dce5ee;
+        border-radius: 10px;
+        background: #ffffff;
+    }
+
+    .o_marketing_kanban_metric {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 22px;
+        color: #5e7184;
+        font-size: 12px;
+    }
+}

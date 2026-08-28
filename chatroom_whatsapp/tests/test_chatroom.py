@@ -419,6 +419,72 @@ class TestChatroomWhatsapp(TransactionCase):
         with self.assertRaises(UserError):
             channel.action_send_product_catalog(product.ids)
 
+    def test_catalog_returns_live_price_and_stock_for_conversation(self):
+        product = self.env['product.product'].create({
+            'name': 'Laptop Odoo Demo',
+            'default_code': 'LAP-DEMO',
+            'list_price': 850.0,
+            'sale_ok': True,
+            'is_storable': True,
+        })
+        partner = self.env['res.partner'].create({
+            'name': 'Cliente catálogo',
+            'phone': '+593999123456',
+        })
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp',
+            'external_id': 'catalog-live-%s' % partner.id,
+            'partner_id': partner.id,
+        })
+
+        rows = channel.search_products('LAP-DEMO', channel.id)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['id'], product.id)
+        self.assertEqual(rows[0]['list_price'], product.lst_price)
+        self.assertTrue(rows[0]['stock_known'])
+        self.assertIn('Disponible', rows[0]['stock_label'])
+
+    def test_quote_from_cart_uses_all_customer_selected_lines(self):
+        partner = self.env['res.partner'].create({
+            'name': 'Cliente cotización',
+            'phone': '+593999123457',
+        })
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp',
+            'external_id': 'quote-cart-%s' % partner.id,
+            'partner_id': partner.id,
+        })
+        products = self.env['product.product'].create([
+            {'name': 'Servicio implementación', 'list_price': 20.0, 'sale_ok': True},
+            {'name': 'Integración WhatsApp', 'list_price': 100.0, 'sale_ok': True},
+        ])
+        self.env['chatroom.cart.line'].create([
+            {
+                'channel_id': channel.id,
+                'product_id': products[0].id,
+                'product_name': products[0].display_name,
+                'quantity': 3,
+                'price_unit': products[0].lst_price,
+            },
+            {
+                'channel_id': channel.id,
+                'product_id': products[1].id,
+                'product_name': products[1].display_name,
+                'quantity': 1,
+                'price_unit': products[1].lst_price,
+            },
+        ])
+
+        order_id = channel.action_create_quote_from_cart()
+        order = self.env['sale.order'].browse(order_id)
+
+        self.assertEqual(order.state, 'draft')
+        self.assertEqual(len(order.order_line), 2)
+        self.assertEqual(
+            set(order.order_line.mapped('product_id').ids), set(products.ids))
+        self.assertEqual(channel.cart_line_ids, self.env['chatroom.cart.line'])
+
     def test_dashboard_data_includes_sla_and_csat_aggregates(self):
         partner = self.env['res.partner'].create({'name': "Cliente Dashboard"})
         channel = self.env['chatroom.channel'].create({

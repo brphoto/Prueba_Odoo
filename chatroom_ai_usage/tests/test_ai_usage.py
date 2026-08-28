@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import base64
 from unittest.mock import Mock, patch
 
 from odoo import fields
@@ -76,6 +77,123 @@ class TestChatroomAiUsage(TransactionCase):
         self.assertFalse(self.env['chatroom.ai.usage.event'].search_count([
             ('channel_id', '=', channel.id),
         ]))
+
+    def test_sandbox_routes_quote_request_to_approved_agent_plan(self):
+        if 'chatroom.ai.task' not in self.env:
+            self.skipTest('Agente IA no instalado')
+        partner = self.env['res.partner'].create({'name': 'Cliente laboratorio comercial'})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'sandbox-commercial-001',
+            'partner_id': partner.id,
+        })
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Prueba cotización y PDF', 'channel_id': channel.id,
+            'execution_mode': 'local', 'prompt': 'Responde en español y explica el siguiente paso.',
+        })
+        sandbox.write({'draft_message': 'Necesito una cotización en PDF'})
+        sandbox.action_send_test_message()
+        self.assertIn('cotización nativa', sandbox.output)
+        action = sandbox.action_prepare_operational_task()
+        task = self.env['chatroom.ai.task'].browse(action['res_id'])
+        self.assertEqual(task.state, 'awaiting_approval')
+        self.assertEqual(task.action_ids.mapped('key'), [
+            'search_catalog', 'create_quotation', 'send_quotation_pdf'])
+
+    def _create_sandbox_channel(self, external_id):
+        partner = self.env['res.partner'].create({
+            'name': 'Cliente prueba operativa',
+            'email': 'cliente.prueba@example.test',
+        })
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': external_id,
+            'partner_id': partner.id,
+        })
+        return partner, channel
+
+    def test_sandbox_generates_native_draft_quote_and_pdf_attachment(self):
+        partner, channel = self._create_sandbox_channel('sandbox-pdf-001')
+        product = self.env['product.product'].create({
+            'name': 'Servicio de prueba IA', 'type': 'service',
+            'sale_ok': True, 'list_price': 20.0,
+        })
+        self.env['ir.config_parameter'].sudo().set_param(
+            'chatroom_ai_agent.quote_product_id', str(product.id))
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Prueba PDF nativo', 'channel_id': channel.id,
+            'execution_mode': 'local', 'prompt': 'Genera una cotización en PDF.',
+        })
+        with patch.object(
+            type(self.env['ir.actions.report']), '_render_qweb_pdf',
+            return_value=(b'%PDF-1.4 prueba', 'pdf'),
+        ):
+            action = sandbox.action_generate_test_quote_pdf()
+        self.assertEqual(action['res_id'], sandbox.id)
+        self.assertEqual(sandbox.test_quote_id.partner_id, partner)
+        self.assertEqual(sandbox.test_quote_id.state, 'draft')
+        self.assertEqual(sandbox.test_quote_id.order_line.product_id, product)
+        self.assertEqual(len(sandbox.test_attachment_ids), 1)
+        attachment = sandbox.test_attachment_ids
+        self.assertEqual(attachment.mimetype, 'application/pdf')
+        self.assertEqual(attachment.res_model, 'sale.order')
+        self.assertEqual(attachment.res_id, sandbox.test_quote_id.id)
+        self.assertEqual(base64.b64decode(attachment.datas), b'%PDF-1.4 prueba')
+        self.assertEqual(sandbox.test_chat_message_id.channel_id, channel)
+        self.assertEqual(sandbox.test_chat_message_id.message_type, 'document')
+        self.assertEqual(sandbox.test_chat_message_id.attachment_ids, attachment)
+        self.assertIn('No se confirmó', sandbox.operational_result)
+
+    def test_sandbox_creates_native_internal_activity_on_channel(self):
+        partner, channel = self._create_sandbox_channel('sandbox-activity-001')
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Prueba actividad nativa', 'channel_id': channel.id,
+            'execution_mode': 'local', 'prompt': 'Registrar seguimiento.',
+        })
+        sandbox.write({'draft_message': 'Crear una actividad interna de seguimiento para este cliente.'})
+        action = sandbox.action_create_test_activity()
+        self.assertEqual(action['res_id'], sandbox.id)
+        self.assertEqual(len(sandbox.test_activity_ids), 1)
+        activity = sandbox.test_activity_ids
+        self.assertEqual(activity.res_model, 'chatroom.channel')
+        self.assertEqual(activity.res_id, channel.id)
+        self.assertEqual(activity.user_id, self.env.user)
+        self.assertIn('seguimiento', activity.note.lower())
+        self.assertIn('no se envió WhatsApp', sandbox.operational_result)
+        self.assertEqual(channel.partner_id, partner)
+
+    def test_sandbox_uses_upper_bound_for_knowledge_price_ranges(self):
+        amounts = self.env['chatroom.ai.sandbox']._maximum_amounts_from_context(
+            'Implementación estimada entre USD 200 y USD 300; tarifa USD 20 por hora.')
+        self.assertEqual(max(amounts), 300.0)
+
+    def test_sandbox_message_materializes_quote_pdf_and_activity_without_whatsapp(self):
+        _partner, channel = self._create_sandbox_channel('sandbox-materialize-001')
+        product = self.env['product.product'].create({
+            'name': 'Implementación Odoo de prueba', 'type': 'service',
+            'sale_ok': True, 'list_price': 20.0,
+        })
+        self.env['ir.config_parameter'].sudo().set_param(
+            'chatroom_ai_agent.quote_product_id', str(product.id))
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Prueba punta a punta de documentos', 'channel_id': channel.id,
+            'execution_mode': 'local', 'prompt': 'Responde en español.',
+        })
+        sandbox.write({'draft_message': 'Necesito una cotización en PDF y una actividad de seguimiento.'})
+        with patch.object(
+            type(self.env['ir.actions.report']), '_render_qweb_pdf',
+            return_value=(b'%PDF-1.4 flujo completo', 'pdf'),
+        ):
+            sandbox.action_send_test_message()
+        self.assertEqual(sandbox.state, 'done')
+        self.assertEqual(sandbox.test_quote_id.state, 'draft')
+        self.assertEqual(len(sandbox.test_attachment_ids), 1)
+        self.assertEqual(len(sandbox.test_activity_ids), 1)
+        assistant_line = sandbox.conversation_line_ids.filtered(
+            lambda line: line.speaker == 'assistant')[-1]
+        self.assertEqual(assistant_line.attachment_ids, sandbox.test_attachment_ids)
+        self.assertEqual(sandbox.test_chat_message_id.channel_id, channel)
+        self.assertEqual(sandbox.delivery_state, 'not_run')
+        self.assertIn('PDF listo', sandbox.operational_result)
+        self.assertIn('Actividad interna creada', sandbox.operational_result)
 
     def test_selected_model_overrides_manual_fallback(self):
         icp = self.env['ir.config_parameter'].sudo()

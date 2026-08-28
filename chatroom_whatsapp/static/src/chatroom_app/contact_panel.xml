@@ -273,8 +273,15 @@
                                 <img t-if="product.has_image" class="o_chatroom_contact_product_thumb"
                                      t-att-src="productImageUrl(product)" alt=""/>
                                 <i t-else="" class="fa fa-cube o_chatroom_contact_product_thumb_placeholder"/>
-                                <div class="o_chatroom_contact_doc_name text-truncate" t-esc="product.name"/>
-                                <span class="o_chatroom_contact_doc_amount" t-esc="formatMoney(product.list_price, false)"/>
+                                <div class="o_chatroom_contact_product_info text-truncate">
+                                    <div class="o_chatroom_contact_doc_name text-truncate" t-esc="product.name"/>
+                                    <small t-if="product.stock_known" class="o_chatroom_contact_product_stock"
+                                           t-esc="product.stock_label"/>
+                                    <small t-elif="product.stock_label" class="o_chatroom_contact_product_stock text-muted"
+                                           t-esc="product.stock_label"/>
+                                </div>
+                                <span class="o_chatroom_contact_doc_amount"
+                                      t-esc="formatMoney(product.list_price, product.currency_symbol)"/>
                                 <button class="btn btn-sm btn-link o_chatroom_contact_doc_send"
                                         t-att-disabled="state.sendingProductId"
                                         title="Enviar por WhatsApp"

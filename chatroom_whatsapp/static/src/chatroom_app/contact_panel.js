@@ -353,7 +353,8 @@ export class ContactPanel extends Component {
 
     async _searchProducts() {
         this.state.productResults = await this.orm.call(
-            "chatroom.channel", "search_products", [this.state.productQuery]);
+            "chatroom.channel", "search_products",
+            [this.state.productQuery, this.props.channelId]);
     }
 
     async copyPaymentLink(link) {

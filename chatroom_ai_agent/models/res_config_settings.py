@@ -53,6 +53,17 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='chatroom_ai_agent.max_payment_amount',
         help='0 desactiva el límite. Si un documento supera el valor, el agente lo bloquea para revisión humana.',
     )
+    chatroom_ai_agent_quote_product_id = fields.Many2one(
+        'product.product', string='Producto para cotizaciones IA',
+        config_parameter='chatroom_ai_agent.quote_product_id',
+        domain=[('sale_ok', '=', True)],
+        help='Producto que el agente añadirá a una cotización cuando el cliente pida un presupuesto. Déjalo vacío para exigir selección humana.',
+    )
+    chatroom_ai_agent_quote_quantity = fields.Float(
+        string='Cantidad predeterminada para cotizaciones IA', default=1.0,
+        config_parameter='chatroom_ai_agent.quote_quantity',
+        help='Cantidad que se añadirá al producto configurado en cada cotización preparada por el agente.',
+    )
 
     chatroom_ai_safe_auto_reply = fields.Boolean(
         string='Aplicar guardia de seguridad a respuestas automaticas',

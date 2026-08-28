@@ -7,7 +7,7 @@ Usa el catálogo y carrito existentes, exige confirmación explícita del client
 aplica límites de monto, confirma pedidos solo si la política lo permite y
 puede enviar el enlace de pago mediante el conector instalado (incluido PayPhone).
 Las ventas autónomas permanecen desactivadas hasta que el administrador las configure.''',
-    'version': '19.0.1.0.2',
+    'version': '19.0.1.0.3',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
     'category': 'Sales/CRM',

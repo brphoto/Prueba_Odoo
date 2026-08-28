@@ -70,6 +70,7 @@ class MarketingSocialPublication(models.Model):
 class MarketingSocialMetricSnapshot(models.Model):
     _name = 'marketing.social.metric.snapshot'
     _description = 'Historial de métricas sociales'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'snapshot_date desc, id desc'
 
     publication_id = fields.Many2one(

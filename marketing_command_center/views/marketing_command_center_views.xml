@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_marketing_social_dashboard_list" model="ir.ui.view">
+        <field name="name">marketing.social.dashboard.list</field>
+        <field name="model">marketing.social.dashboard</field>
+        <field name="arch" type="xml">
+            <list string="Centros de mando">
+                <field name="name"/>
+                <field name="data_state" widget="badge"/>
+                <field name="last_refresh_at"/>
+                <field name="publication_count"/>
+                <field name="reach_total"/>
+                <field name="engagement_rate"/>
+                <field name="pending_comments"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_marketing_social_dashboard_form" model="ir.ui.view">
+        <field name="name">marketing.social.dashboard.form</field>
+        <field name="model">marketing.social.dashboard</field>
+        <field name="arch" type="xml">
+            <form string="Centro de mando de marketing" class="o_marketing_command_dashboard">
+                <header>
+                    <button name="action_refresh" type="object" string="Actualizar indicadores" class="oe_highlight" icon="fa-refresh"/>
+                    <button name="action_seed_demo_data" type="object" string="Cargar datos demo" class="btn-secondary" icon="fa-magic"/>
+                    <button name="action_open_import" type="object" string="Importar CSV" class="btn-secondary" icon="fa-upload"/>
+                    <button name="action_open_agent" type="object" string="Consultar al agente" class="btn-secondary" icon="fa-comments"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <div class="o_marketing_dashboard_intro" role="status">
+                        Unifica el rendimiento de tus redes sociales para saber qué contenido funciona y qué estrategia conviene replicar.
+                    </div>
+                    <group col="4" class="o_marketing_dashboard_filters">
+                        <field name="platform_filter"/>
+                        <field name="period_days"/>
+                        <field name="date_from" readonly="1"/>
+                        <field name="date_to" readonly="1"/>
+                        <field name="data_state" widget="badge" readonly="1"/>
+                    </group>
+                    <group col="4" class="o_marketing_dashboard_stats">
+                        <button name="action_open_publications" type="object" class="oe_stat_button" icon="fa-file-text-o">
+                            <div class="o_field_widget o_stat_info"><span class="o_stat_value"><field name="publication_count"/></span><span class="o_stat_text">Publicaciones</span></div>
+                        </button>
+                        <button name="action_open_publications" type="object" class="oe_stat_button" icon="fa-users">
+                            <div class="o_field_widget o_stat_info"><span class="o_stat_value"><field name="reach_total"/></span><span class="o_stat_text">Alcance</span></div>
+                        </button>
+                        <button name="action_open_publications" type="object" class="oe_stat_button" icon="fa-heart-o">
+                            <div class="o_field_widget o_stat_info"><span class="o_stat_value"><field name="interactions_total"/></span><span class="o_stat_text">Interacciones</span></div>
+                        </button>
+                        <button name="action_open_agent" type="object" class="oe_stat_button" icon="fa-line-chart">
+                            <div class="o_field_widget o_stat_info"><span class="o_stat_value"><field name="engagement_rate"/></span><span class="o_stat_text">Engagement (%)</span></div>
+                        </button>
+                        <button name="action_open_alerts" type="object" class="oe_stat_button" icon="fa-bell">
+                            <div class="o_field_widget o_stat_info"><span class="o_stat_value"><field name="open_alert_count"/></span><span class="o_stat_text">Alertas abiertas</span></div>
+                        </button>
+                    </group>
+                    <group col="2">
+                        <group string="Audiencia y conversión">
+                            <field name="impressions_total"/>
+                            <field name="views_total"/>
+                            <field name="pending_comments"/>
+                            <field name="leads_total"/>
+                            <field name="sales_total"/>
+                        </group>
+                        <group string="Contenido destacado">
+                            <field name="top_publication_id"/>
+                            <field name="top_platform"/>
+                            <field name="top_publication_rate"/>
+                            <field name="last_refresh_at"/>
+                        </group>
+                    </group>
+                    <group col="2">
+                        <group string="Comparación con el período anterior">
+                            <field name="previous_reach_total"/>
+                            <field name="previous_interactions_total"/>
+                            <field name="previous_engagement_rate"/>
+                            <field name="reach_delta_pct"/>
+                            <field name="interactions_delta_pct"/>
+                            <field name="engagement_delta"/>
+                        </group>
+                        <group string="Alertas configurables">
+                            <field name="engagement_alert_threshold"/>
+                            <field name="pending_comments_alert_threshold"/>
+                            <field name="alert_ids" readonly="1">
+                                <list create="0" delete="0"><field name="severity" widget="badge"/><field name="title"/><field name="state" widget="badge"/><field name="detected_at"/></list>
+                            </field>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Lectura estratégica">
+                            <field name="strategy_summary" nolabel="1" readonly="1" widget="text"/>
+                        </page>
+                        <page string="Comparación">
+                            <field name="comparison_summary" nolabel="1" readonly="1" widget="text"/>
+                        </page>
+                        <page string="Cómo usarlo">
+                            <div class="o_marketing_dashboard_help">
+                                <p><strong>1. Conecta cuentas:</strong> los conectores de cada red se instalan de forma independiente.</p>
+                                <p><strong>2. Sincroniza publicaciones:</strong> cada métrica se guarda con fecha para comparar períodos.</p>
+                                <p><strong>3. Pregunta al agente:</strong> escribe «¿cuál fue la mejor publicación?» o «¿qué tendencia ves?».</p>
+                                <p><strong>4. Decide:</strong> replica temas y formatos con mejor engagement y vincula oportunidades mediante módulos opcionales.</p>
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_marketing_social_account_list" model="ir.ui.view">
+        <field name="name">marketing.social.account.list</field><field name="model">marketing.social.account</field>
+        <field name="arch" type="xml">
+            <list string="Cuentas sociales">
+                <field name="name"/><field name="platform" widget="badge"/><field name="connection_state" widget="badge"/>
+                <field name="follower_count"/><field name="publication_count"/><field name="interaction_count"/><field name="last_sync_at"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_marketing_social_account_form" model="ir.ui.view">
+        <field name="name">marketing.social.account.form</field><field name="model">marketing.social.account</field>
+        <field name="arch" type="xml">
+            <form string="Cuenta social">
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group col="2"><group><field name="platform"/><field name="external_id"/><field name="profile_url" widget="url"/></group><group><field name="connection_state" widget="badge"/><field name="follower_count"/><field name="last_sync_at"/><field name="active"/></group></group>
+                    <notebook><page string="Publicaciones"><field name="publication_ids" readonly="1"><list><field name="name"/><field name="published_at"/><field name="latest_reach"/><field name="latest_engagement_rate"/></list></field></page></notebook>
+                </sheet><chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_marketing_social_campaign_list" model="ir.ui.view">
+        <field name="name">marketing.social.campaign.list</field><field name="model">marketing.social.campaign</field>
+        <field name="arch" type="xml"><list string="Campañas"><field name="name"/><field name="objective"/><field name="date_start"/><field name="date_end"/><field name="publication_count"/><field name="reach_total"/><field name="engagement_rate"/></list></field>
+    </record>
+    <record id="view_marketing_social_campaign_form" model="ir.ui.view">
+        <field name="name">marketing.social.campaign.form</field><field name="model">marketing.social.campaign</field>
+        <field name="arch" type="xml"><form string="Campaña social"><sheet><div class="oe_title"><h1><field name="name"/></h1></div><group col="2"><group><field name="code"/><field name="objective"/><field name="date_start"/><field name="date_end"/></group><group><field name="publication_count" readonly="1"/><field name="reach_total" readonly="1"/><field name="interaction_count" readonly="1"/><field name="engagement_rate" readonly="1"/><field name="active"/></group></group><field name="notes" placeholder="Hipótesis, aprendizaje y próxima estrategia..."/><notebook><page string="Publicaciones"><field name="publication_ids"><list><field name="name"/><field name="platform"/><field name="published_at"/><field name="latest_engagement_rate"/></list></field></page></notebook></sheet><chatter/></form></field>
+    </record>
+
+    <record id="view_marketing_social_publication_list" model="ir.ui.view">
+        <field name="name">marketing.social.publication.list</field><field name="model">marketing.social.publication</field>
+        <field name="arch" type="xml"><list string="Publicaciones sociales"><field name="name"/><field name="platform" widget="badge"/><field name="content_type"/><field name="campaign_id"/><field name="published_at"/><field name="latest_reach"/><field name="latest_likes"/><field name="latest_comments"/><field name="latest_engagement_rate"/></list></field>
+    </record>
+    <record id="view_marketing_social_publication_kanban" model="ir.ui.view">
+        <field name="name">marketing.social.publication.kanban</field><field name="model">marketing.social.publication</field>
+        <field name="arch" type="xml"><kanban class="o_marketing_publication_kanban"><field name="platform"/><field name="content_type"/><field name="latest_engagement_rate"/><field name="latest_reach"/><templates><t t-name="card"><div class="o_kanban_record"><strong><field name="name"/></strong><div><field name="platform"/> · <field name="content_type"/></div><div class="o_marketing_kanban_metric"><span><field name="latest_reach"/> alcance</span><span><field name="latest_engagement_rate"/>% engagement</span></div></div></t></templates></kanban></field>
+    </record>
+    <record id="view_marketing_social_publication_graph" model="ir.ui.view">
+        <field name="name">marketing.social.publication.graph</field><field name="model">marketing.social.publication</field>
+        <field name="arch" type="xml"><graph string="Rendimiento por red" type="bar"><field name="platform" type="row"/><field name="latest_reach" type="measure"/><field name="latest_likes" type="measure"/><field name="latest_comments" type="measure"/><field name="latest_engagement_rate" type="measure"/></graph></field>
+    </record>
+    <record id="view_marketing_social_publication_form" model="ir.ui.view">
+        <field name="name">marketing.social.publication.form</field><field name="model">marketing.social.publication</field>
+        <field name="arch" type="xml"><form string="Publicación social"><sheet><div class="oe_title"><h1><field name="name"/></h1></div><group col="2"><group><field name="account_id"/><field name="platform" readonly="1"/><field name="campaign_id"/><field name="content_type"/></group><group><field name="published_at"/><field name="external_id"/><field name="url" widget="url"/><field name="hashtags"/></group></group><field name="caption" placeholder="Texto de la publicación..."/><group col="4" class="o_marketing_publication_stats"><field name="latest_reach"/><field name="latest_views"/><field name="latest_likes"/><field name="latest_comments"/><field name="latest_shares"/><field name="latest_saves"/><field name="latest_engagement_rate"/><field name="pending_interaction_count"/></group><notebook><page string="Métricas"><field name="metric_ids"><list><field name="snapshot_date"/><field name="reach"/><field name="impressions"/><field name="views"/><field name="total_interactions"/><field name="engagement_rate"/><field name="leads"/><field name="sales_amount"/></list></field></page><page string="Interacciones"><field name="interaction_ids"><list><field name="interaction_date"/><field name="author_name"/><field name="interaction_type"/><field name="intent"/><field name="sentiment"/><field name="response_state"/></list></field></page></notebook></sheet><chatter/></form></field>
+    </record>
+
+    <record id="view_marketing_social_metric_list" model="ir.ui.view">
+        <field name="name">marketing.social.metric.snapshot.list</field><field name="model">marketing.social.metric.snapshot</field>
+        <field name="arch" type="xml"><list string="Historial de métricas"><field name="snapshot_date"/><field name="platform" widget="badge"/><field name="publication_id"/><field name="reach"/><field name="impressions"/><field name="views"/><field name="total_interactions"/><field name="engagement_rate"/><field name="leads"/><field name="sales_amount"/></list></field>
+    </record>
+    <record id="view_marketing_social_metric_graph" model="ir.ui.view">
+        <field name="name">marketing.social.metric.snapshot.graph</field><field name="model">marketing.social.metric.snapshot</field>
+        <field name="arch" type="xml"><graph string="Métricas sociales" type="bar"><field name="snapshot_date" interval="day" type="row"/><field name="platform" type="col"/><field name="reach" type="measure"/><field name="total_interactions" type="measure"/><field name="leads" type="measure"/><field name="sales_amount" type="measure"/></graph></field>
+    </record>
+    <record id="view_marketing_social_metric_form" model="ir.ui.view">
+        <field name="name">marketing.social.metric.snapshot.form</field><field name="model">marketing.social.metric.snapshot</field>
+        <field name="arch" type="xml"><form string="Métrica social"><sheet><group col="2"><group><field name="publication_id"/><field name="platform" readonly="1"/><field name="snapshot_date"/><field name="reach"/><field name="impressions"/><field name="views"/></group><group><field name="likes"/><field name="comments"/><field name="shares"/><field name="saves"/><field name="clicks"/><field name="leads"/><field name="sales_amount"/><field name="engagement_rate" readonly="1"/></group></group></sheet><chatter/></form></field>
+    </record>
+
+    <record id="view_marketing_social_interaction_list" model="ir.ui.view">
+        <field name="name">marketing.social.interaction.list</field><field name="model">marketing.social.interaction</field>
+        <field name="arch" type="xml"><list string="Interacciones"><field name="interaction_date"/><field name="platform" widget="badge"/><field name="publication_id"/><field name="author_name"/><field name="interaction_type"/><field name="intent"/><field name="sentiment" widget="badge"/><field name="response_state" widget="badge"/></list></field>
+    </record>
+    <record id="view_marketing_social_interaction_form" model="ir.ui.view">
+        <field name="name">marketing.social.interaction.form</field><field name="model">marketing.social.interaction</field>
+        <field name="arch" type="xml"><form string="Interacción social"><sheet><group col="2"><group><field name="publication_id"/><field name="platform" readonly="1"/><field name="interaction_type"/><field name="interaction_date"/></group><group><field name="author_name"/><field name="intent"/><field name="sentiment"/><field name="response_state"/></group></group><field name="text" placeholder="Contenido de la interacción..."/><field name="linked_note"/></sheet><chatter/></form></field>
+    </record>
+
+    <record id="view_marketing_social_alert_list" model="ir.ui.view">
+        <field name="name">marketing.social.alert.list</field><field name="model">marketing.social.alert</field>
+        <field name="arch" type="xml"><list string="Alertas de marketing"><field name="detected_at"/><field name="severity" widget="badge"/><field name="alert_type"/><field name="title"/><field name="state" widget="badge"/><field name="dashboard_id"/></list></field>
+    </record>
+    <record id="view_marketing_social_alert_form" model="ir.ui.view">
+        <field name="name">marketing.social.alert.form</field><field name="model">marketing.social.alert</field>
+        <field name="arch" type="xml"><form string="Alerta de marketing"><header><button name="action_resolve" type="object" string="Marcar como resuelta" class="oe_highlight" invisible="state != 'open'"/><field name="state" widget="statusbar" statusbar_visible="open,resolved"/></header><sheet><div class="oe_title"><h1><field name="title"/></h1></div><group col="2"><group><field name="dashboard_id"/><field name="alert_type"/><field name="severity" widget="badge"/></group><group><field name="detected_at"/><field name="resolved_at"/><field name="company_id" groups="base.group_multi_company"/></group></group><field name="details" nolabel="1" widget="text"/></sheet><chatter/></form></field>
+    </record>
+
+    <!-- Import wizard view -->
+    <record id="view_marketing_social_import_wizard_form" model="ir.ui.view">
+        <field name="name">marketing.social.import.wizard.form</field><field name="model">marketing.social.import.wizard</field>
+        <field name="arch" type="xml"><form string="Importar datos sociales"><sheet><div class="o_marketing_dashboard_intro">Carga un CSV UTF-8. Primero importa cuentas; después publicaciones, métricas o interacciones usando sus identificadores externos.</div><group col="2"><field name="import_type"/><field name="delimiter"/><field name="company_id" groups="base.group_multi_company"/><field name="file_name" readonly="1"/><field name="file_data" filename="file_name"/></group><group string="Columnas esperadas"><field name="result_summary" nolabel="1" readonly="1" widget="text"/><div class="o_form_label">Cuentas: name, platform, external_id, profile_url</div><div class="o_form_label">Publicaciones: name, external_id, account_external_id, platform, published_at, content_type, caption, url</div><div class="o_form_label">Métricas: external_id, snapshot_date, reach, impressions, views, likes, comments, shares, saves, clicks, leads, sales_amount</div><div class="o_form_label">Interacciones: external_id, publication_external_id, interaction_date, interaction_type, author_name, text, sentiment, intent, response_state</div></group></sheet><footer><button name="action_download_template" type="object" string="Descargar plantilla" class="btn-secondary" icon="fa-download"/><button name="action_import" type="object" string="Importar" class="oe_highlight"/><button string="Cancelar" special="cancel"/></footer></form></field>
+    </record>
+
+    <record id="view_marketing_social_agent_chat_list" model="ir.ui.view">
+        <field name="name">marketing.social.agent.chat.list</field><field name="model">marketing.social.agent.chat</field>
+        <field name="arch" type="xml"><list string="Agente de marketing"><field name="name"/><field name="platform_filter" widget="badge"/><field name="period_days"/><field name="intent" widget="badge"/><field name="message_count"/><field name="state" widget="badge"/></list></field>
+    </record>
+    <record id="view_marketing_social_agent_chat_form" model="ir.ui.view">
+        <field name="name">marketing.social.agent.chat.form</field><field name="model">marketing.social.agent.chat</field>
+        <field name="arch" type="xml"><form string="Agente de marketing social" class="o_marketing_agent_form"><header><button name="action_send_message" type="object" string="Enviar consulta" class="oe_highlight" icon="fa-paper-plane"/><field name="state" widget="statusbar" statusbar_visible="draft,answered,error"/></header><sheet><div class="oe_title"><h1><field name="name"/></h1></div><div class="o_marketing_agent_intro">Pregunta en lenguaje natural sobre publicaciones, redes, engagement, comentarios o tendencias. Las respuestas se calculan sobre los datos guardados; no consume tokens externos.</div><group col="2"><group><field name="platform_filter"/><field name="period_days"/><field name="intent" readonly="1"/></group><group><field name="message_count" readonly="1"/><field name="company_id" groups="base.group_multi_company"/></group></group><notebook><page string="Chat analítico"><div class="o_marketing_agent_input"><field name="draft_message" nolabel="1" widget="text" placeholder="Ejemplo: ¿cuál fue la mejor publicación de los últimos 30 días?"/><button name="action_send_message" type="object" string="Consultar" class="oe_highlight" icon="fa-paper-plane"/></div><field name="chat_message_ids" nolabel="1" readonly="1"><list string="Conversación"><field name="sequence" column_invisible="1"/><field name="speaker" widget="badge"/><field name="body" string="Mensaje"/><field name="message_date"/></list></field></page><page string="Última respuesta"><field name="answer" nolabel="1" readonly="1" widget="text"/><field name="source_summary" nolabel="1" readonly="1" widget="text"/><field name="source_publication_ids" readonly="1"><list><field name="name"/><field name="platform"/><field name="published_at"/><field name="latest_engagement_rate"/></list></field></page></notebook></sheet><chatter/></form></field>
+    </record>
+
+    <record id="action_marketing_social_dashboard" model="ir.actions.act_window"><field name="name">Centro de mando</field><field name="res_model">marketing.social.dashboard</field><field name="view_mode">form,list</field><field name="res_id" ref="marketing_social_dashboard_main"/></record>
+    <record id="action_marketing_social_accounts" model="ir.actions.act_window"><field name="name">Cuentas sociales</field><field name="res_model">marketing.social.account</field><field name="view_mode">list,form</field></record>
+    <record id="action_marketing_social_campaigns" model="ir.actions.act_window"><field name="name">Campañas</field><field name="res_model">marketing.social.campaign</field><field name="view_mode">list,form</field></record>
+    <record id="action_marketing_social_publications" model="ir.actions.act_window"><field name="name">Publicaciones</field><field name="res_model">marketing.social.publication</field><field name="view_mode">list,kanban,graph</field></record>
+    <record id="action_marketing_social_metrics" model="ir.actions.act_window"><field name="name">Métricas por fecha</field><field name="res_model">marketing.social.metric.snapshot</field><field name="view_mode">graph,list,form</field></record>
+    <record id="action_marketing_social_interactions" model="ir.actions.act_window"><field name="name">Interacciones</field><field name="res_model">marketing.social.interaction</field><field name="view_mode">list,form</field></record>
+    <record id="action_marketing_social_agent" model="ir.actions.act_window"><field name="name">Agente de marketing</field><field name="res_model">marketing.social.agent.chat</field><field name="view_mode">list,form</field></record>
+    <record id="action_marketing_social_alerts" model="ir.actions.act_window"><field name="name">Alertas de marketing</field><field name="res_model">marketing.social.alert</field><field name="view_mode">list,form</field></record>
+    <record id="action_marketing_social_import" model="ir.actions.act_window"><field name="name">Importar datos sociales</field><field name="res_model">marketing.social.import.wizard</field><field name="view_mode">form</field><field name="target">new</field></record>
+
+    <menuitem id="menu_marketing_command_root" name="Marketing" sequence="42" groups="marketing_command_center.group_marketing_user"/>
+    <menuitem id="menu_marketing_command_dashboard" name="Centro de mando" parent="menu_marketing_command_root" action="action_marketing_social_dashboard" sequence="5"/>
+    <menuitem id="menu_marketing_command_agent" name="Agente de marketing" parent="menu_marketing_command_root" action="action_marketing_social_agent" sequence="10"/>
+    <menuitem id="menu_marketing_command_analysis" name="Análisis" parent="menu_marketing_command_root" sequence="20"/>
+    <menuitem id="menu_marketing_command_publications" name="Publicaciones" parent="menu_marketing_command_analysis" action="action_marketing_social_publications" sequence="10"/>
+    <menuitem id="menu_marketing_command_metrics" name="Métricas por fecha" parent="menu_marketing_command_analysis" action="action_marketing_social_metrics" sequence="20"/>
+    <menuitem id="menu_marketing_command_interactions" name="Interacciones" parent="menu_marketing_command_analysis" action="action_marketing_social_interactions" sequence="30"/>
+    <menuitem id="menu_marketing_command_alerts" name="Alertas" parent="menu_marketing_command_analysis" action="action_marketing_social_alerts" sequence="40"/>
+    <menuitem id="menu_marketing_command_configuration" name="Configuración" parent="menu_marketing_command_root" sequence="30"/>
+    <menuitem id="menu_marketing_command_accounts" name="Cuentas sociales" parent="menu_marketing_command_configuration" action="action_marketing_social_accounts" sequence="10"/>
+    <menuitem id="menu_marketing_command_campaigns" name="Campañas" parent="menu_marketing_command_configuration" action="action_marketing_social_campaigns" sequence="20"/>
+    <menuitem id="menu_marketing_command_import" name="Importar datos CSV" parent="menu_marketing_command_configuration" action="action_marketing_social_import" sequence="30"/>
+</odoo>

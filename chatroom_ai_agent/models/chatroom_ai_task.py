@@ -30,7 +30,13 @@ class ChatroomAiTaskAction(models.Model):
 
     @api.depends('key')
     def _compute_risk_level(self):
-        high = {'send_whatsapp_reply', 'send_payment_link', 'create_quotation'}
+        high = {
+            'send_whatsapp_reply',
+            'send_payment_link',
+            'create_quotation',
+            'send_quotation_pdf',
+            'create_meeting',
+        }
         medium = {'create_lead', 'create_activity', 'prepare_payment_link'}
         for action in self:
             action.risk_level = 'high' if action.key in high else 'medium' if action.key in medium else 'low'
@@ -248,6 +254,17 @@ class ChatroomAiTask(models.Model):
 
     def _fallback_plan(self):
         self.ensure_one()
+        request_text = ' '.join([
+            self.prompt or '',
+            ' '.join((message.body or '') for message in self.channel_id.message_ids
+                     if message.body) if self.channel_id else '',
+        ]).lower()
+        quote_request = any(term in request_text for term in (
+            'cotización', 'cotizacion', 'presupuesto', 'propuesta comercial',
+            'pdf de la cotización', 'pdf de la cotizacion', 'cotizacion previa'))
+        meeting_request = any(term in request_text for term in (
+            'reunión', 'reunion', 'videollamada', 'google meet', 'meet',
+            'enlace de la reunión', 'enlace de la reunion'))
         plans = {
             'classify_customer': [('classify_customer', 'Leer clasificación comercial del cliente')],
             'qualify_lead': [('classify_customer', 'Leer clasificación comercial del cliente'), ('create_lead', 'Crear o actualizar oportunidad')],
@@ -256,6 +273,7 @@ class ChatroomAiTask(models.Model):
                 ('classify_intent', 'Identificar intención comercial'),
                 ('create_lead', 'Crear oportunidad desde la conversación'),
                 ('create_quotation', 'Crear cotización para el cliente'),
+                ('send_quotation_pdf', 'Generar y enviar PDF de la cotización'),
                 ('create_activity', 'Registrar seguimiento comercial'),
             ],
             'prepare_reply': [('classify_intent', 'Identificar intención'), ('prepare_reply', 'Preparar respuesta sin enviarla')],
@@ -268,6 +286,14 @@ class ChatroomAiTask(models.Model):
             'daily_review': [('classify_customer', 'Revisar clasificación de clientes'), ('classify_intent', 'Revisar intención de conversaciones')],
             'orchestrate': [('classify_customer', 'Revisar contexto comercial'), ('classify_intent', 'Identificar intención'), ('prepare_reply', 'Proponer siguiente acción')],
         }
+        if self.task_type == 'orchestrate' and quote_request:
+            return [
+                {'key': 'search_catalog', 'name': 'Buscar productos relacionados'},
+                {'key': 'create_quotation', 'name': 'Crear cotización nativa de Ventas'},
+                {'key': 'send_quotation_pdf', 'name': 'Generar y enviar PDF de la cotización'},
+            ]
+        if self.task_type == 'orchestrate' and meeting_request:
+            return [{'key': 'create_meeting', 'name': 'Crear reunión nativa y enviar enlace'}]
         return [{'key': key, 'name': name} for key, name in plans.get(self.task_type, plans['orchestrate'])]
 
     def _ai_plan(self, context):
@@ -283,8 +309,9 @@ class ChatroomAiTask(models.Model):
             return False
         prompt = _('''Devuelve únicamente JSON válido con esta forma: {"actions":[{"key":"...","name":"..."}]}.
 Usa solo estas herramientas: classify_customer, classify_intent, prepare_reply, create_lead,
-search_catalog, create_quotation, find_open_invoice, prepare_payment_link, create_activity. No envíes mensajes
-ni ejecutes pagos. La cotización y las actividades requieren aprobación humana.
+search_catalog, create_quotation, send_quotation_pdf, create_meeting, find_open_invoice,
+prepare_payment_link, create_activity. No ejecutes pagos. Cotizaciones, PDFs, reuniones,
+actividades y envíos requieren aprobación humana.
 Solicitud: %s
 Contexto: %s''') % (self.prompt or '', self._json(context))
         try:
@@ -367,6 +394,11 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                 lines.append(_('Intención identificada: %s.') % output['intent'])
             elif output.get('lead_name'):
                 lines.append(_('Oportunidad disponible: %s.') % output['lead_name'])
+            elif output.get('pdf_sent'):
+                lines.append(_('PDF de la cotización %s enviado por Chatroom.') % output.get('order_name', _('nativa')))
+            elif output.get('meeting_name'):
+                sent = _('enlace enviado') if output.get('link_sent') else _('enlace preparado')
+                lines.append(_('Reunión %s creada; %s.') % (output['meeting_name'], sent))
             elif output.get('order_name'):
                 lines.append(_('Cotización disponible: %s.') % output['order_name'])
             elif output.get('link_id'):
@@ -464,13 +496,87 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                         ('company_id', '=', self.company_id.id),
                     ], order='write_date desc, id desc', limit=1)
                 if not order:
-                    action_result = channel.action_create_quotation()
+                    icp = self.env['ir.config_parameter'].sudo()
+                    product = self.env['product.product'].browse()
+                    product_raw = icp.get_param('chatroom_ai_agent.quote_product_id', '')
+                    try:
+                        product = self.env['product.product'].browse(int(product_raw)).exists() if product_raw else product
+                    except (TypeError, ValueError):
+                        product = self.env['product.product'].browse()
+                    quantity_raw = icp.get_param('chatroom_ai_agent.quote_quantity', '1') or '1'
+                    try:
+                        quantity = max(float(quantity_raw), 0.01)
+                    except (TypeError, ValueError):
+                        quantity = 1.0
+                    if product:
+                        action_result = channel.action_create_quotation(
+                            product_id=product.id, product_qty=quantity)
+                    else:
+                        # Compatibilidad con el botón y las instalaciones
+                        # que aún no parametrizaron un producto: deja una
+                        # cotización nativa vacía para completar manualmente.
+                        action_result = channel.action_create_quotation()
+                        result['configuration_note'] = _(
+                            'Cotización creada sin producto. Configura el producto fijo en Ajustes > Agente IA para automatizar esta línea.')
                     order = self.env['sale.order'].browse(action_result.get('res_id')).exists()
                 if not order:
                     result['status'] = 'skipped'
                     result['reason'] = _('No se pudo crear la cotización.')
                 else:
-                    result.update({'order_id': order.id, 'order_name': order.name, 'state': order.state})
+                    result.update({
+                        'order_id': order.id, 'order_name': order.name,
+                        'state': order.state,
+                        'product': order.order_line[:1].product_id.display_name if order.order_line else False,
+                    })
+        elif action.key == 'send_quotation_pdf':
+            if not channel or not hasattr(channel, 'action_send_sale_order_pdf'):
+                result['status'] = 'skipped'
+                result['reason'] = _('El envío de PDF por Chatroom no está disponible.')
+            else:
+                order = self.env['sale.order'].browse()
+                previous = self.action_ids.filtered(
+                    lambda line: line.key == 'create_quotation' and line.state == 'done')[-1:]
+                if previous and previous.output_json:
+                    try:
+                        previous_data = json.loads(previous.output_json)
+                        order = self.env['sale.order'].browse(previous_data.get('order_id')).exists()
+                    except (TypeError, ValueError, AttributeError):
+                        order = self.env['sale.order'].browse()
+                if not order and channel and 'sale.order' in self.env:
+                    order = self.env['sale.order'].search([
+                        ('partner_id', '=', partner.id),
+                        ('origin', '=', channel.display_name),
+                        ('state', 'in', ('draft', 'sent', 'sale')),
+                        ('company_id', '=', self.company_id.id),
+                    ], order='write_date desc, id desc', limit=1)
+                if not order:
+                    result['status'] = 'skipped'
+                    result['reason'] = _('Primero se necesita una cotización nativa de Ventas.')
+                else:
+                    channel.action_send_sale_order_pdf(order.id)
+                    result.update({
+                        'order_id': order.id, 'order_name': order.name,
+                        'pdf_sent': True,
+                    })
+        elif action.key == 'create_meeting':
+            if not channel or not hasattr(channel, 'action_create_meeting'):
+                result['status'] = 'skipped'
+                result['reason'] = _('Instala Chatroom - Reuniones (Calendario) para crear reuniones nativas.')
+            else:
+                meeting = channel.action_create_meeting()
+                result.update({
+                    'event_id': meeting.get('event_id'),
+                    'meeting_name': meeting.get('name') or _('Reunión'),
+                    'link': meeting.get('link'),
+                    'link_sent': False,
+                })
+                if meeting.get('link') and hasattr(channel, 'action_send_text'):
+                    try:
+                        channel.action_send_text(
+                            _('Te comparto el enlace para la reunión: %s') % meeting['link'])
+                        result['link_sent'] = True
+                    except Exception as exc:  # noqa: BLE001 - conservar el evento aunque falle el canal
+                        result['send_reason'] = str(exc)
         elif action.key == 'find_open_invoice':
             if 'account.move' not in self.env or not partner:
                 result['invoices'] = []

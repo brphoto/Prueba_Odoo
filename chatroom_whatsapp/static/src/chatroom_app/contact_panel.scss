@@ -277,6 +277,17 @@
     font-size: 0.85em;
 }
 
+.o_chatroom_contact_product_info {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.o_chatroom_contact_product_stock {
+    display: block;
+    color: #128c4a;
+    font-size: 0.78em;
+}
+
 .o_chatroom_contact_activity_row {
     width: 100%;
     padding: 0;

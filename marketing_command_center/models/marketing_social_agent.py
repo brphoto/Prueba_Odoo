@@ -29,17 +29,22 @@ class MarketingSocialAgentChat(models.Model):
         ('engagement', 'Engagement'), ('trend', 'Tendencia'),
         ('comments', 'Comentarios'), ('audience', 'Audiencia'),
     ], string='Consulta interpretada', readonly=True)
-    message_ids = fields.One2many(
+    chat_message_ids = fields.One2many(
         'marketing.social.agent.message', 'chat_id', string='Conversación', readonly=True)
+    source_publication_ids = fields.Many2many(
+        'marketing.social.publication', string='Publicaciones fuente', readonly=True)
+    source_summary = fields.Text(
+        string='Fuentes consultadas', readonly=True,
+        help='Publicaciones y métricas utilizadas para construir la respuesta.')
     message_count = fields.Integer(compute='_compute_message_count', string='Mensajes')
     company_id = fields.Many2one(
         'res.company', string='Compañía', required=True,
         default=lambda self: self.env.company, index=True)
 
-    @api.depends('message_ids')
+    @api.depends('chat_message_ids')
     def _compute_message_count(self):
         for record in self:
-            record.message_count = len(record.message_ids)
+            record.message_count = len(record.chat_message_ids)
 
     def _normalize(self, text):
         value = unicodedata.normalize('NFKD', text or '')
@@ -82,6 +87,7 @@ class MarketingSocialAgentChat(models.Model):
     def _answer_question(self, question):
         normalized = self._normalize(question)
         rows = self._rows()
+        self.source_publication_ids = [(6, 0, [publication.id for publication, _metric in rows])]
         if not rows:
             self.intent = 'summary'
             return _('No hay datos de publicaciones para %s en los últimos %s días. Sincroniza cuentas o carga el modo demo para comenzar.') % (self._platform_text(), self.period_days)
@@ -165,18 +171,25 @@ class MarketingSocialAgentChat(models.Model):
         question = (self.draft_message or '').strip()
         if not question:
             raise UserError(_('Escribe una pregunta antes de enviarla.'))
-        next_sequence = max(self.message_ids.mapped('sequence') or [0]) + 1
+        next_sequence = max(self.chat_message_ids.mapped('sequence') or [0]) + 1
         self.env['marketing.social.agent.message'].create({
             'chat_id': self.id, 'sequence': next_sequence,
             'speaker': 'user', 'body': question,
         })
         try:
             answer = self._answer_question(question)
+            sources = self.source_publication_ids.sorted('published_at', reverse=True)
+            source_summary = _('Respuesta calculada con %s publicación(es) y su última métrica disponible.') % len(sources)
+            if sources:
+                source_summary += ' ' + _('Fuentes: %s.') % ', '.join(sources.mapped('name')[:5])
             self.env['marketing.social.agent.message'].create({
                 'chat_id': self.id, 'sequence': next_sequence + 1,
                 'speaker': 'agent', 'body': answer,
             })
-            self.write({'draft_message': False, 'answer': answer, 'state': 'answered'})
+            self.write({
+                'draft_message': False, 'answer': answer, 'source_summary': source_summary,
+                'state': 'answered',
+            })
         except Exception as exc:
             self.write({'state': 'error', 'answer': False})
             raise UserError(_('No se pudo analizar la consulta: %s') % exc) from exc

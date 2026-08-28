@@ -30,6 +30,18 @@
         <field name="model_name">sale.order</field><field name="operation">create</field>
         <field name="requires_approval">true</field>
     </record>
+    <record id="tool_send_quotation_pdf" model="chatroom.ai.tool">
+        <field name="name">Generar y enviar PDF de cotización</field><field name="key">send_quotation_pdf</field>
+        <field name="description">Genera el PDF nativo de Ventas y lo envía por Chatroom después de crear la cotización.</field>
+        <field name="model_name">sale.order</field><field name="operation">send_document</field>
+        <field name="requires_approval">true</field>
+    </record>
+    <record id="tool_create_meeting" model="chatroom.ai.tool">
+        <field name="name">Crear reunión y enviar enlace</field><field name="key">create_meeting</field>
+        <field name="description">Crea una reunión nativa de Calendario con videollamada y envía el enlace por Chatroom.</field>
+        <field name="model_name">calendar.event</field><field name="operation">create_and_send</field>
+        <field name="requires_approval">true</field>
+    </record>
     <record id="tool_search_catalog" model="chatroom.ai.tool">
         <field name="name">Buscar en catálogo</field><field name="key">search_catalog</field>
         <field name="description">Busca productos relacionados con la conversación sin modificar ventas.</field>

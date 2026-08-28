@@ -325,6 +325,8 @@
                 <field name="task_type" string="Tipo"/>
                 <field name="state" string="Estado" widget="badge"/>
                 <field name="evaluation_state" string="Evaluación" widget="badge"/>
+                <field name="test_quote_id" string="Cotización de prueba" optional="hide"/>
+                <field name="test_activity_ids" string="Actividades" optional="hide"/>
                 <field name="model_used" string="Modelo" optional="hide"/>
                 <field name="write_date" string="Actualizado"/>
             </list>
@@ -359,6 +361,9 @@
                     <button name="action_load_scenario" type="object" string="Cargar escenario" class="btn-secondary" icon="fa-lightbulb-o"/>
                     <button name="action_run" type="object" string="Probar IA (no enviar)" class="oe_highlight" icon="fa-play"/>
                     <button name="action_send_test_message" type="object" string="Enviar mensaje de prueba" class="oe_highlight" icon="fa-comment"/>
+                    <button name="action_generate_test_quote_pdf" type="object" string="Generar cotización + PDF" class="btn-secondary" icon="fa-file-pdf-o"/>
+                    <button name="action_create_test_activity" type="object" string="Crear actividad Odoo" class="btn-secondary" icon="fa-check-square-o"/>
+                    <button name="action_prepare_operational_task" type="object" string="Preparar acción comercial" class="btn-secondary" icon="fa-cogs" invisible="message_count == 0"/>
                     <button name="action_simulate_delivery" type="object" string="Simular entrega" class="btn-secondary" icon="fa-paper-plane" invisible="state != 'done'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,done,error"/>
                 </header>
@@ -389,6 +394,7 @@
                             <div class="o_chatroom_ai_sandbox_chat_help">
                                 <strong>Prueba como cliente:</strong> escribe «Hola», «¿Cuál es la tarifa?» o «¿Qué productos tienen?».
                                 Usa <strong>Modo local</strong> para practicar sin tokens o <strong>Proveedor IA</strong> para consultar el modelo configurado.
+                                Si escribes «necesito una cotización en PDF» o «agenda una reunión», usa <strong>Preparar acción comercial</strong> para generar un plan aprobable del agente.
                             </div>
                             <div class="o_chatroom_ai_sandbox_chat_input">
                                 <field name="draft_message" nolabel="1" widget="text" placeholder="Escribe aquí el mensaje del cliente..."/>
@@ -399,6 +405,7 @@
                                     <field name="sequence" column_invisible="1"/>
                                     <field name="speaker" string="Interlocutor" widget="badge"/>
                                     <field name="body" string="Mensaje"/>
+                                    <field name="attachment_ids" string="Adjuntos" widget="many2many_tags" optional="show"/>
                                     <field name="message_date" string="Fecha"/>
                                 </list>
                             </field>
@@ -419,6 +426,24 @@
                                 <field name="delivery_state" string="Entrega" widget="badge" readonly="1"/>
                                 <field name="delivery_note" string="Detalle de entrega" readonly="1"/>
                             </group>
+                            <separator string="Resultados operativos en Odoo"/>
+                            <div class="alert alert-info" role="status">
+                                Las operaciones de esta sección son de prueba: crean registros nativos para que puedas revisarlos, pero no confirman ventas ni envían mensajes externos.
+                            </div>
+                            <group col="2">
+                                <field name="test_quote_id" string="Cotización creada" readonly="1"/>
+                                <field name="test_chat_message_id" string="Mensaje en Chatroom" readonly="1"/>
+                                <field name="test_activity_ids" string="Actividades creadas" readonly="1" widget="many2many_tags"/>
+                            </group>
+                            <group string="Configuración de la actividad nativa" col="3">
+                                <field name="test_activity_type_id"/>
+                                <field name="test_activity_user_id"/>
+                                <field name="test_activity_deadline"/>
+                            </group>
+                            <field name="test_attachment_ids" string="PDF adjunto" readonly="1" widget="many2many_binary"/>
+                            <div class="o_chatroom_ai_sandbox_output">
+                                <field name="operational_result" nolabel="1" readonly="1" widget="text" placeholder="Todavía no hay documentos ni actividades creados."/>
+                            </div>
                         </page>
                         <page string="Diagnóstico">
                             <separator string="Último error"/>

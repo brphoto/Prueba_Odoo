@@ -15,4 +15,7 @@ class ChatroomAiSandboxMessage(models.Model):
         ('customer', 'Cliente'), ('assistant', 'IA'),
     ], string='Interlocutor', required=True)
     body = fields.Text(string='Mensaje', required=True)
+    attachment_ids = fields.Many2many(
+        'ir.attachment', 'chatroom_ai_sandbox_message_attachment_rel',
+        'message_id', 'attachment_id', string='Adjuntos', readonly=True)
     message_date = fields.Datetime(string='Fecha', default=fields.Datetime.now, readonly=True)

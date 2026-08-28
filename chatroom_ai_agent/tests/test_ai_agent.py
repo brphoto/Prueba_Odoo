@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 from unittest.mock import patch
 
 from odoo import fields
@@ -136,10 +137,63 @@ class TestChatroomAiAgent(TransactionCase):
         self.assertEqual(task.state, 'awaiting_approval')
         self.assertEqual(
             task.action_ids.mapped('key'),
-            ['search_catalog', 'classify_intent', 'create_lead', 'create_quotation', 'create_activity'],
+            ['search_catalog', 'classify_intent', 'create_lead', 'create_quotation', 'send_quotation_pdf', 'create_activity'],
         )
         self.assertFalse(task.action_ids.filtered(lambda action: action.key == 'search_catalog').requires_approval)
         self.assertTrue(all(task.action_ids.filtered(lambda action: action.key not in ('classify_intent', 'search_catalog')).mapped('requires_approval')))
+
+    def test_orchestrator_detects_quote_and_meeting_requests(self):
+        partner = self.env['res.partner'].create({'name': 'Cliente cotización IA'})
+        self.channel.partner_id = partner
+        quote_product = self.env['product.product'].create({
+            'name': 'Servicio fijo para cotización IA',
+            'list_price': 20.0,
+            'sale_ok': True,
+            'type': 'service',
+        })
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_ai_agent.quote_product_id', str(quote_product.id))
+        icp.set_param('chatroom_ai_agent.quote_quantity', '2')
+        self.env['chatroom.message'].create({
+            'channel_id': self.channel.id, 'direction': 'inbound',
+            'message_type': 'text',
+            'body': 'Necesito una cotización en PDF, por favor.',
+        })
+        quote_task = self.env['chatroom.ai.task'].create_from_channel(
+            self.channel, task_type='orchestrate', prompt='Atender petición comercial.')
+        quote_task.action_plan()
+        self.assertEqual(quote_task.action_ids.mapped('key'), [
+            'search_catalog', 'create_quotation', 'send_quotation_pdf'])
+        create_action = quote_task.action_ids.filtered(lambda action: action.key == 'create_quotation')
+        result = quote_task._execute_action(create_action)
+        self.assertIn('order_id', result, result)
+        order = self.env['sale.order'].browse(result['order_id'])
+        self.assertTrue(order.exists())
+        self.assertEqual(order.order_line.product_id, quote_product)
+        self.assertEqual(order.order_line.product_uom_qty, 2)
+        create_action.write({'state': 'done', 'output_json': json.dumps(result)})
+        pdf_action = quote_task.action_ids.filtered(lambda action: action.key == 'send_quotation_pdf')
+        with patch.object(type(self.channel), 'action_send_sale_order_pdf', return_value=True):
+            pdf_result = quote_task._execute_action(pdf_action)
+        self.assertTrue(pdf_result['pdf_sent'])
+
+        meeting_channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'ai-agent-meeting-001',
+            'partner_id': self.env['res.partner'].create({'name': 'Cliente reunión IA'}).id,
+        })
+        self.env['chatroom.message'].create({
+            'channel_id': meeting_channel.id, 'direction': 'inbound',
+            'message_type': 'text', 'body': '¿Podemos agendar una reunión por Meet?',
+        })
+        meeting_task = self.env['chatroom.ai.task'].create_from_channel(
+            meeting_channel, task_type='orchestrate', prompt='Revisa la solicitud.')
+        meeting_task.action_plan()
+        if 'calendar.event' in self.env and hasattr(meeting_channel, 'action_create_meeting'):
+            self.assertEqual(meeting_task.action_ids.mapped('key'), ['create_meeting'])
+            with patch.object(type(meeting_channel), 'action_send_text', return_value=True):
+                meeting_result = meeting_task._execute_action(meeting_task.action_ids[0])
+            self.assertTrue(meeting_result['event_id'])
+            self.assertTrue(meeting_result['link_sent'])
 
     def test_automation_reports_execution_result(self):
         automation = self.env['chatroom.ai.automation'].create({

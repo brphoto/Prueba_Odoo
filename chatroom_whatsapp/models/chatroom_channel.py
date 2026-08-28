@@ -1715,16 +1715,25 @@ class ChatroomChannel(models.Model):
         self.ensure_one()
         if 'product.product' not in self.env:
             raise UserError(_("El módulo de Ventas no está instalado."))
-        products = self.env['product.product'].browse(product_ids)[:10]
+        products = self.env['product.product'].browse(product_ids).filtered(
+            lambda product: product.active and product.sale_ok
+        )[:10]
         if not products:
             raise UserError(_("Elegí al menos un producto."))
-        currency = self.env.company.currency_id
-        rows = [
-            {"id": f"prod_{product.id}",
-             "title": product.display_name[:24],
-             "description": f"{product.list_price:.2f} {currency.symbol}"}
-            for product in products
-        ]
+        rows = []
+        for product in products:
+            facts = self._ai_product_commercial_data(product)
+            currency = facts['currency']
+            description = f"{facts['price']:.2f} {currency.symbol or currency.name}"
+            if facts['stock_known']:
+                description += f" · stock {facts['available_qty']:g}"
+            elif product.type == 'service':
+                description += " · servicio"
+            rows.append({
+                "id": f"prod_{product.id}",
+                "title": product.display_name[:24],
+                "description": description[:72],
+            })
         return self._send_interactive_list(
             _("Estos son nuestros productos, tocá el que te interese:"),
             _("Ver productos"), rows, _("[Catálogo de productos]"))
@@ -2224,6 +2233,46 @@ class ChatroomChannel(models.Model):
         valid_intents = dict(self._fields['ai_intent'].selection)
         return intent if intent in valid_intents else 'otro'
 
+    def _ai_product_commercial_data(self, product, quantity=1.0):
+        """Return the live commercial facts the assistant is allowed to use.
+
+        Descriptions can be indexed as knowledge, but price and stock are
+        volatile.  Those two values are therefore read from Odoo at the
+        moment of the request and never learned as static facts by the AI.
+        """
+        self.ensure_one()
+        product = product.with_company(self.company_id)
+        pricelist = False
+        if self.partner_id and 'property_product_pricelist' in self.partner_id._fields:
+            pricelist = self.partner_id.with_company(self.company_id).property_product_pricelist
+        currency = pricelist.currency_id if pricelist else self.company_id.currency_id
+        try:
+            price = pricelist._get_product_price(product, quantity or 1.0) if pricelist else product.lst_price
+        except (AttributeError, TypeError, ValueError):
+            price = product.lst_price
+
+        stock_known = False
+        available_qty = False
+        if product.type == 'service':
+            stock_label = _('Servicio')
+        elif 'free_qty' in product._fields:
+            stock_known = True
+            available_qty = product.free_qty
+            stock_label = _('Disponible: %s') % (f'{available_qty:g}')
+        elif 'qty_available' in product._fields:
+            stock_known = True
+            available_qty = product.qty_available
+            stock_label = _('Disponible: %s') % (f'{available_qty:g}')
+        else:
+            stock_label = _('Consultar disponibilidad')
+        return {
+            'price': price,
+            'currency': currency,
+            'available_qty': available_qty,
+            'stock_known': stock_known,
+            'stock_label': stock_label,
+        }
+
     def _ai_search_products_mentioned(self, text, limit=5):
         """Busca productos vendibles cuyo nombre el cliente mencionó en su
         mensaje, para poder responder consultas de precio (y armar el
@@ -2244,25 +2293,39 @@ class ChatroomChannel(models.Model):
         words = {w.lower() for w in re.findall(r'\w{4,}', text or '', re.UNICODE)}
         if not words:
             return self.env['product.product']
-        name_domain = [('name', 'ilike', w) for w in words]
-        if len(name_domain) > 1:
-            name_domain = ['|'] * (len(name_domain) - 1) + name_domain
-        domain = [('sale_ok', '=', True), ('active', '=', True)] + name_domain
+        term_domains = []
+        for word in words:
+            term_domains.append([
+                '|', '|',
+                ('name', 'ilike', word),
+                ('default_code', 'ilike', word),
+                ('description_sale', 'ilike', word),
+            ])
+        product_domain = []
+        for term_domain in term_domains:
+            product_domain = term_domain if not product_domain else ['|'] + product_domain + term_domain
+        domain = [('sale_ok', '=', True), ('active', '=', True)] + product_domain
         return self.env['product.product'].search(domain, limit=limit)
 
     def _ai_price_context_system_message(self, products):
-        currency = self.env.company.currency_id
-        lines = [
-            f"- {product.name}: {product.list_price:.2f} {currency.symbol}"
-            for product in products
-        ]
+        lines = []
+        for product in products:
+            facts = self._ai_product_commercial_data(product)
+            currency = facts['currency']
+            stock = facts['stock_label']
+            lines.append(
+                f"- {product.display_name}: {facts['price']:.2f} "
+                f"{currency.symbol or currency.name} | {stock}"
+            )
         return _(
-            "Estos son los ÚNICOS precios reales disponibles ahora mismo "
-            "para productos que el cliente mencionó. Si respondés sobre "
-            "precios, usá EXCLUSIVAMENTE estos datos; si el cliente "
-            "pregunta por algo que no está en esta lista, decile que no "
-            "tenés esa información a mano y que un agente lo va a "
-            "confirmar. Nunca inventes un precio que no esté acá:\n%s"
+            "Estos son los ÚNICOS datos comerciales reales disponibles "
+            "ahora mismo para los productos mencionados. Si respondés "
+            "sobre precio o existencia, usá EXCLUSIVAMENTE estos datos; "
+            "si el producto no está en la lista, decile al cliente que un "
+            "agente lo va a confirmar. Nunca inventes precio ni stock:\n%s"
+            " Si una fuente de conocimiento expresa un rango monetario, "
+            "comunica siempre el límite superior del rango como referencia "
+            "y aclara que es una estimación; nunca uses el límite inferior."
         ) % "\n".join(lines)
 
     def _ai_reply_with_product_prices(self, products):
@@ -2282,6 +2345,7 @@ class ChatroomChannel(models.Model):
     # ------------------------------------------------------------------
     def _add_to_cart(self, product, qty):
         self.ensure_one()
+        facts = self._ai_product_commercial_data(product, quantity=qty)
         existing = self.cart_line_ids.filtered(lambda line: line.product_id == product.id)
         if existing:
             existing.quantity += qty
@@ -2291,7 +2355,7 @@ class ChatroomChannel(models.Model):
                 'product_id': product.id,
                 'product_name': product.display_name,
                 'quantity': qty,
-                'price_unit': product.list_price,
+                'price_unit': facts['price'],
             })
 
     def action_remove_cart_line(self, line_id):
@@ -2301,11 +2365,14 @@ class ChatroomChannel(models.Model):
             line.unlink()
         return True
 
-    def action_checkout_cart(self):
-        """Convierte el carrito en una Cotización real de Ventas
-        (sale.order en borrador). No la confirma: queda para que un
-        agente la revise, ajuste precios/descuentos si hace falta y
-        recién ahí la confirme desde el formulario normal de Odoo."""
+    def _create_quote_from_cart(self):
+        """Create a native draft quotation from the conversation cart.
+
+        This low-level operation deliberately does not confirm the order or
+        send a document.  It is reusable by the supervised agent when the
+        customer asks to be quoted, while the autonomous-sales layer can
+        apply its own confirmation and payment policies afterwards.
+        """
         self.ensure_one()
         if not self.sale_installed:
             raise UserError(_("El módulo de Ventas no está instalado."))
@@ -2349,35 +2416,66 @@ class ChatroomChannel(models.Model):
             )
         return order.id
 
+    def action_create_quote_from_cart(self):
+        """Prepare a quotation without interpreting it as an order checkout.
+
+        A customer saying “me interesa, cotízame” must never confirm a sale
+        merely because automatic sales are enabled.  This explicit method
+        keeps that distinction clear for the conversational agent.
+        """
+        return self._create_quote_from_cart()
+
+    def action_checkout_cart(self):
+        """Convert the cart into a native Odoo quotation/order flow.
+
+        The optional autonomous-sales module may continue with its approval,
+        stock, amount and payment policies after the draft is created.
+        """
+        self.ensure_one()
+        return self._create_quote_from_cart()
+
     def _ai_run_order_assistant(self, matched_products):
         """Vendedor automático: le pide a la IA que decida, en JSON
         estricto (compatible con cualquier proveedor, sin depender de
         'function calling' propietario de un proveedor en particular),
-        si hay que agregar algo al carrito, cerrar el pedido, o solo
-        contestar. Python ejecuta esa decisión de forma determinística
-        -la IA nunca toca la base de datos directamente, solo elige
-        entre 3 acciones fijas."""
+        si hay que agregar algo al carrito, preparar una cotización,
+        cerrar el pedido, o solo contestar. Python ejecuta esa decisión de
+        forma determinística: la IA nunca toca la base de datos directamente.
+        Solo elige entre acciones fijas."""
         self.ensure_one()
-        currency = self.env.company.currency_id
-        catalog_lines = "\n".join(
-            f"- id {p.id}: {p.display_name} - {p.list_price:.2f} {currency.symbol}"
-            for p in matched_products
-        ) or "(el cliente no mencionó ahora ningún producto que exista)"
+        catalog_rows = []
+        for product in matched_products:
+            facts = self._ai_product_commercial_data(product)
+            currency = facts['currency']
+            catalog_rows.append(
+                f"- id {product.id}: {product.display_name} - "
+                f"{facts['price']:.2f} {currency.symbol or currency.name} - "
+                f"{facts['stock_label']}"
+            )
+        catalog_lines = "\n".join(catalog_rows) or (
+            "(el cliente no mencionó ahora ningún producto que exista)"
+        )
         cart_lines = "\n".join(
             f"- {line.product_name} x{line.quantity:g}" for line in self.cart_line_ids
         ) or "(vacío)"
         system_prompt = _(
             "Sos un vendedor automático por WhatsApp. Respondé "
             "ÚNICAMENTE con un JSON, sin texto extra ni markdown, de una "
-            "de estas 3 formas exactas:\n"
+            "de estas 4 formas exactas:\n"
             '{"action": "add_items", "items": [{"product_id": <id>, '
+            '"qty": <numero>}], "reply": "<texto>"}\n'
+            '{"action": "quote", "items": [{"product_id": <id>, '
             '"qty": <numero>}], "reply": "<texto>"}\n'
             '{"action": "checkout", "reply": "<texto>"}\n'
             '{"action": "reply", "reply": "<texto>"}\n\n'
             "Usá 'add_items' SOLO con ids de la lista de productos de "
-            "abajo (nunca inventes un id ni un precio nuevo). Usá "
-            "'checkout' solo cuando el cliente confirme que quiere "
-            "cerrar el pedido Y el carrito no esté vacío. Usá 'reply' "
+            "abajo (nunca inventes un id, precio o existencia). No agregues "
+            "más unidades que las disponibles; para servicios no hace falta "
+            "validar stock. Usá "
+            "'quote' cuando el cliente pida cotización, presupuesto, "
+            "propuesta o el PDF, aunque todavía no confirme comprar; "
+            "'checkout' solo cuando el cliente confirme que quiere cerrar "
+            "el pedido Y el carrito no esté vacío. Usá 'reply' "
             "para saludos, preguntas, o productos que no están en la "
             "lista (avisale que no lo tenés a mano y que un agente lo va "
             "a confirmar). 'reply' siempre lleva el mensaje en español "
@@ -2405,7 +2503,53 @@ class ChatroomChannel(models.Model):
                 qty = item.get('qty')
                 if not product or not isinstance(qty, (int, float)) or qty <= 0:
                     continue
+                facts = self._ai_product_commercial_data(product, quantity=qty)
+                if facts['stock_known'] and facts['available_qty'] < qty:
+                    reply = _(
+                        'No puedo agregar %(qty)s unidades de «%(product)s»: '
+                        'solo hay %(available)s disponibles.'
+                    ) % {
+                        'qty': qty,
+                        'product': product.display_name,
+                        'available': f'{facts["available_qty"]:g}',
+                    }
+                    continue
                 self._add_to_cart(product, qty)
+        elif action == 'quote':
+            # Permite resolver en un solo turno: “cotízame 2 unidades de X”.
+            # La IA solo puede proponer ids que Python recibió de Odoo y la
+            # misma validación de inventario se aplica antes de agregarlos.
+            matched_by_id = {p.id: p for p in matched_products}
+            for item in (data.get('items') or []):
+                product = matched_by_id.get(item.get('product_id'))
+                qty = item.get('qty')
+                if not product or not isinstance(qty, (int, float)) or qty <= 0:
+                    continue
+                facts = self._ai_product_commercial_data(product, quantity=qty)
+                if facts['stock_known'] and facts['available_qty'] < qty:
+                    reply = _(
+                        'No puedo cotizar %(qty)s unidades de «%(product)s»: '
+                        'solo hay %(available)s disponibles.'
+                    ) % {
+                        'qty': qty,
+                        'product': product.display_name,
+                        'available': f'{facts["available_qty"]:g}',
+                    }
+                    continue
+                self._add_to_cart(product, qty)
+            if self.cart_line_ids:
+                order_id = self.action_create_quote_from_cart()
+                if 'ai_sales_status' in self._fields:
+                    self.ai_sales_status = 'quotation'
+                if not reply:
+                    order = self.env['sale.order'].browse(order_id)
+                    reply = _(
+                        'Preparé la cotización %(order)s con los productos '
+                        'seleccionados. Un asesor la revisará antes de '
+                        'enviarte el PDF.'
+                    ) % {'order': order.name}
+            elif not reply:
+                reply = _('Todavía no agregaste productos para cotizar.')
         elif action == 'checkout':
             checkout_guard = getattr(self, '_ai_autonomous_checkout_guard', lambda: False)()
             if checkout_guard:
@@ -2660,16 +2804,37 @@ class ChatroomChannel(models.Model):
         return self._window_action(
             res_model='crm.lead', res_id=self.pinned_lead_id, view_mode='form')
 
-    def action_create_quotation(self):
+    def action_create_quotation(self, product_id=False, product_qty=1.0):
+        """Crea una cotización nativa, opcionalmente con un producto.
+
+        El botón manual sigue creando un presupuesto vacío para que el
+        vendedor lo complete. El agente IA puede pasar un producto de
+        servicio configurado y así deja un documento cotizable de verdad.
+        """
         self.ensure_one()
         if not self.sale_installed:
             raise UserError(_("El módulo Ventas no está instalado."))
         if not self.partner_id:
             raise UserError(_("La conversación no tiene un contacto asociado."))
-        order = self.env['sale.order'].create({
+        order_vals = {
             'partner_id': self.partner_id.id,
             'origin': self.display_name,
-        })
+        }
+        if product_id:
+            product = self.env['product.product'].browse(int(product_id)).exists()
+            if not product or not product.sale_ok:
+                raise UserError(_("El producto configurado no está disponible para la venta."))
+            try:
+                quantity = float(product_qty or 1.0)
+            except (TypeError, ValueError):
+                quantity = 1.0
+            if quantity <= 0:
+                raise UserError(_("La cantidad de la cotización debe ser mayor que cero."))
+            order_vals['order_line'] = [(0, 0, {
+                'product_id': product.id,
+                'product_uom_qty': quantity,
+            })]
+        order = self.env['sale.order'].create(order_vals)
         return self._window_action(
             res_model='sale.order', res_id=order.id, view_mode='form')
 
@@ -3045,19 +3210,42 @@ class ChatroomChannel(models.Model):
     # catálogo aparte.
     # ------------------------------------------------------------------
     @api.model
-    def search_products(self, query):
+    def search_products(self, query, channel_id=False):
         if 'product.product' not in self.env:
             return []
-        domain = [('sale_ok', '=', True)]
+        domain = [('sale_ok', '=', True), ('active', '=', True)]
         if query:
-            domain.append(('name', 'ilike', query))
+            domain += [
+                '|', '|',
+                ('name', 'ilike', query),
+                ('default_code', 'ilike', query),
+                ('description_sale', 'ilike', query),
+            ]
         products = self.env['product.product'].search(domain, limit=8)
-        return [{
-            'id': p.id,
-            'name': p.display_name,
-            'list_price': p.list_price,
-            'has_image': bool(p.image_128),
-        } for p in products]
+        channel = self.browse(int(channel_id)).exists() if channel_id else self.browse()
+        rows = []
+        for product in products:
+            facts = channel._ai_product_commercial_data(product) if channel else {
+                'price': product.lst_price,
+                'currency': self.env.company.currency_id,
+                'available_qty': (
+                    product.free_qty if 'free_qty' in product._fields else
+                    product.qty_available if 'qty_available' in product._fields else False
+                ),
+                'stock_known': 'free_qty' in product._fields or 'qty_available' in product._fields,
+                'stock_label': _('Consultar disponibilidad'),
+            }
+            rows.append({
+                'id': product.id,
+                'name': product.display_name,
+                'list_price': facts['price'],
+                'currency_symbol': facts['currency'].symbol or facts['currency'].name,
+                'available_qty': facts['available_qty'],
+                'stock_known': facts['stock_known'],
+                'stock_label': facts['stock_label'],
+                'has_image': bool(product.image_128),
+            })
+        return rows
 
     @api.model
     def action_view_products(self):
@@ -3070,12 +3258,17 @@ class ChatroomChannel(models.Model):
         product = self.env['product.product'].browse(product_id)
         if not product.exists():
             raise UserError(_("El producto ya no existe."))
-        currency = self.env.company.currency_id
+        facts = self._ai_product_commercial_data(product)
+        currency = facts['currency']
         caption = _("%(name)s - %(price)s %(currency)s") % {
             'name': product.display_name,
-            'price': f"{product.list_price:.2f}",
-            'currency': currency.symbol,
+            'price': f"{facts['price']:.2f}",
+            'currency': currency.symbol or currency.name,
         }
+        if facts['stock_known']:
+            caption += _("\nDisponibilidad: %s") % f'{facts["available_qty"]:g}'
+        elif product.type == 'service':
+            caption += _("\nTipo: Servicio")
         attachments = []
         if product.image_1920:
             data = product.image_1920

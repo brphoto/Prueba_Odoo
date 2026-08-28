@@ -9,12 +9,13 @@ class ChatroomChannel(models.Model):
     meeting_count = fields.Integer(compute='_compute_meeting_data')
     next_meeting_date = fields.Datetime(compute='_compute_meeting_data')
 
-    def action_create_meet_and_send(self):
-        """Crea el evento y envía el enlace generado al hilo.
+    def action_create_meeting(self):
+        """Crea una reunión nativa y devuelve su enlace sin enviarlo.
 
-        Si Google Calendar está sincronizado, Odoo conserva el enlace que
-        devuelva la integración. En instalaciones sin Google se usa la
-        videollamada nativa de Calendar como fallback operativo.
+        Separar la creación del envío permite que el agente IA conserve el
+        evento aunque WhatsApp esté fuera de horario, sin credenciales o
+        requiera una plantilla. El envío se ejecuta después y queda
+        trazable como una operación independiente.
         """
         self.ensure_one()
         if not self.partner_id:
@@ -28,16 +29,25 @@ class ChatroomChannel(models.Model):
             'user_id': self.assigned_user_id.id or self.env.user.id,
             'description': self.ai_summary or '',
         })
-        # Las integraciones externas pueden completar videocall_location al
-        # sincronizar. Si aún no hay URL, generamos el enlace nativo para que
-        # el botón siempre cierre el flujo de envío dentro del chat.
         if not event.videocall_location:
             event._set_discuss_videocall_location()
         link = event.videocall_location
         if not link:
             raise UserError(_("No se pudo obtener el enlace de videollamada."))
+        return {'event_id': event.id, 'link': link, 'name': event.name}
+
+    def action_create_meet_and_send(self):
+        """Crea el evento y envía el enlace generado al hilo.
+
+        Si Google Calendar está sincronizado, Odoo conserva el enlace que
+        devuelva la integración. En instalaciones sin Google se usa la
+        videollamada nativa de Calendar como fallback operativo.
+        """
+        self.ensure_one()
+        meeting = self.action_create_meeting()
+        link = meeting['link']
         self.action_send_text(_("Te comparto el enlace para la reunión: %s") % link)
-        return {'event_id': event.id, 'link': link}
+        return meeting
 
     def _get_meetings(self):
         """Reuniones de Calendario donde el contacto de esta conversación

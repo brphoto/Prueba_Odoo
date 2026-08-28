@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 
 from odoo import _, api, fields, models
 
+from .marketing_social_constants import PLATFORM_LABELS
+
 
 class MarketingSocialDashboard(models.Model):
     _name = 'marketing.social.dashboard'
@@ -11,6 +13,9 @@ class MarketingSocialDashboard(models.Model):
 
     name = fields.Char(string='Panel', required=True, default='Centro de mando de marketing')
     period_days = fields.Integer(string='Período (días)', default=30, required=True)
+    platform_filter = fields.Selection(
+        [('all', 'Todas las redes')] + list(PLATFORM_LABELS.items()),
+        string='Red analizada', default='all', required=True)
     date_from = fields.Date(compute='_compute_period', string='Desde')
     date_to = fields.Date(compute='_compute_period', string='Hasta')
     last_refresh_at = fields.Datetime(string='Última actualización', readonly=True)
@@ -34,6 +39,23 @@ class MarketingSocialDashboard(models.Model):
     top_publication_rate = fields.Float(string='Engagement destacado (%)', readonly=True)
     top_platform = fields.Char(string='Red destacada', readonly=True)
     strategy_summary = fields.Text(string='Lectura estratégica', readonly=True)
+    comparison_summary = fields.Text(string='Comparación con el período anterior', readonly=True)
+    engagement_alert_threshold = fields.Float(
+        string='Alertar si engagement es menor a (%)', default=2.0,
+        help='Deja 0 para no generar esta alerta.')
+    pending_comments_alert_threshold = fields.Integer(
+        string='Alertar desde comentarios pendientes', default=5,
+        help='Deja 0 para no generar esta alerta.')
+    alert_ids = fields.One2many(
+        'marketing.social.alert', 'dashboard_id', string='Alertas', readonly=True)
+    open_alert_count = fields.Integer(
+        compute='_compute_open_alert_count', string='Alertas abiertas')
+    previous_reach_total = fields.Integer(string='Alcance período anterior', readonly=True)
+    previous_interactions_total = fields.Integer(string='Interacciones período anterior', readonly=True)
+    previous_engagement_rate = fields.Float(string='Engagement período anterior (%)', readonly=True)
+    reach_delta_pct = fields.Float(string='Variación alcance (%)', readonly=True)
+    interactions_delta_pct = fields.Float(string='Variación interacciones (%)', readonly=True)
+    engagement_delta = fields.Float(string='Variación engagement (puntos)', readonly=True)
     company_id = fields.Many2one(
         'res.company', string='Compañía', required=True,
         default=lambda self: self.env.company, index=True)
@@ -45,13 +67,21 @@ class MarketingSocialDashboard(models.Model):
             record.date_to = fields.Date.context_today(record)
             record.date_from = record.date_to - timedelta(days=days - 1)
 
+    @api.depends('alert_ids.state')
+    def _compute_open_alert_count(self):
+        for record in self:
+            record.open_alert_count = len(record.alert_ids.filtered(lambda alert: alert.state == 'open'))
+
     def _latest_metrics(self, date_from, date_to):
-        publications = self.env['marketing.social.publication'].search([
+        domain = [
             ('company_id', '=', self.company_id.id),
             ('published_at', '>=', datetime.combine(date_from, datetime.min.time())),
             ('published_at', '<=', datetime.combine(date_to, datetime.max.time())),
             ('active', '=', True),
-        ])
+        ]
+        if self.platform_filter != 'all':
+            domain.append(('platform', '=', self.platform_filter))
+        publications = self.env['marketing.social.publication'].search(domain)
         rows = []
         for publication in publications:
             metrics = publication.metric_ids.filtered(
@@ -65,16 +95,28 @@ class MarketingSocialDashboard(models.Model):
             record.ensure_one()
             record._compute_period()
             rows = record._latest_metrics(record.date_from, record.date_to)
+            period_size = max(record.period_days or 30, 1)
+            previous_to = record.date_from - timedelta(days=1)
+            previous_from = previous_to - timedelta(days=period_size - 1)
+            previous_rows = record._latest_metrics(previous_from, previous_to)
             reach = sum(metric.reach for _publication, metric in rows)
             interactions = sum(metric.total_interactions for _publication, metric in rows)
+            previous_reach = sum(metric.reach for _publication, metric in previous_rows)
+            previous_interactions = sum(metric.total_interactions for _publication, metric in previous_rows)
+            previous_engagement = (
+                previous_interactions / previous_reach * 100 if previous_reach else 0.0)
             top = max(rows, key=lambda item: item[1].engagement_rate, default=(False, False))
-            pending = self.env['marketing.social.interaction'].search_count([
+            pending_domain = [
                 ('company_id', '=', record.company_id.id),
                 ('response_state', '=', 'pending'),
                 ('interaction_type', '=', 'comment'),
                 ('interaction_date', '>=', datetime.combine(record.date_from, datetime.min.time())),
                 ('interaction_date', '<=', datetime.combine(record.date_to, datetime.max.time())),
-            ])
+            ]
+            if record.platform_filter != 'all':
+                pending_domain.append(('platform', '=', record.platform_filter))
+            pending = self.env['marketing.social.interaction'].search_count(pending_domain)
+            engagement = interactions / reach * 100 if reach else 0.0
             record.write({
                 'last_refresh_at': fields.Datetime.now(),
                 'data_state': 'ready' if rows else 'empty',
@@ -86,7 +128,7 @@ class MarketingSocialDashboard(models.Model):
                 'impressions_total': sum(metric.impressions for _publication, metric in rows),
                 'views_total': sum(metric.views for _publication, metric in rows),
                 'interactions_total': interactions,
-                'engagement_rate': interactions / reach * 100 if reach else 0.0,
+                'engagement_rate': engagement,
                 'pending_comments': pending,
                 'leads_total': sum(metric.leads for _publication, metric in rows),
                 'sales_total': sum(metric.sales_amount for _publication, metric in rows),
@@ -94,14 +136,73 @@ class MarketingSocialDashboard(models.Model):
                 'top_publication_rate': top[1].engagement_rate if top[1] else 0.0,
                 'top_platform': top[0].platform if top[0] else False,
                 'strategy_summary': record._strategy_summary(rows, pending),
+                'comparison_summary': record._comparison_summary(
+                    reach, previous_reach, interactions, previous_interactions,
+                    engagement, previous_engagement),
+                'previous_reach_total': previous_reach,
+                'previous_interactions_total': previous_interactions,
+                'previous_engagement_rate': previous_engagement,
+                'reach_delta_pct': record._variation(reach, previous_reach),
+                'interactions_delta_pct': record._variation(interactions, previous_interactions),
+                'engagement_delta': engagement - previous_engagement,
             })
+            record._refresh_alerts(rows, pending, engagement)
         return True
+
+    def _variation(self, current, previous):
+        return ((current - previous) / previous * 100) if previous else (100.0 if current else 0.0)
+
+    def _comparison_summary(self, reach, previous_reach, interactions, previous_interactions,
+                            engagement, previous_engagement):
+        if not previous_reach and not previous_interactions:
+            return _('No hay datos del período anterior para comparar. La comparación comenzará cuando existan dos períodos con métricas.')
+        return _(
+            'Frente al período anterior, el alcance varió %.2f%%, las interacciones %.2f%% '
+            'y el engagement cambió %.2f punto(s).'
+        ) % (
+            self._variation(reach, previous_reach),
+            self._variation(interactions, previous_interactions),
+            engagement - previous_engagement,
+        )
+
+    def _refresh_alerts(self, rows, pending, engagement):
+        Alert = self.env['marketing.social.alert']
+        active_types = set()
+        if not rows:
+            active_types.add('no_data')
+            self._upsert_alert(Alert, 'no_data', 'info', _('Sin datos en el período'),
+                              _('No se encontraron publicaciones con métricas para los filtros actuales.'))
+        elif self.engagement_alert_threshold and engagement < self.engagement_alert_threshold:
+            active_types.add('low_engagement')
+            self._upsert_alert(
+                Alert, 'low_engagement', 'warning', _('Engagement por debajo del objetivo'),
+                _('El engagement actual es %.2f%% y el umbral configurado es %.2f%%.') %
+                (engagement, self.engagement_alert_threshold))
+        if self.pending_comments_alert_threshold and pending >= self.pending_comments_alert_threshold:
+            active_types.add('pending_comments')
+            self._upsert_alert(
+                Alert, 'pending_comments', 'critical', _('Comentarios pendientes de atención'),
+                _('%s comentario(s) requieren respuesta.') % pending)
+        stale = self.alert_ids.filtered(lambda alert: alert.state == 'open' and alert.alert_type not in active_types)
+        stale.write({'state': 'resolved', 'resolved_at': fields.Datetime.now()})
+
+    def _upsert_alert(self, Alert, alert_type, severity, title, details):
+        alert = self.alert_ids.filtered(
+            lambda item: item.alert_type == alert_type and item.state == 'open')[:1]
+        values = {
+            'alert_type': alert_type, 'severity': severity,
+            'title': title, 'details': details,
+        }
+        if alert:
+            alert.write(values)
+        else:
+            Alert.create(dict(values, dashboard_id=self.id, company_id=self.company_id.id))
 
     def _strategy_summary(self, rows, pending):
         if not rows:
             return _('No hay publicaciones con métricas en el período seleccionado. Carga datos demo o sincroniza una cuenta.')
         top = max(rows, key=lambda item: item[1].engagement_rate)
-        platform = dict(self.env['marketing.social.publication']._fields['platform'].selection).get(top[0].platform, top[0].platform)
+        platform = PLATFORM_LABELS.get(top[0].platform, top[0].platform)
         message = _(
             'La publicación destacada es «%s» en %s, con %.2f%% de engagement. '
             'Conviene revisar su tema, formato y horario para replicar la estrategia.'
@@ -197,5 +298,24 @@ class MarketingSocialDashboard(models.Model):
         return {
             'type': 'ir.actions.act_window', 'name': _('Publicaciones'),
             'res_model': 'marketing.social.publication', 'view_mode': 'list,kanban,graph,pivot',
+            'domain': [
+                ('company_id', '=', self.company_id.id), ('active', '=', True),
+                ('published_at', '>=', datetime.combine(self.date_from, datetime.min.time())),
+                ('published_at', '<=', datetime.combine(self.date_to, datetime.max.time())),
+            ] + ([('platform', '=', self.platform_filter)] if self.platform_filter != 'all' else []),
             'target': 'current',
+        }
+
+    def action_open_alerts(self):
+        return {
+            'type': 'ir.actions.act_window', 'name': _('Alertas de marketing'),
+            'res_model': 'marketing.social.alert', 'view_mode': 'list,form',
+            'domain': [('dashboard_id', '=', self.id)], 'target': 'current',
+        }
+
+    def action_open_import(self):
+        return {
+            'type': 'ir.actions.act_window', 'name': _('Importar datos sociales'),
+            'res_model': 'marketing.social.import.wizard', 'view_mode': 'form',
+            'target': 'new',
         }

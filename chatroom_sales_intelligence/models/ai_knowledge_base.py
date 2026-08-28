@@ -454,7 +454,8 @@ class AiKnowledgeBase(models.Model):
                 item for item in company_data if item.split(': ', 1)[-1]))
 
         product_context = self._get_product_context(
-            company, query, include_stock=include_stock) if include_products else ''
+            company, query, include_stock=include_stock, partner=partner
+        ) if include_products else ''
         if product_context:
             context_parts.append(product_context)
         if partner and include_customer:
@@ -493,7 +494,7 @@ class AiKnowledgeBase(models.Model):
             'context_chars': len(context),
         }
 
-    def _get_product_context(self, company, query, include_stock=True):
+    def _get_product_context(self, company, query, include_stock=True, partner=False):
         """Consulta productos vivos de Odoo; nunca copia un catálogo completo."""
         if 'product.product' not in self.env or not query:
             return ''
@@ -508,7 +509,12 @@ class AiKnowledgeBase(models.Model):
             return ''
         product_domain = []
         for term in terms:
-            term_domain = ['|', ('name', 'ilike', term), ('default_code', 'ilike', term)]
+            term_domain = [
+                '|', '|',
+                ('name', 'ilike', term),
+                ('default_code', 'ilike', term),
+                ('description_sale', 'ilike', term),
+            ]
             product_domain = term_domain if not product_domain else ['|'] + product_domain + term_domain
         icp = self.env['ir.config_parameter'].sudo()
         try:
@@ -520,17 +526,30 @@ class AiKnowledgeBase(models.Model):
             product_domain, order='name asc', limit=product_limit)
         if not products:
             return ''
-        currency = company.currency_id.name if company.currency_id else ''
+        pricelist = False
+        if partner and 'property_product_pricelist' in partner._fields:
+            pricelist = partner.with_company(company).property_product_pricelist
+        currency = pricelist.currency_id if pricelist else company.currency_id
         rows = []
         for product in products:
             product_company = product.with_company(company)
+            try:
+                price = pricelist._get_product_price(product_company, 1.0) if pricelist else product_company.lst_price
+            except (AttributeError, TypeError, ValueError):
+                price = product_company.lst_price
             row = '- %s | código: %s | precio de venta: %.2f %s' % (
                 product.display_name,
                 product.default_code or 'sin código',
-                product_company.lst_price,
-                currency,
+                price,
+                (currency.symbol or currency.name) if currency else '',
             )
             if include_stock:
-                row += ' | disponible: %.2f' % product_company.qty_available
+                available = (
+                    product_company.free_qty if 'free_qty' in product_company._fields
+                    else product_company.qty_available
+                ) if product_company.type != 'service' else False
+                row += ' | disponible: %s' % (
+                    'servicio' if product_company.type == 'service' else f'{available:g}'
+                )
             rows.append(row)
         return 'Datos vivos de productos en Odoo (consultados ahora):\n%s' % '\n'.join(rows)

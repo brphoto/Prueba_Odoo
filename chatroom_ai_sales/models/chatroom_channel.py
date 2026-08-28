@@ -141,8 +141,12 @@ class ChatroomChannel(models.Model):
             product = self.env['product.product'].browse(cart_line.product_id).exists()
             if not product or not product.active or not product.sale_ok:
                 return _('El producto %s ya no está disponible para la venta.') % (cart_line.product_name or cart_line.product_id)
+            current_price = product.lst_price
+            if hasattr(self, '_ai_product_commercial_data'):
+                current_price = self._ai_product_commercial_data(
+                    product, quantity=cart_line.quantity)['price']
             if validate_price and float_compare(
-                    cart_line.price_unit, product.lst_price,
+                    cart_line.price_unit, current_price,
                     precision_rounding=currency.rounding):
                 return _('El precio de %s cambió desde que se agregó al carrito; requiere revisión.') % product.display_name
             if validate_stock and product.type == 'consu' and product.is_storable:

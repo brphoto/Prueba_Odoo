@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import base64
 import re
 
 from odoo import _, api, fields, models
@@ -60,6 +61,35 @@ class ChatroomAiSandbox(models.Model):
         'chatroom.ai.sandbox.message', 'sandbox_id', string='Conversación de prueba',
         readonly=True)
     message_count = fields.Integer(string='Mensajes', compute='_compute_message_count')
+    test_quote_id = fields.Many2one(
+        'sale.order', string='Cotización de prueba', readonly=True, copy=False,
+        help='Presupuesto nativo generado por el laboratorio. Siempre queda en borrador.')
+    test_chat_message_id = fields.Many2one(
+        'chatroom.message', string='Mensaje simulado con PDF', readonly=True, copy=False,
+        help='Mensaje saliente simulado que aparece en el chat de la conversación, sin llamar a Meta.')
+    test_attachment_ids = fields.Many2many(
+        'ir.attachment', 'chatroom_ai_sandbox_attachment_rel', 'sandbox_id',
+        'attachment_id', string='PDF y archivos generados', readonly=True, copy=False)
+    test_activity_ids = fields.Many2many(
+        'mail.activity', 'chatroom_ai_sandbox_activity_rel', 'sandbox_id',
+        'activity_id', string='Actividades internas creadas', readonly=True, copy=False)
+    test_activity_type_id = fields.Many2one(
+        'mail.activity.type', string='Tipo de actividad',
+        default=lambda self: (
+            self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False) or
+            self.env['mail.activity.type'].search([], order='sequence, id', limit=1)
+        ).id,
+        help='Tipo nativo que se utilizará al crear la actividad desde la prueba.')
+    test_activity_user_id = fields.Many2one(
+        'res.users', string='Responsable de la actividad',
+        default=lambda self: self.env.user,
+        help='Usuario de Odoo al que se asignará la actividad de prueba.')
+    test_activity_deadline = fields.Date(
+        string='Fecha límite de la actividad', default=fields.Date.context_today,
+        help='Fecha límite que tendrá la actividad nativa creada en Odoo.')
+    operational_result = fields.Text(
+        string='Resultado operativo de la prueba', readonly=True, copy=False,
+        help='Traza de documentos y actividades creados en Odoo. No implica envío a WhatsApp.')
 
     @api.depends('conversation_line_ids')
     def _compute_message_count(self):
@@ -109,6 +139,185 @@ class ChatroomAiSandbox(models.Model):
             })
         return True
 
+    def _last_customer_request(self):
+        self.ensure_one()
+        customer_lines = self.conversation_line_ids.filtered(
+            lambda line: line.speaker == 'customer').sorted('sequence')
+        return (customer_lines[-1].body if customer_lines else self.draft_message or '').strip()
+
+    def _test_quote_product(self):
+        """Return the configured product used by supervised quote tests.
+
+        The simulator follows the same product configuration as the agent. If
+        it is not configured yet, it uses the first sellable product so a demo
+        can be executed immediately without inventing a product in the UI.
+        """
+        if 'product.product' not in self.env:
+            raise UserError(_('La aplicación Ventas no está instalada.'))
+        icp = self.env['ir.config_parameter'].sudo()
+        configured_id = icp.get_param('chatroom_ai_agent.quote_product_id')
+        product = self.env['product.product'].browse(int(configured_id)).exists() if configured_id and configured_id.isdigit() else self.env['product.product']
+        if not product:
+            product = self.env['product.product'].search([
+                ('active', '=', True), ('sale_ok', '=', True),
+            ], order='id', limit=1)
+        if not product:
+            raise UserError(_(
+                'Configura un producto de cotización o crea al menos un producto vendible para la prueba.'))
+        return product[:1]
+
+    def _create_test_quote_pdf(self, request=False):
+        """Create a native draft quotation and attach its standard PDF.
+
+        This is deliberately a sandbox operation: no confirmation, invoice,
+        payment or WhatsApp message is performed. The PDF is linked to the
+        quotation and to the sandbox so it is visible from both records.
+        """
+        self.ensure_one()
+        if 'sale.order' not in self.env:
+            raise UserError(_('La aplicación Ventas no está instalada.'))
+        if not self.channel_id or not self.channel_id.partner_id:
+            raise UserError(_(
+                'Vincula una conversación con un contacto antes de generar el PDF de prueba.'))
+        product = self._test_quote_product()
+        order = self.env['sale.order'].create({
+            'partner_id': self.channel_id.partner_id.id,
+            'origin': _('Laboratorio IA: %s') % self.name,
+            'client_order_ref': _('Prueba supervisada; no enviar automáticamente'),
+            'order_line': [(0, 0, {
+                'product_id': product.id,
+                'product_uom_qty': 1.0,
+            })],
+        })
+        report_xmlid = 'sale.action_report_saleorder'
+        report = self.env.ref(report_xmlid, raise_if_not_found=False)
+        if not report:
+            raise UserError(_('No está instalado el reporte estándar de presupuestos de Ventas.'))
+        try:
+            pdf_content, _report_type = self.env['ir.actions.report'].with_context(
+                force_report_rendering=True)._render_qweb_pdf(report_xmlid, res_ids=[order.id])
+        except Exception as exc:
+            order.unlink()
+            raise UserError(_('No se pudo generar el PDF estándar de Ventas: %s') % exc) from exc
+        if not pdf_content:
+            order.unlink()
+            raise UserError(_('El reporte estándar no devolvió contenido PDF.'))
+        attachment = self.env['ir.attachment'].create({
+            'name': _('%s - Cotización de prueba.pdf') % order.name,
+            'type': 'binary',
+            'datas': base64.b64encode(pdf_content),
+            'res_model': 'sale.order',
+            'res_id': order.id,
+            'mimetype': 'application/pdf',
+        })
+        simulated_message = self.env['chatroom.message'].create({
+            'channel_id': self.channel_id.id,
+            'direction': 'outbound',
+            'message_type': 'document',
+            'body': _('Prueba IA: cotización %s generada. PDF adjunto; no se envió a WhatsApp.') % order.name,
+            'state': 'sent',
+            'date': fields.Datetime.now(),
+            'attachment_ids': [(4, attachment.id)],
+            'sender_user_id': self.env.user.id,
+        })
+        order.message_post(
+            body=_('PDF de cotización generado desde una prueba de IA. El presupuesto permanece en borrador.'),
+            attachment_ids=[attachment.id],
+            subtype_xmlid='mail.mt_note',
+        )
+        note = _(
+            'Cotización %s creada en borrador con el producto «%s». PDF adjunto al presupuesto y a esta prueba. '
+            'No se confirmó ni se envió ningún mensaje.'
+        ) % (order.name, product.display_name)
+        self.write({
+            'test_quote_id': order.id,
+            'test_chat_message_id': simulated_message.id,
+            'test_attachment_ids': [(4, attachment.id)],
+            'operational_result': note,
+        })
+        self.message_post(body=note, attachment_ids=[attachment.id], subtype_xmlid='mail.mt_note')
+        return order, attachment, simulated_message
+
+    def action_generate_test_quote_pdf(self):
+        """Button for an explicit, visible quote/PDF test."""
+        self.ensure_one()
+        self._create_test_quote_pdf(self._last_customer_request())
+        return {
+            'type': 'ir.actions.act_window', 'name': _('Prueba IA'),
+            'res_model': self._name, 'res_id': self.id,
+            'view_mode': 'form', 'target': 'current',
+        }
+
+    def _create_test_activity(self, request=False):
+        """Create a real internal Odoo activity without external delivery."""
+        self.ensure_one()
+        if 'mail.activity' not in self.env:
+            raise UserError(_('La aplicación Discusiones no está instalada.'))
+        target = self.channel_id or (self.channel_id.partner_id if self.channel_id else False)
+        if not target:
+            raise UserError(_('Vincula una conversación antes de crear una actividad interna.'))
+        model_name = target._name
+        model = self.env['ir.model']._get(model_name)
+        activity_type = self.test_activity_type_id or self.env.ref(
+            'mail.mail_activity_data_todo', raise_if_not_found=False)
+        activity_type = activity_type or self.env['mail.activity.type'].search(
+            [], order='sequence, id', limit=1)
+        if not activity_type:
+            raise UserError(_('No existe ningún tipo de actividad en Odoo.'))
+        request = (request or self._last_customer_request() or self.prompt or '').strip()
+        activity = self.env['mail.activity'].create({
+            'activity_type_id': activity_type.id,
+            'res_model_id': model.id,
+            'res_id': target.id,
+            'user_id': (self.test_activity_user_id or self.env.user).id,
+            'date_deadline': self.test_activity_deadline or fields.Date.context_today(self),
+            'summary': _('Revisar solicitud del laboratorio IA'),
+            'note': _('Solicitud de prueba: %s') % request,
+        })
+        note = _(
+            'Actividad interna creada en %s para %s: «%s». La actividad queda en Odoo para seguimiento; '
+            'no se envió WhatsApp.'
+        ) % (target.display_name, self.env.user.display_name, activity.summary)
+        self.write({
+            'test_activity_ids': [(4, activity.id)],
+            'operational_result': '%s\n%s' % ((self.operational_result or '').strip(), note),
+        })
+        self.message_post(body=note, subtype_xmlid='mail.mt_note')
+        return activity
+
+    def action_create_test_activity(self):
+        """Button for an explicit native mail.activity test."""
+        self.ensure_one()
+        self._create_test_activity(self._last_customer_request())
+        return {
+            'type': 'ir.actions.act_window', 'name': _('Prueba IA'),
+            'res_model': self._name, 'res_id': self.id,
+            'view_mode': 'form', 'target': 'current',
+        }
+
+    def _process_test_operations(self, request):
+        """Materialize safe Odoo artifacts requested in a test conversation."""
+        self.ensure_one()
+        normalized = (request or '').lower()
+        notes = []
+        if any(word in normalized for word in ('cotización', 'cotizacion', 'presupuesto', 'pdf')):
+            try:
+                order, attachment, simulated_message = self._create_test_quote_pdf(request)
+                notes.append(_(
+                    'PDF listo: %s (presupuesto %s). También se agregó al chat como mensaje simulado (%s).'
+                ) % (attachment.name, order.name, simulated_message.display_name))
+            except UserError as exc:
+                notes.append(_('No se pudo generar el PDF de prueba: %s') % exc)
+        if any(word in normalized for word in ('actividad', 'tarea interna', 'llamada', 'seguimiento')):
+            try:
+                activity = self._create_test_activity(request)
+                notes.append(_('Actividad interna creada para %s.') % activity.date_deadline)
+            except UserError as exc:
+                notes.append(_('No se pudo crear la actividad interna: %s') % exc)
+        if notes:
+            self.write({'operational_result': '%s\n%s' % (
+                (self.operational_result or '').strip(), '\n'.join(notes))})
+
     def _local_playground_reply(self, question):
         """Respuesta determinista para ensayar el chat sin consumir tokens."""
         self.ensure_one()
@@ -126,14 +335,113 @@ class ChatroomAiSandbox(models.Model):
                 # un diccionario con trazabilidad. El laboratorio debe tolerar
                 # ambos formatos para no bloquear una prueba local.
                 knowledge_context = details.get('context') or '' if isinstance(details, dict) else (details or '')
-            match = re.search(r'(?:USD|US\$)\s*\d+(?:[.,]\d+)?', knowledge_context, re.IGNORECASE)
-            amount = match.group(0) if match else 'USD 20'
-            return _('La tarifa referencial es %s por hora. Para preparar una cotización necesitamos alcance, usuarios, procesos y fecha objetivo.') % amount
+            amounts = self._maximum_amounts_from_context(knowledge_context)
+            amount = 'USD %.2f' % max(amounts) if amounts else 'USD 20'
+            return _(
+                'La tarifa referencial es %s por hora. Para preparar una cotización necesitamos alcance, usuarios, procesos y fecha objetivo.'
+            ) % amount
+        if any(word in normalized for word in ('cotización', 'cotizacion', 'presupuesto', 'pdf de la cotización', 'pdf de la cotizacion')):
+            commercial_context = self._local_commercial_context(question)
+            response = _(
+                'Puedo preparar una cotización nativa de Ventas con el producto configurado, generar su PDF y dejarlo listo para enviarlo por Chatroom. La creación y el envío requieren aprobación humana.'
+            )
+            return '%s\n\n%s' % (response, commercial_context) if commercial_context else response
+        if any(word in normalized for word in ('reunión', 'reunion', 'videollamada', 'google meet', 'enlace de reunión', 'enlace de reunion')):
+            return _('Puedo crear una reunión nativa en Calendario con un enlace de videollamada y compartirlo por Chatroom. La acción queda preparada para aprobación humana.')
         if any(word in normalized for word in ('producto', 'catálogo', 'catalogo', 'stock')):
             return _('Puedo consultar el catálogo de Odoo y revisar disponibilidad. Indícame el producto o servicio que necesitas.')
         if any(word in normalized for word in ('gracias', 'perfecto', 'ok')):
             return _('Con gusto. Quedamos atentos para ayudarte.')
         return _('Recibí tu consulta en el laboratorio local. En modo proveedor la IA analizaría el contexto y prepararía una respuesta basada en el conocimiento autorizado.')
+
+    @staticmethod
+    def _maximum_amounts_from_context(context):
+        """Extract monetary values and use the upper end of any range.
+
+        Company knowledge often says “USD 200 a USD 300”. The assistant must
+        not answer with the lower number, so all values are normalized and the
+        maximum is used for the safe local estimate.
+        """
+        number = r'(\d+(?:[.,]\d+)?)'
+        range_pattern = re.compile(
+            r'(?:USD|US\$|\$)\s*' + number +
+            r'\s*(?:a|al|hasta|y|[-–—])\s*(?:(?:USD|US\$|\$)\s*)?' + number,
+            re.IGNORECASE,
+        )
+        values = []
+        for match in range_pattern.finditer(context or ''):
+            values.extend(match.groups())
+        singles = re.findall(r'(?:USD|US\$|\$)\s*' + number, context or '', re.IGNORECASE)
+        values.extend(singles)
+        normalized = []
+        for value in values:
+            try:
+                normalized.append(float(value.replace(',', '.')))
+            except (TypeError, ValueError):
+                continue
+        return normalized
+
+    def _local_commercial_context(self, question):
+        """Return live product price plus the upper bound of knowledge ranges."""
+        self.ensure_one()
+        lines = []
+        if self.channel_id and hasattr(self.channel_id, '_ai_search_products_mentioned'):
+            products = self.channel_id._ai_search_products_mentioned(question, limit=5)
+            if not products:
+                try:
+                    products = self._test_quote_product()
+                except UserError:
+                    products = self.env['product.product']
+            for product in products:
+                facts = self.channel_id._ai_product_commercial_data(product)
+                currency = facts['currency']
+                lines.append(_(
+                    'Producto «%(product)s»: precio actual de Odoo %(price).2f %(currency)s (%(stock)s).'
+                ) % {
+                    'product': product.display_name,
+                    'price': facts['price'],
+                    'currency': currency.symbol or currency.name,
+                    'stock': facts['stock_label'],
+                })
+        if 'ai.knowledge.base' in self.env:
+            details = self.env['ai.knowledge.base'].sudo().get_sales_context_details(
+                channel=self.channel_id, query=question, company=self.env.company)
+            knowledge_context = details.get('context') or '' if isinstance(details, dict) else (details or '')
+            amounts = self._maximum_amounts_from_context(knowledge_context)
+            if amounts:
+                lines.append(_(
+                    'Estimación de referencia: %(amount)s (se usa el límite superior cuando el conocimiento contiene un rango).'
+                ) % {'amount': 'USD %.2f' % max(amounts)})
+        return ' '.join(lines)
+
+    def action_prepare_operational_task(self):
+        """Convierte la última petición del laboratorio en un plan real.
+
+        El laboratorio nunca ejecuta la operación ni envía por WhatsApp: solo
+        crea la tarea del agente para que el usuario pueda revisar, aprobar y
+        ejecutar la cotización/PDF o la reunión desde el flujo normal.
+        """
+        self.ensure_one()
+        if 'chatroom.ai.task' not in self.env:
+            raise UserError(_('Instala Chatroom Agente IA para preparar acciones operativas.'))
+        customer_lines = self.conversation_line_ids.filtered(
+            lambda line: line.speaker == 'customer').sorted('sequence')
+        request = (customer_lines[-1].body if customer_lines else self.draft_message or '').strip()
+        if not request:
+            raise UserError(_('Escribe primero una petición del cliente en el chat de prueba.'))
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            self.channel_id, task_type='orchestrate',
+            prompt=_('Petición del laboratorio: %s') % request,
+            approval_required=True)
+        task.action_plan()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Plan operativo IA'),
+            'res_model': 'chatroom.ai.task',
+            'res_id': task.id,
+            'views': [(False, 'form')],
+            'target': 'new',
+        }
 
     def _playground_conversation(self):
         self.ensure_one()
@@ -162,13 +470,19 @@ class ChatroomAiSandbox(models.Model):
         })
         try:
             if self.execution_mode == 'provider':
+                playground_messages = self._playground_conversation()
+                commercial_context = self._local_commercial_context(question)
+                if commercial_context:
+                    playground_messages[0]['content'] += _(
+                        '\n\nContexto comercial verificado por Odoo (úsalo como fuente de verdad): %s'
+                    ) % commercial_context
                 reply = self.channel_id._ai_chat_completion(
-                    self._playground_conversation(), task_type='reply',
+                    playground_messages, task_type='reply',
                     model_id=self.provider_model_id.id if self.provider_model_id else None)
             else:
                 reply = self._local_playground_reply(question)
             next_sequence += 1
-            self.env['chatroom.ai.sandbox.message'].create({
+            assistant_line = self.env['chatroom.ai.sandbox.message'].create({
                 'sandbox_id': self.id, 'sequence': next_sequence,
                 'speaker': 'assistant', 'body': reply,
             })
@@ -195,6 +509,13 @@ class ChatroomAiSandbox(models.Model):
                         'output_tokens': event.output_tokens,
                     })
             self.write(values)
+            self._process_test_operations(question)
+            # El PDF también queda en el turno de IA del laboratorio, no
+            # únicamente en el chatter de la prueba o del presupuesto.
+            if self.test_chat_message_id and self.test_chat_message_id.attachment_ids:
+                assistant_line.write({
+                    'attachment_ids': [(4, self.test_chat_message_id.attachment_ids[0].id)],
+                })
         except Exception as exc:
             self.write({'state': 'error', 'error_message': str(exc)})
             raise UserError(_('La respuesta de prueba falló: %s') % exc) from exc
