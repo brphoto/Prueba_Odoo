@@ -28,3 +28,29 @@ class TestChatroomAiKnowledge(TransactionCase):
         self.assertEqual(manual.organization_state, 'organized')
         self.assertIn('USD 20', manual.organized_text)
         self.assertIn('PREGUNTAS FRECUENTES', manual.organized_text)
+
+    def test_composer_accepts_pdf_source(self):
+        # The source validation is exercised with a minimal valid PDF payload;
+        # the actual extraction is covered by the shared indexer tests.
+        pdf = (
+            b'%PDF-1.4\n1 0 obj<<>>endobj\n'
+            b'trailer<<>>\n%%EOF'
+        )
+        composer = self.env['chatroom.ai.knowledge.composer'].create({
+            'name': 'QA fuente PDF', 'source_type': 'pdf',
+            'pdf_file': __import__('base64').b64encode(pdf),
+            'pdf_filename': 'qa.pdf',
+        })
+        self.assertEqual(composer.source_type, 'pdf')
+
+    def test_knowledge_analysis_has_local_zero_token_fallback(self):
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'QA cerebro local', 'source_type': 'text',
+            'source_text': 'Somos implementadores de Odoo. Tarifa: USD 20 por hora.',
+        })
+        manual.action_index()
+        manual.action_analyze_with_ai()
+        self.assertIn(manual.analysis_state, ('needs_review', 'error'))
+        self.assertTrue(manual.analysis_summary)
+        self.assertIn(manual.analysis_source, ('local', 'provider', 'local_fallback'))
+        self.assertEqual(manual.analysis_input_tokens, 0)

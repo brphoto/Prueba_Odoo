@@ -91,12 +91,24 @@
                                     </div>
                                     <button name="action_view_tasks" type="object" string="Ver tareas generadas" icon="fa-external-link" class="btn-primary"/>
                                 </div>
-                                <group class="o_chatroom_ai_automation_result_grid">
-                                    <field name="last_run" readonly="1"/>
-                                    <field name="last_run_count" readonly="1"/>
-                                    <field name="last_scanned_count" readonly="1"/>
-                                    <field name="last_skipped_count" readonly="1"/>
-                                </group>
+                                <div class="o_chatroom_ai_automation_result_grid">
+                                    <div class="o_chatroom_ai_automation_metric">
+                                        <span class="o_chatroom_ai_automation_metric_label">Última ejecución</span>
+                                        <field name="last_run" readonly="1" nolabel="1"/>
+                                    </div>
+                                    <div class="o_chatroom_ai_automation_metric">
+                                        <span class="o_chatroom_ai_automation_metric_label">Tareas creadas</span>
+                                        <field name="last_run_count" readonly="1" nolabel="1"/>
+                                    </div>
+                                    <div class="o_chatroom_ai_automation_metric">
+                                        <span class="o_chatroom_ai_automation_metric_label">Canales revisados</span>
+                                        <field name="last_scanned_count" readonly="1" nolabel="1"/>
+                                    </div>
+                                    <div class="o_chatroom_ai_automation_metric">
+                                        <span class="o_chatroom_ai_automation_metric_label">Canales omitidos</span>
+                                        <field name="last_skipped_count" readonly="1" nolabel="1"/>
+                                    </div>
+                                </div>
                                 <div class="o_chatroom_ai_automation_run_summary">
                                     <label for="last_run_summary" string="Resumen"/>
                                     <field name="last_run_summary" readonly="1" nolabel="1"/>

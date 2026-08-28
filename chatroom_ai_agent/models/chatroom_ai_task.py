@@ -15,6 +15,10 @@ class ChatroomAiTaskAction(models.Model):
 
     task_id = fields.Many2one('chatroom.ai.task', string='Tarea', required=True, ondelete='cascade', index=True)
     sequence = fields.Integer(default=10)
+    tool_id = fields.Many2one(
+        'chatroom.ai.tool', string='Acción disponible',
+        domain=[('active', '=', True)],
+        help='Selecciona una herramienta autorizada. La clave y el nombre se completan automáticamente.')
     key = fields.Char(string='Clave', required=True)
     name = fields.Char(string='Nombre', required=True)
     state = fields.Selection([
@@ -28,6 +32,56 @@ class ChatroomAiTaskAction(models.Model):
     input_json = fields.Text(string='Entrada')
     output_json = fields.Text(string='Salida', readonly=True)
     error_message = fields.Text(string='Error', readonly=True)
+
+    @api.onchange('tool_id')
+    def _onchange_tool_id(self):
+        for action in self:
+            if action.tool_id:
+                action.key = action.tool_id.key
+                action.name = action.tool_id.name
+                action.requires_approval = action.tool_id.requires_approval
+
+    @api.onchange('key')
+    def _onchange_key(self):
+        for action in self:
+            if action.key:
+                tool = self.env['chatroom.ai.tool'].search([('key', '=', action.key)], limit=1)
+                if tool:
+                    action.tool_id = tool
+                    if not action.name:
+                        action.name = tool.name
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            tool = self.env['chatroom.ai.tool'].browse(vals.get('tool_id')).exists()
+            if not tool and vals.get('key'):
+                tool = self.env['chatroom.ai.tool'].search([('key', '=', vals['key'])], limit=1)
+            if tool:
+                vals['tool_id'] = tool.id
+                vals['key'] = tool.key
+                if not vals.get('name'):
+                    vals['name'] = tool.name
+                if 'requires_approval' not in vals:
+                    vals['requires_approval'] = tool.requires_approval
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if vals.get('tool_id'):
+            tool = self.env['chatroom.ai.tool'].browse(vals['tool_id']).exists()
+            if tool:
+                vals = dict(vals)
+                vals.update({
+                    'key': tool.key,
+                    'name': tool.name,
+                    'requires_approval': tool.requires_approval,
+                })
+        elif vals.get('key'):
+            tool = self.env['chatroom.ai.tool'].search([('key', '=', vals['key'])], limit=1)
+            if tool:
+                vals = dict(vals)
+                vals['tool_id'] = tool.id
+        return super().write(vals)
 
     @api.depends('key')
     def _compute_risk_level(self):

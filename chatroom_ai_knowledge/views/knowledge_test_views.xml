@@ -7,6 +7,7 @@
             <form string="Probar conocimiento IA" class="o_chatroom_ai_knowledge_test_form">
                 <header>
                     <button name="action_preview" type="object" string="Consultar base local" class="btn-primary"/>
+                    <button name="action_ask_ai" type="object" string="Preguntar a IA (no enviar)" class="btn-secondary" icon="fa-comments-o"/>
                 </header>
                 <sheet>
                     <div class="o_chatroom_ai_knowledge_test_intro" role="status">
@@ -21,6 +22,14 @@
                     <group string="Medición de contexto" class="o_chatroom_ai_knowledge_metrics" col="2">
                         <field name="estimated_input_tokens"/>
                         <field name="context_chars"/>
+                        <field name="estimated_output_tokens"/>
+                    </group>
+                    <group string="Respuesta de la IA (solo prueba)" class="o_chatroom_ai_knowledge_answer" col="2">
+                        <field name="answer" nolabel="1" colspan="2" readonly="1"/>
+                        <field name="answer_source"/>
+                        <field name="answer_model"/>
+                        <field name="answer_confidence" widget="percentage"/>
+                        <field name="answer_error" nolabel="1" colspan="2" readonly="1"/>
                     </group>
                     <group string="Fuentes encontradas" class="o_chatroom_ai_knowledge_sources" col="1">
                         <field name="source_summary" nolabel="1" readonly="1"/>

@@ -17,9 +17,19 @@
                     <group col="2" class="o_chatroom_ai_knowledge_meta">
                         <field name="category"/>
                         <field name="knowledge_format"/>
+                        <field name="source_type"/>
                         <field name="company_id"/>
                         <field name="keyword_tags" placeholder="odoo, implementación, tarifa"/>
                     </group>
+                    <div class="o_chatroom_ai_knowledge_source_card" role="status">
+                        <i class="fa fa-file-text-o" aria-hidden="true"/>
+                        <span>Texto: pega una explicación natural. PDF: carga un manual y el sistema extraerá sus páginas para indexarlo.</span>
+                    </div>
+                    <div class="o_chatroom_ai_knowledge_pdf_upload" invisible="source_type != 'pdf'">
+                        <label for="pdf_file" string="Documento PDF"/>
+                        <field name="pdf_file" filename="pdf_filename" nolabel="1"/>
+                        <field name="pdf_filename" invisible="1"/>
+                    </div>
                     <div class="o_chatroom_ai_knowledge_live_card" role="status">
                         <div class="o_chatroom_ai_knowledge_live_icon"><i class="fa fa-database" aria-hidden="true"/></div>
                         <div>
@@ -27,7 +37,7 @@
                             <p>La IA consulta en tiempo real tus productos y servicios activos, precios y disponibilidad. No necesitas copiar el catálogo ni cargar un PDF.</p>
                         </div>
                     </div>
-                    <div class="o_chatroom_ai_knowledge_content">
+                    <div class="o_chatroom_ai_knowledge_content" invisible="source_type != 'text'">
                         <div class="o_chatroom_ai_knowledge_content_header">
                             <label for="source_text" string="Contenido que debe conocer la IA"/>
                             <span class="text-muted">Información interna</span>

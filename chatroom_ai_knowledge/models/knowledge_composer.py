@@ -23,11 +23,18 @@ class ChatroomAiKnowledgeComposer(models.TransientModel):
         ('policy', 'Política o regla'), ('product', 'Producto o servicio'),
         ('playbook', 'Procedimiento comercial'),
     ], string='Tipo de contenido', default='natural', required=True)
+    source_type = fields.Selection([
+        ('text', 'Texto natural'),
+        ('pdf', 'Documento PDF'),
+    ], string='Fuente', default='text', required=True,
+        help='Usa texto para notas y políticas, o PDF para manuales y documentos.')
+    pdf_file = fields.Binary(string='Archivo PDF', attachment=True)
+    pdf_filename = fields.Char(string='Nombre del archivo')
     keyword_tags = fields.Char(
         string='Palabras clave',
         help='Opcional. Separa términos por coma para ayudar a encontrar esta información.')
     source_text = fields.Text(
-        string='Información para la IA', required=True,
+        string='Información para la IA',
         help='Escribe la información como la explicarías a un compañero. No necesitas usar un formato técnico.')
 
     @api.onchange('knowledge_format')
@@ -53,17 +60,22 @@ class ChatroomAiKnowledgeComposer(models.TransientModel):
 
     def action_create(self):
         self.ensure_one()
-        if not (self.source_text or '').strip():
+        if self.source_type == 'pdf' and not self.pdf_file:
+            raise UserError(_('Selecciona un archivo PDF antes de continuar.'))
+        if self.source_type == 'text' and not (self.source_text or '').strip():
             raise UserError(_('Escribe la información antes de guardarla.'))
-        manual = self.env['ai.knowledge.base'].create({
+        values = {
             'name': self.name,
             'company_id': self.company_id.id,
             'category': self.category,
             'knowledge_format': self.knowledge_format,
+            'source_type': self.source_type,
             'keyword_tags': self.keyword_tags,
-            'source_type': 'text',
             'source_text': self.source_text,
-        })
+            'pdf_file': self.pdf_file,
+            'pdf_filename': self.pdf_filename,
+        }
+        manual = self.env['ai.knowledge.base'].create(values)
         manual.action_organize()
         return {
             'type': 'ir.actions.act_window',

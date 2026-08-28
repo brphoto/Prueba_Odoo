@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ai_knowledge_base_brain_list" model="ir.ui.view">
+        <field name="name">ai.knowledge.base.brain.list</field>
+        <field name="model">ai.knowledge.base</field>
+        <field name="inherit_id" ref="chatroom_sales_intelligence.view_ai_knowledge_base_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="before">
+                <field name="analysis_state" widget="badge" optional="show"/>
+                <field name="analysis_source" optional="hide"/>
+                <field name="analysis_confidence" widget="percentage" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_ai_knowledge_base_brain_form" model="ir.ui.view">
+        <field name="name">ai.knowledge.base.brain.form</field>
+        <field name="model">ai.knowledge.base</field>
+        <field name="inherit_id" ref="chatroom_sales_intelligence.view_ai_knowledge_base_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_analyze_with_ai" type="object" string="Analizar con IA" icon="fa-magic" class="btn-primary"/>
+            </xpath>
+            <xpath expr="//field[@name='content_text']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='content_text']" position="before">
+                <notebook class="o_chatroom_ai_knowledge_brain">
+                    <page string="Cerebro IA" name="brain">
+                        <div class="alert alert-info o_chatroom_ai_knowledge_brain_hint" role="status">
+                            La fuente original permanece en Odoo. El análisis organiza el contenido para revisión humana; publicar es una decisión independiente y solo el contenido publicado se usa en respuestas.
+                        </div>
+                        <group col="2">
+                            <group string="Estado del análisis">
+                                <field name="analysis_state" widget="badge"/>
+                                <field name="analysis_source" widget="badge"/>
+                                <field name="analysis_model"/>
+                                <field name="analysis_at"/>
+                                <field name="analysis_confidence" widget="percentage"/>
+                            </group>
+                            <group string="Consumo estimado">
+                                <field name="analysis_input_tokens"/>
+                                <field name="analysis_output_tokens"/>
+                                <field name="chunk_count"/>
+                                <field name="usage_count"/>
+                            </group>
+                        </group>
+                        <separator string="Resumen ejecutivo"/>
+                        <field name="analysis_summary" nolabel="1" readonly="1"/>
+                        <separator string="Temas y puntos clave"/>
+                        <field name="analysis_topics" nolabel="1" readonly="1"/>
+                    </page>
+                    <page string="Preguntas y reglas" name="qa_rules">
+                        <group col="2">
+                            <group string="Preguntas frecuentes">
+                                <field name="analysis_faq" nolabel="1" readonly="1"/>
+                            </group>
+                            <group string="Reglas operativas">
+                                <field name="analysis_rules" nolabel="1" readonly="1"/>
+                            </group>
+                        </group>
+                        <separator string="Dudas o datos faltantes"/>
+                        <field name="analysis_unknowns" nolabel="1" readonly="1"/>
+                        <div class="alert alert-warning" role="alert" invisible="not analysis_error">
+                            <strong>El proveedor no devolvió un análisis completo.</strong>
+                            <field name="analysis_error" nolabel="1" readonly="1"/>
+                        </div>
+                    </page>
+                    <page string="Fuente y publicación" name="source_control">
+                        <div class="alert alert-success" role="status">
+                            Flujo recomendado: carga o escribe → Indexar → Analizar con IA (opcional) → revisar → Publicar para IA.
+                        </div>
+                        <field name="organized_text" nolabel="1" readonly="1" placeholder="Todavía no hay contenido organizado."/>
+                        <field name="organization_notes" nolabel="1" readonly="1"/>
+                    </page>
+                </notebook>
+            </xpath>
+            <xpath expr="//sheet" position="after">
+                <chatter/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

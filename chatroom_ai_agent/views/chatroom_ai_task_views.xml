@@ -75,11 +75,15 @@
                     </div>
                     <notebook>
                         <page string="Plan y ejecución">
+                            <div class="alert alert-info o_chatroom_ai_task_plan_hint" role="status">
+                                Selecciona una acción del desplegable. Odoo completará automáticamente la clave técnica y el nivel de aprobación.
+                            </div>
                             <field name="action_ids" context="{'default_task_id': id}">
                                 <list editable="bottom">
                                     <field name="sequence" widget="handle"/>
-                                    <field name="key"/>
-                                    <field name="name"/>
+                                    <field name="tool_id" string="Acción" options="{'no_create': True}"/>
+                                    <field name="name" string="Nombre visible"/>
+                                    <field name="key" optional="hide"/>
                                     <field name="requires_approval"/>
                                     <field name="risk_level" widget="badge"/>
                                     <field name="state" widget="badge"/>

@@ -32,6 +32,62 @@
     }
 }
 
+.o_chatroom_ai_knowledge_source_card {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin: 10px 0 16px;
+    padding: 10px 12px;
+    border: 1px solid #c8ddea;
+    border-left: 4px solid #477fa4;
+    border-radius: 6px;
+    background: #f3f8fb;
+    color: #315a73;
+}
+
+.o_chatroom_ai_knowledge_pdf_upload {
+    margin: 12px 0 18px;
+    padding: 14px;
+    border: 1px dashed #9dbaca;
+    border-radius: 6px;
+    background: #fafcfd;
+
+    label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 600;
+    }
+}
+
+.o_chatroom_ai_knowledge_brain {
+    width: 100%;
+    margin-top: 18px;
+
+    textarea {
+        width: 100%;
+        min-height: 120px;
+        padding: 10px;
+        line-height: 1.45;
+        resize: vertical;
+    }
+
+    .o_chatroom_ai_knowledge_brain_hint {
+        margin-bottom: 16px;
+    }
+}
+
+.o_chatroom_ai_knowledge_answer {
+    width: 100%;
+
+    textarea {
+        width: 100%;
+        min-height: 160px;
+        padding: 12px;
+        line-height: 1.5;
+        resize: vertical;
+    }
+}
+
 .o_chatroom_ai_knowledge_live_icon {
     display: grid;
     place-items: center;

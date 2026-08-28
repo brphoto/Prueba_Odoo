@@ -80,6 +80,43 @@
     }
 }
 
+.o_chatroom_ai_task_form {
+    .o_chatroom_ai_task_plan_hint {
+        margin: 0 0 12px;
+        border-left: 3px solid #0f8f83;
+    }
+
+    .o_chatroom_ai_task_autonomy_page {
+        .o_chatroom_ai_autonomy_status_hint {
+            margin-bottom: 16px;
+            padding: 12px 14px;
+            border: 1px solid #e1e6ee;
+            border-left: 3px solid #76506f;
+            border-radius: 8px;
+            background: #faf7fb;
+            color: #687386;
+            line-height: 1.5;
+        }
+
+        .o_chatroom_ai_task_autonomy {
+            padding: 18px;
+            border: 1px solid #e1e6ee;
+            border-radius: 10px;
+            background: #fbfcfe;
+
+            .o_field_text {
+                min-height: 0;
+                padding: 10px 12px;
+                border: 1px solid #e1e6ee;
+                border-radius: 7px;
+                background: #fff;
+                white-space: pre-wrap;
+                line-height: 1.5;
+            }
+        }
+    }
+}
+
 .o_chatroom_ai_playbook_form {
     .o_chatroom_ai_playbook_intro {
         display: flex;
@@ -626,7 +663,21 @@
         border-radius: 12px;
         background: linear-gradient(135deg, #faf7fb, #f4edf4);
 
-        h1 { margin: 0 0 4px; color: #312530; font-size: 24px; }
+        > div:last-child { flex: 1 1 auto; min-width: 0; }
+        h1 {
+            display: block;
+            width: 100%;
+            margin: 0 0 4px;
+            color: #312530;
+            font-size: 24px;
+
+            .o_field_widget,
+            input {
+                display: block;
+                width: 100% !important;
+                max-width: none !important;
+            }
+        }
         p { margin: 0; color: #6b6070; }
     }
 
@@ -721,10 +772,21 @@
             display: block;
             width: 100% !important;
             max-width: none !important;
+            min-height: 0 !important;
+        }
+
+        .o_field_text {
+            min-height: 0 !important;
+            padding: 12px 14px;
+            border: 1px solid #e1e6ee;
+            border-radius: 8px;
+            background: #fbfcfe;
+            white-space: pre-wrap;
+            line-height: 1.5;
         }
 
         textarea {
-            min-height: 150px;
+            min-height: 110px !important;
             padding: 12px 14px;
             line-height: 1.5;
             resize: vertical;
@@ -756,13 +818,29 @@
         gap: 12px;
         margin: 16px 0;
 
-        > .o_inner_group {
+        > .o_chatroom_ai_automation_metric {
             width: auto !important;
             min-width: 0;
             padding: 12px;
             border: 1px solid #e1e6ee;
             border-radius: 8px;
             background: #fff;
+
+            .o_chatroom_ai_automation_metric_label {
+                display: block;
+                margin-bottom: 6px;
+                color: #687386;
+                font-size: 12px;
+                font-weight: 600;
+            }
+
+            .o_field_widget {
+                display: block;
+                min-height: 24px;
+                color: #202735;
+                font-size: 16px;
+                font-weight: 700;
+            }
         }
     }
 
@@ -782,6 +860,7 @@
             display: block;
             width: 100% !important;
             max-width: none !important;
+            min-height: 0 !important;
         }
     }
 

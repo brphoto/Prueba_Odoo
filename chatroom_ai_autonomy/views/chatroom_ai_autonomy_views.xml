@@ -147,22 +147,27 @@
         <field name="model">chatroom.ai.task</field>
         <field name="inherit_id" ref="chatroom_ai_agent.view_chatroom_ai_task_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//sheet" position="inside">
-                <group string="Control de autonomía" class="o_chatroom_ai_task_autonomy" col="2">
-                    <field name="autonomy_policy_id"/>
-                    <field name="autonomy_decision" widget="badge"/>
-                    <field name="autonomy_confidence"/>
-                    <field name="autonomy_evaluated_at"/>
-                    <field name="autonomy_reason" nolabel="1" colspan="2"/>
-                    <field name="verification_state" widget="badge"/>
-                    <field name="verification_message" nolabel="1" colspan="2"/>
-                    <field name="next_action" colspan="2"/>
-                    <field name="next_task_type"/>
-                    <field name="needs_human"/>
-                    <field name="chain_parent_id"/>
-                    <field name="chain_step"/>
-                    <button name="action_create_next_task" type="object" string="Crear siguiente tarea" class="btn-primary" icon="fa-arrow-right" invisible="not next_task_type or needs_human"/>
-                </group>
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Control de autonomía" class="o_chatroom_ai_task_autonomy_page">
+                    <div class="o_chatroom_ai_autonomy_status_hint">
+                        Aquí puedes comprobar qué política se aplicó, si la tarea puede continuar de forma autónoma y cuál es el siguiente paso recomendado.
+                    </div>
+                    <group class="o_chatroom_ai_task_autonomy" col="2">
+                        <field name="autonomy_policy_id"/>
+                        <field name="autonomy_decision" widget="badge"/>
+                        <field name="autonomy_confidence" widget="percentage"/>
+                        <field name="autonomy_evaluated_at"/>
+                        <field name="autonomy_reason" nolabel="1" colspan="2"/>
+                        <field name="verification_state" widget="badge"/>
+                        <field name="verification_message" nolabel="1" colspan="2"/>
+                        <field name="next_action" colspan="2"/>
+                        <field name="next_task_type"/>
+                        <field name="needs_human"/>
+                        <field name="chain_parent_id"/>
+                        <field name="chain_step"/>
+                        <button name="action_create_next_task" type="object" string="Crear siguiente tarea" class="btn-primary" icon="fa-arrow-right" invisible="not next_task_type or needs_human"/>
+                    </group>
+                </page>
             </xpath>
         </field>
     </record>
