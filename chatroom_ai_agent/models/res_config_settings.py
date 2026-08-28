@@ -28,6 +28,11 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='chatroom_ai_agent.event_orchestration',
         help='Al recibir un mensaje crea y planifica la tarea de la automatización activa. En modo automático ejecuta únicamente acciones autorizadas; los envíos, cobros, cotizaciones y actividades conservan su aprobación.',
     )
+    chatroom_ai_agent_commercial_router_enabled = fields.Boolean(
+        string='Preparar automáticamente solicitudes comerciales',
+        config_parameter='chatroom_ai_agent.commercial_router_enabled',
+        help='Al recibir un mensaje crea un plan de cotización, reunión, producto, pago o consulta. En modo supervisado siempre espera aprobación humana.',
+    )
     chatroom_ai_agent_ai_planning_enabled = fields.Boolean(
         string='Usar planificador externo de IA',
         config_parameter='chatroom_ai_agent.ai_planning_enabled',

@@ -28,6 +28,18 @@
         line-height: 1.4;
     }
 
+    .o_chatroom_ai_agent_route {
+        padding: 7px 9px;
+        border: 1px solid #d9c9d8;
+        border-left: 3px solid var(--chatroom-ui-primary, #714b67);
+        border-radius: 7px;
+        background: var(--chatroom-ui-surface, #fff);
+        color: var(--chatroom-ui-text, #344054);
+
+        strong { display: block; color: var(--chatroom-ui-primary, #714b67); }
+        small { display: block; max-width: 100%; margin-top: 2px; }
+    }
+
     .o_chatroom_ai_agent_task {
         display: flex;
         flex-direction: column;

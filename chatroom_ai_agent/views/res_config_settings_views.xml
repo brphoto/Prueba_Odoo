@@ -20,6 +20,10 @@
                                  help="Prepara una tarea IA con cada mensaje entrante. La ejecución permanece sujeta a aprobación y auditoría.">
                             <field name="chatroom_ai_agent_event_orchestration"/>
                         </setting>
+                        <setting id="chatroom_ai_agent_commercial_router_setting"
+                                 help="Detecta si el cliente pide productos, cotización, reunión, pago o una consulta y prepara el flujo correspondiente.">
+                            <field name="chatroom_ai_agent_commercial_router_enabled"/>
+                        </setting>
                         <setting id="chatroom_ai_agent_ai_planning_setting"
                                  help="Desactivado usa planes locales y ahorra tokens. Actívalo solo si necesitas que el proveedor externo proponga planes nuevos.">
                             <field name="chatroom_ai_agent_ai_planning_enabled"/>

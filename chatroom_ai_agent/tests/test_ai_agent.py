@@ -203,6 +203,75 @@ class TestChatroomAiAgent(TransactionCase):
             self.assertEqual(activity.res_id, meeting_channel.id)
             self.assertEqual(activity.activity_type_id.category, 'meeting')
 
+    def test_commercial_router_detects_native_business_flows(self):
+        partner = self.env['res.partner'].create({'name': 'Cliente enrutador IA'})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'ai-router-001',
+            'partner_id': partner.id,
+        })
+        self.env['chatroom.message'].create({
+            'channel_id': channel.id, 'direction': 'inbound',
+            'message_type': 'text',
+            'body': 'Quiero una cotización en PDF del servicio de implementación.',
+        })
+        route = channel._ai_agent_route()
+        self.assertEqual(route['route'], 'quote')
+        action = channel.action_ai_agent_commercial_router()
+        self.assertEqual(action['res_model'], 'chatroom.ai.task')
+        task = self.env['chatroom.ai.task'].browse(action['res_id'])
+        self.assertEqual(task.state, 'awaiting_approval')
+        self.assertEqual(task.action_ids.mapped('key'), [
+            'search_catalog', 'create_quotation', 'send_quotation_pdf'])
+
+    def test_catalog_context_uses_live_odoo_product_and_quote_line(self):
+        partner = self.env['res.partner'].create({'name': 'Cliente catálogo IA'})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'ai-catalog-001',
+            'partner_id': partner.id,
+        })
+        product = self.env['product.product'].create({
+            'name': 'Implementación Odoo avanzada', 'list_price': 20.0,
+            'sale_ok': True, 'type': 'service',
+        })
+        self.env['chatroom.message'].create({
+            'channel_id': channel.id, 'direction': 'inbound',
+            'message_type': 'text',
+            'body': 'Cotízame Implementación Odoo avanzada.',
+        })
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            channel, task_type='orchestrate',
+            prompt='Prepara cotización de Implementación Odoo avanzada.')
+        task.action_plan()
+        search_action = task.action_ids.filtered(lambda line: line.key == 'search_catalog')
+        search_result = task._execute_action(search_action)
+        self.assertTrue(any(row['id'] == product.id for row in search_result['matches']))
+        search_action.write({'state': 'done', 'output_json': json.dumps(search_result)})
+        quote_action = task.action_ids.filtered(lambda line: line.key == 'create_quotation')
+        quote_result = task._execute_action(quote_action)
+        order = self.env['sale.order'].browse(quote_result['order_id'])
+        self.assertEqual(order.order_line.product_id, product)
+        self.assertEqual(order.origin, channel.display_name)
+
+    def test_inbound_commercial_router_is_independent_from_periodic_automations(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_ai_agent.event_orchestration', 'False')
+        icp.set_param('chatroom_ai_agent.commercial_router_enabled', 'True')
+        partner = self.env['res.partner'].create({'name': 'Cliente router entrante'})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'ai-router-inbound-001',
+            'partner_id': partner.id,
+        })
+        self.env['chatroom.message'].create({
+            'channel_id': channel.id, 'direction': 'inbound',
+            'message_type': 'text', 'body': '¿Qué precio tiene el producto demo?',
+        })
+        task = self.env['chatroom.ai.task'].search([
+            ('channel_id', '=', channel.id), ('automation_id', '=', False),
+        ], order='id desc', limit=1)
+        self.assertTrue(task)
+        self.assertEqual(task.state, 'awaiting_approval')
+        self.assertIn('search_catalog', task.action_ids.mapped('key'))
+
     def test_automation_reports_execution_result(self):
         automation = self.env['chatroom.ai.automation'].create({
             'name': 'Prueba de seguimiento comercial',

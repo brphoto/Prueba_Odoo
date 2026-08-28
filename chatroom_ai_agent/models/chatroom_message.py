@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 
 
 _logger = logging.getLogger(__name__)
@@ -14,20 +14,43 @@ class ChatroomMessage(models.Model):
     def create(self, vals_list):
         messages = super().create(vals_list)
         icp = self.env['ir.config_parameter'].sudo()
-        enabled = icp.get_param(
+        event_enabled = icp.get_param(
             'chatroom_ai_agent.event_orchestration', 'False') == 'True'
-        if not enabled or 'chatroom.ai.automation' not in self.env:
+        router_enabled = icp.get_param(
+            'chatroom_ai_agent.commercial_router_enabled', 'False') == 'True'
+        if not event_enabled and not router_enabled:
             return messages
-        automation_model = self.env['chatroom.ai.automation'].sudo()
+        automation_model = self.env['chatroom.ai.automation'].sudo() if 'chatroom.ai.automation' in self.env else self.env['chatroom.message']
         automations = automation_model.search([
             ('active', '=', True), ('trigger', '=', 'open_conversation'),
-        ], order='sequence, id')
-        if not automations:
-            return messages
+        ], order='sequence, id') if event_enabled and 'chatroom.ai.automation' in self.env else automation_model.browse()
         tasks = self.env['chatroom.ai.task'].sudo()
         for message in messages.filtered(lambda item: item.direction == 'inbound' and item.channel_id):
             channel = message.channel_id
             if channel.ai_paused:
+                continue
+            if router_enabled and not automations:
+                try:
+                    with self.env.cr.savepoint():
+                        duplicate = tasks.search_count([
+                            ('channel_id', '=', channel.id),
+                            ('state', 'in', ('draft', 'awaiting_approval', 'planned', 'running')),
+                        ])
+                        if not duplicate:
+                            route = channel._ai_agent_route(message.body)
+                            task = tasks.create_from_channel(
+                                channel, 'orchestrate', route['prompt'],
+                                approval_required=True)
+                            task.action_plan()
+                            channel.message_post(
+                                body=_('Agente IA: se preparó la ruta «%s» para revisión humana.') % route['label'],
+                                subtype_xmlid='mail.mt_note',
+                            )
+                except Exception:  # noqa: BLE001 - no bloquear la recepción
+                    _logger.exception(
+                        'No se pudo preparar la ruta comercial del mensaje %s', message.id)
+                continue
+            if not automations:
                 continue
             for automation in automations[:1]:
                 try:

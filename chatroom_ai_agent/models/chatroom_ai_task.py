@@ -532,6 +532,32 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
         stop_utc = start_utc + timedelta(hours=1)
         return fields.Datetime.to_string(start_utc), fields.Datetime.to_string(stop_utc)
 
+    def _conversation_text(self):
+        self.ensure_one()
+        channel = self.channel_id
+        return ' '.join([
+            self.prompt or '',
+            ' '.join((message.body or '') for message in channel.message_ids
+                     if message.body) if channel else '',
+        ]).strip()
+
+    def _live_product_context(self):
+        """Contexto compacto de productos para responder sin inventar datos."""
+        self.ensure_one()
+        channel = self.channel_id
+        if not channel or not hasattr(channel, '_ai_search_products_mentioned'):
+            return ''
+        products = channel._ai_search_products_mentioned(self._conversation_text())
+        lines = []
+        for product in products[:8]:
+            facts = channel._ai_product_commercial_data(product)
+            currency = facts['currency']
+            lines.append(
+                '- %s | precio vigente: %.2f %s | %s' % (
+                    product.display_name, facts['price'],
+                    currency.symbol or currency.name, facts['stock_label']))
+        return '\n'.join(lines)
+
     def _execute_action(self, action):
         self.ensure_one()
         channel = self.channel_id
@@ -546,9 +572,22 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             result['intent'] = channel.ai_intent if channel and 'ai_intent' in channel._fields and channel.ai_intent else 'otro'
         elif action.key in ('prepare_reply',):
             if channel and hasattr(channel, '_ai_get_credentials') and channel._ai_get_credentials():
-                result['reply'] = channel._ai_chat_completion(channel._ai_build_conversation(extra_system=self.prompt or _('Prepara una respuesta breve y profesional.')), task_type='reply')
+                live_catalog = self._live_product_context()
+                system_prompt = self.prompt or _('Prepara una respuesta breve y profesional.')
+                if live_catalog:
+                    system_prompt += _(
+                        '\n\nDatos vivos de Odoo. Usa únicamente estos datos para '
+                        'productos, precios y disponibilidad; si no aparece un '
+                        'producto, dilo y pide aclaración.\n%s') % live_catalog
+                result['reply'] = channel._ai_chat_completion(
+                    channel._ai_build_conversation(extra_system=system_prompt),
+                    task_type='reply')
             else:
-                result['reply'] = _('Se preparó la tarea. Configure el proveedor de IA para generar el texto personalizado.')
+                live_catalog = self._live_product_context()
+                result['reply'] = (
+                    _('Encontré estos datos vigentes en Odoo:\n%s') % live_catalog
+                    if live_catalog else
+                    _('Se preparó la tarea. Configura el proveedor de IA para generar el texto personalizado.'))
         elif action.key == 'create_lead':
             if 'crm.lead' not in self.env or not partner:
                 result['status'] = 'skipped'
@@ -572,32 +611,34 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                 result['lead_id'] = lead.id
                 result['lead_name'] = lead.display_name
         elif action.key == 'search_catalog':
-            if 'product.template' not in self.env:
+            if 'product.product' not in self.env:
                 result['status'] = 'skipped'
                 result['reason'] = _('El catálogo de productos no está disponible.')
             else:
-                message_text = ' '.join([
-                    self.prompt or '',
-                    ' '.join((message.body or '') for message in channel.message_ids if message.body) if channel else '',
-                ])
+                message_text = self._conversation_text()
                 stopwords = {
                     'para', 'como', 'esta', 'este', 'cliente', 'cotización', 'cotizacion',
                     'producto', 'productos', 'quiero', 'necesito', 'desde', 'con', 'una', 'uno',
                     'del', 'por', 'que', 'los', 'las', 'una', 'sus', 'the', 'and',
                 }
                 terms = [term for term in re.findall(r'[\wáéíóúñü]{3,}', message_text.lower()) if term not in stopwords]
-                products = self.env['product.template'].browse()
+                products = self.env['product.product'].browse()
                 for term in terms[:3]:
-                    products |= self.env['product.template'].search([
+                    products |= self.env['product.product'].search([
                         ('active', '=', True), '|', ('name', 'ilike', term), ('default_code', 'ilike', term),
                     ], limit=5)
                 if not products:
-                    products = self.env['product.template'].search([('active', '=', True)], order='write_date desc, id desc', limit=5)
+                    products = self.env['product.product'].search([
+                        ('active', '=', True), ('sale_ok', '=', True)],
+                        order='write_date desc, id desc', limit=5)
                 result['matches'] = [{
                     'id': product.id,
                     'name': product.display_name,
                     'default_code': product.default_code or False,
-                    'list_price': product.list_price,
+                    'list_price': product.lst_price,
+                    'price': product.lst_price,
+                    'available_qty': product.free_qty if 'free_qty' in product._fields else product.qty_available if 'qty_available' in product._fields else False,
+                    'type': product.type,
                 } for product in products[:10]]
                 result['search_terms'] = terms[:3]
         elif action.key == 'create_quotation':
@@ -624,6 +665,21 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                         product = self.env['product.product'].browse(int(product_raw)).exists() if product_raw else product
                     except (TypeError, ValueError):
                         product = self.env['product.product'].browse()
+                    # Si no hay producto fijo, usa el producto real que la
+                    # acción anterior encontró en el mensaje. Así una
+                    # petición como “cotízame el servicio X” no termina en
+                    # una cotización vacía ni en un producto inventado.
+                    if not product:
+                        search_action = self.action_ids.filtered(
+                            lambda line: line.key == 'search_catalog' and line.state == 'done')[-1:]
+                        if search_action and search_action.output_json:
+                            try:
+                                search_data = json.loads(search_action.output_json)
+                                match = (search_data.get('matches') or [])[0]
+                                product = self.env['product.product'].browse(
+                                    int(match.get('id'))).exists()
+                            except (TypeError, ValueError, AttributeError, IndexError):
+                                product = self.env['product.product'].browse()
                     quantity_raw = icp.get_param('chatroom_ai_agent.quote_quantity', '1') or '1'
                     try:
                         quantity = max(float(quantity_raw), 0.01)
@@ -638,7 +694,7 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                         # cotización nativa vacía para completar manualmente.
                         action_result = channel.action_create_quotation()
                         result['configuration_note'] = _(
-                            'Cotización creada sin producto. Configura el producto fijo en Ajustes > Agente IA para automatizar esta línea.')
+                            'Cotización creada sin producto. Configura un producto fijo o menciona un producto vendible del catálogo de Odoo.')
                     order = self.env['sale.order'].browse(action_result.get('res_id')).exists()
                 if not order:
                     result['status'] = 'skipped'

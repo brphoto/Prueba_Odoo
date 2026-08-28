@@ -22,6 +22,19 @@
                     </div>
                     <t t-if="aiAgent.canUse !== false">
                     <p class="mb-2">Crea un plan de trabajo con contexto comercial, acciones autorizadas y trazabilidad.</p>
+                    <div class="o_chatroom_ai_agent_route mb-2" t-if="aiAgent.route">
+                        <span class="text-muted">Ruta sugerida:</span>
+                        <strong t-esc="aiAgent.route.label"/>
+                        <small t-if="aiAgent.route.message" class="d-block text-muted text-truncate">
+                            “<t t-esc="aiAgent.route.message"/>”
+                        </small>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary w-100 mb-2"
+                            t-att-disabled="aiAgent.busy"
+                            t-on-click="runCommercialRouter">
+                        <i t-if="aiAgent.busy" class="fa fa-spinner fa-spin"/>
+                        <i t-else="" class="fa fa-route me-1"/> Atender solicitud comercial
+                    </button>
                     <div class="o_chatroom_ai_agent_playbook mb-2" t-if="aiAgent.playbooks.length">
                         <label class="form-label mb-1">Acción guardada</label>
                         <select class="form-select form-select-sm" t-on-change="(ev) => aiAgent.selectedPlaybookId = ev.target.value">

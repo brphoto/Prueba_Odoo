@@ -2396,6 +2396,7 @@ class ChatroomChannel(models.Model):
                 "se pudo armar la cotización."))
         order = self.env['sale.order'].create({
             'partner_id': self.partner_id.id,
+            'origin': self.display_name,
             'order_line': order_lines,
         })
         self.cart_line_ids.unlink()
