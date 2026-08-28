@@ -1,16 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- Grupo de menú propio de este módulo (antes vivía como
-         menu_chatroom_commercial en chatroom_whatsapp, solo para
-         alojar estos 3 items: eso hacía que el grupo entero
-         sobreviviera a la desinstalación de este módulo, con
-         "Métricas" -que sí es de la base- como único hijo restante y
-         el nombre "Inteligencia comercial" ya sin sentido. Ahora todo
-         el árbol de este menú es de este módulo, así que desinstalar
-         lo saca completo. -->
-    <menuitem id="menu_chatroom_commercial" name="Inteligencia comercial"
-              parent="chatroom_whatsapp.menu_chatroom_root" sequence="25"/>
+    <!-- Las funciones comerciales se muestran dentro de la aplicación
+         Inteligencia Comercial. Así no se duplica el menú dentro de
+         Chatroom y el usuario encuentra clientes, RFM, campañas y
+         operación en un único lugar. -->
+    <menuitem id="menu_chatroom_commercial" name="Operación comercial"
+              parent="crm_customer_intelligence.menu_crm_intelligence_root" sequence="16"/>
 
     <menuitem id="menu_chatroom_commercial_panels" name="Paneles comerciales"
               parent="menu_chatroom_commercial" sequence="5"/>

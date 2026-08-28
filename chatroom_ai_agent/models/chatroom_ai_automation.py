@@ -51,6 +51,25 @@ class ChatroomAiAutomation(models.Model):
     last_skipped_count = fields.Integer(string='Canales omitidos', readonly=True)
     last_run_summary = fields.Char(string='Resumen de la última ejecución', readonly=True)
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company, index=True)
+    task_count = fields.Integer(string='Tareas generadas', compute='_compute_task_count')
+
+    def _compute_task_count(self):
+        task_model = self.env['chatroom.ai.task'].sudo()
+        for automation in self:
+            automation.task_count = task_model.search_count([
+                ('automation_id', '=', automation.id),
+            ])
+
+    def action_view_tasks(self):
+        """Open every task created by this automation, including completed ones."""
+        self.ensure_one()
+        action = self.env.ref('chatroom_ai_agent.action_chatroom_ai_task').read()[0]
+        action.update({
+            'name': _('Resultados: %s') % self.name,
+            'domain': [('automation_id', '=', self.id)],
+            'context': {'default_automation_id': self.id},
+        })
+        return action
 
     @api.constrains('max_tasks', 'max_attempts', 'min_rfm_score')
     def _check_limits(self):

@@ -38,47 +38,75 @@
                             <p>Define cuándo debe actuar el agente y qué nivel de aprobación necesita.</p>
                         </div>
                     </div>
-                    <group class="o_chatroom_ai_automation_grid">
-                        <group string="Objetivo">
-                            <field name="trigger"/>
-                            <field name="task_type"/>
-                            <div class="o_chatroom_ai_automation_textarea">
-                                <field name="instruction" class="o_chatroom_ai_automation_instruction" nolabel="1"
+                    <div name="button_box" class="oe_button_box o_chatroom_ai_automation_button_box">
+                        <button name="action_view_tasks" type="object" class="oe_stat_button" icon="fa-tasks">
+                            <field name="task_count" widget="statinfo" string="Tareas generadas"/>
+                        </button>
+                    </div>
+                    <notebook class="o_chatroom_ai_automation_notebook">
+                        <page name="configuration" string="Configuración">
+                            <group class="o_chatroom_ai_automation_grid">
+                                <group string="Objetivo">
+                                    <field name="trigger"/>
+                                    <field name="task_type"/>
+                                </group>
+                                <group string="Seguridad y alcance">
+                                    <field name="approval_required"/>
+                                    <field name="max_tasks"/>
+                                    <field name="max_attempts"/>
+                                    <field name="sequence"/>
+                                    <field name="company_id"/>
+                                </group>
+                            </group>
+                            <div class="o_chatroom_ai_automation_textarea o_chatroom_ai_automation_full_block">
+                                <label for="instruction" string="Instrucción para la IA"/>
+                                <field name="instruction" class="o_chatroom_ai_automation_instruction" nolabel="1" widget="text"
                                        placeholder="Escribe aquí el contexto o la instrucción para la IA..."/>
                             </div>
-                        </group>
-                        <group string="Seguridad y alcance">
-                            <field name="approval_required"/>
-                            <field name="max_tasks"/>
-                            <field name="max_attempts"/>
-                            <field name="sequence"/>
-                            <field name="company_id"/>
                             <div class="o_chatroom_ai_automation_hint">
                                 Las acciones sensibles conservarán su propia aprobación aunque esta automatización sea automática.
                             </div>
-                        </group>
-                    </group>
-                    <group string="Como usarla" class="o_chatroom_ai_automation_context">
-                        <div class="o_chatroom_ai_automation_textarea">
-                            <field name="description" nolabel="1" placeholder="Explica en lenguaje sencillo cuándo usar esta automatización..."/>
-                        </div>
-                    </group>
-                    <div class="alert alert-info" role="status">
-                        Las automatizaciones de ejemplo llegan desactivadas para evitar envíos inesperados. Puedes pulsar «Ejecutar ahora» para probarlas manualmente; las acciones sensibles seguirán solicitando aprobación.
-                    </div>
-                    <group string="Filtros opcionales" class="o_chatroom_ai_automation_filters">
-                        <field name="only_unread"/>
-                        <field name="only_unassigned"/>
-                        <field name="min_rfm_score"/>
-                    </group>
-                    <group string="Resultado de la última ejecución" class="o_chatroom_ai_automation_result">
-                        <field name="last_run" readonly="1"/>
-                        <field name="last_run_count" readonly="1"/>
-                        <field name="last_scanned_count" readonly="1"/>
-                        <field name="last_skipped_count" readonly="1"/>
-                        <field name="last_run_summary" readonly="1"/>
-                        <field name="last_error" readonly="1" placeholder="Sin errores registrados."/>
-                    </group>
+                            <div class="o_chatroom_ai_automation_textarea o_chatroom_ai_automation_full_block">
+                                <label for="description" string="Cómo usarla"/>
+                                <field name="description" nolabel="1" widget="text" placeholder="Explica en lenguaje sencillo cuándo usar esta automatización..."/>
+                            </div>
+                        </page>
+                        <page name="filters" string="Filtros">
+                            <div class="alert alert-info" role="status">
+                                Las automatizaciones de ejemplo llegan desactivadas para evitar envíos inesperados. Puedes pulsar «Ejecutar ahora» para probarlas manualmente; las acciones sensibles seguirán solicitando aprobación.
+                            </div>
+                            <group string="Filtros opcionales" class="o_chatroom_ai_automation_filters">
+                                <field name="only_unread"/>
+                                <field name="only_unassigned"/>
+                                <field name="min_rfm_score"/>
+                            </group>
+                        </page>
+                        <page name="results" string="Resultados">
+                            <div class="o_chatroom_ai_automation_result o_chatroom_ai_automation_result_summary">
+                                <div class="o_chatroom_ai_automation_result_header">
+                                    <div>
+                                        <h3>Última ejecución</h3>
+                                        <p>Consulta aquí el alcance, las tareas creadas y cualquier incidencia.</p>
+                                    </div>
+                                    <button name="action_view_tasks" type="object" string="Ver tareas generadas" icon="fa-external-link" class="btn-primary"/>
+                                </div>
+                                <group class="o_chatroom_ai_automation_result_grid">
+                                    <field name="last_run" readonly="1"/>
+                                    <field name="last_run_count" readonly="1"/>
+                                    <field name="last_scanned_count" readonly="1"/>
+                                    <field name="last_skipped_count" readonly="1"/>
+                                </group>
+                                <div class="o_chatroom_ai_automation_run_summary">
+                                    <label for="last_run_summary" string="Resumen"/>
+                                    <field name="last_run_summary" readonly="1" nolabel="1"/>
+                                </div>
+                                <div class="o_chatroom_ai_automation_run_error">
+                                    <label for="last_error" string="Incidencias"/>
+                                    <field name="last_error" readonly="1" nolabel="1" placeholder="Sin errores registrados."/>
+                                </div>
+                            </div>
+                        </page>
+                    </notebook>
                 </sheet>
                 <chatter/>
             </form>
