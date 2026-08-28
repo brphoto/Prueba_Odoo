@@ -470,6 +470,19 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                 sent = _('enlace enviado') if output.get('link_sent') else _('enlace preparado')
                 activity = _(', actividad nativa creada') if output.get('activity_id') else ''
                 lines.append(_('Reunión %s creada; %s%s.') % (output['meeting_name'], sent, activity))
+            elif output.get('lines') and output.get('order_name'):
+                quote_lines = '; '.join(
+                    '%s x %s a %.2f %s (%.2f)' % (
+                        item.get('product'), item.get('quantity'),
+                        item.get('unit_price'), item.get('currency'),
+                        item.get('subtotal'))
+                    for item in output['lines'])
+                lines.append(_(
+                    'Cotización %s creada con: %s. Total: %.2f %s.'
+                ) % (
+                    output['order_name'], quote_lines,
+                    output.get('amount_total', 0.0),
+                    (output['lines'][0].get('currency') if output['lines'] else '')))
             elif output.get('order_name'):
                 lines.append(_('Cotización disponible: %s.') % output['order_name'])
             elif output.get('link_id'):
@@ -573,6 +586,84 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                     currency.symbol or currency.name, facts['stock_label']))
         return '\n'.join(lines)
 
+    @staticmethod
+    def _requested_quantity(text):
+        """Read explicit hours/units from the conversation, not dates or prices."""
+        patterns = (
+            (r'(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:horas?|hrs?|h)\b', 'hours'),
+            (r'(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:unidades?|uds?\.?|u)\b', 'units'),
+            (r'\bx\s*(\d+(?:[.,]\d+)?)\b', 'units'),
+        )
+        for pattern, unit in patterns:
+            match = re.search(pattern, text or '', re.IGNORECASE | re.UNICODE)
+            if match:
+                try:
+                    value = float(match.group(1).replace(',', '.'))
+                except (TypeError, ValueError):
+                    continue
+                if value > 0:
+                    return value, unit
+        return False, False
+
+    def _requested_quote_lines(self):
+        """Return the products and quantities explicitly requested by the client.
+
+        The configured product is only a fallback. A product found in the
+        live Odoo catalog always wins, which prevents a generic fixed product
+        from replacing the item discussed in WhatsApp.
+        """
+        self.ensure_one()
+        if not self.channel_id or 'product.product' not in self.env:
+            return [], False, False, False
+        context = self._conversation_text()
+        products = self.channel_id._ai_search_products_mentioned(context, limit=8) \
+            if hasattr(self.channel_id, '_ai_search_products_mentioned') else self.env['product.product']
+        if products:
+            ignored = {
+                'cotizacion', 'cotización', 'presupuesto', 'propuesta', 'pdf',
+                'necesito', 'quiero', 'por', 'favor', 'horas', 'hora',
+                'unidades', 'unidad', 'servicio', 'producto', 'productos',
+                'precio', 'cantidad', 'cliente', 'para', 'con', 'una', 'uno',
+            }
+            words = {
+                word.lower() for word in re.findall(r'\w{4,}', context or '', re.UNICODE)
+                if word.lower() not in ignored and not word.isdigit()
+            }
+            scored = []
+            for product in products:
+                searchable = ' '.join(filter(None, (
+                    product.name, product.default_code, product.description_sale))).lower()
+                score = sum(1 for word in words if word in searchable)
+                if score:
+                    scored.append((score, product))
+            products = self.env['product.product'].browse([
+                product.id for _score, product in sorted(
+                    scored, key=lambda item: (-item[0], item[1].id))
+            ])
+        if not products:
+            configured = self.env['ir.config_parameter'].sudo().get_param(
+                'chatroom_ai_agent.quote_product_id', '')
+            try:
+                products = self.env['product.product'].browse(int(configured)).exists() if configured else products
+            except (TypeError, ValueError):
+                products = self.env['product.product'].browse()
+        if not products:
+            return [], context, False, False
+        configured_quantity = self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_ai_agent.quote_quantity', '1') or '1'
+        try:
+            default_quantity = max(float(configured_quantity), 0.01)
+        except (TypeError, ValueError):
+            default_quantity = 1.0
+        explicit_quantity, explicit_unit = self._requested_quantity(context)
+        lines = []
+        for product in products[:8]:
+            quantity = default_quantity
+            if explicit_quantity and (explicit_unit == 'hours' or product.type != 'service'):
+                quantity = explicit_quantity
+            lines.append({'product_id': product.id, 'quantity': quantity})
+        return lines, context, explicit_quantity, explicit_unit
+
     def _execute_action(self, action):
         self.ensure_one()
         channel = self.channel_id
@@ -673,40 +764,10 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                         ('company_id', '=', self.company_id.id),
                     ], order='write_date desc, id desc', limit=1)
                 if not order:
-                    icp = self.env['ir.config_parameter'].sudo()
-                    product = self.env['product.product'].browse()
-                    product_raw = icp.get_param('chatroom_ai_agent.quote_product_id', '')
-                    try:
-                        product = self.env['product.product'].browse(int(product_raw)).exists() if product_raw else product
-                    except (TypeError, ValueError):
-                        product = self.env['product.product'].browse()
-                    # Si no hay producto fijo, usa el producto real que la
-                    # acción anterior encontró en el mensaje. Así una
-                    # petición como “cotízame el servicio X” no termina en
-                    # una cotización vacía ni en un producto inventado.
-                    if not product:
-                        search_action = self.action_ids.filtered(
-                            lambda line: line.key == 'search_catalog' and line.state == 'done')[-1:]
-                        if search_action and search_action.output_json:
-                            try:
-                                search_data = json.loads(search_action.output_json)
-                                match = (search_data.get('matches') or [])[0]
-                                product = self.env['product.product'].browse(
-                                    int(match.get('id'))).exists()
-                            except (TypeError, ValueError, AttributeError, IndexError):
-                                product = self.env['product.product'].browse()
-                    quantity_raw = icp.get_param('chatroom_ai_agent.quote_quantity', '1') or '1'
-                    try:
-                        quantity = max(float(quantity_raw), 0.01)
-                    except (TypeError, ValueError):
-                        quantity = 1.0
-                    if product:
-                        action_result = channel.action_create_quotation(
-                            product_id=product.id, product_qty=quantity)
+                    quote_lines, quote_context, explicit_quantity, explicit_unit = self._requested_quote_lines()
+                    if quote_lines:
+                        action_result = channel.action_create_quotation(product_lines=quote_lines)
                     else:
-                        # Compatibilidad con el botón y las instalaciones
-                        # que aún no parametrizaron un producto: deja una
-                        # cotización nativa vacía para completar manualmente.
                         action_result = channel.action_create_quotation()
                         result['configuration_note'] = _(
                             'Cotización creada sin producto. Configura un producto fijo o menciona un producto vendible del catálogo de Odoo.')
@@ -719,6 +780,18 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                         'order_id': order.id, 'order_name': order.name,
                         'state': order.state,
                         'product': order.order_line[:1].product_id.display_name if order.order_line else False,
+                        'lines': [{
+                            'product': line.product_id.display_name,
+                            'quantity': line.product_uom_qty,
+                            'unit_price': line.price_unit,
+                            'subtotal': line.price_subtotal,
+                            'currency': order.currency_id.name,
+                        } for line in order.order_line],
+                        'amount_untaxed': order.amount_untaxed,
+                        'amount_total': order.amount_total,
+                        'request_context': quote_context if 'quote_context' in locals() else False,
+                        'quantity_detected': explicit_quantity if 'explicit_quantity' in locals() else False,
+                        'quantity_unit': explicit_unit if 'explicit_unit' in locals() else False,
                     })
         elif action.key == 'send_quotation_pdf':
             if not channel or not hasattr(channel, 'action_send_sale_order_pdf'):

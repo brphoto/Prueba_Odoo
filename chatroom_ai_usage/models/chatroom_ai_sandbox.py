@@ -153,6 +153,90 @@ class ChatroomAiSandbox(models.Model):
             lambda line: line.speaker == 'customer').sorted('sequence')
         return (customer_lines[-1].body if customer_lines else self.draft_message or '').strip()
 
+    def _quote_context(self, request=False):
+        """Return the complete commercial context used by the quote test."""
+        self.ensure_one()
+        parts = []
+        for line in self.conversation_line_ids.sorted('sequence'):
+            if line.body:
+                parts.append('%s: %s' % (
+                    'Cliente' if line.speaker == 'customer' else 'IA', line.body))
+        if request and request not in '\n'.join(parts):
+            parts.append('Cliente: %s' % request)
+        return '\n'.join(parts).strip()
+
+    @staticmethod
+    def _quantity_from_text(text):
+        """Extract an explicit commercial quantity without reading dates/prices."""
+        patterns = (
+            (r'(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:horas?|hrs?|h)\b', 'hours'),
+            (r'(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:unidades?|uds?\.?|u)\b', 'units'),
+            (r'\bx\s*(\d+(?:[.,]\d+)?)\b', 'units'),
+        )
+        for pattern, unit in patterns:
+            match = re.search(pattern, text or '', re.IGNORECASE | re.UNICODE)
+            if match:
+                try:
+                    value = float(match.group(1).replace(',', '.'))
+                except (TypeError, ValueError):
+                    continue
+                if value > 0:
+                    return value, unit
+        return False, False
+
+    def _quote_products(self, context):
+        """Find mentioned products, then use the configured fallback."""
+        if 'product.product' not in self.env:
+            return self.env['product.product']
+        products = self.env['product.product'].browse()
+        if self.channel_id and hasattr(self.channel_id, '_ai_search_products_mentioned'):
+            products = self.channel_id._ai_search_products_mentioned(context, limit=8)
+        # Generic words such as "cotización" must not select an arbitrary
+        # product. Keep candidates with a meaningful name/code match only.
+        if products:
+            ignored = {
+                'cotizacion', 'cotización', 'presupuesto', 'propuesta', 'pdf',
+                'necesito', 'quiero', 'por', 'favor', 'horas', 'hora',
+                'unidades', 'unidad', 'servicio', 'producto', 'productos',
+                'precio', 'cantidad', 'cliente', 'para', 'con', 'una', 'uno',
+            }
+            words = {
+                word.lower() for word in re.findall(r'\w{4,}', context or '', re.UNICODE)
+                if word.lower() not in ignored and not word.isdigit()
+            }
+            scored = []
+            for product in products:
+                searchable = ' '.join(filter(None, (
+                    product.name, product.default_code, product.description_sale))).lower()
+                score = sum(1 for word in words if word in searchable)
+                if score:
+                    scored.append((score, product))
+            products = self.env['product.product'].browse([
+                product.id for _score, product in sorted(
+                    scored, key=lambda item: (-item[0], item[1].id))
+            ])
+        return products or self._test_quote_product()
+
+    def _quote_lines_from_context(self, request=False):
+        """Build quote lines from the transcript and live Odoo products."""
+        self.ensure_one()
+        context = self._quote_context(request) or request or ''
+        products = self._quote_products(context)
+        configured_quantity = self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_ai_agent.quote_quantity', '1') or '1'
+        try:
+            default_quantity = max(float(configured_quantity), 0.01)
+        except (TypeError, ValueError):
+            default_quantity = 1.0
+        explicit_quantity, explicit_unit = self._quantity_from_text(context)
+        lines = []
+        for product in products[:8]:
+            quantity = default_quantity
+            if explicit_quantity and (explicit_unit == 'hours' or product.type != 'service'):
+                quantity = explicit_quantity
+            lines.append((product, quantity))
+        return lines, context, explicit_quantity, explicit_unit
+
     def _test_quote_product(self):
         """Return the configured product used by supervised quote tests.
 
@@ -187,16 +271,23 @@ class ChatroomAiSandbox(models.Model):
         if not self.channel_id or not self.channel_id.partner_id:
             raise UserError(_(
                 'Vincula una conversación con un contacto antes de generar el PDF de prueba.'))
-        product = self._test_quote_product()
-        order = self.env['sale.order'].create({
+        quote_lines, quote_context, explicit_quantity, explicit_unit = self._quote_lines_from_context(request)
+        if not quote_lines:
+            raise UserError(_('No se encontró ningún producto vendible para la cotización.'))
+        order_line = [(0, 0, {
+            'product_id': product.id,
+            'product_uom_qty': quantity,
+        }) for product, quantity in quote_lines]
+        request_ref = re.sub(r'\s+', ' ', quote_context or request or '').strip()[:180]
+        order_values = {
             'partner_id': self.channel_id.partner_id.id,
             'origin': _('Laboratorio IA: %s') % self.name,
             'client_order_ref': _('Prueba supervisada; no enviar automáticamente'),
-            'order_line': [(0, 0, {
-                'product_id': product.id,
-                'product_uom_qty': 1.0,
-            })],
-        })
+            'order_line': order_line,
+        }
+        if 'note' in self.env['sale.order']._fields:
+            order_values['note'] = _('Solicitud del cliente (laboratorio IA):\n%s') % request_ref
+        order = self.env['sale.order'].create(order_values)
         report_xmlid = 'sale.action_report_saleorder'
         report = self.env.ref(report_xmlid, raise_if_not_found=False)
         if not report:
@@ -235,10 +326,20 @@ class ChatroomAiSandbox(models.Model):
             attachment_ids=[attachment.id],
             subtype_xmlid='mail.mt_note',
         )
+        line_summary = ', '.join(
+            '%s x %s (%.2f %s c/u)' % (
+                product.display_name, quantity, line.price_unit,
+                order.currency_id.symbol or order.currency_id.name)
+            for line, (product, quantity) in zip(order.order_line, quote_lines)
+        )
+        quantity_note = (
+            _(' Cantidad detectada: %s %s.') % (
+                explicit_quantity, 'hora(s)' if explicit_unit == 'hours' else 'unidad(es)')
+            if explicit_quantity else '')
         note = _(
-            'Cotización %s creada en borrador con el producto «%s». PDF adjunto al presupuesto y a esta prueba. '
+            'Cotización %s creada en borrador con estas líneas: %s.%s PDF adjunto al presupuesto y a esta prueba. '
             'No se confirmó ni se envió ningún mensaje.'
-        ) % (order.name, product.display_name)
+        ) % (order.name, line_summary, quantity_note)
         self.write({
             'test_quote_id': order.id,
             'test_chat_message_id': simulated_message.id,
@@ -421,24 +522,43 @@ class ChatroomAiSandbox(models.Model):
         return normalized
 
     def _local_commercial_context(self, question):
-        """Return live product price plus the upper bound of knowledge ranges."""
+        """Return live quote lines and the upper bound of knowledge ranges."""
         self.ensure_one()
         lines = []
         normalized_question = (question or '').lower()
         is_quote_request = any(word in normalized_question for word in (
             'cotización', 'cotizacion', 'presupuesto', 'pdf'))
+        quote_context = ''
         if is_quote_request:
             try:
-                products = self._test_quote_product()
+                quote_lines, quote_context, _quantity, _unit = self._quote_lines_from_context(question)
             except UserError:
-                products = self.env['product.product']
+                quote_lines, quote_context = [], question or ''
+            for product, quantity in quote_lines:
+                facts = self.channel_id._ai_product_commercial_data(product, quantity=quantity)
+                currency = facts['currency']
+                amount = facts['price'] * quantity
+                lines.append(_(
+                    'Línea solicitada: %(product)s | cantidad %(quantity)s | '
+                    'precio unitario vigente de Odoo %(price).2f %(currency)s | '
+                    'importe %(amount).2f %(currency)s (%(stock)s).'
+                ) % {
+                    'product': product.display_name,
+                    'quantity': quantity,
+                    'price': facts['price'],
+                    'currency': currency.symbol or currency.name,
+                    'amount': amount,
+                    'stock': facts['stock_label'],
+                })
+            products = self.env['product.product'].browse([
+                product.id for product, _quantity in quote_lines])
         elif self.channel_id and hasattr(self.channel_id, '_ai_search_products_mentioned'):
             products = self.channel_id._ai_search_products_mentioned(question, limit=5)
         else:
             products = self.env['product.product']
         if not products and self.channel_id and hasattr(self.channel_id, '_ai_search_products_mentioned'):
             products = self.channel_id._ai_search_products_mentioned(question, limit=5)
-        if products:
+        if not is_quote_request and products:
             for product in products:
                 facts = self.channel_id._ai_product_commercial_data(product)
                 currency = facts['currency']
@@ -450,6 +570,9 @@ class ChatroomAiSandbox(models.Model):
                     'currency': currency.symbol or currency.name,
                     'stock': facts['stock_label'],
                 })
+        if is_quote_request and quote_context:
+            lines.append(_('Contexto usado para preparar la cotización: %s') % re.sub(
+                r'\s+', ' ', quote_context).strip()[:500])
         if 'ai.knowledge.base' in self.env:
             details = self.env['ai.knowledge.base'].sudo().get_sales_context_details(
                 channel=self.channel_id, query=question, company=self.env.company)

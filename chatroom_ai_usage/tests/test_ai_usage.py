@@ -142,6 +142,46 @@ class TestChatroomAiUsage(TransactionCase):
         self.assertEqual(sandbox.test_chat_message_id.attachment_ids, attachment)
         self.assertIn('No se confirmó', sandbox.operational_result)
 
+    def test_sandbox_quote_uses_full_transcript_hours_product_and_native_price(self):
+        _partner, channel = self._create_sandbox_channel('sandbox-context-quote-001')
+        fallback = self.env['product.product'].create({
+            'name': 'Producto fijo genérico', 'type': 'service',
+            'sale_ok': True, 'list_price': 1.0,
+        })
+        requested = self.env['product.product'].create({
+            'name': 'Implementación Odoo personalizada', 'type': 'service',
+            'sale_ok': True, 'list_price': 20.0,
+        })
+        self.env['ir.config_parameter'].sudo().set_param(
+            'chatroom_ai_agent.quote_product_id', str(fallback.id))
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Prueba contexto completo de cotización', 'channel_id': channel.id,
+            'execution_mode': 'local', 'prompt': 'Responde en español.',
+        })
+        self.env['chatroom.ai.sandbox.message'].create([
+            {'sandbox_id': sandbox.id, 'sequence': 10, 'speaker': 'customer',
+             'body': 'Necesito implementar Odoo con personalización.'},
+            {'sandbox_id': sandbox.id, 'sequence': 20, 'speaker': 'assistant',
+             'body': 'La estimación inicial es de 3 horas de trabajo.'},
+            {'sandbox_id': sandbox.id, 'sequence': 30, 'speaker': 'customer',
+             'body': 'Perfecto, cotízame esas 3 horas en PDF.'},
+        ])
+        with patch.object(
+            type(self.env['ir.actions.report']), '_render_qweb_pdf',
+            return_value=(b'%PDF-1.4 contexto completo', 'pdf'),
+        ):
+            sandbox.action_generate_test_quote_pdf()
+        order = sandbox.test_quote_id
+        self.assertEqual(order.order_line.product_id, requested)
+        self.assertEqual(order.order_line.product_uom_qty, 3.0)
+        self.assertEqual(order.order_line.price_unit, 20.0)
+        self.assertEqual(order.amount_untaxed, 60.0)
+        self.assertIn('3 horas', order.note)
+        self.assertIn('cantidad detectada: 3', sandbox.operational_result.lower())
+        assistant = sandbox.test_chat_message_id
+        self.assertIn('cantidad 3', assistant.body)
+        self.assertIn('importe 60.00', assistant.body)
+
     def test_sandbox_creates_native_internal_activity_on_channel(self):
         partner, channel = self._create_sandbox_channel('sandbox-activity-001')
         sandbox = self.env['chatroom.ai.sandbox'].create({

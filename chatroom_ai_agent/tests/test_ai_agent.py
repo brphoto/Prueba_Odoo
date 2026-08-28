@@ -252,6 +252,45 @@ class TestChatroomAiAgent(TransactionCase):
         self.assertEqual(order.order_line.product_id, product)
         self.assertEqual(order.origin, channel.display_name)
 
+    def test_quote_uses_transcript_quantity_and_mentioned_product_over_fallback(self):
+        partner = self.env['res.partner'].create({'name': 'Cliente cotización contextual'})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'ai-context-quote-001',
+            'partner_id': partner.id,
+        })
+        fallback = self.env['product.product'].create({
+            'name': 'Producto fijo genérico IA', 'list_price': 1.0,
+            'sale_ok': True, 'type': 'service',
+        })
+        requested = self.env['product.product'].create({
+            'name': 'Servicio implementación Odoo avanzada', 'list_price': 20.0,
+            'sale_ok': True, 'type': 'service',
+        })
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_ai_agent.quote_product_id', str(fallback.id))
+        icp.set_param('chatroom_ai_agent.quote_quantity', '1')
+        self.env['chatroom.message'].create([
+            {'channel_id': channel.id, 'direction': 'inbound', 'message_type': 'text',
+             'body': 'Quiero contratar el Servicio implementación Odoo avanzada.'},
+            {'channel_id': channel.id, 'direction': 'outbound', 'message_type': 'text',
+             'body': 'La estimación inicial es de 3 horas de trabajo.'},
+            {'channel_id': channel.id, 'direction': 'inbound', 'message_type': 'text',
+             'body': 'Perfecto, cotízame esas 3 horas y envíame el PDF.'},
+        ])
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            channel, task_type='orchestrate', prompt='Prepara la cotización completa.')
+        task.action_plan()
+        action = task.action_ids.filtered(lambda line: line.key == 'create_quotation')
+        result = task._execute_action(action)
+        order = self.env['sale.order'].browse(result['order_id'])
+        self.assertEqual(order.order_line.product_id, requested)
+        self.assertEqual(order.order_line.product_uom_qty, 3.0)
+        self.assertEqual(order.order_line.price_unit, 20.0)
+        self.assertEqual(order.amount_untaxed, 60.0)
+        self.assertEqual(result['lines'][0]['quantity'], 3.0)
+        self.assertEqual(result['lines'][0]['unit_price'], 20.0)
+        self.assertIn('Cotización %s creada con' % order.name, task._build_result_preview([result]))
+
     def test_inbound_commercial_router_is_independent_from_periodic_automations(self):
         icp = self.env['ir.config_parameter'].sudo()
         icp.set_param('chatroom_ai_agent.event_orchestration', 'False')

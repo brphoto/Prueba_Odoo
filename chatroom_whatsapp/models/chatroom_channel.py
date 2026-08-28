@@ -2805,12 +2805,14 @@ class ChatroomChannel(models.Model):
         return self._window_action(
             res_model='crm.lead', res_id=self.pinned_lead_id, view_mode='form')
 
-    def action_create_quotation(self, product_id=False, product_qty=1.0):
+    def action_create_quotation(self, product_id=False, product_qty=1.0, product_lines=False):
         """Crea una cotización nativa, opcionalmente con un producto.
 
         El botón manual sigue creando un presupuesto vacío para que el
         vendedor lo complete. El agente IA puede pasar un producto de
         servicio configurado y así deja un documento cotizable de verdad.
+        ``product_lines`` permite que el agente materialice varios productos
+        pedidos en la conversación sin perder cantidades ni precios nativos.
         """
         self.ensure_one()
         if not self.sale_installed:
@@ -2821,7 +2823,24 @@ class ChatroomChannel(models.Model):
             'partner_id': self.partner_id.id,
             'origin': self.display_name,
         }
-        if product_id:
+        requested_lines = []
+        if product_lines:
+            if not isinstance(product_lines, (list, tuple)):
+                raise UserError(_("Las líneas de la cotización no tienen un formato válido."))
+            for line in product_lines:
+                if not isinstance(line, dict):
+                    continue
+                product = self.env['product.product'].browse(int(line.get('product_id', 0))).exists()
+                if not product or not product.sale_ok:
+                    raise UserError(_("Uno de los productos solicitados no está disponible para la venta."))
+                try:
+                    quantity = float(line.get('quantity') or 1.0)
+                except (TypeError, ValueError):
+                    quantity = 1.0
+                if quantity <= 0:
+                    raise UserError(_("La cantidad de la cotización debe ser mayor que cero."))
+                requested_lines.append((product, quantity))
+        elif product_id:
             product = self.env['product.product'].browse(int(product_id)).exists()
             if not product or not product.sale_ok:
                 raise UserError(_("El producto configurado no está disponible para la venta."))
@@ -2831,10 +2850,12 @@ class ChatroomChannel(models.Model):
                 quantity = 1.0
             if quantity <= 0:
                 raise UserError(_("La cantidad de la cotización debe ser mayor que cero."))
+            requested_lines.append((product, quantity))
+        if requested_lines:
             order_vals['order_line'] = [(0, 0, {
                 'product_id': product.id,
                 'product_uom_qty': quantity,
-            })]
+            }) for product, quantity in requested_lines]
         order = self.env['sale.order'].create(order_vals)
         return self._window_action(
             res_model='sale.order', res_id=order.id, view_mode='form')
