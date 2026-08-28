@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from unittest.mock import patch
+
 from odoo.tests import TransactionCase, tagged
 
 
@@ -49,8 +51,21 @@ class TestChatroomAiKnowledge(TransactionCase):
             'source_text': 'Somos implementadores de Odoo. Tarifa: USD 20 por hora.',
         })
         manual.action_index()
-        manual.action_analyze_with_ai()
+        with patch.object(type(manual), '_analysis_channel', return_value=False):
+            manual.action_analyze_with_ai()
         self.assertIn(manual.analysis_state, ('needs_review', 'error'))
         self.assertTrue(manual.analysis_summary)
         self.assertIn(manual.analysis_source, ('local', 'provider', 'local_fallback'))
         self.assertEqual(manual.analysis_input_tokens, 0)
+
+    def test_knowledge_answer_can_be_approved_or_corrected(self):
+        wizard = self.env['chatroom.ai.knowledge.test'].create({
+            'question': '¿Qué información puede utilizar la IA?',
+            'answer': 'Respuesta de prueba',
+        })
+        wizard.action_approve_answer()
+        self.assertEqual(wizard.answer_review_state, 'approved')
+        wizard.answer_correction = 'Respuesta corregida y aprobada por el usuario.'
+        wizard.action_save_correction()
+        self.assertEqual(wizard.answer_review_state, 'corrected')
+        self.assertEqual(wizard.answer, wizard.answer_correction)

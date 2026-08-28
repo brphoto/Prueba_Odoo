@@ -31,7 +31,7 @@
                         <field name="pdf_filename" invisible="1"/>
                     </div>
                     <div class="o_chatroom_ai_knowledge_live_card" role="status">
-                        <div class="o_chatroom_ai_knowledge_live_icon"><i class="fa fa-database" aria-hidden="true"/></div>
+                        <div class="o_chatroom_ai_knowledge_live_icon"><i class="fa fa-database" aria-hidden="true" title="Catálogo conectado"/></div>
                         <div>
                             <strong>Catálogo de Odoo conectado</strong>
                             <p>La IA consulta en tiempo real tus productos y servicios activos, precios y disponibilidad. No necesitas copiar el catálogo ni cargar un PDF.</p>

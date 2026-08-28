@@ -87,6 +87,14 @@ class ChatroomAiSandbox(models.Model):
     test_activity_deadline = fields.Date(
         string='Fecha límite de la actividad', default=fields.Date.context_today,
         help='Fecha límite que tendrá la actividad nativa creada en Odoo.')
+    test_meeting_id = fields.Integer(
+        string='ID de reunión nativa', readonly=True, copy=False,
+        help='Identificador técnico del evento creado en el Calendario nativo.')
+    test_meeting_name = fields.Char(
+        string='Reunión creada', readonly=True, copy=False)
+    test_meeting_link = fields.Char(
+        string='Enlace de videollamada', readonly=True, copy=False,
+        help='Enlace nativo de Odoo generado para la reunión de prueba.')
     operational_result = fields.Text(
         string='Resultado operativo de la prueba', readonly=True, copy=False,
         help='Traza de documentos y actividades creados en Odoo. No implica envío a WhatsApp.')
@@ -291,6 +299,33 @@ class ChatroomAiSandbox(models.Model):
         """Button for an explicit native mail.activity test."""
         self.ensure_one()
         self._create_test_activity(self._last_customer_request())
+        return {
+            'type': 'ir.actions.act_window', 'name': _('Prueba IA'),
+            'res_model': self._name, 'res_id': self.id,
+            'view_mode': 'form', 'target': 'current',
+        }
+
+    def action_create_test_meeting(self):
+        """Create a native Odoo Calendar meeting without external delivery."""
+        self.ensure_one()
+        channel = self.channel_id
+        if not channel or not channel.partner_id:
+            raise UserError(_('Vincula una conversación con un contacto antes de crear la reunión.'))
+        if not hasattr(channel, 'action_create_meeting'):
+            raise UserError(_(
+                'Instala el módulo Chatroom - Calendario para usar la agenda nativa y la videollamada de Odoo.'))
+        meeting = channel.action_create_meeting(request=self._last_customer_request())
+        note = _(
+            'Reunión nativa creada en Calendario para %s. Enlace generado: %s. '
+            'La prueba no envió ningún mensaje externo.'
+        ) % (channel.partner_id.display_name, meeting.get('link'))
+        self.write({
+            'test_meeting_id': meeting.get('event_id') or 0,
+            'test_meeting_name': meeting.get('name') or False,
+            'test_meeting_link': meeting.get('link') or False,
+            'operational_result': '%s\n%s' % ((self.operational_result or '').strip(), note),
+        })
+        self.message_post(body=note, subtype_xmlid='mail.mt_note')
         return {
             'type': 'ir.actions.act_window', 'name': _('Prueba IA'),
             'res_model': self._name, 'res_id': self.id,

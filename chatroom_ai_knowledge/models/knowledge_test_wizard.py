@@ -27,6 +27,14 @@ class ChatroomAiKnowledgeTest(models.TransientModel):
     answer_model = fields.Char(string='Modelo utilizado', readonly=True)
     estimated_output_tokens = fields.Integer(string='Tokens de salida estimados', readonly=True)
     answer_error = fields.Text(string='Incidencia', readonly=True)
+    answer_review_state = fields.Selection([
+        ('pending', 'Pendiente de revisión'),
+        ('approved', 'Aprobada'),
+        ('corrected', 'Corregida por usuario'),
+    ], string='Revisión humana', default='pending', readonly=True)
+    answer_correction = fields.Text(
+        string='Corrección de la respuesta',
+        help='Opcional: escribe la versión final y pulsa Guardar corrección.')
     estimated_input_tokens = fields.Integer(string='Tokens de entrada estimados', readonly=True)
     context_chars = fields.Integer(string='Caracteres de contexto', readonly=True)
 
@@ -50,6 +58,8 @@ class ChatroomAiKnowledgeTest(models.TransientModel):
             'live_summary': '\n'.join('- %s' % item for item in live_lines) or _('No se consultaron datos vivos.'),
             'estimated_input_tokens': details.get('estimated_input_tokens', 0),
             'context_chars': details.get('context_chars', 0),
+            'answer_review_state': 'pending',
+            'answer_correction': False,
         })
         return {
             'type': 'ir.actions.act_window',
@@ -63,7 +73,7 @@ class ChatroomAiKnowledgeTest(models.TransientModel):
     def _provider_channel(self):
         """Get a real channel only as a provider adapter, never to send."""
         channel_model = self.env['chatroom.channel'] if 'chatroom.channel' in self.env else False
-        if not channel_model:
+        if channel_model is False:
             return False
         company = self.env.company
         return channel_model.search([('company_id', '=', company.id)],
@@ -134,6 +144,26 @@ class ChatroomAiKnowledgeTest(models.TransientModel):
                 'answer_model': False, 'estimated_output_tokens': 0,
                 'answer_error': str(error),
             })
+        return self._reopen()
+
+    def action_approve_answer(self):
+        self.ensure_one()
+        if not (self.answer or '').strip():
+            raise UserError(_('Primero consulta la base de conocimiento para obtener una respuesta.'))
+        self.write({'answer_review_state': 'approved'})
+        return self._reopen()
+
+    def action_save_correction(self):
+        self.ensure_one()
+        correction = (self.answer_correction or '').strip()
+        if not correction:
+            raise UserError(_('Escribe una corrección antes de guardarla.'))
+        self.write({
+            'answer': correction,
+            'answer_review_state': 'corrected',
+            'answer_error': False,
+            'estimated_output_tokens': max(1, (len(correction) + 3) // 4),
+        })
         return self._reopen()
 
     def _reopen(self):

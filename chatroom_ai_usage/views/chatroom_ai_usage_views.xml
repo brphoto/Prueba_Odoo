@@ -363,6 +363,7 @@
                     <button name="action_send_test_message" type="object" string="Enviar mensaje de prueba" class="oe_highlight" icon="fa-comment"/>
                     <button name="action_generate_test_quote_pdf" type="object" string="Generar cotización + PDF" class="btn-secondary" icon="fa-file-pdf-o"/>
                     <button name="action_create_test_activity" type="object" string="Crear actividad Odoo" class="btn-secondary" icon="fa-check-square-o"/>
+                    <button name="action_create_test_meeting" type="object" string="Crear reunión Odoo" class="btn-secondary" icon="fa-calendar"/>
                     <button name="action_prepare_operational_task" type="object" string="Preparar acción comercial" class="btn-secondary" icon="fa-cogs" invisible="message_count == 0"/>
                     <button name="action_simulate_delivery" type="object" string="Simular entrega" class="btn-secondary" icon="fa-paper-plane" invisible="state != 'done'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,done,error"/>
@@ -434,6 +435,9 @@
                                 <field name="test_quote_id" string="Cotización creada" readonly="1"/>
                                 <field name="test_chat_message_id" string="Mensaje en Chatroom" readonly="1"/>
                                 <field name="test_activity_ids" string="Actividades creadas" readonly="1" widget="many2many_tags"/>
+                                <field name="test_meeting_name" string="Reunión en Calendario" readonly="1"/>
+                                <field name="test_meeting_link" string="Videollamada nativa" readonly="1" widget="url"/>
+                                <field name="test_meeting_id" string="ID evento" readonly="1"/>
                             </group>
                             <group string="Configuración de la actividad nativa" col="3">
                                 <field name="test_activity_type_id"/>

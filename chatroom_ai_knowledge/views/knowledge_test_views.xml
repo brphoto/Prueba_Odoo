@@ -8,6 +8,8 @@
                 <header>
                     <button name="action_preview" type="object" string="Consultar base local" class="btn-primary"/>
                     <button name="action_ask_ai" type="object" string="Preguntar a IA (no enviar)" class="btn-secondary" icon="fa-comments-o"/>
+                    <button name="action_approve_answer" type="object" string="Aprobar respuesta" class="btn-secondary" icon="fa-check" invisible="not answer"/>
+                    <button name="action_save_correction" type="object" string="Guardar corrección" class="btn-secondary" icon="fa-pencil" invisible="not answer_correction"/>
                 </header>
                 <sheet>
                     <div class="o_chatroom_ai_knowledge_test_intro" role="status">
@@ -29,7 +31,9 @@
                         <field name="answer_source"/>
                         <field name="answer_model"/>
                         <field name="answer_confidence" widget="percentage"/>
+                        <field name="answer_review_state" widget="badge"/>
                         <field name="answer_error" nolabel="1" colspan="2" readonly="1"/>
+                        <field name="answer_correction" nolabel="1" colspan="2" placeholder="Si deseas corregirla, escribe aquí la versión final y pulsa Guardar corrección."/>
                     </group>
                     <group string="Fuentes encontradas" class="o_chatroom_ai_knowledge_sources" col="1">
                         <field name="source_summary" nolabel="1" readonly="1"/>

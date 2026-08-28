@@ -27,7 +27,7 @@
             <xpath expr="//field[@name='content_text']" position="before">
                 <notebook class="o_chatroom_ai_knowledge_brain">
                     <page string="Cerebro IA" name="brain">
-                        <div class="alert alert-info o_chatroom_ai_knowledge_brain_hint" role="status">
+                        <div class="alert alert-info o_chatroom_ai_knowledge_brain_hint" role="alert">
                             La fuente original permanece en Odoo. El análisis organiza el contenido para revisión humana; publicar es una decisión independiente y solo el contenido publicado se usa en respuestas.
                         </div>
                         <group col="2">

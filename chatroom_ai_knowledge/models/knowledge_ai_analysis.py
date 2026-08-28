@@ -14,6 +14,7 @@ class AiKnowledgeBaseAnalysis(models.Model):
     analysis. Published content is still the only content retrieved by agents.
     """
 
+    _name = 'ai.knowledge.base'
     _inherit = ['ai.knowledge.base', 'mail.thread', 'mail.activity.mixin']
 
     analysis_state = fields.Selection([
@@ -39,9 +40,30 @@ class AiKnowledgeBaseAnalysis(models.Model):
     analysis_at = fields.Datetime(string='Analizado el', readonly=True, copy=False)
     analysis_error = fields.Text(string='Detalle del análisis', readonly=True, copy=False)
 
+    def write(self, vals):
+        source_changed = bool({'source_type', 'source_text', 'pdf_file', 'pdf_filename'} & set(vals))
+        result = super().write(vals)
+        if source_changed and not self.env.context.get('skip_ai_analysis_reset'):
+            self.with_context(skip_ai_analysis_reset=True).write({
+                'analysis_state': 'not_requested',
+                'analysis_source': False,
+                'analysis_summary': False,
+                'analysis_topics': False,
+                'analysis_faq': False,
+                'analysis_rules': False,
+                'analysis_unknowns': False,
+                'analysis_confidence': 0.0,
+                'analysis_model': False,
+                'analysis_input_tokens': 0,
+                'analysis_output_tokens': 0,
+                'analysis_at': False,
+                'analysis_error': False,
+            })
+        return result
+
     def _analysis_channel(self):
         channel_model = self.env['chatroom.channel'] if 'chatroom.channel' in self.env else False
-        if not channel_model:
+        if channel_model is False:
             return False
         return channel_model.search([
             ('company_id', '=', (self.company_id or self.env.company).id),
