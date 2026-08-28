@@ -26,4 +26,8 @@ class SurveyUserInput(models.Model):
                     'survey_user_input_id': user_input.id, 'source': 'survey',
                 })
                 user_input.nps_response_id = response.id
+                campaign_lines = self.env['crm.nps.campaign.recipient'].search([
+                    ('survey_user_input_id', '=', user_input.id),
+                ])
+                campaign_lines.write({'response_id': response.id})
         return result

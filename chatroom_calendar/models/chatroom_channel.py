@@ -9,7 +9,7 @@ class ChatroomChannel(models.Model):
     meeting_count = fields.Integer(compute='_compute_meeting_data')
     next_meeting_date = fields.Datetime(compute='_compute_meeting_data')
 
-    def action_create_meeting(self):
+    def action_create_meeting(self, start=False, stop=False, request=False):
         """Crea una reunión nativa y devuelve su enlace sin enviarlo.
 
         Separar la creación del envío permite que el agente IA conserve el
@@ -21,20 +21,52 @@ class ChatroomChannel(models.Model):
         if not self.partner_id:
             raise UserError(_("Esta conversación no tiene un contacto asociado."))
         now = fields.Datetime.now()
+        start = fields.Datetime.to_datetime(start) if start else fields.Datetime.add(now, hours=1)
+        stop = fields.Datetime.to_datetime(stop) if stop else fields.Datetime.add(start, hours=1)
         event = self.env['calendar.event'].create({
             'name': _("Reunión con %s") % self.partner_id.name,
-            'start': fields.Datetime.add(now, hours=1),
-            'stop': fields.Datetime.add(now, hours=2),
+            'start': start,
+            'stop': stop,
             'partner_ids': [(6, 0, (self.partner_id | self.assigned_user_id.partner_id).ids)],
             'user_id': self.assigned_user_id.id or self.env.user.id,
-            'description': self.ai_summary or '',
+            'description': '\n\n'.join(filter(None, [
+                self.ai_summary or '',
+                request and _("Solicitud original: %s") % request or '',
+            ])),
         })
         if not event.videocall_location:
             event._set_discuss_videocall_location()
         link = event.videocall_location
         if not link:
             raise UserError(_("No se pudo obtener el enlace de videollamada."))
-        return {'event_id': event.id, 'link': link, 'name': event.name}
+
+        # Una reunión de calendario y una actividad son objetos nativos
+        # distintos en Odoo. Creamos ambos para que aparezca en Calendario y
+        # también en Actividades/Chatter de la conversación.
+        activity = self.env['mail.activity'].browse()
+        activity_type = self.env.ref(
+            'mail.mail_activity_data_meeting', raise_if_not_found=False)
+        channel_model = self.env['ir.model']._get(self._name)
+        if activity_type and channel_model:
+            activity = self.env['mail.activity'].create({
+                'activity_type_id': activity_type.id,
+                'res_model_id': channel_model.id,
+                'res_id': self.id,
+                'user_id': event.user_id.id or self.env.user.id,
+                'date_deadline': fields.Datetime.to_datetime(event.start).date(),
+                'summary': event.name,
+                'note': _(
+                    'Reunión creada en el Calendario nativo de Odoo. Enlace: %s'
+                ) % link,
+            })
+        return {
+            'event_id': event.id,
+            'activity_id': activity.id or False,
+            'link': link,
+            'name': event.name,
+            'start': fields.Datetime.to_string(event.start),
+            'stop': fields.Datetime.to_string(event.stop),
+        }
 
     def action_create_meet_and_send(self):
         """Crea el evento y envía el enlace generado al hilo.

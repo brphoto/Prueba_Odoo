@@ -5,3 +5,12 @@ access_crm_nps_invitation_user,Invitación NPS - analista,model_crm_nps_invitati
 access_crm_nps_invitation_manager,Invitación NPS - administrador,model_crm_nps_invitation,crm_customer_intelligence.group_crm_intelligence_manager,1,1,1,1
 access_crm_experience_snapshot_user,Resumen NPS LTV - analista,model_crm_experience_snapshot,crm_customer_intelligence.group_crm_intelligence_user,1,0,0,0
 access_crm_experience_snapshot_manager,Resumen NPS LTV - administrador,model_crm_experience_snapshot,crm_customer_intelligence.group_crm_intelligence_manager,1,1,1,1
+access_crm_nps_response_system,Respuesta NPS - administrador de Odoo,model_crm_nps_response,base.group_system,1,1,1,1
+access_crm_nps_invitation_system,Invitación NPS - administrador de Odoo,model_crm_nps_invitation,base.group_system,1,1,1,1
+access_crm_experience_snapshot_system,Resumen NPS LTV - administrador de Odoo,model_crm_experience_snapshot,base.group_system,1,1,1,1
+access_crm_nps_campaign_user,CampaÃ±a NPS - analista,model_crm_nps_campaign,crm_customer_intelligence.group_crm_intelligence_user,1,1,1,0
+access_crm_nps_campaign_manager,CampaÃ±a NPS - administrador,model_crm_nps_campaign,crm_customer_intelligence.group_crm_intelligence_manager,1,1,1,1
+access_crm_nps_campaign_recipient_user,Destinatario de campaÃ±a NPS - analista,model_crm_nps_campaign_recipient,crm_customer_intelligence.group_crm_intelligence_user,1,1,1,0
+access_crm_nps_campaign_recipient_manager,Destinatario de campaÃ±a NPS - administrador,model_crm_nps_campaign_recipient,crm_customer_intelligence.group_crm_intelligence_manager,1,1,1,1
+access_crm_nps_campaign_system,CampaÃ±a NPS - administrador de Odoo,model_crm_nps_campaign,base.group_system,1,1,1,1
+access_crm_nps_campaign_recipient_system,Destinatario de campaÃ±a NPS - administrador de Odoo,model_crm_nps_campaign_recipient,base.group_system,1,1,1,1

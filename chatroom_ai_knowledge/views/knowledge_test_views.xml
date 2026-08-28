@@ -4,25 +4,29 @@
         <field name="name">chatroom.ai.knowledge.test.form</field>
         <field name="model">chatroom.ai.knowledge.test</field>
         <field name="arch" type="xml">
-            <form string="Probar conocimiento IA">
+            <form string="Probar conocimiento IA" class="o_chatroom_ai_knowledge_test_form">
                 <header>
                     <button name="action_preview" type="object" string="Consultar base local" class="btn-primary"/>
                 </header>
                 <sheet>
-                    <group>
+                    <div class="o_chatroom_ai_knowledge_test_intro" role="status">
+                        <i class="fa fa-search" aria-hidden="true"/>
+                        <span>Escribe una pregunta comercial. La prueba combina manuales publicados con datos vivos de Odoo, sin enviar mensajes al cliente.</span>
+                    </div>
+                    <group class="o_chatroom_ai_knowledge_test_filters" col="2">
                         <field name="question" placeholder="Ej.: ¿Cuál es la garantía del producto?"/>
                         <field name="channel_id"/>
                         <field name="partner_id"/>
                     </group>
-                    <group string="Medición de contexto">
+                    <group string="Medición de contexto" class="o_chatroom_ai_knowledge_metrics" col="2">
                         <field name="estimated_input_tokens"/>
                         <field name="context_chars"/>
                     </group>
-                    <group string="Fuentes encontradas">
+                    <group string="Fuentes encontradas" class="o_chatroom_ai_knowledge_sources" col="1">
                         <field name="source_summary" nolabel="1" readonly="1"/>
                         <field name="live_summary" nolabel="1" readonly="1"/>
                     </group>
-                    <group string="Vista previa que recibiría la IA">
+                    <group string="Vista previa que recibiría la IA" class="o_chatroom_ai_knowledge_preview" col="1">
                         <field name="context_preview" nolabel="1" readonly="1"/>
                     </group>
                 </sheet>

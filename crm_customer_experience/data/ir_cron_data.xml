@@ -18,4 +18,13 @@
         <field name="interval_type">days</field>
         <field name="nextcall" eval="(DateTime.now() + relativedelta(days=1)).strftime('%Y-%m-%d 03:00:00')"/>
     </record>
+    <record id="ir_cron_customer_experience_campaigns" model="ir.cron">
+        <field name="name">Experiencia: procesar campaÃ±as NPS</field>
+        <field name="model_id" ref="model_crm_nps_campaign"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_process_campaigns()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="nextcall" eval="(DateTime.now() + relativedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S')"/>
+    </record>
 </odoo>

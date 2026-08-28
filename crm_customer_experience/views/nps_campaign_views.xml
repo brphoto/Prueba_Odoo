@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_nps_campaign_list" model="ir.ui.view">
+        <field name="name">crm.nps.campaign.list</field>
+        <field name="model">crm.nps.campaign</field>
+        <field name="arch" type="xml">
+            <list string="CampaÃ±as NPS" decoration-success="state == 'done'" decoration-danger="state == 'cancelled'">
+                <field name="name"/>
+                <field name="survey_id"/>
+                <field name="channel"/>
+                <field name="audience_count"/>
+                <field name="recipient_count"/>
+                <field name="sent_count"/>
+                <field name="failed_count"/>
+                <field name="state" widget="badge"/>
+                <field name="queued_date" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_crm_nps_campaign_form" model="ir.ui.view">
+        <field name="name">crm.nps.campaign.form</field>
+        <field name="model">crm.nps.campaign</field>
+        <field name="arch" type="xml">
+            <form string="CampaÃ±a NPS">
+                <header>
+                    <button name="action_preview_audience" type="object" string="Previsualizar audiencia" icon="fa-users" invisible="state != 'draft'"/>
+                    <button name="action_queue" type="object" string="Encolar campaÃ±a" class="btn-primary" icon="fa-paper-plane" invisible="state != 'draft'"/>
+                    <button name="action_process_now" type="object" string="Procesar ahora" class="btn-primary" icon="fa-play" invisible="state not in ('queued', 'processing')"/>
+                    <button name="action_cancel" type="object" string="Cancelar" icon="fa-times" invisible="state in ('done', 'cancelled')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,queued,processing,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" placeholder="Ej. NPS clientes categoría B"/></h1></div>
+                    <div class="alert alert-info" role="alert">
+                        Define la audiencia con el catálogo RFM. Cada destinatario recibe un enlace individual de la encuesta nativa de Odoo y queda trazado por canal.
+                    </div>
+                    <group>
+                        <group string="Audiencia RFM">
+                            <field name="survey_id"/>
+                            <field name="target_category_ids" widget="many2many_tags"/>
+                            <field name="target_segment_ids" widget="many2many_tags"/>
+                            <field name="exclude_answered_days"/>
+                            <field name="audience_count" readonly="1"/>
+                        </group>
+                        <group string="Envío">
+                            <field name="channel"/>
+                            <field name="batch_size"/>
+                            <field name="email_subject" invisible="channel not in ('email', 'both')"/>
+                            <field name="queued_date" readonly="1"/>
+                            <field name="completed_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Mensaje de correo" invisible="channel not in ('email', 'both')">
+                            <field name="email_body" widget="text" nolabel="1" placeholder="Escribe el mensaje…"/>
+                            <div class="text-muted mt-2">Variables disponibles: {{name}}, {{link}}, {{rfm_category}}, {{rfm_score}}.</div>
+                        </page>
+                        <page string="Destinatarios" invisible="not id">
+                            <field name="recipient_ids" readonly="state != 'draft'">
+                                <list decoration-success="state == 'sent'" decoration-danger="state == 'failed'">
+                                    <field name="partner_id"/>
+                                    <field name="survey_user_input_id" optional="hide"/>
+                                    <field name="response_id"/>
+                                    <field name="email_state"/>
+                                    <field name="whatsapp_state" optional="hide"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="survey_url" optional="hide"/>
+                                    <field name="error_message" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Resultado" invisible="not id">
+                            <group>
+                                <field name="recipient_count" readonly="1"/>
+                                <field name="pending_count" readonly="1"/>
+                                <field name="sent_count" readonly="1"/>
+                                <field name="failed_count" readonly="1"/>
+                                <field name="skipped_count" readonly="1"/>
+                                <field name="last_run" readonly="1"/>
+                                <field name="last_error" readonly="1" widget="text"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="view_crm_nps_campaign_search" model="ir.ui.view">
+        <field name="name">crm.nps.campaign.search</field>
+        <field name="model">crm.nps.campaign</field>
+        <field name="arch" type="xml">
+            <search string="Buscar campaÃ±as NPS">
+                <field name="name"/>
+                <field name="survey_id"/>
+                <field name="channel"/>
+                <field name="state"/>
+                <filter name="draft" string="Borradores" domain="[('state', '=', 'draft')]"/>
+                <filter name="active_queue" string="En cola" domain="[('state', 'in', ('queued', 'processing'))]"/>
+                <filter name="done" string="Completadas" domain="[('state', '=', 'done')]"/>
+                <separator/>
+                <filter name="group_state" string="Agrupar por estado" context="{'group_by': 'state'}"/>
+                <filter name="group_channel" string="Agrupar por canal" context="{'group_by': 'channel'}"/>
+            </search>
+        </field>
+    </record>
+    <record id="action_crm_nps_campaign" model="ir.actions.act_window">
+        <field name="name">CampaÃ±as NPS</field>
+        <field name="res_model">crm.nps.campaign</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_crm_nps_campaign_search"/>
+    </record>
+</odoo>

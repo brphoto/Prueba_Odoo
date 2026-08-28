@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_nps_campaign_form_whatsapp" model="ir.ui.view">
+        <field name="name">crm.nps.campaign.form.whatsapp</field>
+        <field name="model">crm.nps.campaign</field>
+        <field name="inherit_id" ref="crm_customer_experience.view_crm_nps_campaign_form"/>
+        <field name="arch" type="xml">
+            <field name="channel" position="after">
+                <field name="whatsapp_template_id" invisible="channel not in ('whatsapp', 'both')" required="channel in ('whatsapp', 'both')"/>
+            </field>
+            <field name="whatsapp_state" position="attributes">
+                <attribute name="optional">show</attribute>
+            </field>
+            <div class="text-muted mt-2" position="after">
+                <div class="text-muted" invisible="channel not in ('whatsapp', 'both')">La variable {{1}} de la plantilla recibe automáticamente el enlace personalizado. Fuera de las 24 horas Meta exige una plantilla aprobada.</div>
+            </div>
+        </field>
+    </record>
+</odoo>

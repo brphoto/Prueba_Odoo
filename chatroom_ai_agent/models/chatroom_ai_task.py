@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import json
 import re
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
+import pytz
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
@@ -398,7 +399,8 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                 lines.append(_('PDF de la cotización %s enviado por Chatroom.') % output.get('order_name', _('nativa')))
             elif output.get('meeting_name'):
                 sent = _('enlace enviado') if output.get('link_sent') else _('enlace preparado')
-                lines.append(_('Reunión %s creada; %s.') % (output['meeting_name'], sent))
+                activity = _(', actividad nativa creada') if output.get('activity_id') else ''
+                lines.append(_('Reunión %s creada; %s%s.') % (output['meeting_name'], sent, activity))
             elif output.get('order_name'):
                 lines.append(_('Cotización disponible: %s.') % output['order_name'])
             elif output.get('link_id'):
@@ -410,6 +412,71 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             else:
                 lines.append(_('Acción completada: %s.') % (output.get('action') or _('operación')))
         return '\n\n'.join(lines) or _('No se generó un resultado visible.')
+
+    def _requested_meeting_window(self):
+        """Interpretar una fecha/hora sencilla escrita por el cliente.
+
+        El agente no inventa una hora: si encuentra un día de la semana y
+        una hora, los convierte desde la zona horaria del usuario a UTC para
+        crear un ``calendar.event`` nativo. Si faltan datos, el método deja
+        que Calendario use el comportamiento seguro de una hora desde ahora.
+        """
+        self.ensure_one()
+        request_text = ' '.join([
+            self.prompt or '',
+            ' '.join((message.body or '') for message in self.channel_id.message_ids
+                     if message.body) if self.channel_id else '',
+        ]).lower()
+        time_match = re.search(
+            r'\b(?:a\s+las?|para\s+las?|a\s+la|para\s+la)\s+'
+            r'(\d{1,2})(?::(\d{2}))?\s*'
+            r'(a\.?\s*m\.?|p\.?\s*m\.?)?\b', request_text)
+        if not time_match:
+            time_match = re.search(
+                r'\b(\d{1,2})(?::(\d{2}))?\s*'
+                r'(a\.?\s*m\.?|p\.?\s*m\.?)\b', request_text)
+        if not time_match:
+            return False, False
+        hour = int(time_match.group(1))
+        minute = int(time_match.group(2) or 0)
+        meridiem = (time_match.group(3) or '').replace('.', '').replace(' ', '')
+        if meridiem == 'pm' and hour < 12:
+            hour += 12
+        elif meridiem == 'am' and hour == 12:
+            hour = 0
+        if hour > 23 or minute > 59:
+            return False, False
+
+        now_utc = fields.Datetime.now()
+        tz_name = self.env.user.tz or self.env.context.get('tz') or 'UTC'
+        try:
+            user_tz = pytz.timezone(tz_name)
+        except pytz.UnknownTimeZoneError:
+            user_tz = pytz.UTC
+        now_local = fields.Datetime.context_timestamp(self, now_utc)
+        requested_date = now_local.date()
+        if re.search(r'\b(ma[ñn]ana|pr[oó]ximo\s+d[ií]a)\b', request_text):
+            requested_date += timedelta(days=1)
+        else:
+            weekdays = {
+                'lunes': 0, 'martes': 1, 'miércoles': 2, 'miercoles': 2,
+                'jueves': 3, 'viernes': 4, 'sábado': 5, 'sabado': 5,
+                'domingo': 6,
+            }
+            weekday_match = re.search(
+                r'\b(' + '|'.join(weekdays) + r')\b', request_text)
+            if weekday_match:
+                days_ahead = (weekdays[weekday_match.group(1)] - now_local.weekday()) % 7
+                if days_ahead == 0 and 'hoy' not in request_text:
+                    days_ahead = 7
+                requested_date += timedelta(days=days_ahead)
+        local_start = datetime.combine(requested_date, time(hour, minute))
+        if local_start <= now_local.replace(tzinfo=None) and requested_date == now_local.date():
+            local_start += timedelta(days=1)
+        localized_start = user_tz.localize(local_start)
+        start_utc = localized_start.astimezone(pytz.UTC).replace(tzinfo=None)
+        stop_utc = start_utc + timedelta(hours=1)
+        return fields.Datetime.to_string(start_utc), fields.Datetime.to_string(stop_utc)
 
     def _execute_action(self, action):
         self.ensure_one()
@@ -563,12 +630,22 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                 result['status'] = 'skipped'
                 result['reason'] = _('Instala Chatroom - Reuniones (Calendario) para crear reuniones nativas.')
             else:
-                meeting = channel.action_create_meeting()
+                request_text = ' '.join([
+                    self.prompt or '',
+                    ' '.join((message.body or '') for message in channel.message_ids
+                             if message.body),
+                ]).strip()
+                start, stop = self._requested_meeting_window()
+                meeting = channel.action_create_meeting(
+                    start=start, stop=stop, request=request_text)
                 result.update({
                     'event_id': meeting.get('event_id'),
+                    'activity_id': meeting.get('activity_id'),
                     'meeting_name': meeting.get('name') or _('Reunión'),
                     'link': meeting.get('link'),
                     'link_sent': False,
+                    'start': meeting.get('start'),
+                    'stop': meeting.get('stop'),
                 })
                 if meeting.get('link') and hasattr(channel, 'action_send_text'):
                     try:

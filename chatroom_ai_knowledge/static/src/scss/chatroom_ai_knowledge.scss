@@ -1,0 +1,141 @@
+.o_chatroom_ai_knowledge_composer_form,
+.o_chatroom_ai_knowledge_test_form {
+    .o_form_sheet_bg > .o_form_sheet {
+        max-width: 1100px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .o_chatroom_ai_knowledge_meta,
+    .o_chatroom_ai_knowledge_test_filters,
+    .o_chatroom_ai_knowledge_metrics {
+        width: 100%;
+    }
+}
+
+.o_chatroom_ai_knowledge_live_card,
+.o_chatroom_ai_knowledge_test_intro {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 18px 0;
+    padding: 14px 16px;
+    border: 1px solid #b9e3dc;
+    border-left: 4px solid #0f9d8d;
+    border-radius: 8px;
+    background: #effaf8;
+    color: #174b48;
+
+    p {
+        margin: 4px 0 0;
+        color: #47706c;
+    }
+}
+
+.o_chatroom_ai_knowledge_live_icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #0f9d8d;
+    color: white;
+}
+
+.o_chatroom_ai_knowledge_content {
+    width: 100%;
+    margin-top: 16px;
+    display: block;
+    clear: both;
+
+    .o_chatroom_ai_knowledge_content_header {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        width: 100%;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #dee2e6;
+
+        label {
+            margin: 0;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+    }
+
+    .o_chatroom_ai_knowledge_source_text,
+    .o_field_widget.o_field_text {
+        display: block;
+        width: 100% !important;
+        max-width: none !important;
+        margin-top: 12px;
+    }
+
+    textarea {
+        width: 100%;
+        max-width: none;
+    }
+
+    textarea {
+        min-height: 260px;
+        padding: 14px;
+        line-height: 1.55;
+        resize: vertical;
+        border-radius: 6px;
+    }
+}
+
+/* The composer is opened as a dialog. Keep its editable area fluid even
+   when the browser applies the compact form grid used by regular forms. */
+.o_dialog .o_chatroom_ai_knowledge_composer_form {
+    .o_form_sheet,
+    .o_chatroom_ai_knowledge_content,
+    .o_chatroom_ai_knowledge_source_text,
+    .o_field_text {
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    .o_chatroom_ai_knowledge_content_header {
+        flex-wrap: wrap;
+    }
+}
+
+.o_chatroom_ai_knowledge_hint {
+    margin-top: 8px;
+    line-height: 1.5;
+}
+
+.o_chatroom_ai_knowledge_test_form {
+    .o_chatroom_ai_knowledge_test_intro {
+        border-left-color: #6f4d6d;
+        border-color: #ddd0dc;
+        background: #faf7fa;
+        color: #533b51;
+    }
+
+    .o_chatroom_ai_knowledge_test_filters textarea {
+        min-height: 92px;
+        resize: vertical;
+    }
+
+    .o_chatroom_ai_knowledge_sources,
+    .o_chatroom_ai_knowledge_preview {
+        width: 100%;
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            line-height: 1.45;
+            resize: vertical;
+        }
+    }
+
+    .o_chatroom_ai_knowledge_preview textarea {
+        min-height: 260px;
+        font-family: var(--font-family-monospace);
+        font-size: 0.9rem;
+    }
+}

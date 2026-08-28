@@ -10,7 +10,7 @@
          el árbol de este menú es de este módulo, así que desinstalar
          lo saca completo. -->
     <menuitem id="menu_chatroom_commercial" name="Inteligencia comercial"
-              parent="chatroom_whatsapp.menu_chatroom_root" sequence="25" active="False"/>
+              parent="chatroom_whatsapp.menu_chatroom_root" sequence="25"/>
 
     <menuitem id="menu_chatroom_commercial_panels" name="Paneles comerciales"
               parent="menu_chatroom_commercial" sequence="5"/>

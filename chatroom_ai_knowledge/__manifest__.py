@@ -16,6 +16,11 @@ de WhatsApp o de ventas.''',
         'views/knowledge_test_views.xml',
         'views/knowledge_composer_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'chatroom_ai_knowledge/static/src/scss/chatroom_ai_knowledge.scss',
+        ],
+    },
     'installable': True,
     'application': False,
     'auto_install': True,

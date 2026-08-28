@@ -190,7 +190,12 @@ class TestChatroomAiUsage(TransactionCase):
         assistant_line = sandbox.conversation_line_ids.filtered(
             lambda line: line.speaker == 'assistant')[-1]
         self.assertEqual(assistant_line.attachment_ids, sandbox.test_attachment_ids)
+        self.assertIn('precio actual de Odoo', assistant_line.body)
+        self.assertIn('20.00', assistant_line.body)
+        self.assertEqual(assistant_line.body.count('precio actual de Odoo'), 1)
         self.assertEqual(sandbox.test_chat_message_id.channel_id, channel)
+        self.assertEqual(sandbox.test_chat_message_id.attachment_ids, sandbox.test_attachment_ids)
+        self.assertIn('precio actual de Odoo', sandbox.test_chat_message_id.body)
         self.assertEqual(sandbox.delivery_state, 'not_run')
         self.assertIn('PDF listo', sandbox.operational_result)
         self.assertIn('Actividad interna creada', sandbox.operational_result)

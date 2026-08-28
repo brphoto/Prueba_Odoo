@@ -214,7 +214,9 @@ class ChatroomAiSandbox(models.Model):
             'channel_id': self.channel_id.id,
             'direction': 'outbound',
             'message_type': 'document',
-            'body': _('Prueba IA: cotización %s generada. PDF adjunto; no se envió a WhatsApp.') % order.name,
+            'body': _(
+                'Prueba IA: cotización %s generada. PDF adjunto; no se envió a WhatsApp. %s'
+            ) % (order.name, self._local_commercial_context(request)),
             'state': 'sent',
             'date': fields.Datetime.now(),
             'attachment_ids': [(4, attachment.id)],
@@ -340,7 +342,9 @@ class ChatroomAiSandbox(models.Model):
             return _(
                 'La tarifa referencial es %s por hora. Para preparar una cotización necesitamos alcance, usuarios, procesos y fecha objetivo.'
             ) % amount
-        if any(word in normalized for word in ('cotización', 'cotizacion', 'presupuesto', 'pdf de la cotización', 'pdf de la cotizacion')):
+        if any(word in normalized for word in (
+            'cotización', 'cotizacion', 'presupuesto', 'pdf',
+            'pdf de la cotización', 'pdf de la cotizacion')):
             commercial_context = self._local_commercial_context(question)
             response = _(
                 'Puedo preparar una cotización nativa de Ventas con el producto configurado, generar su PDF y dejarlo listo para enviarlo por Chatroom. La creación y el envío requieren aprobación humana.'
@@ -385,13 +389,21 @@ class ChatroomAiSandbox(models.Model):
         """Return live product price plus the upper bound of knowledge ranges."""
         self.ensure_one()
         lines = []
-        if self.channel_id and hasattr(self.channel_id, '_ai_search_products_mentioned'):
+        normalized_question = (question or '').lower()
+        is_quote_request = any(word in normalized_question for word in (
+            'cotización', 'cotizacion', 'presupuesto', 'pdf'))
+        if is_quote_request:
+            try:
+                products = self._test_quote_product()
+            except UserError:
+                products = self.env['product.product']
+        elif self.channel_id and hasattr(self.channel_id, '_ai_search_products_mentioned'):
             products = self.channel_id._ai_search_products_mentioned(question, limit=5)
-            if not products:
-                try:
-                    products = self._test_quote_product()
-                except UserError:
-                    products = self.env['product.product']
+        else:
+            products = self.env['product.product']
+        if not products and self.channel_id and hasattr(self.channel_id, '_ai_search_products_mentioned'):
+            products = self.channel_id._ai_search_products_mentioned(question, limit=5)
+        if products:
             for product in products:
                 facts = self.channel_id._ai_product_commercial_data(product)
                 currency = facts['currency']
@@ -513,9 +525,11 @@ class ChatroomAiSandbox(models.Model):
             # El PDF también queda en el turno de IA del laboratorio, no
             # únicamente en el chatter de la prueba o del presupuesto.
             if self.test_chat_message_id and self.test_chat_message_id.attachment_ids:
-                assistant_line.write({
-                    'attachment_ids': [(4, self.test_chat_message_id.attachment_ids[0].id)],
-                })
+                commercial_context = self._local_commercial_context(question)
+                values = {'attachment_ids': [(4, self.test_chat_message_id.attachment_ids[0].id)]}
+                if commercial_context and commercial_context not in (reply or ''):
+                    values['body'] = '%s\n\n%s' % (reply, commercial_context)
+                assistant_line.write(values)
         except Exception as exc:
             self.write({'state': 'error', 'error_message': str(exc)})
             raise UserError(_('La respuesta de prueba falló: %s') % exc) from exc

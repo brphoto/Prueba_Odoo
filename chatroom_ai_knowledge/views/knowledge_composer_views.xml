@@ -4,7 +4,7 @@
         <field name="name">chatroom.ai.knowledge.composer.form</field>
         <field name="model">chatroom.ai.knowledge.composer</field>
         <field name="arch" type="xml">
-            <form string="Crear conocimiento IA">
+            <form string="Crear conocimiento IA" class="o_chatroom_ai_knowledge_composer_form">
                 <header>
                     <button name="action_load_template" type="object" string="Cargar guía" icon="fa-lightbulb" class="btn-secondary"/>
                     <button name="action_create" type="object" string="Crear y organizar" icon="fa-magic" class="btn-primary"/>
@@ -14,17 +14,30 @@
                     <div class="alert alert-info" role="status">
                         Escribe la información con tus propias palabras. El sistema la ordenará en resumen, puntos clave, preguntas frecuentes y reglas operativas. Este proceso es local y no consume tokens.
                     </div>
-                    <group col="2">
+                    <group col="2" class="o_chatroom_ai_knowledge_meta">
                         <field name="category"/>
                         <field name="knowledge_format"/>
                         <field name="company_id"/>
                         <field name="keyword_tags" placeholder="odoo, implementación, tarifa"/>
                     </group>
-                    <group string="Contenido que debe conocer la IA">
-                        <field name="source_text" nolabel="1" placeholder="Ej.: Somos una empresa implementadora de Odoo. La tarifa referencial es USD 20 por hora. Para cotizar preguntamos alcance, usuarios, procesos y fecha objetivo..."/>
-                    </group>
-                    <div class="text-muted">
-                        Consejo: puedes incluir precios, horarios, restricciones, excepciones, preguntas y pasos. No necesitas crear un PDF.
+                    <div class="o_chatroom_ai_knowledge_live_card" role="status">
+                        <div class="o_chatroom_ai_knowledge_live_icon"><i class="fa fa-database" aria-hidden="true"/></div>
+                        <div>
+                            <strong>Catálogo de Odoo conectado</strong>
+                            <p>La IA consulta en tiempo real tus productos y servicios activos, precios y disponibilidad. No necesitas copiar el catálogo ni cargar un PDF.</p>
+                        </div>
+                    </div>
+                    <div class="o_chatroom_ai_knowledge_content">
+                        <div class="o_chatroom_ai_knowledge_content_header">
+                            <label for="source_text" string="Contenido que debe conocer la IA"/>
+                            <span class="text-muted">Información interna</span>
+                        </div>
+                        <field name="source_text" nolabel="1" widget="text"
+                               class="o_chatroom_ai_knowledge_source_text"
+                               placeholder="Ej.: Somos una empresa implementadora de Odoo. La tarifa referencial es USD 20 por hora. Para cotizar preguntamos alcance, usuarios, procesos y fecha objetivo..."/>
+                        <div class="text-muted o_chatroom_ai_knowledge_hint">
+                            Escribe como se lo explicarías a un compañero: precios de referencia, horarios, restricciones, excepciones, preguntas frecuentes y pasos.
+                        </div>
                     </div>
                 </sheet>
             </form>

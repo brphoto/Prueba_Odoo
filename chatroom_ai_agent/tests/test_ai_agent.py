@@ -183,7 +183,7 @@ class TestChatroomAiAgent(TransactionCase):
         })
         self.env['chatroom.message'].create({
             'channel_id': meeting_channel.id, 'direction': 'inbound',
-            'message_type': 'text', 'body': '¿Podemos agendar una reunión por Meet?',
+            'message_type': 'text', 'body': '¿Podemos agendar el sábado a las 10 am por Meet?',
         })
         meeting_task = self.env['chatroom.ai.task'].create_from_channel(
             meeting_channel, task_type='orchestrate', prompt='Revisa la solicitud.')
@@ -193,7 +193,15 @@ class TestChatroomAiAgent(TransactionCase):
             with patch.object(type(meeting_channel), 'action_send_text', return_value=True):
                 meeting_result = meeting_task._execute_action(meeting_task.action_ids[0])
             self.assertTrue(meeting_result['event_id'])
+            self.assertTrue(meeting_result['activity_id'])
             self.assertTrue(meeting_result['link_sent'])
+            event = self.env['calendar.event'].browse(meeting_result['event_id'])
+            self.assertIn(meeting_channel.partner_id, event.partner_ids)
+            self.assertTrue(event.start)
+            activity = self.env['mail.activity'].browse(meeting_result['activity_id'])
+            self.assertEqual(activity.res_model, 'chatroom.channel')
+            self.assertEqual(activity.res_id, meeting_channel.id)
+            self.assertEqual(activity.activity_type_id.category, 'meeting')
 
     def test_automation_reports_execution_result(self):
         automation = self.env['chatroom.ai.automation'].create({

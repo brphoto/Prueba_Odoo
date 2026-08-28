@@ -3,6 +3,7 @@
     <menuitem id="menu_customer_experience" name="Experiencia del cliente" parent="crm_customer_intelligence.menu_crm_intelligence_root" sequence="18"/>
     <menuitem id="menu_nps_responses" name="Respuestas NPS" parent="menu_customer_experience" action="action_crm_nps_response" sequence="10"/>
     <menuitem id="menu_nps_invitations" name="Invitaciones postventa" parent="menu_customer_experience" action="action_crm_nps_invitation" sequence="20"/>
+    <menuitem id="menu_nps_campaigns" name="CampaÃ±as NPS" parent="menu_customer_experience" action="action_crm_nps_campaign" sequence="25"/>
     <menuitem id="menu_nps_ltv_dashboard" name="Panel NPS y LTV" parent="menu_customer_experience" action="action_crm_experience_snapshot" sequence="30"/>
     <menuitem id="menu_nps_survey" name="Encuesta NPS" parent="menu_customer_experience" action="survey.action_survey_form" sequence="40"/>
 </odoo>

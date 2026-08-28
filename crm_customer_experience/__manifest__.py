@@ -8,6 +8,7 @@
     'data': [
         'security/ir.model.access.csv', 'data/survey_nps_data.xml', 'data/ir_cron_data.xml',
         'views/nps_response_views.xml', 'views/nps_invitation_views.xml',
+        'views/nps_campaign_views.xml',
         'views/experience_snapshot_views.xml', 'views/res_partner_views.xml',
         'views/res_config_settings_views.xml', 'views/menus.xml',
     ],
