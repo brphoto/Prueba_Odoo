@@ -2045,6 +2045,12 @@ class ChatroomChannel(models.Model):
         model = icp.get_param('chatroom_whatsapp.ai_model', 'gpt-4o-mini')
         if not api_url or not api_key:
             return None
+        # The guided setup stores the provider base URL (for example
+        # https://api.openai.com/v1). The chat endpoint is completed here so
+        # both the old full URL and the new guided configuration work.
+        api_url = api_url.rstrip('/')
+        if not api_url.endswith('/chat/completions'):
+            api_url = '%s/chat/completions' % api_url
         return api_url, api_key, model
 
     def _ai_requires_approval(self):

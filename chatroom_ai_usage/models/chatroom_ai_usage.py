@@ -365,9 +365,9 @@ class ChatroomAiUsageSnapshot(models.Model):
         snapshot._notify_budget_alert()
         return snapshot
 
-    @api.model
     def action_refresh_local_ui(self):
-        snapshot = self.action_refresh_local()
+        """Refresh local usage from a form/list button and open the result."""
+        snapshot = self.env['chatroom.ai.usage.snapshot'].action_refresh_local()
         return snapshot._open_form_action()
 
     def _open_form_action(self):

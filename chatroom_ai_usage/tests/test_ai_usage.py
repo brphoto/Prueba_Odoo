@@ -377,6 +377,27 @@ class TestChatroomAiUsage(TransactionCase):
         channel = self.env['chatroom.channel'].create({'channel_type': 'whatsapp', 'external_id': 'usage-test-001'})
         self.assertEqual(channel._ai_get_credentials()[2], 'test-selector-model')
 
+    def test_provider_base_url_is_completed_for_chat_requests(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.ai_enabled', 'True')
+        icp.set_param('chatroom_whatsapp.ai_provider_url', 'https://example.test/v1')
+        icp.set_param('chatroom_whatsapp.ai_api_key', 'test-key')
+        icp.set_param('chatroom_whatsapp.ai_model', 'gpt-4o-mini')
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'usage-test-base-url',
+        })
+        response = Mock(status_code=200)
+        response.json.return_value = {
+            'choices': [{'message': {'content': 'Respuesta correcta'}}],
+            'usage': {},
+        }
+        with patch.object(type(channel), '_meta_request', return_value=response) as request:
+            self.assertEqual(
+                channel._ai_chat_completion([{'role': 'user', 'content': 'Hola'}]),
+                'Respuesta correcta',
+            )
+        self.assertEqual(request.call_args.args[1], 'https://example.test/v1/chat/completions')
+
     def test_sandbox_provider_mode_uses_selected_model_without_delivery(self):
         icp = self.env['ir.config_parameter'].sudo()
         icp.set_param('chatroom_whatsapp.ai_enabled', 'True')
@@ -465,7 +486,8 @@ class TestChatroomAiUsage(TransactionCase):
         self.assertGreaterEqual(snapshot.total_tokens, 7)
 
     def test_local_refresh_ui_returns_notification(self):
-        action = self.env['chatroom.ai.usage.snapshot'].action_refresh_local_ui()
+        snapshot = self.env['chatroom.ai.usage.snapshot'].action_refresh_local()
+        action = snapshot.action_refresh_local_ui()
         self.assertEqual(action['type'], 'ir.actions.act_window')
         self.assertEqual(action['res_model'], 'chatroom.ai.usage.snapshot')
 

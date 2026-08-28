@@ -108,6 +108,9 @@ class ChatroomChannel(models.Model):
         if not credentials or 'chatroom.ai.provider.model' not in self.env:
             return credentials
         api_url, api_key, fallback_model = credentials
+        api_url = api_url.rstrip('/')
+        if not api_url.endswith('/chat/completions'):
+            api_url = '%s/chat/completions' % api_url
         if model_id:
             try:
                 selected = self.env['chatroom.ai.provider.model'].sudo().browse(int(model_id)).exists()
