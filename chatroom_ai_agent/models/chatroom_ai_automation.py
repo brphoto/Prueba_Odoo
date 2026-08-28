@@ -71,6 +71,97 @@ class ChatroomAiAutomation(models.Model):
         })
         return action
 
+    @api.model
+    def _ensure_example_automations(self):
+        """Restore missing demo automations without overwriting user settings.
+
+        A database can keep the XML identifiers after a test cleanup or a
+        partial restore while the corresponding records no longer exist.
+        Running this helper on every module update repairs that state and
+        keeps the examples available for onboarding.
+        """
+        examples = [
+            {
+                'xmlid': 'automation_daily_review',
+                'name': 'Revisión diaria de conversaciones',
+                'trigger': 'daily_review',
+                'task_type': 'daily_review',
+                'description': 'Revisa las conversaciones y prepara un resumen de pendientes, riesgos y próximas acciones para el equipo.',
+                'instruction': 'Analiza las conversaciones recientes. Resume lo importante, detecta pendientes y propone una siguiente acción concreta. No envíes mensajes.',
+                'max_tasks': 20,
+            },
+            {
+                'xmlid': 'automation_followup_open_conversations',
+                'name': 'Seguimiento de conversaciones activas',
+                'trigger': 'open_conversation',
+                'task_type': 'followup',
+                'description': 'Encuentra conversaciones activas y prepara un seguimiento personalizado para que el agente lo revise antes de enviarlo.',
+                'instruction': 'Revisa el contexto de la conversación, identifica qué falta responder y prepara un mensaje de seguimiento claro. No lo envíes automáticamente.',
+                'max_tasks': 10,
+            },
+            {
+                'xmlid': 'automation_overdue_invoices',
+                'name': 'Cobranza de facturas vencidas',
+                'trigger': 'overdue_invoice',
+                'task_type': 'collect_payment',
+                'description': 'Detecta clientes con facturas vencidas y prepara una gestión de cobro con el detalle disponible en Odoo.',
+                'instruction': 'Consulta las facturas vencidas del cliente y prepara una propuesta de cobranza respetuosa con monto, vencimiento y siguiente paso. Requiere aprobación humana.',
+                'max_tasks': 10,
+            },
+            {
+                'xmlid': 'automation_open_opportunities',
+                'name': 'Seguimiento de oportunidades abiertas',
+                'trigger': 'open_opportunity',
+                'task_type': 'followup',
+                'description': 'Prioriza oportunidades abiertas y prepara el siguiente paso comercial según su etapa y contexto.',
+                'instruction': 'Analiza la oportunidad, su etapa, probabilidad y conversación. Propón la acción comercial más útil y un mensaje listo para revisión humana.',
+                'max_tasks': 10,
+            },
+            {
+                'xmlid': 'automation_pending_quotes',
+                'name': 'Seguimiento de cotizaciones pendientes',
+                'trigger': 'pending_quote',
+                'task_type': 'followup',
+                'description': 'Revisa cotizaciones pendientes y prepara un recordatorio comercial con información de la propuesta.',
+                'instruction': 'Revisa la cotización pendiente y la conversación del cliente. Prepara un seguimiento breve, personalizado y orientado a cerrar o aclarar dudas.',
+                'max_tasks': 10,
+            },
+            {
+                'xmlid': 'automation_pending_activities',
+                'name': 'Revisión de actividades vencidas',
+                'trigger': 'pending_activity',
+                'task_type': 'followup',
+                'description': 'Identifica actividades vencidas asociadas a conversaciones y prepara una lista priorizada para retomarlas.',
+                'instruction': 'Revisa la actividad vencida y el contexto del cliente. Propón una acción de recuperación y un mensaje sugerido, sin enviarlo.',
+                'max_tasks': 10,
+            },
+        ]
+        automation_model = self.sudo()
+        data_model = self.env['ir.model.data'].sudo()
+        for values in examples:
+            xmlid = data_model.search([
+                ('module', '=', 'chatroom_ai_agent'),
+                ('name', '=', values['xmlid']),
+                ('model', '=', self._name),
+            ], limit=1)
+            record = automation_model.browse(xmlid.res_id).exists() if xmlid else self.browse()
+            if record:
+                continue
+            vals = {key: value for key, value in values.items() if key != 'xmlid'}
+            vals.update({'approval_required': True, 'active': False})
+            record = automation_model.create(vals)
+            if xmlid:
+                xmlid.write({'res_id': record.id})
+            else:
+                data_model.create({
+                    'module': 'chatroom_ai_agent',
+                    'name': values['xmlid'],
+                    'model': self._name,
+                    'res_id': record.id,
+                    'noupdate': False,
+                })
+        return True
+
     @api.constrains('max_tasks', 'max_attempts', 'min_rfm_score')
     def _check_limits(self):
         for automation in self:

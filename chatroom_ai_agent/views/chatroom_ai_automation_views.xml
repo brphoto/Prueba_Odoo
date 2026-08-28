@@ -5,17 +5,18 @@
         <field name="model">chatroom.ai.automation</field>
         <field name="arch" type="xml">
             <list string="Automatizaciones IA" decoration-muted="not active">
-                <field name="sequence" widget="handle"/>
-                <field name="name"/>
-                <field name="trigger"/>
-                <field name="task_type"/>
-                <field name="description" optional="hide"/>
-                <field name="approval_required"/>
-                <field name="max_attempts"/>
-                <field name="last_run"/>
-                <field name="last_run_count" string="Creadas"/>
-                <field name="last_error" optional="hide"/>
-                <field name="active" widget="boolean_toggle"/>
+                <field name="sequence" string="Orden" widget="handle"/>
+                <field name="name" string="Automatización"/>
+                <field name="trigger" string="Activador"/>
+                <field name="task_type" string="Tipo de tarea"/>
+                <field name="task_count" string="Tareas generadas"/>
+                <field name="description" string="Descripción" optional="hide"/>
+                <field name="approval_required" string="Requiere aprobación"/>
+                <field name="max_attempts" string="Intentos máximos"/>
+                <field name="last_run" string="Última ejecución"/>
+                <field name="last_run_count" string="Creadas última ejecución"/>
+                <field name="last_error" string="Incidencias" optional="hide"/>
+                <field name="active" string="Activa" widget="boolean_toggle"/>
             </list>
         </field>
     </record>

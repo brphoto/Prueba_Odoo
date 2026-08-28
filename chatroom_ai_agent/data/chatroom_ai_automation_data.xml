@@ -60,4 +60,5 @@
         <field name="max_tasks">10</field>
         <field name="active">false</field>
     </record>
+    <function model="chatroom.ai.automation" name="_ensure_example_automations"/>
 </odoo>
