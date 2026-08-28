@@ -18,10 +18,10 @@ class ChatroomAiSetupWizard(models.TransientModel):
         string='Endpoint de IA', default='https://api.openai.com/v1', required=True,
         help='Para OpenAI usa https://api.openai.com/v1. No pegues /chat/completions.')
     api_key = fields.Char(
-        string='API Key para respuestas', password=True,
+        string='API Key para respuestas',
         help='Se guarda como parámetro protegido de Odoo. Nunca se muestra en resultados.')
     admin_api_key = fields.Char(
-        string='Admin API Key para costos', password=True,
+        string='Admin API Key para costos',
         help='Opcional. Se usa solo para consultar uso y costos oficiales de la organización.')
     enable_ai = fields.Boolean(
         string='Activar IA para Chatroom', default=True,
@@ -50,6 +50,52 @@ class ChatroomAiSetupWizard(models.TransientModel):
         string='Recarga inicial registrada (USD)', digits=(16, 6), default=0.0,
         help='Opcional: registra una recarga ya realizada para comparar costo oficial y saldo de control.')
     result_message = fields.Text(string='Resultado', readonly=True)
+    configuration_state = fields.Selection([
+        ('pending', 'Pendiente'),
+        ('partial', 'Parcial'),
+        ('ready', 'Configurada'),
+    ], string='Estado actual', compute='_compute_configuration_status')
+    configuration_summary = fields.Char(
+        string='Resumen de configuración', compute='_compute_configuration_status')
+    api_key_status = fields.Selection([
+        ('missing', 'No configurada'), ('configured', 'Configurada'),
+    ], string='Clave de respuestas', compute='_compute_configuration_status')
+    admin_api_key_status = fields.Selection([
+        ('missing', 'No configurada'), ('configured', 'Configurada'),
+    ], string='Clave de costos', compute='_compute_configuration_status')
+    knowledge_count = fields.Integer(
+        string='Conocimientos existentes', compute='_compute_configuration_status')
+
+    @api.depends('provider_url', 'selected_model_id')
+    def _compute_configuration_status(self):
+        """Show the existing setup without ever returning secret values."""
+        icp = self.env['ir.config_parameter'].sudo()
+        api_key = (icp.get_param('chatroom_whatsapp.ai_api_key') or '').strip()
+        admin_key = (icp.get_param('chatroom_whatsapp.ai_admin_api_key') or '').strip()
+        try:
+            knowledge_model = self.env['ai.knowledge.base']
+        except KeyError:
+            knowledge_model = False
+        for wizard in self:
+            wizard.api_key_status = 'configured' if api_key else 'missing'
+            wizard.admin_api_key_status = 'configured' if admin_key else 'missing'
+            wizard.knowledge_count = knowledge_model.sudo().search_count([
+                ('company_id', '=', self.env.company.id),
+            ]) if knowledge_model is not False else 0
+            has_endpoint = bool((wizard.provider_url or '').strip())
+            has_model = bool(wizard.selected_model_id)
+            if api_key and has_endpoint and has_model:
+                wizard.configuration_state = 'ready'
+                wizard.configuration_summary = _(
+                    'La IA ya está configurada. Puedes revisar modelos y conocimiento sin reiniciar el proceso.')
+            elif api_key or has_model:
+                wizard.configuration_state = 'partial'
+                wizard.configuration_summary = _(
+                    'Configuración parcial: completa los datos pendientes y guarda para dejarla lista.')
+            else:
+                wizard.configuration_state = 'pending'
+                wizard.configuration_summary = _(
+                    'Configuración pendiente: conecta una clave, sincroniza modelos y revisa el conocimiento.')
 
     @api.constrains('initial_funding')
     def _check_initial_funding(self):
@@ -66,11 +112,35 @@ class ChatroomAiSetupWizard(models.TransientModel):
             values['provider_url'] = configured_url.removesuffix('/chat/completions').rstrip('/')
         # Do not put existing secrets back into the form, even as a password.
         models_model = self.env['chatroom.ai.provider.model']
-        current = models_model.search([
+        configured_model = False
+        raw_model_id = icp.get_param('chatroom_whatsapp.ai_model_id') or icp.get_param(
+            'chatroom_whatsapp.ai_model_reply_id')
+        try:
+            configured_model = models_model.browse(int(raw_model_id)) if raw_model_id else False
+        except (TypeError, ValueError):
+            configured_model = False
+        if configured_model and not configured_model.exists():
+            configured_model = False
+        if configured_model and not (configured_model.active and configured_model.supports_chat):
+            configured_model = False
+        current = configured_model or models_model.search([
             ('active', '=', True), ('supports_chat', '=', True),
         ], order='recommended desc, name', limit=1)
         if current:
             values['selected_model_id'] = current.id
+        raw_fallback_id = icp.get_param('chatroom_whatsapp.ai_fallback_model_id')
+        configured_fallback = False
+        try:
+            configured_fallback = models_model.browse(int(raw_fallback_id)) if raw_fallback_id else False
+        except (TypeError, ValueError):
+            configured_fallback = False
+        if configured_fallback and not configured_fallback.exists():
+            configured_fallback = False
+        if configured_fallback and configured_fallback.active and configured_fallback.supports_chat:
+            values['fallback_model_id'] = configured_fallback.id
+        values['result_message'] = _(
+            'Este asistente sirve para configurar o revisar una instalación existente. '
+            'Las claves guardadas se muestran únicamente como «Configurada».')
         return values
 
     def _save_configuration(self):
@@ -129,32 +199,51 @@ class ChatroomAiSetupWizard(models.TransientModel):
 
     def _reload_action(self):
         return {
-            'type': 'ir.actions.act_window', 'name': _('Asistente inicial de IA'),
+            'type': 'ir.actions.act_window', 'name': _('Configuración guiada de IA'),
             'res_model': self._name, 'view_mode': 'form', 'res_id': self.id,
             'target': 'new',
         }
 
     def _create_knowledge(self):
-        knowledge_model = self.env['ai.knowledge.base'] if 'ai.knowledge.base' in self.env else False
-        if not knowledge_model:
+        try:
+            knowledge_model = self.env['ai.knowledge.base']
+        except KeyError:
+            knowledge_model = False
+        if knowledge_model is False:
             return 0
         created = 0
         if self.create_company_knowledge and (self.company_knowledge_text or '').strip():
-            manual = knowledge_model.create({
-                'name': _('Guía inicial de la empresa'),
-                'company_id': self.env.company.id,
-                'category': 'general', 'knowledge_format': 'natural',
-                'source_type': 'text', 'source_text': self.company_knowledge_text,
-                'publication_state': 'draft',
-            })
-            manual.action_organize()
-            created += 1
+            manual = knowledge_model.search([
+                ('name', '=', _('Guía inicial de la empresa')),
+                ('company_id', '=', self.env.company.id),
+            ], limit=1)
+            if manual:
+                manual.write({'source_text': self.company_knowledge_text})
+                if hasattr(manual, 'action_organize'):
+                    manual.action_organize()
+            else:
+                manual = knowledge_model.create({
+                    'name': _('Guía inicial de la empresa'),
+                    'company_id': self.env.company.id,
+                    'category': 'general', 'knowledge_format': 'natural',
+                    'source_type': 'text', 'source_text': self.company_knowledge_text,
+                    'publication_state': 'draft',
+                })
+                manual.action_organize()
+                created += 1
         for attachment in self.attachment_ids:
             filename = attachment.name or 'documento.pdf'
             if not filename.lower().endswith('.pdf') and attachment.mimetype != 'application/pdf':
                 continue
             data = attachment.datas
             if not data:
+                continue
+            if knowledge_model.search_count([
+                ('name', '=', filename.rsplit('.', 1)[0]),
+                ('company_id', '=', self.env.company.id),
+                ('source_type', '=', 'pdf'),
+                ('pdf_filename', '=', filename),
+            ]):
                 continue
             manual = knowledge_model.create({
                 'name': filename.rsplit('.', 1)[0],

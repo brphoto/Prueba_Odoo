@@ -33,7 +33,7 @@
                             <field name="chatroom_ai_agent_require_approval"/>
                         </setting>
                         <setting id="chatroom_ai_agent_mode_setting"
-                                 help="Supervisado mantiene control humano; automatico ejecuta solo acciones autorizadas; simulacion no modifica datos.">
+                                 help="Supervisado mantiene control humano; automático ejecuta solo acciones autorizadas; simulación no modifica datos.">
                             <field name="chatroom_ai_agent_mode"/>
                         </setting>
                         <setting id="chatroom_ai_agent_max_tasks_setting"
@@ -60,23 +60,23 @@
                     </block>
                     <block title="Respuestas automaticas seguras">
                         <setting id="chatroom_ai_safety_profile_setting"
-                                 help="Elige un perfil y Odoo rellenara los limites recomendados; despues puedes personalizar cada valor.">
+                                 help="Elige un perfil y Odoo rellenará los límites recomendados; después puedes personalizar cada valor.">
                             <field name="chatroom_ai_safety_profile"/>
                         </setting>
                         <setting id="chatroom_ai_safe_auto_reply_setting"
-                                 help="Conecta las respuestas automaticas con una guardia de consentimiento, horario, frecuencia y escalamiento.">
+                                 help="Conecta las respuestas automáticas con una guardia de consentimiento, horario, frecuencia y escalamiento.">
                             <field name="chatroom_ai_safe_auto_reply"/>
                         </setting>
                         <setting id="chatroom_ai_auto_reply_min_confidence_setting"
-                                 help="La IA debe devolver una confianza igual o superior a este valor para responder sin intervencion humana.">
+                                 help="La IA debe devolver una confianza igual o superior a este valor para responder sin intervención humana.">
                             <field name="chatroom_ai_auto_reply_min_confidence"/>
                         </setting>
                         <setting id="chatroom_ai_auto_reply_cooldown_setting"
-                                 help="Tiempo minimo entre respuestas generadas automaticamente en una misma conversacion.">
+                                 help="Tiempo mínimo entre respuestas generadas automáticamente en una misma conversación.">
                             <field name="chatroom_ai_auto_reply_cooldown_minutes"/>
                         </setting>
                         <setting id="chatroom_ai_auto_reply_daily_limit_setting"
-                                 help="Limite diario por conversacion para evitar bucles o consumo inesperado.">
+                                 help="Límite diario por conversación para evitar bucles o consumo inesperado.">
                             <field name="chatroom_ai_auto_reply_daily_limit"/>
                         </setting>
                         <setting id="chatroom_ai_auto_reply_escalate_negative_setting"

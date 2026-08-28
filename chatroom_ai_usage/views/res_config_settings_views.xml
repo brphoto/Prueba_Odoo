@@ -8,8 +8,22 @@
             <xpath expr="//field[@name='chatroom_ai_model']" position="attributes">
                 <attribute name="invisible">True</attribute>
             </xpath>
+            <xpath expr="//app[@name='chatroom_whatsapp']/block[.//field[@name='chatroom_ai_enabled']]//div[hasclass('content-group')]" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>
+            <xpath expr="//setting[@id='chatroom_ai_enabled_setting']/field[@name='chatroom_ai_enabled']" position="after">
+                <div class="text-muted mt-2 o_chatroom_ai_guided_note">
+                    La conexión, las claves y los modelos se administran desde la configuración guiada.
+                    <button name="action_open_ai_setup_wizard" type="object" string="Abrir configuración guiada" class="btn-link p-0 ms-1"/>
+                </div>
+            </xpath>
             <xpath expr="//block[.//field[@name='chatroom_ai_auto_classify']]" position="after">
                 <block title="Modelos y consumo de IA">
+                    <setting id="chatroom_ai_guided_setup_setting"
+                             help="Asistente recomendado para conectar IA, seleccionar modelos y cargar conocimiento. Puede abrirse de nuevo cuando la instalación ya esté configurada.">
+                        <button name="action_open_ai_setup_wizard" type="object" string="Abrir configuración guiada" class="btn-primary" icon="fa-magic"/>
+                        <div class="text-muted mt-2">Las claves guardadas nunca se muestran; el asistente indica únicamente si están configuradas.</div>
+                    </setting>
                     <setting id="chatroom_ai_model_selector_setting"
                              help="Selecciona un modelo sincronizado y evita escribir identificadores manualmente.">
                         <field name="chatroom_ai_model_id" options="{'no_create': True}"/>
@@ -17,30 +31,32 @@
                         <button name="action_test_ai_connection" type="object" string="Probar conexion" class="btn-secondary ms-2"/>
                     </setting>
                     <setting id="chatroom_ai_model_profiles_setting"
-                             help="Permite usar un modelo economico para tareas rapidas y uno mas potente para el agente.">
-                        <div class="row mt-2">
-                            <label for="chatroom_ai_model_reply_id" class="col-lg-4 o_light_label"/>
-                            <field name="chatroom_ai_model_reply_id" options="{'no_create': True}"/>
-                        </div>
-                        <div class="row mt-2">
-                            <label for="chatroom_ai_model_summary_id" class="col-lg-4 o_light_label"/>
-                            <field name="chatroom_ai_model_summary_id" options="{'no_create': True}"/>
-                        </div>
-                        <div class="row mt-2">
-                            <label for="chatroom_ai_model_classification_id" class="col-lg-4 o_light_label"/>
-                            <field name="chatroom_ai_model_classification_id" options="{'no_create': True}"/>
-                        </div>
-                        <div class="row mt-2">
-                            <label for="chatroom_ai_model_next_action_id" class="col-lg-4 o_light_label"/>
-                            <field name="chatroom_ai_model_next_action_id" options="{'no_create': True}"/>
-                        </div>
-                        <div class="row mt-2">
-                            <label for="chatroom_ai_model_agent_id" class="col-lg-4 o_light_label"/>
-                            <field name="chatroom_ai_model_agent_id" options="{'no_create': True}"/>
-                        </div>
-                        <div class="row mt-2">
-                            <label for="chatroom_ai_fallback_model_id" class="col-lg-4 o_light_label"/>
-                            <field name="chatroom_ai_fallback_model_id" options="{'no_create': True}"/>
+                             help="Asigna cada función a un modelo sincronizado. Usa un modelo económico para tareas rápidas y uno más potente para el agente.">
+                        <div class="o_chatroom_ai_model_roles">
+                            <div class="o_chatroom_ai_model_role">
+                                <label for="chatroom_ai_model_reply_id" class="o_light_label">Respuestas</label>
+                                <field name="chatroom_ai_model_reply_id" options="{'no_create': True}"/>
+                            </div>
+                            <div class="o_chatroom_ai_model_role">
+                                <label for="chatroom_ai_model_summary_id" class="o_light_label">Resúmenes</label>
+                                <field name="chatroom_ai_model_summary_id" options="{'no_create': True}"/>
+                            </div>
+                            <div class="o_chatroom_ai_model_role">
+                                <label for="chatroom_ai_model_classification_id" class="o_light_label">Clasificación</label>
+                                <field name="chatroom_ai_model_classification_id" options="{'no_create': True}"/>
+                            </div>
+                            <div class="o_chatroom_ai_model_role">
+                                <label for="chatroom_ai_model_next_action_id" class="o_light_label">Próxima acción</label>
+                                <field name="chatroom_ai_model_next_action_id" options="{'no_create': True}"/>
+                            </div>
+                            <div class="o_chatroom_ai_model_role">
+                                <label for="chatroom_ai_model_agent_id" class="o_light_label">Agente</label>
+                                <field name="chatroom_ai_model_agent_id" options="{'no_create': True}"/>
+                            </div>
+                            <div class="o_chatroom_ai_model_role">
+                                <label for="chatroom_ai_fallback_model_id" class="o_light_label">Respaldo</label>
+                                <field name="chatroom_ai_fallback_model_id" options="{'no_create': True}"/>
+                            </div>
                         </div>
                     </setting>
                     <setting id="chatroom_ai_admin_api_key_setting"

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+from datetime import datetime, timezone
 
 import requests
 
@@ -87,6 +88,25 @@ class ChatroomAiProviderModel(models.Model):
         return lowered.startswith(('gpt-4.1', 'gpt-4o-mini', 'gpt-5', 'o3', 'o4'))
 
     @api.model
+    def _provider_created_datetime(self, value):
+        """Convert the Unix timestamp returned by the provider to Odoo UTC.
+
+        ``fields.Datetime`` deliberately does not expose ``from_timestamp`` in
+        Odoo 19.  Keeping the conversion here also lets us ignore malformed
+        metadata instead of breaking the complete model synchronization.
+        """
+        # Do not use ``value in (None, False, '')`` here: in Python the
+        # valid Unix timestamp ``0`` compares equal to ``False``.
+        if value is None or value is False or value == '':
+            return False
+        try:
+            timestamp = float(value)
+            return datetime.fromtimestamp(timestamp, tz=timezone.utc).replace(
+                tzinfo=None)
+        except (TypeError, ValueError, OverflowError, OSError):
+            return False
+
+    @api.model
     def action_sync_from_provider(self):
         icp = self.env['ir.config_parameter'].sudo()
         api_key = icp.get_param('chatroom_whatsapp.ai_api_key')
@@ -120,7 +140,7 @@ class ChatroomAiProviderModel(models.Model):
                 'model_id': model_id,
                 'provider': 'openai' if 'api.openai.com' in base else 'compatible',
                 'owned_by': entry.get('owned_by') or False,
-                'remote_created': fields.Datetime.from_timestamp(entry['created']) if entry.get('created') else False,
+                'remote_created': self._provider_created_datetime(entry.get('created')),
                 'supports_chat': supports_chat,
                 'recommended': self._is_recommended(model_id),
                 'last_synced': now,

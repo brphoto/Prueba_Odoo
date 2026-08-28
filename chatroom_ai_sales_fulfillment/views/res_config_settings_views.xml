@@ -7,7 +7,8 @@
         <field name="arch" type="xml">
             <xpath expr="//app[@name='chatroom_ai_sales']/block" position="inside">
                 <separator string="Cumplimiento y postventa"/>
-                <setting id="chatroom_ai_sales_require_stock_setting">
+                <setting id="chatroom_ai_sales_require_stock_setting"
+                         help="Controla el cumplimiento y la entrega después de crear la cotización; la validación previa al pedido se configura arriba.">
                     <field name="chatroom_ai_sales_require_stock"/>
                 </setting>
                 <setting id="chatroom_ai_sales_require_delivery_address_setting">

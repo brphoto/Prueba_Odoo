@@ -17,15 +17,15 @@ class ResConfigSettings(models.TransientModel):
         domain=[('active', '=', True), ('supports_chat', '=', True)],
     )
     chatroom_ai_model_summary_id = fields.Many2one(
-        'chatroom.ai.provider.model', string='Modelo para resumenes',
+        'chatroom.ai.provider.model', string='Modelo para resúmenes',
         domain=[('active', '=', True), ('supports_chat', '=', True)],
     )
     chatroom_ai_model_classification_id = fields.Many2one(
-        'chatroom.ai.provider.model', string='Modelo para clasificacion',
+        'chatroom.ai.provider.model', string='Modelo para clasificación',
         domain=[('active', '=', True), ('supports_chat', '=', True)],
     )
     chatroom_ai_model_next_action_id = fields.Many2one(
-        'chatroom.ai.provider.model', string='Modelo para proxima accion',
+        'chatroom.ai.provider.model', string='Modelo para próxima acción',
         domain=[('active', '=', True), ('supports_chat', '=', True)],
     )
     chatroom_ai_model_agent_id = fields.Many2one(
@@ -53,7 +53,7 @@ class ResConfigSettings(models.TransientModel):
         string='Detalle de la última comprobación', compute='_compute_ai_usage_connection_status',
     )
     chatroom_ai_usage_days = fields.Integer(
-        string='Periodo de consulta (dias)', default=31,
+        string='Período de consulta (días)', default=31,
         config_parameter='chatroom_whatsapp.ai_usage_days',
     )
     chatroom_ai_monthly_budget = fields.Float(
@@ -129,9 +129,9 @@ class ResConfigSettings(models.TransientModel):
         fields_by_param = {
             'chatroom_ai_model_id': 'chatroom_whatsapp.ai_model_id',
             'chatroom_ai_model_reply_id': 'chatroom_whatsapp.ai_model_reply_id',
-            'chatroom_ai_model_summary_id': 'chatroom_whatsapp.ai_model_summary_id',
-            'chatroom_ai_model_classification_id': 'chatroom_whatsapp.ai_model_classification_id',
-            'chatroom_ai_model_next_action_id': 'chatroom_whatsapp.ai_model_next_action_id',
+        'chatroom_ai_model_summary_id': 'chatroom_whatsapp.ai_model_summary_id',
+        'chatroom_ai_model_classification_id': 'chatroom_whatsapp.ai_model_classification_id',
+        'chatroom_ai_model_next_action_id': 'chatroom_whatsapp.ai_model_next_action_id',
             'chatroom_ai_model_agent_id': 'chatroom_whatsapp.ai_model_agent_id',
             'chatroom_ai_fallback_model_id': 'chatroom_whatsapp.ai_fallback_model_id',
         }
@@ -222,3 +222,8 @@ class ResConfigSettings(models.TransientModel):
 
     def action_open_ai_sandbox(self):
         return self.env.ref('chatroom_ai_usage.action_chatroom_ai_sandbox').read()[0]
+
+    def action_open_ai_setup_wizard(self):
+        """Open the guided setup with the current database values preloaded."""
+        self.ensure_one()
+        return self.env.ref('chatroom_ai_usage.action_chatroom_ai_setup_wizard').read()[0]

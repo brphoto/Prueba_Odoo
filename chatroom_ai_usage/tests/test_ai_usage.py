@@ -32,6 +32,47 @@ class TestChatroomAiUsage(TransactionCase):
         self.assertFalse(model._looks_like_chat_model('gpt-realtime'))
         self.assertTrue(model._is_recommended('gpt-4o-mini'))
 
+    def test_provider_timestamp_conversion_is_odata_19_safe(self):
+        model = self.env['chatroom.ai.provider.model']
+        converted = model._provider_created_datetime(0)
+        self.assertEqual(converted.year, 1970)
+        self.assertFalse(model._provider_created_datetime(None))
+        self.assertFalse(model._provider_created_datetime('metadata-invalido'))
+
+    def test_setup_wizard_reopens_existing_configuration_without_exposing_secrets(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.ai_api_key', 'clave-secreta-de-prueba')
+        icp.set_param('chatroom_whatsapp.ai_admin_api_key', '')
+        icp.set_param('chatroom_whatsapp.ai_provider_url', 'https://example.test/v1/chat/completions')
+        selected = self.env['chatroom.ai.provider.model'].create({
+            'name': 'wizard-reopen-model', 'model_id': 'wizard-reopen-model',
+            'provider': 'openai', 'supports_chat': True, 'active': True,
+        })
+        icp.set_param('chatroom_whatsapp.ai_model_id', str(selected.id))
+        wizard = self.env['chatroom.ai.setup.wizard'].create({})
+        self.assertEqual(wizard.provider_url, 'https://example.test/v1')
+        self.assertEqual(wizard.selected_model_id, selected)
+        self.assertEqual(wizard.configuration_state, 'ready')
+        self.assertEqual(wizard.api_key_status, 'configured')
+        self.assertEqual(wizard.admin_api_key_status, 'missing')
+        self.assertFalse(wizard.api_key)
+        self.assertNotIn('clave-secreta', wizard.configuration_summary)
+
+    def test_setup_wizard_does_not_duplicate_initial_company_guide(self):
+        if 'ai.knowledge.base' not in self.env:
+            self.skipTest('Conocimiento no instalado')
+        wizard_model = self.env['chatroom.ai.setup.wizard']
+        wizard = wizard_model.create({
+            'create_company_knowledge': True,
+            'company_knowledge_text': 'Guía de prueba de la empresa.',
+        })
+        self.assertEqual(wizard._create_knowledge(), 1)
+        self.assertEqual(wizard._create_knowledge(), 0)
+        self.assertEqual(self.env['ai.knowledge.base'].search_count([
+            ('name', '=', 'Guía inicial de la empresa'),
+            ('company_id', '=', self.env.company.id),
+        ]), 1)
+
     def test_provider_health_reports_missing_configuration_without_http(self):
         self.env['ir.config_parameter'].sudo().set_param('chatroom_whatsapp.ai_api_key', False)
         self.env['ir.config_parameter'].sudo().set_param('chatroom_whatsapp.ai_provider_url', False)

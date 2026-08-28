@@ -124,6 +124,97 @@
     .o_chatroom_ai_setup_steps > div { display: flex; flex-direction: column; gap: 5px; min-height: 120px; padding: 16px; border: 1px solid #d9dce8; border-radius: 10px; background: #fafbfe; }
     .o_chatroom_ai_setup_steps b { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #795273; color: #fff; }
     .o_chatroom_ai_setup_steps span { color: #667085; line-height: 1.45; }
-    textarea { width: 100% !important; min-height: 180px; resize: vertical; line-height: 1.5; }
+    .o_chatroom_ai_setup_knowledge { display: block; width: 100%; }
+    .o_chatroom_ai_setup_upload { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+    .o_chatroom_ai_setup_upload > label,
+    .o_chatroom_ai_setup_knowledge > label { display: block; margin-bottom: 8px; font-weight: 600; }
+    .o_chatroom_ai_setup_company_toggle { display: flex; align-items: center; gap: 8px; margin: 8px 0 18px; }
+    .o_chatroom_ai_setup_company_toggle .o_field_boolean { flex: 0 0 auto; }
+    .o_chatroom_ai_setup_company_toggle label { margin: 0; font-weight: 600; }
+    .o_chatroom_ai_setup_knowledge .o_field_text,
+    .o_chatroom_ai_setup_knowledge .o_chatroom_ai_setup_textarea,
+    .o_chatroom_ai_setup_knowledge textarea { display: block; width: 100% !important; min-width: 100%; min-height: 220px; resize: vertical; line-height: 1.5; }
 }
 @media (max-width: 760px) { .o_chatroom_ai_setup_wizard_form .o_chatroom_ai_setup_steps { grid-template-columns: 1fr 1fr; } }
+
+// The custom settings apps used to inherit Odoo's deliberately narrow
+// readability column.  Keep the native settings layout, but use the unused
+// workspace on wide screens so labels and selectors do not collapse.
+.o_base_settings_view .settings > .app_settings_block[data-key='chatroom_whatsapp'],
+.o_base_settings_view .settings > .app_settings_block[data-key='chatroom_ai_agent'],
+.o_base_settings_view .settings > .app_settings_block[data-key='chatroom_ai_sales'],
+.o_base_settings_view .settings > .app_settings_block[data-key='chatroom_ui'],
+.o_base_settings_view .settings > .app_settings_block[data-key='crm_customer_intelligence'] {
+    .o_settings_container {
+        max-width: 100%;
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+}
+
+// Model profiles are selectors, not a paragraph.  A responsive grid makes
+// the six roles scanable and prevents the old vertical squeeze.
+.o_base_settings_view .settings > .app_settings_block[data-key='chatroom_whatsapp'] {
+    #chatroom_ai_model_profiles_setting .o_setting_right_pane {
+        width: 100%;
+    }
+
+    .o_chatroom_ai_model_roles {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(260px, 1fr));
+        gap: 12px 24px;
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    .o_chatroom_ai_model_role {
+        display: grid;
+        grid-template-columns: minmax(120px, 1fr) minmax(180px, 1.5fr);
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+
+    .o_chatroom_ai_model_role .o_field_widget {
+        min-width: 0;
+    }
+
+    .o_chatroom_ai_guided_note {
+        max-width: 650px;
+        line-height: 1.45;
+    }
+}
+
+.o_chatroom_ai_setup_current_status {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    gap: 10px 18px;
+    margin: 16px 0 20px;
+    padding: 14px 16px;
+    border: 1px solid #dbe3ee;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.o_chatroom_ai_setup_status_item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.o_chatroom_ai_setup_status_message {
+    grid-column: span 2;
+    color: #52627a;
+    line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+    .o_chatroom_ai_setup_current_status,
+    .o_base_settings_view .settings > .app_settings_block[data-key='chatroom_whatsapp'] .o_chatroom_ai_model_roles {
+        grid-template-columns: 1fr;
+    }
+
+    .o_chatroom_ai_setup_status_message { grid-column: auto; }
+    .o_chatroom_ai_model_role { grid-template-columns: 1fr; gap: 4px; }
+}

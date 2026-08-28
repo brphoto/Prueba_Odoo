@@ -6,7 +6,7 @@ class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
     chatroom_ai_sales_require_stock = fields.Boolean(
-        string='Validar inventario antes de confirmar',
+        string='Requerir disponibilidad para cumplir',
         config_parameter='chatroom_ai_sales.require_stock',
         help='Bloquea la confirmación autónoma de productos físicos que no tengan disponibilidad suficiente.',
     )

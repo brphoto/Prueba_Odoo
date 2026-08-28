@@ -4,16 +4,37 @@
         <field name="name">chatroom.ai.setup.wizard.form</field>
         <field name="model">chatroom.ai.setup.wizard</field>
         <field name="arch" type="xml">
-            <form string="Asistente inicial de IA" class="o_chatroom_ai_setup_wizard_form">
+            <form string="Configuración guiada de IA" class="o_chatroom_ai_setup_wizard_form">
                 <header>
                     <button name="action_sync_models" type="object" string="Guardar y sincronizar modelos" icon="fa-refresh" class="btn-secondary"/>
                     <button name="action_test_official_costs" type="object" string="Probar costos oficiales" icon="fa-money" class="btn-secondary"/>
                     <button name="action_finish" type="object" string="Finalizar configuración" icon="fa-check" class="btn-primary"/>
                 </header>
                 <sheet>
-                    <div class="oe_title"><h1>Configurar IA y conocimiento</h1></div>
+                    <div class="oe_title"><h1>Configuración guiada de IA y conocimiento</h1></div>
                     <div class="alert alert-info" role="status">
-                        Asistente opcional de primera configuración. Sincronizar modelos e indexar documentos no genera respuestas ni consume tokens.
+                        Úsalo para una primera instalación o para revisar una configuración existente. Sincronizar modelos e indexar documentos no genera respuestas ni consume tokens.
+                    </div>
+                    <div class="o_chatroom_ai_setup_current_status">
+                        <div class="o_chatroom_ai_setup_status_item">
+                            <span class="o_form_label">Estado actual</span>
+                            <field name="configuration_state" widget="badge" readonly="1"/>
+                        </div>
+                        <div class="o_chatroom_ai_setup_status_item o_chatroom_ai_setup_status_message">
+                            <field name="configuration_summary" nolabel="1" readonly="1"/>
+                        </div>
+                        <div class="o_chatroom_ai_setup_status_item">
+                            <span class="o_form_label">Clave de respuestas</span>
+                            <field name="api_key_status" widget="badge" readonly="1"/>
+                        </div>
+                        <div class="o_chatroom_ai_setup_status_item">
+                            <span class="o_form_label">Clave de costos</span>
+                            <field name="admin_api_key_status" widget="badge" readonly="1"/>
+                        </div>
+                        <div class="o_chatroom_ai_setup_status_item">
+                            <span class="o_form_label">Conocimientos existentes</span>
+                            <field name="knowledge_count" nolabel="1" readonly="1"/>
+                        </div>
                     </div>
                     <notebook>
                         <page string="1. Conexión y modelos">
@@ -41,11 +62,18 @@
                             <div class="alert alert-success" role="status">
                                 Los PDFs se guardan e indexan en Odoo. Quedan como borrador para que los revises y publiques; el catálogo de productos se consulta en vivo.
                             </div>
-                            <group>
-                                <field name="attachment_ids" widget="many2many_binary" string="Archivos PDF"/>
-                                <field name="create_company_knowledge"/>
-                                <field name="company_knowledge_text" widget="text" nolabel="1" placeholder="Describe la empresa, productos, horarios, políticas y reglas comerciales..."/>
-                            </group>
+                            <div class="o_chatroom_ai_setup_knowledge">
+                                <div class="o_chatroom_ai_setup_upload">
+                                    <label for="attachment_ids" string="Archivos PDF"/>
+                                    <field name="attachment_ids" widget="many2many_binary" nolabel="1"/>
+                                </div>
+                                <div class="o_chatroom_ai_setup_company_toggle">
+                                    <field name="create_company_knowledge" nolabel="1"/>
+                                    <label for="create_company_knowledge" string="Crear guía inicial de la empresa"/>
+                                </div>
+                                <label for="company_knowledge_text" string="Información inicial de la empresa"/>
+                                <field name="company_knowledge_text" widget="text" nolabel="1" class="o_chatroom_ai_setup_textarea" placeholder="Describe la empresa, productos, horarios, políticas y reglas comerciales..."/>
+                            </div>
                         </page>
                         <page string="3. Qué ocurrirá">
                             <div class="o_chatroom_ai_setup_steps">
@@ -61,10 +89,10 @@
         </field>
     </record>
     <record id="action_chatroom_ai_setup_wizard" model="ir.actions.act_window">
-        <field name="name">Asistente inicial de IA</field>
+        <field name="name">Configuración guiada de IA</field>
         <field name="res_model">chatroom.ai.setup.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
     </record>
-    <menuitem id="menu_chatroom_ai_setup_wizard" name="Asistente inicial" parent="chatroom_ai_usage.menu_chatroom_ai_usage" action="action_chatroom_ai_setup_wizard" sequence="1" groups="chatroom_ai.group_chatroom_ai_user"/>
+    <menuitem id="menu_chatroom_ai_setup_wizard" name="Configuración guiada de IA" parent="chatroom_ai_usage.menu_chatroom_ai_usage" action="action_chatroom_ai_setup_wizard" sequence="1" groups="chatroom_ai.group_chatroom_ai_user"/>
 </odoo>
