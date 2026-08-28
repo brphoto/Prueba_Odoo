@@ -320,6 +320,11 @@ class ChatroomAiTask(models.Model):
         meeting_request = any(term in request_text for term in (
             'reunión', 'reunion', 'videollamada', 'google meet', 'meet',
             'enlace de la reunión', 'enlace de la reunion'))
+        payment_request = any(term in request_text for term in (
+            'pagar', 'pago', 'cobrar', 'link de pago', 'enlace de pago'))
+        product_request = any(term in request_text for term in (
+            'producto', 'precio', 'cuánto cuesta', 'cuanto cuesta',
+            'stock', 'disponibilidad', 'catálogo', 'catalogo'))
         plans = {
             'classify_customer': [('classify_customer', 'Leer clasificación comercial del cliente')],
             'qualify_lead': [('classify_customer', 'Leer clasificación comercial del cliente'), ('create_lead', 'Crear o actualizar oportunidad')],
@@ -349,6 +354,16 @@ class ChatroomAiTask(models.Model):
             ]
         if self.task_type == 'orchestrate' and meeting_request:
             return [{'key': 'create_meeting', 'name': 'Crear reunión nativa y enviar enlace'}]
+        if self.task_type == 'orchestrate' and payment_request:
+            return [
+                {'key': 'find_open_invoice', 'name': 'Consultar documento pendiente'},
+                {'key': 'send_payment_link', 'name': 'Preparar link de pago'},
+            ]
+        if self.task_type == 'orchestrate' and product_request:
+            return [
+                {'key': 'search_catalog', 'name': 'Consultar catálogo vivo de Odoo'},
+                {'key': 'prepare_reply', 'name': 'Preparar respuesta con datos reales'},
+            ]
         return [{'key': key, 'name': name} for key, name in plans.get(self.task_type, plans['orchestrate'])]
 
     def _ai_plan(self, context):

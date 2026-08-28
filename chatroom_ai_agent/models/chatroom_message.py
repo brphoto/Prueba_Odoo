@@ -29,7 +29,10 @@ class ChatroomMessage(models.Model):
             channel = message.channel_id
             if channel.ai_paused:
                 continue
-            if router_enabled and not automations:
+            route = channel._ai_agent_route(message.body) if router_enabled else False
+            use_router = router_enabled and (
+                not automations or route['route'] != 'general')
+            if use_router:
                 try:
                     with self.env.cr.savepoint():
                         duplicate = tasks.search_count([
@@ -37,7 +40,6 @@ class ChatroomMessage(models.Model):
                             ('state', 'in', ('draft', 'awaiting_approval', 'planned', 'running')),
                         ])
                         if not duplicate:
-                            route = channel._ai_agent_route(message.body)
                             task = tasks.create_from_channel(
                                 channel, 'orchestrate', route['prompt'],
                                 approval_required=True)
