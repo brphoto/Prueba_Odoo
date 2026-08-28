@@ -64,6 +64,7 @@
                 <field name="output_tokens" optional="hide"/>
                 <field name="total_tokens"/>
                 <field name="cost"/>
+                <field name="cost_breakdown" optional="hide"/>
                 <field name="currency"/>
                 <field name="funding_net" optional="hide"/>
                 <field name="estimated_balance" optional="hide"/>
@@ -133,6 +134,7 @@
                         <field name="local_total_tokens" readonly="1"/>
                     </group>
                     <group string="Solicitudes por modelo"><field name="model_breakdown" nolabel="1" readonly="1" widget="text"/></group>
+                    <group string="Costos oficiales por concepto"><field name="cost_breakdown" nolabel="1" readonly="1" widget="text"/></group>
                 </sheet>
             </form>
         </field>
@@ -438,6 +440,13 @@
                                 <field name="test_meeting_name" string="Reunión en Calendario" readonly="1"/>
                                 <field name="test_meeting_link" string="Videollamada nativa" readonly="1" widget="url"/>
                                 <field name="test_meeting_id" string="ID evento" readonly="1"/>
+                            </group>
+                            <group string="Cerebro utilizado por esta prueba" col="2">
+                                <field name="knowledge_sources" readonly="1"/>
+                                <field name="knowledge_live_sources" readonly="1"/>
+                                <field name="knowledge_context_chars" readonly="1"/>
+                                <field name="knowledge_estimated_input_tokens" readonly="1"/>
+                                <field name="knowledge_context" nolabel="1" readonly="1" widget="text"/>
                             </group>
                             <group string="Configuración de la actividad nativa" col="3">
                                 <field name="test_activity_type_id"/>

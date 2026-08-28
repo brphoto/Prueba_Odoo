@@ -125,6 +125,7 @@ class ChatroomAiUsageSnapshot(models.Model):
     local_request_count = fields.Integer(string='Solicitudes locales')
     local_total_tokens = fields.Integer(string='Tokens locales')
     model_breakdown = fields.Text(string='Detalle por modelo', readonly=True)
+    cost_breakdown = fields.Text(string='Detalle de costos oficiales', readonly=True)
     state = fields.Selection([
         ('ok', 'Actualizado'), ('partial', 'Solo consumo local'), ('error', 'Error'),
     ], default='ok', required=True)
@@ -241,7 +242,9 @@ class ChatroomAiUsageSnapshot(models.Model):
             'limit': 31,
         }
         if group_by:
-            params['group_by'] = group_by
+            # OpenAI defines group_by as an array; requests serializes this
+            # one-item list as the query parameter accepted by the API.
+            params['group_by'] = [group_by] if isinstance(group_by, str) else group_by
         response = requests.get(
             '%s/%s' % (self._api_base(), path),
             headers={'Authorization': 'Bearer %s' % key},
@@ -351,6 +354,7 @@ class ChatroomAiUsageSnapshot(models.Model):
             'local_total_tokens': local_tokens,
             'currency': 'usd',
             'model_breakdown': '{}',
+            'cost_breakdown': '{}',
             'state': 'partial',
             'source': 'local',
             'error_message': _('Resumen local basado en las solicitudes registradas. Para costos oficiales configura la Admin API Key.'),
@@ -364,16 +368,17 @@ class ChatroomAiUsageSnapshot(models.Model):
     @api.model
     def action_refresh_local_ui(self):
         snapshot = self.action_refresh_local()
+        return snapshot._open_form_action()
+
+    def _open_form_action(self):
+        self.ensure_one()
         return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Consumo local actualizado'),
-                'message': _('Se registraron %s solicitudes y %s tokens.') % (
-                    snapshot.local_request_count, snapshot.local_total_tokens),
-                'type': 'success',
-                'sticky': False,
-            },
+            'type': 'ir.actions.act_window',
+            'name': _('Resumen de consumo de IA'),
+            'res_model': self._name,
+            'view_mode': 'form',
+            'res_id': self.id,
+            'target': 'current',
         }
 
     @api.model
@@ -393,6 +398,7 @@ class ChatroomAiUsageSnapshot(models.Model):
             'local_total_tokens': local_tokens,
             'currency': 'usd',
             'model_breakdown': '{}',
+            'cost_breakdown': '{}',
         }
         values.update(self._budget_values(0.0))
         values.update(self._financial_values(0.0, now))
@@ -409,10 +415,7 @@ class ChatroomAiUsageSnapshot(models.Model):
             })
             snapshot = self.sudo().create(values)
             snapshot._notify_budget_alert()
-            return {
-                'type': 'ir.actions.client', 'tag': 'display_notification',
-                'params': {'title': _('Consumo local actualizado'), 'message': _('Registra %s solicitudes. Falta la Admin API Key para costos oficiales.') % local_count, 'type': 'warning', 'sticky': False},
-            }
+            return snapshot._open_form_action()
 
         start_ts = int(datetime.utcnow().timestamp()) - (self._days() * 86400)
         end_ts = int(datetime.utcnow().timestamp()) + 1
@@ -431,11 +434,15 @@ class ChatroomAiUsageSnapshot(models.Model):
             total_tokens = input_tokens + output_tokens
             cost = 0.0
             currency = 'usd'
+            by_cost_line = {}
             for bucket in costs.get('data', []):
                 for result in bucket.get('results', []):
                     amount = result.get('amount') or {}
-                    cost += float(amount.get('value') or 0.0)
+                    line_cost = float(amount.get('value') or 0.0)
+                    cost += line_cost
                     currency = amount.get('currency') or currency
+                    line = result.get('line_item') or result.get('project_id') or _('Sin detalle')
+                    by_cost_line[line] = by_cost_line.get(line, 0.0) + line_cost
             values.update({
                 'request_count': request_count,
                 'input_tokens': input_tokens,
@@ -444,6 +451,7 @@ class ChatroomAiUsageSnapshot(models.Model):
                 'cost': cost,
                 'currency': currency,
                 'model_breakdown': json.dumps(by_model, ensure_ascii=False, indent=2),
+                'cost_breakdown': json.dumps(by_cost_line, ensure_ascii=False, indent=2),
                 'state': 'ok',
                 'source': 'openai',
                 'official_sync_at': now,
@@ -454,10 +462,7 @@ class ChatroomAiUsageSnapshot(models.Model):
             values.update(self._financial_values(cost, now))
             snapshot = self.sudo().create(values)
             snapshot._notify_budget_alert()
-            return {
-                'type': 'ir.actions.client', 'tag': 'display_notification',
-                'params': {'title': _('Consumo de IA actualizado'), 'message': _('Solicitudes: %s | Costo: %.6f %s') % (request_count, cost, currency.upper()), 'type': 'success', 'sticky': False},
-            }
+            return snapshot._open_form_action()
         except (requests.RequestException, ValueError, TypeError, KeyError) as exc:
             self._set_sync_status('error', str(exc))
             values.update({'state': 'error', 'source': 'unavailable', 'error_message': str(exc)})

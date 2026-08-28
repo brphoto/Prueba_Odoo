@@ -55,3 +55,13 @@ class TestChatroomNotification(TransactionCase):
         first.action_resolve()
         second = model.create_deduplicated(vals)
         self.assertNotEqual(first, second)
+
+    def test_internal_delivery_is_explicit_and_traceable(self):
+        notification = self.env['chatroom.notification'].create({
+            'name': 'Aviso interno QA', 'message': 'Revisar conversación',
+            'delivery_mode': 'internal',
+        })
+        action = notification.action_dispatch()
+        self.assertEqual(notification.delivery_state, 'skipped')
+        self.assertIn('solo para aviso interno', notification.delivery_error)
+        self.assertEqual(action['tag'], 'display_notification')

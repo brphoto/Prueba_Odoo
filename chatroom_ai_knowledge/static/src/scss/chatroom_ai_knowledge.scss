@@ -82,6 +82,79 @@
     }
 }
 
+.o_chatroom_memory_map {
+    width: 100%;
+    padding: 20px;
+    border: 1px solid #d9dce8;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #fbf9fc 0%, #f4f8fb 100%);
+    color: #17233d;
+
+    .o_chatroom_memory_header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 18px;
+
+        h3 { margin: 3px 0; font-size: 1.25rem; }
+        p { margin: 0; color: #62708a; }
+    }
+
+    .o_chatroom_memory_kicker {
+        color: #795273;
+        font-size: .72rem;
+        font-weight: 700;
+        letter-spacing: .08em;
+    }
+
+    .o_chatroom_memory_core {
+        display: grid;
+        place-items: center;
+        flex: 0 0 58px;
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        background: #795273;
+        color: #fff;
+        font-size: 1.6rem;
+        box-shadow: 0 5px 15px rgba(121, 82, 115, .25);
+        span { display: block; margin-top: -18px; font-size: .65rem; font-weight: 700; }
+    }
+
+    .o_chatroom_memory_grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 10px;
+    }
+
+    .o_chatroom_memory_node {
+        min-width: 0;
+        border: 1px solid #d7ddeb;
+        border-radius: 9px;
+        background: #fff;
+        overflow: hidden;
+        transition: border-color .15s ease, box-shadow .15s ease;
+        &[open] { border-color: #b994b2; box-shadow: 0 3px 10px rgba(36, 47, 74, .08); }
+        summary { display: flex; align-items: center; gap: 8px; padding: 12px; cursor: pointer; list-style: none; }
+        summary::-webkit-details-marker { display: none; }
+    }
+
+    .o_chatroom_memory_node_icon {
+        display: grid; place-items: center; flex: 0 0 24px; width: 24px; height: 24px;
+        border-radius: 7px; background: #f0e7ef; color: #795273; font-size: .72rem; font-weight: 700;
+    }
+    .o_chatroom_memory_node_title { flex: 1 1 auto; min-width: 0; font-weight: 600; }
+    .o_chatroom_memory_node_status { color: #168a65; font-size: .78rem; text-align: right; }
+    .o_chatroom_memory_node_detail { padding: 0 12px 12px 44px; color: #62708a; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+}
+
+@media (max-width: 640px) {
+    .o_chatroom_memory_map { padding: 14px; }
+    .o_chatroom_memory_map .o_chatroom_memory_header { align-items: flex-start; }
+    .o_chatroom_memory_core { display: none; }
+}
+
 .o_chatroom_ai_knowledge_answer {
     width: 100%;
 

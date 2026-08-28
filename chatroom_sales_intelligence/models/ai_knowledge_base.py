@@ -6,6 +6,8 @@ import logging
 import re
 from datetime import timedelta
 
+from markupsafe import Markup, escape
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
@@ -98,6 +100,73 @@ class AiKnowledgeBase(models.Model):
         readonly=True, copy=False)
     usage_count = fields.Integer(string='Consultas', readonly=True, copy=False)
     last_used_at = fields.Datetime(string='Última consulta', readonly=True, copy=False)
+    memory_map_html = fields.Html(
+        string='Mapa de memoria', compute='_compute_memory_map_html',
+        sanitize=False, readonly=True,
+        help='Vista visual de la fuente, organización, indexación y uso de este conocimiento.')
+
+    @api.depends(
+        'name', 'source_type', 'source_text', 'pdf_filename', 'state',
+        'publication_state', 'organization_state', 'organized_summary',
+        'chunk_count', 'version', 'usage_count', 'last_used_at',
+        'indexed_at', 'review_state',
+    )
+    def _compute_memory_map_html(self):
+        """Render a compact, explainable map without an extra JS dependency.
+
+        ``details`` elements provide the interaction (expand/collapse) while
+        keeping the map compatible with list/form popups and mobile screens.
+        The source text is escaped so the visualization never renders manual
+        content as HTML.
+        """
+        labels = {
+            'text': 'Texto interno', 'pdf': 'Documento PDF',
+            'pending': 'Pendiente', 'indexed': 'Indexado', 'error': 'Error',
+            'published': 'Publicado para la IA', 'draft': 'Borrador',
+            'archived': 'Archivado', 'raw': 'Sin organizar',
+            'organized': 'Organizado localmente',
+            'not_requested': 'Sin analizar', 'processing': 'Analizando',
+            'needs_review': 'Listo para revisar', 'local': 'Organizador local',
+            'provider': 'Proveedor IA', 'local_fallback': 'Respaldo local',
+        }
+        for manual in self:
+            def label(value):
+                return labels.get(value, value or '—')
+
+            source_name = manual.pdf_filename if manual.source_type == 'pdf' else 'Texto introducido en Odoo'
+            source_detail = (manual.source_text or '').strip() if manual.source_type == 'text' else source_name
+            source_detail = source_detail[:420] or 'Sin contenido de fuente.'
+            summary = (manual.organized_summary or '').strip()[:420]
+            analysis = label(getattr(manual, 'analysis_state', False))
+            confidence = getattr(manual, 'analysis_confidence', 0.0) or 0.0
+            nodes = [
+                ('Fuente original', label(manual.source_type), source_detail),
+                ('Organización', label(manual.organization_state), summary or 'Todavía no hay un resumen organizado.'),
+                ('Indexación', label(manual.state), '%s fragmento(s) · versión %s' % (manual.chunk_count or 0, manual.version or 1)),
+                ('Disponibilidad', label(manual.publication_state), 'Vigencia: %s · revisión: %s' % (label(manual.review_state), manual.review_due_date or 'sin fecha')),
+                ('Análisis opcional', analysis, 'Confianza: %.0f%% · no cambia la fuente ni publica automáticamente.' % (confidence * 100)),
+                ('Uso en conversaciones', '%s consulta(s)' % (manual.usage_count or 0), 'Última consulta: %s' % (manual.last_used_at or 'aún no consultado')),
+                ('Datos vivos', 'Catálogo Odoo conectado', 'Productos, precios y disponibilidad se consultan en tiempo real cuando la pregunta coincide; no se copian al manual.'),
+            ]
+            cards = []
+            for index, (title, status, detail) in enumerate(nodes):
+                open_attr = ' open' if index in (0, 2) else ''
+                cards.append(Markup(
+                    '<details class="o_chatroom_memory_node"%s>'
+                    '<summary><span class="o_chatroom_memory_node_icon">%s</span>'
+                    '<span class="o_chatroom_memory_node_title">%s</span>'
+                    '<span class="o_chatroom_memory_node_status">%s</span></summary>'
+                    '<div class="o_chatroom_memory_node_detail">%s</div></details>'
+                    % (open_attr, index + 1, escape(title), escape(status), escape(detail))))
+            manual.memory_map_html = Markup(
+                '<div class="o_chatroom_memory_map">'
+                '<div class="o_chatroom_memory_header"><div>'
+                '<span class="o_chatroom_memory_kicker">MEMORIA DEL AGENTE</span>'
+                '<h3>%s</h3><p>Así se transforma la información antes de llegar a una respuesta.</p>'
+                '</div><div class="o_chatroom_memory_core">✦<span>IA</span></div></div>'
+                '<div class="o_chatroom_memory_grid">%s</div>'
+                '</div>' % (escape(manual.name or 'Conocimiento'), Markup('').join(cards))
+            )
 
     @api.depends('active', 'state', 'indexed_at', 'last_reviewed_at', 'review_interval_days')
     def _compute_review_status(self):

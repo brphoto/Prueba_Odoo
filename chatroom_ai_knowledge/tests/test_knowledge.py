@@ -69,3 +69,24 @@ class TestChatroomAiKnowledge(TransactionCase):
         wizard.action_save_correction()
         self.assertEqual(wizard.answer_review_state, 'corrected')
         self.assertEqual(wizard.answer, wizard.answer_correction)
+
+    def test_knowledge_test_provider_path_keeps_translation_context_valid(self):
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'QA prueba proveedor', 'source_type': 'text',
+            'source_text': 'Somos implementadores de Odoo y ofrecemos desarrollo personalizado.',
+            'publication_state': 'published',
+        })
+        manual.action_index()
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'knowledge-test-provider-001',
+        })
+        wizard = self.env['chatroom.ai.knowledge.test'].create({
+            'question': '¿Qué servicios ofrecen?', 'channel_id': channel.id,
+        })
+        with patch.object(type(wizard), '_provider_channel', return_value=channel), \
+                patch.object(type(channel), '_ai_get_credentials', return_value=(True, 'test-key', 'test-model')), \
+                patch.object(type(channel), '_ai_chat_completion', return_value='{"answer":"Ofrecemos desarrollo personalizado.", "confidence":0.9, "used_sources":["QA prueba proveedor"]}'):
+            wizard.action_ask_ai()
+        self.assertEqual(wizard.answer_source, 'provider')
+        self.assertEqual(wizard.answer, 'Ofrecemos desarrollo personalizado.')
+        self.assertEqual(wizard.answer_model, 'test-model')

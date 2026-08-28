@@ -6,7 +6,7 @@ consumo local, costos oficiales y limites de la plataforma de IA.
 
 No reemplaza el motor de WhatsApp ni obliga a usar OpenAI: funciona con
 proveedores compatibles con los endpoints de modelos y uso.''',
-    'version': '19.0.1.0.25',
+    'version': '19.0.1.0.26',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
     'category': 'Discuss',
@@ -17,6 +17,7 @@ proveedores compatibles con los endpoints de modelos y uso.''',
         'views/chatroom_ai_usage_views.xml',
         'views/res_config_settings_views.xml',
         'views/chatroom_ai_usage_menus.xml',
+        'views/ai_setup_wizard_views.xml',
     ],
     'installable': True,
     'application': False,

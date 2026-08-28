@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import base64
 import re
+import unicodedata
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -98,6 +99,16 @@ class ChatroomAiSandbox(models.Model):
     operational_result = fields.Text(
         string='Resultado operativo de la prueba', readonly=True, copy=False,
         help='Traza de documentos y actividades creados en Odoo. No implica envío a WhatsApp.')
+    knowledge_context = fields.Text(
+        string='Contexto de conocimiento utilizado', readonly=True, copy=False)
+    knowledge_sources = fields.Text(
+        string='Fuentes de conocimiento utilizadas', readonly=True, copy=False)
+    knowledge_live_sources = fields.Text(
+        string='Datos vivos consultados', readonly=True, copy=False)
+    knowledge_context_chars = fields.Integer(
+        string='Caracteres de conocimiento', readonly=True, copy=False)
+    knowledge_estimated_input_tokens = fields.Integer(
+        string='Tokens estimados del conocimiento', readonly=True, copy=False)
 
     @api.depends('conversation_line_ids')
     def _compute_message_count(self):
@@ -165,6 +176,49 @@ class ChatroomAiSandbox(models.Model):
             parts.append('Cliente: %s' % request)
         return '\n'.join(parts).strip()
 
+    def _knowledge_details(self, query=False):
+        """Return the published knowledge and traceability for this test.
+
+        The sandbox has its own conversation lines, so querying only the
+        reference channel is not enough.  Keep this lookup in one place so
+        local tests, provider tests and operational plans use the same brain.
+        """
+        self.ensure_one()
+        if 'ai.knowledge.base' not in self.env:
+            return {}
+        try:
+            return self.env['ai.knowledge.base'].sudo().get_sales_context_details(
+                channel=self.channel_id,
+                query=query or self._quote_context() or self.prompt or '',
+                partner=self.channel_id.partner_id if self.channel_id else False,
+                company=self.channel_id.company_id if self.channel_id else self.env.company,
+            ) or {}
+        except Exception:
+            # A missing or incomplete knowledge module must not block a safe
+            # laboratory test; the diagnostic fields will simply stay empty.
+            return {}
+
+    def _laboratory_messages(self, system_prompt=False):
+        """Build provider messages with the complete laboratory transcript."""
+        self.ensure_one()
+        system = system_prompt or self.prompt or _(
+            'Responde en español, con tono profesional y breve. No inventes precios, stock, fechas ni enlaces. '
+            'Si faltan datos o hay una queja, solicita revisión humana.')
+        details = self._knowledge_details(self._quote_context() or self.draft_message)
+        knowledge_context = details.get('context') or '' if isinstance(details, dict) else ''
+        if knowledge_context:
+            system += _(
+                '\n\nBASE DE CONOCIMIENTO AUTORIZADA (fuente de verdad; no inventes datos):\n%s'
+            ) % knowledge_context
+        messages = self.channel_id._ai_build_conversation(extra_system=system)
+        transcript = self._quote_context(self.draft_message)
+        if transcript:
+            messages.append({
+                'role': 'user',
+                'content': _('Transcripción completa del laboratorio:\n%s') % transcript,
+            })
+        return messages, details
+
     @staticmethod
     def _quantity_from_text(text):
         """Extract an explicit commercial quantity without reading dates/prices."""
@@ -189,8 +243,12 @@ class ChatroomAiSandbox(models.Model):
         if 'product.product' not in self.env:
             return self.env['product.product']
         products = self.env['product.product'].browse()
+        customer_text = ' '.join(
+            line.body for line in self.conversation_line_ids
+            if line.speaker == 'customer' and line.body)
+        search_text = customer_text or context
         if self.channel_id and hasattr(self.channel_id, '_ai_search_products_mentioned'):
-            products = self.channel_id._ai_search_products_mentioned(context, limit=8)
+            products = self.channel_id._ai_search_products_mentioned(search_text, limit=8)
         # Generic words such as "cotización" must not select an arbitrary
         # product. Keep candidates with a meaningful name/code match only.
         if products:
@@ -200,21 +258,37 @@ class ChatroomAiSandbox(models.Model):
                 'unidades', 'unidad', 'servicio', 'producto', 'productos',
                 'precio', 'cantidad', 'cliente', 'para', 'con', 'una', 'uno',
             }
+            def normalize(value):
+                return ''.join(
+                    char for char in unicodedata.normalize('NFKD', value or '').lower()
+                    if not unicodedata.combining(char))
+
+            customer_normalized = normalize(search_text)
             words = {
-                word.lower() for word in re.findall(r'\w{4,}', context or '', re.UNICODE)
+                normalize(word) for word in re.findall(r'\w{4,}', search_text or '', re.UNICODE)
                 if word.lower() not in ignored and not word.isdigit()
             }
             scored = []
             for product in products:
-                searchable = ' '.join(filter(None, (
-                    product.name, product.default_code, product.description_sale))).lower()
-                score = sum(1 for word in words if word in searchable)
+                name_normalized = normalize(product.name)
+                searchable = normalize(' '.join(filter(None, (
+                    product.name, product.default_code, product.description_sale))))
+                exact_name = name_normalized and name_normalized in customer_normalized
+                score = (1000 if exact_name else 0) + sum(
+                    1 for word in words
+                    if word in searchable or any(
+                        len(word) >= 6 and token.startswith(word[:6])
+                        for token in re.findall(r'\w{4,}', searchable)))
                 if score:
                     scored.append((score, product))
-            products = self.env['product.product'].browse([
-                product.id for _score, product in sorted(
-                    scored, key=lambda item: (-item[0], item[1].id))
-            ])
+            exact_products = [product for score, product in scored if score >= 1000]
+            if exact_products:
+                products = self.env['product.product'].browse([product.id for product in exact_products])
+            elif scored:
+                products = self.env['product.product'].browse([max(
+                    scored, key=lambda item: (item[0], -item[1].id))[1].id])
+            else:
+                products = self.env['product.product'].browse()
         return products or self._test_quote_product()
 
     def _quote_lines_from_context(self, request=False):
@@ -406,8 +480,8 @@ class ChatroomAiSandbox(models.Model):
             'view_mode': 'form', 'target': 'current',
         }
 
-    def action_create_test_meeting(self):
-        """Create a native Odoo Calendar meeting without external delivery."""
+    def _create_test_meeting(self, request=False):
+        """Create and record a native Calendar meeting without external delivery."""
         self.ensure_one()
         channel = self.channel_id
         if not channel or not channel.partner_id:
@@ -415,18 +489,27 @@ class ChatroomAiSandbox(models.Model):
         if not hasattr(channel, 'action_create_meeting'):
             raise UserError(_(
                 'Instala el módulo Chatroom - Calendario para usar la agenda nativa y la videollamada de Odoo.'))
-        meeting = channel.action_create_meeting(request=self._last_customer_request())
+        meeting = channel.action_create_meeting(request=request or self._last_customer_request())
         note = _(
             'Reunión nativa creada en Calendario para %s. Enlace generado: %s. '
             'La prueba no envió ningún mensaje externo.'
         ) % (channel.partner_id.display_name, meeting.get('link'))
-        self.write({
+        values = {
             'test_meeting_id': meeting.get('event_id') or 0,
             'test_meeting_name': meeting.get('name') or False,
             'test_meeting_link': meeting.get('link') or False,
             'operational_result': '%s\n%s' % ((self.operational_result or '').strip(), note),
-        })
+        }
+        if meeting.get('activity_id'):
+            values['test_activity_ids'] = [(4, meeting['activity_id'])]
+        self.write(values)
         self.message_post(body=note, subtype_xmlid='mail.mt_note')
+        return meeting
+
+    def action_create_test_meeting(self):
+        """Create a native Odoo Calendar meeting without external delivery."""
+        self.ensure_one()
+        self._create_test_meeting(self._last_customer_request())
         return {
             'type': 'ir.actions.act_window', 'name': _('Prueba IA'),
             'res_model': self._name, 'res_id': self.id,
@@ -438,7 +521,7 @@ class ChatroomAiSandbox(models.Model):
         self.ensure_one()
         normalized = (request or '').lower()
         notes = []
-        if any(word in normalized for word in ('cotización', 'cotizacion', 'presupuesto', 'pdf')):
+        if any(word in normalized for word in ('cotización', 'cotizacion', 'presupuesto', 'pdf')) and not self.test_quote_id:
             try:
                 order, attachment, simulated_message = self._create_test_quote_pdf(request)
                 notes.append(_(
@@ -446,15 +529,28 @@ class ChatroomAiSandbox(models.Model):
                 ) % (attachment.name, order.name, simulated_message.display_name))
             except UserError as exc:
                 notes.append(_('No se pudo generar el PDF de prueba: %s') % exc)
-        if any(word in normalized for word in ('actividad', 'tarea interna', 'llamada', 'seguimiento')):
+        if any(word in normalized for word in ('actividad', 'tarea interna', 'llamada', 'seguimiento')) and not self.test_activity_ids:
             try:
                 activity = self._create_test_activity(request)
                 notes.append(_('Actividad interna creada para %s.') % activity.date_deadline)
             except UserError as exc:
                 notes.append(_('No se pudo crear la actividad interna: %s') % exc)
+        if any(word in normalized for word in (
+            'reunión', 'reunion', 'videollamada', 'google meet',
+            'enlace de reunión', 'enlace de reunion', 'agendar', 'cita')):
+            if self.test_meeting_id:
+                return '\n'.join(notes)
+            try:
+                meeting = self._create_test_meeting(request)
+                notes.append(_(
+                    'Reunión nativa creada en Calendario: %s. Enlace: %s.'
+                ) % (meeting.get('name') or _('Reunión'), meeting.get('link') or _('no disponible')))
+            except UserError as exc:
+                notes.append(_('No se pudo crear la reunión nativa: %s') % exc)
         if notes:
             self.write({'operational_result': '%s\n%s' % (
                 (self.operational_result or '').strip(), '\n'.join(notes))})
+        return '\n'.join(notes)
 
     def _local_playground_reply(self, question):
         """Respuesta determinista para ensayar el chat sin consumir tokens."""
@@ -464,15 +560,8 @@ class ChatroomAiSandbox(models.Model):
         if re.fullmatch(r'(hola|buenas|buenos días|buenas tardes|buenas noches)', normalized):
             return _('Hola. Soy el asistente de prueba de Chatroom. ¿En qué podemos ayudarte?')
         if 'tarifa' in normalized or 'precio por hora' in normalized:
-            knowledge_context = ''
-            if 'ai.knowledge.base' in self.env:
-                details = self.env['ai.knowledge.base'].sudo().get_sales_context_details(
-                    channel=self.channel_id, query=question, company=self.env.company)
-                # Algunas instalaciones conservan la API anterior que devuelve
-                # directamente el texto, mientras que la API actual devuelve
-                # un diccionario con trazabilidad. El laboratorio debe tolerar
-                # ambos formatos para no bloquear una prueba local.
-                knowledge_context = details.get('context') or '' if isinstance(details, dict) else (details or '')
+            details = self._knowledge_details(question)
+            knowledge_context = details.get('context') or '' if isinstance(details, dict) else ''
             amounts = self._maximum_amounts_from_context(knowledge_context)
             amount = 'USD %.2f' % max(amounts) if amounts else 'USD 20'
             return _(
@@ -489,9 +578,19 @@ class ChatroomAiSandbox(models.Model):
         if any(word in normalized for word in ('reunión', 'reunion', 'videollamada', 'google meet', 'enlace de reunión', 'enlace de reunion')):
             return _('Puedo crear una reunión nativa en Calendario con un enlace de videollamada y compartirlo por Chatroom. La acción queda preparada para aprobación humana.')
         if any(word in normalized for word in ('producto', 'catálogo', 'catalogo', 'stock')):
-            return _('Puedo consultar el catálogo de Odoo y revisar disponibilidad. Indícame el producto o servicio que necesitas.')
+            commercial_context = self._local_commercial_context(question)
+            response = _('Puedo consultar el catálogo vivo de Odoo y revisar disponibilidad.')
+            return '%s\n\n%s' % (response, commercial_context) if commercial_context else response
         if any(word in normalized for word in ('gracias', 'perfecto', 'ok')):
             return _('Con gusto. Quedamos atentos para ayudarte.')
+        details = self._knowledge_details(question)
+        knowledge_context = details.get('context') or '' if isinstance(details, dict) else ''
+        if knowledge_context:
+            sources = details.get('sources') or [] if isinstance(details, dict) else []
+            source_text = ', '.join(item.get('name') for item in sources if item.get('name'))
+            trace = _('Fuente utilizada: %s.') % source_text if source_text else ''
+            return _('Con base en el conocimiento autorizado de Odoo:\n\n%s\n\n%s') % (
+                knowledge_context[:1800], trace)
         return _('Recibí tu consulta en el laboratorio local. En modo proveedor la IA analizaría el contexto y prepararía una respuesta basada en el conocimiento autorizado.')
 
     @staticmethod
@@ -540,7 +639,7 @@ class ChatroomAiSandbox(models.Model):
                 amount = facts['price'] * quantity
                 lines.append(_(
                     'Línea solicitada: %(product)s | cantidad %(quantity)s | '
-                    'precio unitario vigente de Odoo %(price).2f %(currency)s | '
+                    'precio actual de Odoo %(price).2f %(currency)s | '
                     'importe %(amount).2f %(currency)s (%(stock)s).'
                 ) % {
                     'product': product.display_name,
@@ -571,12 +670,14 @@ class ChatroomAiSandbox(models.Model):
                     'stock': facts['stock_label'],
                 })
         if is_quote_request and quote_context:
-            lines.append(_('Contexto usado para preparar la cotización: %s') % re.sub(
-                r'\s+', ' ', quote_context).strip()[:500])
-        if 'ai.knowledge.base' in self.env:
-            details = self.env['ai.knowledge.base'].sudo().get_sales_context_details(
-                channel=self.channel_id, query=question, company=self.env.company)
-            knowledge_context = details.get('context') or '' if isinstance(details, dict) else (details or '')
+            customer_context = ' '.join(
+                line.body for line in self.conversation_line_ids
+                if line.speaker == 'customer' and line.body)
+            lines.append(_('Solicitud del cliente usada para preparar la cotización: %s') % re.sub(
+                r'\s+', ' ', customer_context or question or '').strip()[:500])
+        details = self._knowledge_details(question)
+        if details:
+            knowledge_context = details.get('context') or '' if isinstance(details, dict) else ''
             amounts = self._maximum_amounts_from_context(knowledge_context)
             if amounts:
                 lines.append(_(
@@ -599,9 +700,11 @@ class ChatroomAiSandbox(models.Model):
         request = (customer_lines[-1].body if customer_lines else self.draft_message or '').strip()
         if not request:
             raise UserError(_('Escribe primero una petición del cliente en el chat de prueba.'))
+        transcript = self._quote_context(request)
         task = self.env['chatroom.ai.task'].create_from_channel(
             self.channel_id, task_type='orchestrate',
-            prompt=_('Petición del laboratorio: %s') % request,
+            prompt=_('Petición del laboratorio:\n%s\n\nTranscripción completa:\n%s') % (
+                request, transcript),
             approval_required=True)
         task.action_plan()
         return {
@@ -615,14 +718,7 @@ class ChatroomAiSandbox(models.Model):
 
     def _playground_conversation(self):
         self.ensure_one()
-        system = self.prompt or _(
-            'Responde en español, con tono profesional y breve. No inventes precios, stock, fechas ni enlaces. '
-            'Si faltan datos o hay una queja, solicita revisión humana.')
-        messages = self.channel_id._ai_build_conversation(extra_system=system)
-        messages.extend({
-            'role': 'user' if line.speaker == 'customer' else 'assistant',
-            'content': line.body,
-        } for line in self.conversation_line_ids.sorted('sequence'))
+        messages, _details = self._laboratory_messages(self.prompt)
         return messages
 
     def action_send_test_message(self):
@@ -639,6 +735,7 @@ class ChatroomAiSandbox(models.Model):
             'speaker': 'customer', 'body': question,
         })
         try:
+            knowledge_details = self._knowledge_details(self._quote_context(question))
             if self.execution_mode == 'provider':
                 playground_messages = self._playground_conversation()
                 commercial_context = self._local_commercial_context(question)
@@ -660,6 +757,14 @@ class ChatroomAiSandbox(models.Model):
                 'draft_message': False, 'output': reply, 'state': 'done',
                 'error_message': False, 'delivery_state': 'not_run',
                 'delivery_note': _('Conversación de prueba. No se llamó a WhatsApp.'),
+                'knowledge_context': knowledge_details.get('context') or '',
+                'knowledge_sources': '\n'.join(
+                    '- %s (v%s)' % (item.get('name') or _('Fuente'), item.get('version', 1))
+                    for item in (knowledge_details.get('sources') or []) if item.get('name')),
+                'knowledge_live_sources': '\n'.join(
+                    '- %s' % item for item in (knowledge_details.get('live_sources') or []) if item),
+                'knowledge_context_chars': knowledge_details.get('context_chars', 0),
+                'knowledge_estimated_input_tokens': knowledge_details.get('estimated_input_tokens', 0),
             }
             if self.execution_mode == 'local':
                 values.update({
@@ -679,7 +784,9 @@ class ChatroomAiSandbox(models.Model):
                         'output_tokens': event.output_tokens,
                     })
             self.write(values)
-            self._process_test_operations(question)
+            operation_note = self._process_test_operations(question)
+            if operation_note and operation_note not in (reply or ''):
+                assistant_line.write({'body': '%s\n\n%s' % (reply, operation_note)})
             # El PDF también queda en el turno de IA del laboratorio, no
             # únicamente en el chatter de la prueba o del presupuesto.
             if self.test_chat_message_id and self.test_chat_message_id.attachment_ids:
@@ -702,7 +809,7 @@ class ChatroomAiSandbox(models.Model):
             if not record.channel_id:
                 raise UserError(_('Selecciona una conversación para aportar contexto.'))
             try:
-                messages = record.channel_id._ai_build_conversation(extra_system=record.prompt)
+                messages, details = record._laboratory_messages(record.prompt)
                 result = record.channel_id._ai_chat_completion(messages, task_type=record.task_type)
                 evaluation_state, evaluation_note = record._evaluate_output(result)
                 record.write({
@@ -710,6 +817,21 @@ class ChatroomAiSandbox(models.Model):
                     'evaluation_state': evaluation_state,
                     'evaluation_note': evaluation_note,
                     'delivery_state': 'not_run', 'delivery_note': False,
+                    'knowledge_context': details.get('context') or '',
+                    'knowledge_sources': '\n'.join(
+                        '- %s (v%s)' % (item.get('name') or _('Fuente'), item.get('version', 1))
+                        for item in (details.get('sources') or []) if item.get('name')),
+                    'knowledge_live_sources': '\n'.join(
+                        '- %s' % item for item in (details.get('live_sources') or []) if item),
+                    'knowledge_context_chars': details.get('context_chars', 0),
+                    'knowledge_estimated_input_tokens': details.get('estimated_input_tokens', 0),
+                    'operational_result': _(
+                        'El análisis utilizó la conversación completa del laboratorio y la base de conocimiento publicada. '
+                        'Fuentes: %s. Datos vivos: %s.'
+                    ) % (
+                        ', '.join(item.get('name') for item in (details.get('sources') or []) if item.get('name')) or _('ninguna'),
+                        ', '.join(details.get('live_sources') or []) or _('ninguno'),
+                    ),
                 })
                 event = self.env['chatroom.ai.usage.event'].search([
                     ('channel_id', '=', record.channel_id.id),
@@ -719,6 +841,20 @@ class ChatroomAiSandbox(models.Model):
                         'model_used': event.model,
                         'input_tokens': event.input_tokens,
                         'output_tokens': event.output_tokens,
+                    })
+                # "No enviar" means no external WhatsApp delivery, not that
+                # the laboratory ignores an explicit native Odoo operation.
+                # Use the complete transcript so a follow-up such as
+                # "envíame aquí" still preserves the earlier meeting/quote
+                # request. The idempotence guards above prevent duplicates.
+                operation_request = record._quote_context(record.draft_message)
+                operation_note = record._process_test_operations(operation_request)
+                if operation_note:
+                    record.write({
+                        'operational_result': '%s\n%s' % (
+                            (record.operational_result or '').strip(),
+                            _('El laboratorio materializó operaciones nativas sin enviar a WhatsApp:\n%s') % operation_note,
+                        ),
                     })
             except Exception as exc:
                 record.write({'state': 'error', 'evaluation_state': 'error', 'error_message': str(exc)})

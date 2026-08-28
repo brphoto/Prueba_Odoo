@@ -91,7 +91,11 @@ class TestChatroomAiUsage(TransactionCase):
             'execution_mode': 'local', 'prompt': 'Responde en español y explica el siguiente paso.',
         })
         sandbox.write({'draft_message': 'Necesito una cotización en PDF'})
-        sandbox.action_send_test_message()
+        with patch.object(
+            type(self.env['ir.actions.report']), '_render_qweb_pdf',
+            return_value=(b'%PDF-1.4 route test', 'pdf'),
+        ):
+            sandbox.action_send_test_message()
         self.assertIn('cotización nativa', sandbox.output)
         action = sandbox.action_prepare_operational_task()
         task = self.env['chatroom.ai.task'].browse(action['res_id'])
@@ -240,6 +244,81 @@ class TestChatroomAiUsage(TransactionCase):
         self.assertIn('PDF listo', sandbox.operational_result)
         self.assertIn('Actividad interna creada', sandbox.operational_result)
 
+    def test_sandbox_analysis_uses_lab_transcript_and_published_knowledge(self):
+        partner, channel = self._create_sandbox_channel('sandbox-brain-001')
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'Conocimiento QA implementacion',
+            'source_type': 'text',
+            'category': 'products',
+            'source_text': (
+                'Somos implementadores de Odoo. Ofrecemos implementación, '
+                'desarrollo personalizado y acompañamiento comercial.'
+            ),
+            'publication_state': 'published',
+        })
+        manual.action_index()
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Prueba cerebro del laboratorio', 'channel_id': channel.id,
+            'execution_mode': 'provider', 'prompt': 'Responde usando fuentes verificadas.',
+        })
+        self.env['chatroom.ai.sandbox.message'].create([
+            {'sandbox_id': sandbox.id, 'sequence': 10, 'speaker': 'customer',
+             'body': '¿Qué servicios de implementación ofrecen?'},
+            {'sandbox_id': sandbox.id, 'sequence': 20, 'speaker': 'assistant',
+             'body': 'Estoy revisando la información.'},
+        ])
+        with patch.object(
+            type(channel), '_ai_chat_completion', return_value='Respuesta basada en conocimiento') as completion:
+            sandbox.action_run()
+        messages = completion.call_args.args[0]
+        system = messages[0]['content']
+        transcript = '\n'.join(message['content'] for message in messages[1:])
+        self.assertIn('BASE DE CONOCIMIENTO AUTORIZADA', system)
+        self.assertIn('implementadores de Odoo', system)
+        self.assertIn('¿Qué servicios de implementación ofrecen?', transcript)
+        self.assertIn('Conocimiento QA implementacion', sandbox.knowledge_sources)
+        self.assertGreater(sandbox.knowledge_context_chars, 0)
+        self.assertIn('publicada', sandbox.operational_result)
+        self.assertEqual(sandbox.channel_id.partner_id, partner)
+
+    def test_sandbox_meeting_request_creates_native_event_activity_and_visible_link(self):
+        _partner, channel = self._create_sandbox_channel('sandbox-meeting-001')
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Prueba reunión nativa', 'channel_id': channel.id,
+            'execution_mode': 'local', 'prompt': 'Responde en español.',
+        })
+        sandbox.write({'draft_message': 'Quiero agendar una reunión virtual y recibir el enlace.'})
+        sandbox.action_send_test_message()
+        self.assertTrue(sandbox.test_meeting_id)
+        self.assertTrue(sandbox.test_meeting_link)
+        self.assertTrue(self.env['calendar.event'].browse(sandbox.test_meeting_id).exists())
+        self.assertTrue(sandbox.test_activity_ids)
+        assistant = sandbox.conversation_line_ids.filtered(
+            lambda line: line.speaker == 'assistant')[-1]
+        self.assertIn(sandbox.test_meeting_link, assistant.body)
+        self.assertIn('Reunión nativa creada', sandbox.operational_result)
+        self.assertIn('Enlace:', sandbox.operational_result)
+
+    def test_sandbox_analysis_materializes_native_actions_from_complete_transcript(self):
+        _partner, channel = self._create_sandbox_channel('sandbox-analysis-actions-001')
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Analisis con acciones nativas', 'channel_id': channel.id,
+            'execution_mode': 'local', 'prompt': 'Analiza y ejecuta las operaciones nativas seguras.',
+        })
+        self.env['chatroom.ai.sandbox.message'].create([
+            {'sandbox_id': sandbox.id, 'sequence': 10, 'speaker': 'customer',
+             'body': 'Necesito una reunion virtual y una actividad de seguimiento.'},
+            {'sandbox_id': sandbox.id, 'sequence': 20, 'speaker': 'customer',
+             'body': 'Por favor revisa todo y dejame el enlace aqui.'},
+        ])
+        with patch.object(type(channel), '_ai_chat_completion', return_value='Analisis completado'):
+            sandbox.action_run()
+        self.assertTrue(sandbox.test_meeting_id)
+        self.assertTrue(sandbox.test_meeting_link)
+        self.assertTrue(sandbox.test_activity_ids)
+        self.assertIn('operaciones nativas sin enviar', sandbox.operational_result)
+        self.assertIn(sandbox.test_meeting_link, sandbox.operational_result)
+
     def test_selected_model_overrides_manual_fallback(self):
         icp = self.env['ir.config_parameter'].sudo()
         icp.set_param('chatroom_whatsapp.ai_enabled', 'True')
@@ -346,8 +425,72 @@ class TestChatroomAiUsage(TransactionCase):
 
     def test_local_refresh_ui_returns_notification(self):
         action = self.env['chatroom.ai.usage.snapshot'].action_refresh_local_ui()
-        self.assertEqual(action['type'], 'ir.actions.client')
+        self.assertEqual(action['type'], 'ir.actions.act_window')
+        self.assertEqual(action['res_model'], 'chatroom.ai.usage.snapshot')
+
+    def test_official_refresh_opens_populated_snapshot_with_cost_breakdown(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.ai_admin_api_key', 'admin-test-key')
+        usage_model = self.env['chatroom.ai.usage.snapshot']
+        usage_payload = {'data': [{'results': [{
+            'num_model_requests': 3, 'input_tokens': 120,
+            'output_tokens': 45, 'model': 'gpt-test',
+        }]}]}
+        cost_payload = {'data': [{'results': [{
+            'line_item': 'Text generation',
+            'amount': {'value': 0.12, 'currency': 'usd'},
+        }]}]}
+        with patch.object(type(usage_model), '_fetch', side_effect=[usage_payload, cost_payload]):
+            action = usage_model.action_refresh()
+        self.assertEqual(action['type'], 'ir.actions.act_window')
+        snapshot = usage_model.browse(action['res_id'])
+        self.assertEqual(snapshot.source, 'openai')
+        self.assertEqual(snapshot.cost, 0.12)
+        self.assertIn('Text generation', snapshot.cost_breakdown)
+
+    def test_setup_wizard_persists_model_and_optional_funding(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.ai_api_key', 'test-key')
+        model = self.env['chatroom.ai.provider.model'].create({
+            'name': 'wizard-test-model', 'model_id': 'wizard-test-model',
+            'provider': 'openai', 'supports_chat': True, 'active': True,
+        })
+        wizard = self.env['chatroom.ai.setup.wizard'].create({
+            'provider_url': 'https://api.openai.com/v1',
+            'selected_model_id': model.id,
+            'create_company_knowledge': False,
+            'initial_funding': 10.0,
+        })
+        action = wizard.action_finish()
         self.assertEqual(action['tag'], 'display_notification')
+        self.assertEqual(icp.get_param('chatroom_whatsapp.ai_model_id'), str(model.id))
+        self.assertEqual(self.env['chatroom.ai.funding'].search_count([
+            ('reference', '=', 'Asistente inicial de IA'),
+        ]), 1)
+
+    def test_setup_wizard_rejects_negative_funding(self):
+        with self.assertRaises(ValidationError):
+            self.env['chatroom.ai.setup.wizard'].create({'initial_funding': -1.0})
+
+    def test_setup_wizard_can_validate_official_costs_without_tokens(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.ai_api_key', 'test-key')
+        icp.set_param('chatroom_whatsapp.ai_admin_api_key', 'admin-test-key')
+        wizard = self.env['chatroom.ai.setup.wizard'].create({
+            'provider_url': 'https://api.openai.com/v1',
+            'create_company_knowledge': False,
+        })
+        usage_payload = {'data': [{'results': [{'num_model_requests': 4}]}]}
+        cost_payload = {'data': [{'results': [{
+            'amount': {'value': 0.08, 'currency': 'usd'},
+        }]}]}
+        with patch.object(
+            type(self.env['chatroom.ai.usage.snapshot']), '_fetch',
+            side_effect=[usage_payload, cost_payload],
+        ):
+            action = wizard.action_test_official_costs()
+        self.assertEqual(action['params']['type'], 'success')
+        self.assertIn('0.080000', action['params']['message'])
 
     def test_task_profile_and_fallback_models_are_ordered(self):
         icp = self.env['ir.config_parameter'].sudo()

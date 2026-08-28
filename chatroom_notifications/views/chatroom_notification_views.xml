@@ -10,7 +10,7 @@
             </header>
             <field name="create_date"/><field name="company_id" optional="hide"/><field name="name"/><field name="notification_type" widget="badge"/>
             <field name="priority" widget="badge"/><field name="state" widget="badge"/><field name="user_id"/>
-            <field name="channel_id" optional="hide"/><field name="snoozed_until" optional="hide"/>
+            <field name="channel_id" optional="hide"/><field name="delivery_mode" optional="hide"/><field name="delivery_state" widget="badge" optional="show"/><field name="snoozed_until" optional="hide"/>
         </list></field>
     </record>
     <record id="view_chatroom_notification_form" model="ir.ui.view">
@@ -20,14 +20,28 @@
                 <button name="action_mark_read" type="object" string="Marcar como leída" class="btn-secondary" invisible="state != 'unread'"/>
                 <button name="action_snooze" type="object" string="Posponer 1 hora" class="btn-secondary" invisible="state in ('done', 'snoozed')"/>
                 <button name="action_resolve" type="object" string="Resolver" class="btn-primary" invisible="state == 'done'"/>
-                <button name="action_open_record" type="object" string="Abrir registro" class="btn-primary" invisible="not res_model or not res_id"/>
+                <button name="action_open_record" type="object" string="Abrir registro" class="btn-secondary" invisible="not res_model or not res_id"/>
+                <button name="action_dispatch" type="object" string="Enviar aviso" class="btn-primary"
+                        invisible="delivery_mode == 'internal' or delivery_state == 'sent'"/>
                 <field name="state" widget="statusbar" statusbar_visible="unread,read,done"/>
             </header><sheet>
                 <div class="oe_title"><h1><field name="name"/></h1></div>
-                <group><group><field name="company_id"/><field name="notification_type"/><field name="priority"/><field name="user_id"/></group>
-                    <group><field name="channel_id"/><field name="partner_id"/><field name="escalation_level"/></group></group>
-                <group string="Detalle"><field name="message" nolabel="1"/></group>
-                <group string="Auditoría"><field name="dedupe_key"/><field name="read_at"/><field name="snoozed_until"/><field name="resolved_at"/></group>
+                <notebook>
+                    <page string="Aviso" name="notification_data">
+                        <group><group><field name="company_id"/><field name="notification_type"/><field name="priority"/><field name="user_id"/></group>
+                            <group><field name="channel_id"/><field name="partner_id"/><field name="escalation_level"/></group></group>
+                        <group string="Detalle"><field name="message" nolabel="1"/></group>
+                    </page>
+                    <page string="Entrega" name="delivery">
+                        <div class="alert alert-info" role="status">El cron solo registra la alerta. Usa «Enviar aviso» cuando un usuario autorizado confirme que corresponde notificar.</div>
+                        <group><group><field name="delivery_mode"/><field name="delivery_state" widget="badge"/></group>
+                            <group><field name="email_sent_at"/><field name="whatsapp_sent_at"/></group></group>
+                        <field name="delivery_error" readonly="1" nolabel="1"/>
+                    </page>
+                    <page string="Auditoría" name="audit">
+                        <group><field name="dedupe_key"/><field name="read_at"/><field name="snoozed_until"/><field name="resolved_at"/></group>
+                    </page>
+                </notebook>
             </sheet>
         </form></field>
     </record>

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import re
+import unicodedata
 from datetime import datetime, time, timedelta
 
 import pytz
@@ -616,7 +617,11 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
         if not self.channel_id or 'product.product' not in self.env:
             return [], False, False, False
         context = self._conversation_text()
-        products = self.channel_id._ai_search_products_mentioned(context, limit=8) \
+        customer_text = ' '.join(
+            message.body for message in self.channel_id.message_ids
+            if message.direction == 'inbound' and message.body)
+        search_text = customer_text or context
+        products = self.channel_id._ai_search_products_mentioned(search_text, limit=8) \
             if hasattr(self.channel_id, '_ai_search_products_mentioned') else self.env['product.product']
         if products:
             ignored = {
@@ -625,21 +630,37 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                 'unidades', 'unidad', 'servicio', 'producto', 'productos',
                 'precio', 'cantidad', 'cliente', 'para', 'con', 'una', 'uno',
             }
+            def normalize(value):
+                return ''.join(
+                    char for char in unicodedata.normalize('NFKD', value or '').lower()
+                    if not unicodedata.combining(char))
+
+            customer_normalized = normalize(search_text)
             words = {
-                word.lower() for word in re.findall(r'\w{4,}', context or '', re.UNICODE)
+                normalize(word) for word in re.findall(r'\w{4,}', search_text or '', re.UNICODE)
                 if word.lower() not in ignored and not word.isdigit()
             }
             scored = []
             for product in products:
-                searchable = ' '.join(filter(None, (
-                    product.name, product.default_code, product.description_sale))).lower()
-                score = sum(1 for word in words if word in searchable)
+                name_normalized = normalize(product.name)
+                searchable = normalize(' '.join(filter(None, (
+                    product.name, product.default_code, product.description_sale))))
+                exact_name = name_normalized and name_normalized in customer_normalized
+                score = (1000 if exact_name else 0) + sum(
+                    1 for word in words
+                    if word in searchable or any(
+                        len(word) >= 6 and token.startswith(word[:6])
+                        for token in re.findall(r'\w{4,}', searchable)))
                 if score:
                     scored.append((score, product))
-            products = self.env['product.product'].browse([
-                product.id for _score, product in sorted(
-                    scored, key=lambda item: (-item[0], item[1].id))
-            ])
+            exact_products = [product for score, product in scored if score >= 1000]
+            if exact_products:
+                products = self.env['product.product'].browse([product.id for product in exact_products])
+            elif scored:
+                products = self.env['product.product'].browse([max(
+                    scored, key=lambda item: (item[0], -item[1].id))[1].id])
+            else:
+                products = self.env['product.product'].browse()
         if not products:
             configured = self.env['ir.config_parameter'].sudo().get_param(
                 'chatroom_ai_agent.quote_product_id', '')

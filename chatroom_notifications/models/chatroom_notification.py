@@ -37,6 +37,20 @@ class ChatroomNotification(models.Model):
     snoozed_until = fields.Datetime(string='Pospuesta hasta', readonly=True)
     resolved_at = fields.Datetime(string='Resuelta el', readonly=True)
     escalation_level = fields.Integer(string='Nivel de escalamiento', default=0, copy=False)
+    delivery_mode = fields.Selection([
+        ('internal', 'Solo aviso interno'),
+        ('email', 'Correo electrónico'),
+        ('whatsapp', 'WhatsApp'),
+        ('email_whatsapp', 'Correo y WhatsApp'),
+    ], string='Entrega externa', default='internal', required=True, tracking=True,
+        help='La entrega externa siempre se ejecuta con el botón Enviar aviso. Las tareas automáticas nunca envían sin revisión.')
+    delivery_state = fields.Selection([
+        ('pending', 'Pendiente'), ('sent', 'Enviado'), ('partial', 'Parcial'),
+        ('skipped', 'No disponible'), ('failed', 'Fallido'),
+    ], string='Estado de entrega', default='pending', readonly=True, copy=False)
+    email_sent_at = fields.Datetime(string='Correo enviado el', readonly=True, copy=False)
+    whatsapp_sent_at = fields.Datetime(string='WhatsApp enviado el', readonly=True, copy=False)
+    delivery_error = fields.Text(string='Detalle de entrega', readonly=True, copy=False)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -104,6 +118,57 @@ class ChatroomNotification(models.Model):
             'res_model': self.res_model, 'res_id': self.res_id,
             'views': [(False, 'form')], 'target': 'current',
         }
+
+    def action_dispatch(self):
+        """Deliver an alert through native mail and the existing Chatroom API.
+
+        A cron creates and deduplicates alerts, while a user decides when an
+        external message may leave Odoo.
+        """
+        for notification in self:
+            errors = []
+            sent = []
+            values = {'delivery_error': False}
+            recipient = notification.user_id.partner_id if notification.user_id else notification.partner_id
+            if notification.delivery_mode in ('email', 'email_whatsapp'):
+                if recipient and recipient.email:
+                    try:
+                        safe_message = (notification.message or notification.name).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br/>')
+                        mail = self.env['mail.mail'].sudo().create({
+                            'subject': notification.name,
+                            'body_html': '<p>%s</p>' % safe_message,
+                            'email_to': recipient.email,
+                            'auto_delete': True,
+                        })
+                        mail.send()
+                        values['email_sent_at'] = fields.Datetime.now()
+                        sent.append('correo')
+                    except Exception as error:  # noqa: BLE001 - conservar el resto de entregas
+                        errors.append(_('Correo: %s') % str(error)[:300])
+                else:
+                    errors.append(_('No hay correo electrónico configurado.'))
+            if notification.delivery_mode in ('whatsapp', 'email_whatsapp'):
+                channel = notification.channel_id
+                if channel and channel.channel_type == 'whatsapp':
+                    try:
+                        channel.action_send_text(notification.message or notification.name)
+                        values['whatsapp_sent_at'] = fields.Datetime.now()
+                        sent.append('WhatsApp')
+                    except Exception as error:  # noqa: BLE001 - dejar la alerta visible para reintentar
+                        errors.append(_('WhatsApp: %s') % str(error)[:300])
+                else:
+                    errors.append(_('La alerta no tiene una conversación WhatsApp válida.'))
+            if notification.delivery_mode == 'internal':
+                values.update({'delivery_state': 'skipped', 'delivery_error': _('Configurada solo para aviso interno.')})
+            elif sent and errors:
+                values.update({'delivery_state': 'partial', 'delivery_error': '\n'.join(errors)})
+            elif sent:
+                values.update({'delivery_state': 'sent', 'delivery_error': False})
+            else:
+                values.update({'delivery_state': 'failed', 'delivery_error': '\n'.join(errors)})
+            notification.write(values)
+            notification.message_post(body=_('Entrega procesada: %s.') % (', '.join(sent) or _('sin entregas')))
+        return self._action_feedback(_('Entrega procesada'), _('%s alerta(s) procesada(s).') % len(self))
 
     @api.model
     def _cron_create_sla_notifications(self):

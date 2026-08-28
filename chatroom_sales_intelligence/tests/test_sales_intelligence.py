@@ -210,6 +210,17 @@ class TestChatroomSalesIntelligence(TransactionCase):
         self.assertTrue(details['sources'])
         self.assertEqual(details['sources'][0]['version'], manual.version)
 
+    def test_knowledge_memory_map_explains_indexed_source(self):
+        manual = self.env['ai.knowledge.base'].create({
+            'name': 'Mapa de memoria QA', 'source_type': 'text',
+            'source_text': 'La tarifa de implementación es USD 20 por hora.',
+        })
+        manual.action_organize()
+        self.assertIn('MEMORIA DEL AGENTE', manual.memory_map_html)
+        self.assertIn('Fuente original', manual.memory_map_html)
+        self.assertIn('Organizado localmente', manual.memory_map_html)
+        self.assertIn('fragmento(s)', manual.memory_map_html)
+
     def test_knowledge_does_not_send_unrelated_chunks(self):
         manual = self.env['ai.knowledge.base'].create({
             'name': 'Manual selectivo IA test', 'source_type': 'text',

@@ -42,10 +42,31 @@ class CrmEngagementAutomation(models.Model):
         'crm.engagement.automation.step', 'automation_id', string='Recordatorios', copy=True)
     last_run = fields.Datetime(string='Última ejecución', readonly=True, copy=False)
     last_preview_count = fields.Integer(string='Último resultado', readonly=True, copy=False)
+    execution_count = fields.Integer(string='Ejecuciones', compute='_compute_execution_count')
 
     preview_text = fields.Text(
         string='Ejemplos de mensajes', readonly=True, copy=False,
         help='Muestra ejemplos con las variables sustituidas antes de activar la automatizacion.')
+
+    def _compute_execution_count(self):
+        execution_model = self.env['crm.engagement.execution'].sudo()
+        counts = {}
+        if self.ids:
+            grouped = execution_model.read_group(
+                [('automation_id', 'in', self.ids)], ['automation_id'], ['automation_id'])
+            counts = {row['automation_id'][0]: row['automation_id_count'] for row in grouped if row.get('automation_id')}
+        for automation in self:
+            automation.execution_count = counts.get(automation.id, 0)
+
+    def action_view_executions(self):
+        self.ensure_one()
+        action = self.env.ref('crm_engagement_automation.action_crm_engagement_execution').read()[0]
+        action.update({
+            'name': _('Historial: %s') % self.name,
+            'domain': [('automation_id', '=', self.id)],
+            'context': {'search_default_automation_id': self.id},
+        })
+        return action
 
     def _get_target_partners(self):
         self.ensure_one()

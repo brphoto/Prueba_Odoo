@@ -47,6 +47,11 @@
                         <label for="name" class="oe_edit_only"/>
                         <h1><field name="name" placeholder="Ej. Cumpleaños de clientes VIP"/></h1>
                     </div>
+                    <div name="button_box" class="oe_button_box">
+                        <button name="action_view_executions" type="object" class="oe_stat_button" icon="fa-history">
+                            <field name="execution_count" widget="statinfo" string="Ejecuciones"/>
+                        </button>
+                    </div>
                     <group>
                         <group string="Disparador">
                             <field name="active" widget="boolean_toggle"/>
@@ -186,6 +191,7 @@
                     </group>
                     <field name="description" placeholder="Contexto que se incluirá en el recordatorio..."/>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>
@@ -222,10 +228,38 @@
         </field>
     </record>
 
+    <record id="view_crm_engagement_execution_form" model="ir.ui.view">
+        <field name="name">crm.engagement.execution.form</field>
+        <field name="model">crm.engagement.execution</field>
+        <field name="arch" type="xml">
+            <form string="Ejecución de recordatorio">
+                <header>
+                    <button name="action_approve" type="object" string="Aprobar y ejecutar" class="btn-primary"
+                            invisible="state != 'pending_approval'" groups="crm_engagement_automation.group_crm_engagement_manager"/>
+                    <button name="action_retry" type="object" string="Reintentar" class="btn-secondary"
+                            invisible="state != 'failed'" groups="crm_engagement_automation.group_crm_engagement_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="queued,pending_approval,sent,failed,cancelled"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="event_name" placeholder="Recordatorio comercial"/></h1></div>
+                    <group>
+                        <group string="Programación"><field name="automation_id"/><field name="step_id"/><field name="scheduled_date"/><field name="event_date"/><field name="channel"/></group>
+                        <group string="Cliente"><field name="partner_id"/><field name="event_key"/><field name="sent_at"/><field name="error_message"/></group>
+                    </group>
+                    <notebook>
+                        <page string="Contexto" name="context"><field name="context_json" nolabel="1" readonly="1" widget="text"/></page>
+                        <page string="Trazabilidad" name="trace"><p>La ejecución registra el evento, el canal utilizado y cualquier error. Las entregas por WhatsApp y correo mantienen su control de aprobación.</p></page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
     <record id="action_crm_engagement_execution" model="ir.actions.act_window">
         <field name="name">Historial de recordatorios</field>
         <field name="res_model">crm.engagement.execution</field>
-        <field name="view_mode">list</field>
+        <field name="view_mode">list,form</field>
     </record>
 
     <menuitem id="menu_crm_engagement_root" name="Automatizaciones comerciales"

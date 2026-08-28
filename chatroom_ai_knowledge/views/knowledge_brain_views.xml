@@ -73,6 +73,12 @@
                         <field name="organized_text" nolabel="1" readonly="1" placeholder="Todavía no hay contenido organizado."/>
                         <field name="organization_notes" nolabel="1" readonly="1"/>
                     </page>
+                    <page string="Mapa de memoria" name="memory_map">
+                        <div class="alert alert-info" role="status">
+                            Expande cada bloque para entender qué tiene disponible la IA. La memoria documental se indexa localmente; el catálogo de productos de Odoo se consulta en tiempo real.
+                        </div>
+                        <field name="memory_map_html" nolabel="1" readonly="1" widget="html"/>
+                    </page>
                 </notebook>
             </xpath>
             <xpath expr="//sheet" position="after">

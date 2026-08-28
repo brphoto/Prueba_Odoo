@@ -118,3 +118,12 @@
         width: 100%;
     }
 }
+.o_chatroom_ai_setup_wizard_form {
+    .o_form_sheet_bg > .o_form_sheet { max-width: 1100px; margin-left: auto; margin-right: auto; }
+    .o_chatroom_ai_setup_steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 18px; }
+    .o_chatroom_ai_setup_steps > div { display: flex; flex-direction: column; gap: 5px; min-height: 120px; padding: 16px; border: 1px solid #d9dce8; border-radius: 10px; background: #fafbfe; }
+    .o_chatroom_ai_setup_steps b { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #795273; color: #fff; }
+    .o_chatroom_ai_setup_steps span { color: #667085; line-height: 1.45; }
+    textarea { width: 100% !important; min-height: 180px; resize: vertical; line-height: 1.5; }
+}
+@media (max-width: 760px) { .o_chatroom_ai_setup_wizard_form .o_chatroom_ai_setup_steps { grid-template-columns: 1fr 1fr; } }

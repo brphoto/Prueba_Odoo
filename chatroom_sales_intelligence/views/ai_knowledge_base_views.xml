@@ -32,7 +32,7 @@
                     <field name="pdf_file" filename="pdf_filename" invisible="source_type != 'pdf'"/>
                     <field name="ocr_status" widget="badge" invisible="source_type != 'pdf'"/>
                     <field name="pdf_filename" invisible="1"/></group>
-                <div class="alert alert-danger" invisible="state != 'error'">
+                <div class="alert alert-danger" role="alert" invisible="state != 'error'">
                     <strong>La indexación no pudo completarse.</strong>
                     <field name="processing_error" readonly="1" nolabel="1" class="d-block mt-1"/>
                     <div class="text-muted mt-1">Corrige la fuente y pulsa «Indexar manual» nuevamente.</div>

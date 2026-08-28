@@ -85,8 +85,8 @@ class ChatroomAiKnowledgeTest(models.TransientModel):
         self.action_preview()
         details = self.env['ai.knowledge.base'].get_sales_context_details(
             self.channel_id, query=self.question, partner=self.partner_id)
-        context = details.get('context') or ''
-        if not context:
+        knowledge_context = details.get('context') or ''
+        if not knowledge_context:
             self.write({
                 'answer': _('No se encontró contexto publicado para responder.'),
                 'answer_source': 'none', 'answer_confidence': 0.0,
@@ -101,7 +101,7 @@ class ChatroomAiKnowledgeTest(models.TransientModel):
             and channel._ai_get_credentials(task_type='agent'))
         if not provider_ready:
             # A useful offline test is preferable to a silent empty dialog.
-            snippets = context[:1200]
+            snippets = knowledge_context[:1200]
             self.write({
                 'answer': _('Prueba local (sin tokens):\n\n%s') % snippets,
                 'answer_source': 'local', 'answer_confidence': 0.55,
@@ -119,7 +119,7 @@ class ChatroomAiKnowledgeTest(models.TransientModel):
         messages = [
             {'role': 'system', 'content': system},
             {'role': 'user', 'content': 'Pregunta: %s\n\nContexto verificado:\n%s' % (
-                self.question, context)},
+                self.question, knowledge_context)},
         ]
         try:
             raw = channel._ai_chat_completion(messages, task_type='agent')

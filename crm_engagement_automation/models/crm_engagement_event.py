@@ -4,6 +4,7 @@ from odoo import _, api, fields, models
 
 class CrmEngagementEvent(models.Model):
     _name = 'crm.engagement.event'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Evento comercial del cliente'
     _order = 'event_date, id'
 

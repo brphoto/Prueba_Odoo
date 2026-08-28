@@ -11,6 +11,7 @@ _logger = logging.getLogger(__name__)
 
 class CrmEngagementExecution(models.Model):
     _name = 'crm.engagement.execution'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Ejecución de automatización comercial'
     _order = 'scheduled_date desc, id desc'
 
@@ -34,6 +35,14 @@ class CrmEngagementExecution(models.Model):
     error_message = fields.Text(string='Detalle del error')
     context_json = fields.Text(string='Contexto de ejecución')
     sent_at = fields.Datetime(string='Ejecutada el', readonly=True)
+
+    def action_open_partner(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window', 'name': self.partner_id.display_name,
+            'res_model': 'res.partner', 'res_id': self.partner_id.id,
+            'view_mode': 'form', 'target': 'current',
+        }
 
     _execution_unique = models.Constraint(
         'unique(automation_id, step_id, partner_id, event_key)',
@@ -132,10 +141,12 @@ class CrmEngagementExecution(models.Model):
                 elif execution.channel == 'whatsapp':
                     execution._execute_whatsapp(context)
                 execution.write({'state': 'sent', 'sent_at': fields.Datetime.now(), 'error_message': False})
+                execution.message_post(body=_('Recordatorio ejecutado por el canal %s.') % execution.channel)
                 sent += 1
             except Exception as exc:  # noqa: BLE001 - conservar el fallo en el historial
                 _logger.exception('Falló la automatización comercial %s', execution.id)
                 execution.write({'state': 'failed', 'error_message': str(exc)[:1000]})
+                execution.message_post(body=_('Falló la ejecución: %s') % str(exc)[:500], message_type='notification')
                 failed += 1
         return {
             'type': 'ir.actions.client',
