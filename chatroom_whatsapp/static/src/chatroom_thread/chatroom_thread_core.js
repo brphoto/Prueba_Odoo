@@ -116,6 +116,7 @@ export class ChatroomThreadCore extends Component {
             scheduleOpen: false,
             scheduleDate: "",
             aiPaused: false,
+            aiAvailable: false,
             manualUrgent: false,
             messageSearchOpen: false,
             messageSearch: "",
@@ -295,7 +296,7 @@ export class ChatroomThreadCore extends Component {
              "next_activity_id", "next_activity_summary", "next_activity_date_deadline",
              "next_activity_overdue", "next_activity_user_id", "calendar_installed",
              "whatsapp_number_id", "tag_ids", "ai_paused",
-             "ai_sentiment", "ai_urgency"]
+             "ai_sentiment", "ai_urgency", "ai_available"]
         );
         this.state.channelName = channel.display_name;
         this.state.partnerId = channel.partner_id ? channel.partner_id[0] : false;
@@ -318,6 +319,7 @@ export class ChatroomThreadCore extends Component {
         this.state.whatsappNumberId = channel.whatsapp_number_id ? channel.whatsapp_number_id[0] : false;
         this.state.channelTagIds = channel.tag_ids || [];
         this.state.aiPaused = channel.ai_paused;
+        this.state.aiAvailable = Boolean(channel.ai_available);
         this.state.aiSentiment = channel.ai_sentiment || false;
         this.state.aiUrgency = channel.ai_urgency || false;
 
@@ -376,7 +378,7 @@ export class ChatroomThreadCore extends Component {
     }
 
     async toggleAiPaused() {
-        if (!this.channelId) {
+        if (!this.channelId || !this.state.aiAvailable) {
             return;
         }
         const paused = await this.orm.call(

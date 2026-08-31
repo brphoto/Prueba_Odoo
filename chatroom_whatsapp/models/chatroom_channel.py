@@ -135,6 +135,11 @@ class ChatroomChannel(models.Model):
              "solo en cuanto un agente manda un mensaje real, y también "
              "se puede prender/apagar a mano desde el encabezado del "
              "chat.")
+    ai_available = fields.Boolean(
+        string="IA disponible",
+        compute='_compute_ai_available',
+        help="Indica si está instalado el módulo opcional de IA.",
+    )
     cart_line_ids = fields.One2many(
         'chatroom.cart.line', 'channel_id', string="Carrito (IA)")
     cart_total = fields.Float(compute='_compute_cart_total')
@@ -171,6 +176,11 @@ class ChatroomChannel(models.Model):
     def _compute_cart_total(self):
         for rec in self:
             rec.cart_total = sum(line.quantity * line.price_unit for line in rec.cart_line_ids)
+
+    def _compute_ai_available(self):
+        available = 'chatroom.ai.suggestion' in self.env
+        for rec in self:
+            rec.ai_available = available
 
     @api.depends('assigned_user_id', 'assigned_user_id.chatroom_color')
     def _compute_assignment_visual(self):
@@ -2671,6 +2681,7 @@ class ChatroomChannel(models.Model):
             return {
                 'partner_id': False, 'partner_name': False, 'channels': [],
                 'related_records': [], 'total_unread': 0,
+                'ai_available': 'chatroom.ai.suggestion' in self.env,
             }
 
         model = self.env[model_name]
@@ -2679,6 +2690,7 @@ class ChatroomChannel(models.Model):
             return {
                 'partner_id': False, 'partner_name': False, 'channels': [],
                 'related_records': [], 'total_unread': 0,
+                'ai_available': 'chatroom.ai.suggestion' in self.env,
             }
         record.check_access('read')
 
@@ -2687,6 +2699,7 @@ class ChatroomChannel(models.Model):
             return {
                 'partner_id': False, 'partner_name': False, 'channels': [],
                 'related_records': [], 'total_unread': 0,
+                'ai_available': 'chatroom.ai.suggestion' in self.env,
             }
 
         channels = self.search(
@@ -2708,6 +2721,7 @@ class ChatroomChannel(models.Model):
             'channels': channels.read(fields_to_read),
             'total_unread': sum(channels.mapped('unread_count')),
             'related_records': self._get_chatter_related_records(partner),
+            'ai_available': 'chatroom.ai.suggestion' in self.env,
         }
 
     @api.model

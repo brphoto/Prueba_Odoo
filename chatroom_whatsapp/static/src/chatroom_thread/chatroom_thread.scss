@@ -37,7 +37,7 @@
     align-items: center;
     gap: 10px;
     padding: 10px 14px;
-    background-color: var(--o-brand-primary, #714B67);
+    background-color: var(--chatroom-ui-primary, var(--o-brand-primary, #714B67));
     color: #fff;
     cursor: pointer;
     flex: 0 0 auto;
@@ -477,10 +477,11 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    background-color: #e9edf1;
-    background-image:
-        radial-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px);
-    background-size: 16px 16px;
+    background-color: var(--chatroom-ui-chat-background-color, var(--o-view-background-color, #f8f9fa));
+    background-image: var(--chatroom-ui-chat-background, none);
+    background-size: var(--chatroom-ui-chat-background-size, auto);
+    background-repeat: var(--chatroom-ui-chat-background-repeat, no-repeat);
+    background-position: center;
 }
 
 .o_chatroom_loading,
@@ -550,13 +551,13 @@
 
 .o_chatroom_bubble_in {
     align-self: flex-start;
-    background-color: #fff;
+    background-color: var(--chatroom-ui-incoming-bubble, var(--o-view-background-color, #fff));
     border-top-left-radius: 2px;
 }
 
 .o_chatroom_bubble_out {
     align-self: flex-end;
-    background-color: #dcf8c6;
+    background-color: var(--chatroom-ui-outgoing-bubble, #dcf8c6);
     border-top-right-radius: 2px;
 }
 
@@ -565,7 +566,7 @@
 }
 
 .o_chatroom_bubble_quote {
-    border-left: 3px solid var(--o-brand-primary, #714B67);
+    border-left: 3px solid var(--chatroom-ui-primary, var(--o-brand-primary, #714B67));
     background-color: rgba(0, 0, 0, 0.05);
     border-radius: 4px;
     padding: 4px 8px;

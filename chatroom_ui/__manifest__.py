@@ -26,5 +26,7 @@
     'icon': '/chatroom_ui/static/description/icon.svg',
     'installable': True,
     'application': False,
-    'auto_install': True,
+    # La capa visual es opcional: el cliente puede usar Chatroom estándar
+    # sin instalar este módulo adicional.
+    'auto_install': False,
 }

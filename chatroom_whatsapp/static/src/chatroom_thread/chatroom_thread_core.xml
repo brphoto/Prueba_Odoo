@@ -24,7 +24,7 @@
                 <div class="o_chatroom_header_info">
                     <div class="o_chatroom_header_name" t-esc="state.channelName"/>
                     <div class="o_chatroom_header_channel" t-esc="state.channelType"/>
-                    <div t-if="state.aiSentiment || state.aiUrgency" class="o_chatroom_ai_signals">
+                    <div t-if="state.aiAvailable and (state.aiSentiment || state.aiUrgency)" class="o_chatroom_ai_signals">
                         <span t-if="state.aiSentiment" class="o_chatroom_ai_signal">
                             <i class="fa fa-smile-o me-1"/><t t-esc="state.aiSentiment"/>
                         </span>
@@ -136,7 +136,7 @@
                         <i class="fa fa-flag"/>
                         <span>Urgente</span>
                     </button>
-                    <span t-attf-class="o_chatroom_ai_toggle {{ state.aiPaused ? 'o_chatroom_ai_toggle_paused' : 'o_chatroom_ai_toggle_active' }}"
+                    <span t-if="false" t-attf-class="o_chatroom_ai_toggle {{ state.aiPaused ? 'o_chatroom_ai_toggle_paused' : 'o_chatroom_ai_toggle_active' }}"
                           t-on-click="toggleAiPaused"
                           t-att-title="state.aiPaused ? 'IA pausada: la está atendiendo un agente. Tocá para reactivarla.' : 'IA activa: puede responder sola. Tocá para pausarla y atender vos.'">
                         <i class="fa fa-android"/>

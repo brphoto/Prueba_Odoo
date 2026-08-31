@@ -14,6 +14,15 @@ import { useService } from "@web/core/utils/hooks";
 import { user } from "@web/core/user";
 import { ChatroomThreadCore } from "../chatroom_thread/chatroom_thread_core";
 
+function hexToRgba(hex, alpha) {
+    const match = /^#([0-9a-f]{6})$/i.exec(hex || "");
+    if (!match) {
+        return `rgba(0, 168, 132, ${alpha})`;
+    }
+    const value = parseInt(match[1], 16);
+    return `rgba(${value >> 16}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
+}
+
 export class ChatroomChatter extends Component {
     static template = "chatroom_whatsapp.ChatroomChatter";
     static components = { ChatroomThreadCore };
@@ -38,6 +47,8 @@ export class ChatroomChatter extends Component {
             selectedChannelId: false,
             relatedRecords: [],
             totalUnread: 0,
+            aiAvailable: false,
+            uiStyle: "",
             aiOpen: false,
             aiBusy: false,
             aiAction: "summary",
@@ -69,6 +80,17 @@ export class ChatroomChatter extends Component {
             this.state.channels = context.channels || [];
             this.state.relatedRecords = context.related_records || [];
             this.state.totalUnread = context.total_unread || 0;
+            this.state.aiAvailable = Boolean(context.ai_available);
+            this.state.uiStyle = "";
+            // chatroom_ui is optional. Its settings are read only when the
+            // extension is installed; the base chatter keeps native Odoo
+            // styling when it is not present.
+            try {
+                const ui = await this.orm.call("chatroom.channel", "get_ui_settings", []);
+                this.state.uiStyle = this._buildUiStyle(ui || {});
+            } catch (error) {
+                this.state.uiStyle = "";
+            }
             this.state.selectedChannelId = this.state.channels.some(
                 (channel) => channel.id === previousChannelId
             ) ? previousChannelId : (this.state.channels[0]?.id || false);
@@ -88,6 +110,30 @@ export class ChatroomChatter extends Component {
 
     get hasChannels() {
         return this.state.channels.length > 0;
+    }
+
+    _buildUiStyle(settings) {
+        const variables = {
+            "--chatroom-ui-primary": settings.primary_color,
+            "--chatroom-ui-primary-deep": settings.secondary_color,
+            "--chatroom-ui-accent": settings.accent_color,
+            "--chatroom-ui-outgoing-bubble": hexToRgba(settings.accent_color, 0.18),
+            "--chatroom-ui-sidebar-width": settings.sidebar_width && `${settings.sidebar_width}px`,
+            "--chatroom-ui-icon-scale": settings.icon_scale,
+            "--chatroom-ui-font-scale": settings.font_scale,
+            "--chatroom-ui-bubble-radius": settings.bubble_radius && `${settings.bubble_radius}px`,
+            "--chatroom-ui-message-gap": settings.message_gap,
+            "--chatroom-ui-bubble-padding": settings.bubble_padding,
+        };
+        const style = Object.entries(variables)
+            .filter(([, value]) => value !== undefined && value !== null && value !== "")
+            .map(([name, value]) => `${name}: ${value}`);
+        if (settings.background_image) {
+            style.push(`--chatroom-ui-chat-background: url(\"${settings.background_image}\")`);
+            style.push("--chatroom-ui-chat-background-size: cover");
+            style.push("--chatroom-ui-chat-background-repeat: no-repeat");
+        }
+        return style.join("; ");
     }
 
     get channelCount() {
@@ -159,6 +205,9 @@ export class ChatroomChatter extends Component {
     }
 
     toggleAi() {
+        if (!this.state.aiAvailable) {
+            return;
+        }
         this.state.aiOpen = !this.state.aiOpen;
         this.state.aiError = "";
     }

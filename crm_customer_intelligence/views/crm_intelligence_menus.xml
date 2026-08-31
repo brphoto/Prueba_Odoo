@@ -1,12 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Limpia de forma reversible el menú huérfano de una instalación
-         antigua que ya no está disponible en addons. La solución actual
-         vive en esta aplicación y no debe mostrar dos RFM distintos. -->
-    <record id="novocentro_rfm_analysis.rfm_menu_root" model="ir.ui.menu">
-        <field name="active">False</field>
-    </record>
-
     <menuitem id="menu_crm_intelligence_root" name="Inteligencia Comercial"
               sequence="25"
               web_icon="crm_customer_intelligence,static/description/icon.png"/>

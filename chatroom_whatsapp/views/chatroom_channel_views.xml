@@ -94,21 +94,22 @@
         <field name="arch" type="xml">
             <form string="Conversación">
                 <header>
+                    <field name="ai_available" invisible="1"/>
                     <button name="action_send_ai_suggestion" type="object"
                             string="Enviar sugerencia IA" class="btn-primary"
-                            invisible="not id or not ai_suggested_reply"/>
+                            invisible="not ai_available or not id or not ai_suggested_reply"/>
                     <button name="action_ai_suggest_reply" type="object"
                             string="Sugerir respuesta con IA" class="btn-secondary"
-                            invisible="not id"/>
+                            invisible="not ai_available or not id"/>
                     <button name="action_ai_summarize" type="object"
                             string="Resumir con IA" class="btn-secondary"
-                            invisible="not id"/>
+                            invisible="not ai_available or not id"/>
                     <button name="action_ai_analyze" type="object"
                             string="Analizar señales IA" class="btn-secondary"
-                            invisible="not id"/>
+                            invisible="not ai_available or not id"/>
                     <button name="action_ai_next_action" type="object"
                             string="Próxima acción IA" class="btn-secondary"
-                            invisible="not id"/>
+                            invisible="not ai_available or not id"/>
                     <button name="%(action_chatroom_send_template_wizard)d" type="action"
                             string="Enviar plantilla" class="btn-secondary"
                             context="{'default_channel_id': id}"
@@ -206,13 +207,13 @@
                             Oportunidad anclada: <field name="pinned_lead_name" nolabel="1" readonly="1"/>
                         </button>
                     </div>
-                    <group string="Resumen de IA" invisible="not ai_summary">
+                    <group string="Resumen de IA" invisible="not ai_available or not ai_summary">
                         <field name="ai_summary" nolabel="1"/>
                     </group>
-                    <group string="Sugerencia de IA" invisible="not ai_suggested_reply">
+                    <group string="Sugerencia de IA" invisible="not ai_available or not ai_suggested_reply">
                         <field name="ai_suggested_reply" nolabel="1"/>
                     </group>
-                    <group string="Señales IA" invisible="not ai_sentiment and not ai_urgency">
+                    <group string="Señales IA" invisible="not ai_available or (not ai_sentiment and not ai_urgency)">
                         <field name="ai_intent"/>
                         <field name="ai_sentiment"/>
                         <field name="ai_urgency"/>

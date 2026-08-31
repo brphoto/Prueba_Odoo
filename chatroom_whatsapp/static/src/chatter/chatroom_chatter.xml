@@ -2,7 +2,7 @@
 <templates xml:space="preserve">
 
     <t t-name="chatroom_whatsapp.ChatroomChatter" owl="1">
-        <section class="o-chatroom-chatter p-2">
+        <section class="o-chatroom-chatter p-2" t-att-style="state.uiStyle">
             <div class="o-chatroom-chatter__heading d-flex align-items-center justify-content-between gap-2">
                 <div>
                     <div class="fw-bold">
@@ -55,7 +55,8 @@
                         </button>
                     </t>
                 </div>
-                <div t-if="selectedChannel" class="o-chatroom-chatter__ai">
+                <!-- La IA pertenece a chatroom_ai; el módulo base no la pinta en el chatter. -->
+                <div t-if="false" class="o-chatroom-chatter__ai">
                     <button type="button" class="o-chatroom-chatter__ai-heading"
                             t-on-click="toggleAi" aria-controls="chatroom-chatter-ai-panel">
                         <span><i class="fa fa-magic me-2" aria-hidden="true"/> Inteligencia IA</span>
