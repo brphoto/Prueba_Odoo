@@ -933,7 +933,7 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                 order = SaleOrder.browse()
                 # La clave es por tarea, no por canal. Un reintento del mismo
                 # webhook reutiliza su pedido, pero una nueva solicitud del
-                # cliente puede generar otra cotizaciÃ³n independiente.
+                # cliente puede generar otra cotización independiente.
                 quote_marker = 'chatroom_ai_task:%s' % self.id
                 if 'client_order_ref' in SaleOrder._fields:
                     order = SaleOrder.search([

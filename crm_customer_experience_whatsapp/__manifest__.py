@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Experiencia del cliente - WhatsApp',
-    'summary': 'EnvÃ­a campaÃ±as NPS segmentadas por WhatsApp mediante Chatroom.',
-    'description': 'Conector opcional: agrega WhatsApp a las campaÃ±as NPS sin acoplar el mÃ³dulo base a Chatroom.',
+    'summary': 'Envía campañas NPS segmentadas por WhatsApp mediante Chatroom.',
+    'description': 'Conector opcional: agrega WhatsApp a las campañas NPS sin acoplar el módulo base a Chatroom.',
     'version': '19.0.1.0.0',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',

@@ -4,7 +4,7 @@
         <field name="name">crm.nps.campaign.list</field>
         <field name="model">crm.nps.campaign</field>
         <field name="arch" type="xml">
-            <list string="CampaÃ±as NPS" decoration-success="state == 'done'" decoration-danger="state == 'cancelled'">
+            <list string="Campañas NPS" decoration-success="state == 'done'" decoration-danger="state == 'cancelled'">
                 <field name="name"/>
                 <field name="survey_id"/>
                 <field name="channel"/>
@@ -21,10 +21,10 @@
         <field name="name">crm.nps.campaign.form</field>
         <field name="model">crm.nps.campaign</field>
         <field name="arch" type="xml">
-            <form string="CampaÃ±a NPS">
+            <form string="Campaña NPS">
                 <header>
                     <button name="action_preview_audience" type="object" string="Previsualizar audiencia" icon="fa-users" invisible="state != 'draft'"/>
-                    <button name="action_queue" type="object" string="Encolar campaÃ±a" class="btn-primary" icon="fa-paper-plane" invisible="state != 'draft'"/>
+                    <button name="action_queue" type="object" string="Encolar campaña" class="btn-primary" icon="fa-paper-plane" invisible="state != 'draft'"/>
                     <button name="action_process_now" type="object" string="Procesar ahora" class="btn-primary" icon="fa-play" invisible="state not in ('queued', 'processing')"/>
                     <button name="action_cancel" type="object" string="Cancelar" icon="fa-times" invisible="state in ('done', 'cancelled')"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,queued,processing,done"/>
@@ -90,7 +90,7 @@
         <field name="name">crm.nps.campaign.search</field>
         <field name="model">crm.nps.campaign</field>
         <field name="arch" type="xml">
-            <search string="Buscar campaÃ±as NPS">
+            <search string="Buscar campañas NPS">
                 <field name="name"/>
                 <field name="survey_id"/>
                 <field name="channel"/>
@@ -105,7 +105,7 @@
         </field>
     </record>
     <record id="action_crm_nps_campaign" model="ir.actions.act_window">
-        <field name="name">CampaÃ±as NPS</field>
+        <field name="name">Campañas NPS</field>
         <field name="res_model">crm.nps.campaign</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="view_crm_nps_campaign_search"/>

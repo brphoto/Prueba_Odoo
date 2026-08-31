@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""CampaÃ±as NPS segmentadas.
+"""Campañas NPS segmentadas.
 
-La campaÃ±a vive en Experiencia del cliente y solo conoce el resultado que
+La campaña vive en Experiencia del cliente y solo conoce el resultado que
 necesita: una audiencia RFM y un enlace de encuesta. Los conectores de canal
-(por ejemplo WhatsApp) implementan el envÃ­o en mÃ³dulos opcionales.
+(por ejemplo WhatsApp) implementan el envío en módulos opcionales.
 """
 import html
 import logging
@@ -17,42 +17,42 @@ _logger = logging.getLogger(__name__)
 
 class CrmNpsCampaign(models.Model):
     _name = 'crm.nps.campaign'
-    _description = 'CampaÃ±a de encuesta NPS'
+    _description = 'Campaña de encuesta NPS'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'create_date desc, id desc'
 
-    name = fields.Char(string='Nombre de la campaÃ±a', required=True, tracking=True)
+    name = fields.Char(string='Nombre de la campaña', required=True, tracking=True)
     survey_id = fields.Many2one(
         'survey.survey', string='Encuesta', required=True,
         default=lambda self: self.env.ref('crm_customer_experience.survey_nps', raise_if_not_found=False),
         domain=[('active', '=', True)], ondelete='restrict')
     target_category_ids = fields.Many2many(
         'crm.rfm.segment', 'crm_nps_campaign_rfm_category_rel',
-        'campaign_id', 'category_id', string='CategorÃ­as RFM objetivo',
+        'campaign_id', 'category_id', string='Categorías RFM objetivo',
         domain=[('definition_type', '=', 'category'), ('active', '=', True)],
-        help='Selecciona A, B, C o cualquier categorÃ­a personalizada del catÃ¡logo RFM.')
+        help='Selecciona A, B, C o cualquier categoría personalizada del catálogo RFM.')
     target_segment_ids = fields.Many2many(
         'crm.rfm.segment', 'crm_nps_campaign_rfm_segment_rel',
         'campaign_id', 'segment_id', string='Segmentos RFM guardados',
         domain=[('definition_type', '=', 'segment'), ('active', '=', True)],
-        help='Opcionalmente combina las categorÃ­as con segmentos que tengan reglas visuales.')
+        help='Opcionalmente combina las categorías con segmentos que tengan reglas visuales.')
     channel = fields.Selection(
-        [('email', 'Correo electrÃ³nico')], string='Canal', default='email', required=True,
+        [('email', 'Correo electrónico')], string='Canal', default='email', required=True,
         tracking=True,
         help='WhatsApp y Correo y WhatsApp aparecen al instalar el conector opcional de Chatroom.')
     email_subject = fields.Char(
-        string='Asunto del correo', default='Â¿CÃ³mo fue tu experiencia con nosotros?')
+        string='Asunto del correo', default='¿Cómo fue tu experiencia con nosotros?')
     email_body = fields.Text(
         string='Mensaje del correo', default=(
             '<p>Hola {{name}},</p>'
-            '<p>Nos gustarÃ­a conocer tu opiniÃ³n. Responder solo te tomarÃ¡ un momento:</p>'
+            '<p>Nos gustaría conocer tu opinión. Responder solo te tomará un momento:</p>'
             '<p><a href="{{link}}">Responder encuesta NPS</a></p>'
             '<p>Gracias por ayudarnos a mejorar.</p>'),
         help='Puedes usar {{name}}, {{link}}, {{rfm_category}} y {{rfm_score}}.')
     exclude_answered_days = fields.Integer(
-        string='No repetir durante (dÃ­as)', default=90,
-        help='Evita enviar otra encuesta a clientes que ya respondieron NPS durante este perÃ­odo. Usa 0 para no excluir.')
-    batch_size = fields.Integer(string='TamaÃ±o de lote', default=20, required=True)
+        string='No repetir durante (días)', default=90,
+        help='Evita enviar otra encuesta a clientes que ya respondieron NPS durante este período. Usa 0 para no excluir.')
+    batch_size = fields.Integer(string='Tamaño de lote', default=20, required=True)
     state = fields.Selection([
         ('draft', 'Borrador'), ('queued', 'En cola'), ('processing', 'Procesando'),
         ('done', 'Completada'), ('cancelled', 'Cancelada'),
@@ -66,8 +66,8 @@ class CrmNpsCampaign(models.Model):
     audience_count = fields.Integer(string='Audiencia actual', compute='_compute_audience_count')
     queued_date = fields.Datetime(string='Encolada el', readonly=True, copy=False)
     completed_date = fields.Datetime(string='Completada el', readonly=True, copy=False)
-    last_run = fields.Datetime(string='Ãšltimo procesamiento', readonly=True, copy=False)
-    last_error = fields.Text(string='Ãšltimo error', readonly=True, copy=False)
+    last_run = fields.Datetime(string='Último procesamiento', readonly=True, copy=False)
+    last_error = fields.Text(string='Último error', readonly=True, copy=False)
 
     @api.depends('recipient_ids.email_state', 'recipient_ids.whatsapp_state', 'recipient_ids.state', 'state')
     def _compute_stats(self):
@@ -88,15 +88,15 @@ class CrmNpsCampaign(models.Model):
     def _check_campaign_numbers(self):
         for campaign in self:
             if campaign.batch_size < 1:
-                raise ValidationError(_('El tamaÃ±o de lote debe ser mayor que cero.'))
+                raise ValidationError(_('El tamaño de lote debe ser mayor que cero.'))
             if campaign.exclude_answered_days < 0:
-                raise ValidationError(_('Los dÃ­as para no repetir no pueden ser negativos.'))
+                raise ValidationError(_('Los días para no repetir no pueden ser negativos.'))
 
     @api.constrains('target_category_ids', 'target_segment_ids')
     def _check_audience(self):
         for campaign in self:
             if not campaign.target_category_ids and not campaign.target_segment_ids:
-                raise ValidationError(_('Selecciona al menos una categorÃ­a o segmento RFM objetivo.'))
+                raise ValidationError(_('Selecciona al menos una categoría o segmento RFM objetivo.'))
 
     def _get_target_partners(self):
         self.ensure_one()
@@ -153,7 +153,7 @@ class CrmNpsCampaign(models.Model):
             'type': 'ir.actions.client', 'tag': 'display_notification',
             'params': {
                 'title': _('Audiencia NPS'),
-                'message': _('%s contacto(s) cumplen las categorÃ­as/segmentos seleccionados.') % len(partners),
+                'message': _('%s contacto(s) cumplen las categorías/segmentos seleccionados.') % len(partners),
                 'type': 'success' if partners else 'warning',
                 'sticky': False,
             },
@@ -163,7 +163,7 @@ class CrmNpsCampaign(models.Model):
         for campaign in self:
             campaign.ensure_one()
             if campaign.state != 'draft':
-                raise UserError(_('Solo se puede encolar una campaÃ±a en borrador.'))
+                raise UserError(_('Solo se puede encolar una campaña en borrador.'))
             partners = campaign._get_target_partners()
             if not partners:
                 raise UserError(_('No hay contactos que cumplan los filtros seleccionados.'))
@@ -192,14 +192,14 @@ class CrmNpsCampaign(models.Model):
                     dict(vals, campaign_id=campaign.id) for vals in vals_list])
             campaign.write({'state': 'queued', 'queued_date': fields.Datetime.now(), 'last_error': False})
             campaign.message_post(body=_(
-                'CampaÃ±a encolada para %(count)s contacto(s). El procesamiento se harÃ¡ por lotes de %(batch)s.'
+                'Campaña encolada para %(count)s contacto(s). El procesamiento se hará por lotes de %(batch)s.'
             ) % {'count': len(vals_list), 'batch': campaign.batch_size})
         return True
 
     def action_process_now(self):
         for campaign in self:
             if campaign.state not in ('queued', 'processing'):
-                raise UserError(_('La campaÃ±a debe estar en cola para procesarse.'))
+                raise UserError(_('La campaña debe estar en cola para procesarse.'))
             campaign._process_batch()
         return {'type': 'ir.actions.client', 'tag': 'reload'}
 
@@ -243,7 +243,7 @@ class CrmNpsCampaign(models.Model):
                     self._send_email_recipient(line)
                 if 'whatsapp' in channels and line.whatsapp_state == 'pending':
                     self._send_whatsapp_recipient(line)
-            except Exception as exc:  # noqa: BLE001 - un fallo individual no detiene la campaÃ±a
+            except Exception as exc:  # noqa: BLE001 - un fallo individual no detiene la campaña
                 _logger.exception('Error procesando destinatario NPS %s', line.id)
                 line.write({'error_message': str(exc)[:500]})
                 if 'email' in channels and line.email_state == 'pending':
@@ -262,7 +262,7 @@ class CrmNpsCampaign(models.Model):
 
 class CrmNpsCampaignRecipient(models.Model):
     _name = 'crm.nps.campaign.recipient'
-    _description = 'Destinatario de campaÃ±a NPS'
+    _description = 'Destinatario de campaña NPS'
     _order = 'id'
 
     campaign_id = fields.Many2one('crm.nps.campaign', required=True, ondelete='cascade', index=True)

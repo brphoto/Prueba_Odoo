@@ -45,16 +45,6 @@
                 Este contacto todavía no tiene conversaciones en Chatroom.
             </div>
             <div t-else="" class="o-chatroom-chatter__workspace">
-                <div t-if="state.relatedRecords.length" class="o-chatroom-chatter__related">
-                    <span class="text-muted small me-1">Accesos rápidos</span>
-                    <t t-foreach="state.relatedRecords" t-as="record" t-key="record.model + '-' + record.id">
-                        <button type="button" class="btn btn-sm btn-light o-chatroom-chatter__related-button"
-                                t-on-click="() => this.openRelated(record)" t-att-title="record.name">
-                            <i t-attf-class="fa {{record.icon}} me-1" aria-hidden="true"/>
-                            <t t-esc="record.label"/> · <t t-esc="record.name"/>
-                        </button>
-                    </t>
-                </div>
                 <!-- La IA pertenece a chatroom_ai; el módulo base no la pinta en el chatter. -->
                 <div t-if="false" class="o-chatroom-chatter__ai">
                     <button type="button" class="o-chatroom-chatter__ai-heading"
