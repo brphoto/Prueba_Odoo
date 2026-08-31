@@ -1099,6 +1099,12 @@
 }
 
 @media (max-width: 768px) {
+    .o_chatroom_thread {
+        height: min(680px, calc(100dvh - 96px));
+        min-height: 420px;
+        border-radius: 0;
+    }
+
     .o_chatroom_thread_header {
         padding-right: 52px;
     }
@@ -1109,6 +1115,41 @@
 
     .o_chatroom_activity_pill {
         max-width: 100%;
+    }
+
+    .o_chatroom_composer {
+        padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    }
+
+    .o_chatroom_composer_input {
+        gap: 8px;
+        align-items: flex-end;
+    }
+
+    .o_chatroom_composer_input > .o_chatroom_attach_btn:not(.o_chatroom_voice_btn) {
+        display: none;
+    }
+
+    .o_chatroom_composer_textarea {
+        min-width: 0;
+        min-height: 46px;
+        height: 46px;
+        max-height: 140px;
+        padding: 11px 14px;
+        font-size: 1rem;
+        line-height: 1.35;
+    }
+
+    .o_chatroom_composer_input > .o_chatroom_voice_btn,
+    .o_chatroom_composer_input > .o_chatroom_send_btn {
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        flex: 0 0 42px;
+    }
+
+    .o_chatroom_thread_messages {
+        padding: 10px;
     }
 
     .o_chatroom_thread_mobile_menu_btn {
@@ -1125,5 +1166,54 @@
         border-radius: 50%;
         background-color: rgba(255, 255, 255, 0.25);
         color: #fff;
+    }
+}
+
+@media (max-width: 480px) {
+    .o_chatroom_thread {
+        height: calc(100dvh - 70px);
+        min-height: 360px;
+    }
+
+    .o_chatroom_thread_header {
+        gap: 8px;
+        padding: 8px 48px 8px 10px;
+    }
+
+    .o_chatroom_thread_header .o_chatroom_avatar {
+        width: 32px;
+        height: 32px;
+    }
+
+    .o_chatroom_header_name {
+        max-width: calc(100vw - 130px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .o_chatroom_assignee_widget,
+    .o_chatroom_thread_subheader .o_chatroom_line_select,
+    .o_chatroom_thread_subheader .o_chatroom_export_pdf_btn {
+        display: none;
+    }
+
+    .o_chatroom_thread_subheader {
+        min-height: 34px;
+        padding: 4px 8px;
+    }
+
+    .o_chatroom_thread_messages {
+        gap: 5px;
+    }
+
+    .o_chatroom_composer_input {
+        gap: 6px;
+    }
+
+    .o_chatroom_composer_textarea {
+        min-height: 48px;
+        height: 48px;
+        padding-inline: 12px;
     }
 }

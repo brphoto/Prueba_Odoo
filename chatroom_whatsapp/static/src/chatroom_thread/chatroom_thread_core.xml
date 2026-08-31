@@ -438,7 +438,7 @@
                             t-on-input="onComposerInput"
                             t-on-keydown="onComposerKeydown"
                             t-att-disabled="state.sending"/>
-                        <button t-if="!state.noteMode" class="btn btn-link o_chatroom_attach_btn" title="Grabar nota de voz"
+                        <button t-if="!state.noteMode" class="btn btn-link o_chatroom_attach_btn o_chatroom_voice_btn" title="Grabar nota de voz"
                                 t-on-click="toggleRecording">
                             <i class="fa fa-microphone"/>
                         </button>
