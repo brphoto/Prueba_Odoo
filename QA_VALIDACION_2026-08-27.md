@@ -163,6 +163,22 @@ Para probarlo:
 
 La prueba automatizada del laboratorio terminó con `23/23` casos correctos; la regresión focalizada de la solución terminó con `177/177` casos correctos.
 
+### 9. Centro de mando de marketing social
+
+Se incorporó el módulo independiente `marketing_command_center`, sin dependencia de Chatroom. Centraliza cuentas de Instagram, Facebook, TikTok, YouTube y LinkedIn; campañas, publicaciones, métricas por fecha, comentarios/interacciones y un agente analítico consultable en lenguaje natural.
+
+El dashboard calcula publicaciones, alcance, impresiones, reproducciones, interacciones, engagement, comentarios pendientes, oportunidades atribuidas, ventas atribuidas y contenido destacado. Incluye gráficos/listas nativas de Odoo, chatter en los formularios, permisos de usuario/administrador y datos demo persistentes.
+
+La demo persistente contiene 4 cuentas, 12 publicaciones, 12 snapshots de métricas y 12 interacciones. También se dejó la sesión `Demo - analista de redes` con cuatro consultas y sus respuestas para revisar el flujo.
+
+Consultas probadas: mejor publicación, tendencia, comentarios pendientes, alcance y reproducciones. La respuesta se calcula localmente sobre los snapshots guardados, por lo que esta función no consume tokens. Los conectores de cada red quedan desacoplados para poder agregarlos después con sus permisos y APIs correspondientes.
+
+La prueba específica del módulo terminó con `8/8` casos correctos, sin fallos ni errores. La regresión previa de la solución terminó con `177/177` casos correctos y el laboratorio IA con `23/23`.
+
+La versión `19.0.1.0.2` añade filtros por red, comparación con el período anterior, variaciones de alcance/interacciones/engagement, alertas configurables con resolución, importación guiada de CSV UTF-8 por compañía, plantillas descargables y fuentes de publicaciones consultadas por el agente. El importador actualiza registros por identificador externo y valida dependencias, fechas y valores numéricos antes de guardar.
+
+Para usarlo: abrir `Marketing > Centro de mando`, pulsar `Cargar datos demo` solo si se desea regenerar el escenario, luego `Actualizar indicadores`; para conversar, abrir `Marketing > Agente de marketing` y escribir una pregunta natural.
+
 ## Advertencias conocidas
 
 Odoo informa módulos heredados no instalables que no forman parte de la solución actual:

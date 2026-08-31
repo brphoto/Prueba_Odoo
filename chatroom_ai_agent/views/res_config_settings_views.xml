@@ -12,6 +12,14 @@
                         <button name="action_open_ai_agent_control" type="object" string="Abrir centro de control IA" class="btn-primary"/>
                     </setting>
                     <block title="Operación autónoma">
+                        <setting id="chatroom_ai_production_orchestrator_setting"
+                                 help="Conecta cada mensaje entrante con una sola ruta del agente y evita duplicados por reintentos del webhook.">
+                            <field name="chatroom_ai_production_orchestrator"/>
+                        </setting>
+                        <setting id="chatroom_ai_orchestrator_auto_reply_setting"
+                                 help="Responde solo consultas de bajo riesgo. Cotizaciones, reuniones, cobros y cambios en Odoo permanecen auditados y protegidos.">
+                            <field name="chatroom_ai_orchestrator_auto_reply"/>
+                        </setting>
                         <setting id="chatroom_ai_agent_enabled_setting"
                                  help="Activa los ciclos automáticos definidos en el menú Agente IA &gt; Automatizaciones.">
                             <field name="chatroom_ai_agent_enabled"/>
@@ -56,6 +64,10 @@
                         <setting id="chatroom_ai_agent_quote_quantity_setting"
                                  help="Cantidad inicial del producto en la cotización. El documento queda sujeto a aprobación humana.">
                             <field name="chatroom_ai_agent_quote_quantity"/>
+                        </setting>
+                        <setting id="chatroom_ai_agent_quote_hourly_rate_setting"
+                                 help="Precio unitario para horas de implementación o consultoría. Las demás líneas respetan el precio nativo de Odoo.">
+                            <field name="chatroom_ai_agent_quote_hourly_rate"/>
                         </setting>
                     </block>
                     <block title="Respuestas automaticas seguras">

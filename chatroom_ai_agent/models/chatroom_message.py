@@ -18,6 +18,12 @@ class ChatroomMessage(models.Model):
             'chatroom_ai_agent.event_orchestration', 'False') == 'True'
         router_enabled = icp.get_param(
             'chatroom_ai_agent.commercial_router_enabled', 'False') == 'True'
+        if icp.get_param(
+                'chatroom_ai_agent.production_orchestrator', 'False') == 'True':
+            # El servicio central reemplaza las dos rutas antiguas para que
+            # cada mensaje tenga una sola decisión y una sola clave idempotente.
+            self.env['chatroom.ai.orchestrator'].process_inbound(messages)
+            return messages
         if not event_enabled and not router_enabled:
             return messages
         automation_model = self.env['chatroom.ai.automation'].sudo() if 'chatroom.ai.automation' in self.env else self.env['chatroom.message']

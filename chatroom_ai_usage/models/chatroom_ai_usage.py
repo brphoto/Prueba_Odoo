@@ -14,7 +14,7 @@ class ChatroomAiFunding(models.Model):
     _description = 'Fondos y conciliacion de IA'
     _order = 'movement_date desc, id desc'
 
-    name = fields.Char(string='Descripcion', required=True, default=lambda self: _('Recarga de creditos'))
+    name = fields.Char(string='Descripción', required=True, default=lambda self: _('Recarga de créditos'))
     company_id = fields.Many2one(
         'res.company', string='Empresa', required=True, index=True,
         default=lambda self: self.env.company,
@@ -65,7 +65,7 @@ class ChatroomAiUsageEvent(models.Model):
         ('classification', 'Clasificación'), ('next_action', 'Próxima acción'),
         ('agent', 'Agente'),
     ], string='Tipo de tarea', default='general', index=True)
-    channel_id = fields.Many2one('chatroom.channel', string='Conversacion', ondelete='set null', index=True)
+    channel_id = fields.Many2one('chatroom.channel', string='Conversación', ondelete='set null', index=True)
     input_tokens = fields.Integer(string='Tokens de entrada')
     output_tokens = fields.Integer(string='Tokens de salida')
     total_tokens = fields.Integer(string='Tokens totales')
@@ -128,7 +128,7 @@ class ChatroomAiUsageSnapshot(models.Model):
     cost_breakdown = fields.Text(string='Detalle de costos oficiales', readonly=True)
     state = fields.Selection([
         ('ok', 'Actualizado'), ('partial', 'Solo consumo local'), ('error', 'Error'),
-    ], default='ok', required=True)
+    ], string='Estado', default='ok', required=True)
     source = fields.Selection([
         ('openai', 'OpenAI Platform'),
         ('local', 'Registro local de Odoo'),

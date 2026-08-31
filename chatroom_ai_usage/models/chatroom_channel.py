@@ -109,8 +109,18 @@ class ChatroomChannel(models.Model):
             return credentials
         api_url, api_key, fallback_model = credentials
         api_url = api_url.rstrip('/')
-        if not api_url.endswith('/chat/completions'):
-            api_url = '%s/chat/completions' % api_url
+        # The WhatsApp layer may already have appended ``/chat/completions``.
+        # Strip every known terminal suffix so values such as ``/responses``
+        # never become ``/responses/chat/completions``.
+        changed = True
+        while changed:
+            changed = False
+            for suffix in ('/chat/completions', '/responses', '/models'):
+                if api_url.endswith(suffix):
+                    api_url = api_url[:-len(suffix)].rstrip('/')
+                    changed = True
+                    break
+        api_url = '%s/chat/completions' % api_url
         if model_id:
             try:
                 selected = self.env['chatroom.ai.provider.model'].sudo().browse(int(model_id)).exists()
@@ -152,6 +162,47 @@ class ChatroomChannel(models.Model):
             candidates.append((primary[0], primary[1], fallback.model_id))
         return candidates
 
+    @staticmethod
+    def _ai_http_error_detail(response):
+        """Extract a short, safe provider diagnostic without leaking secrets."""
+        detail = ''
+        try:
+            payload = response.json()
+            error_data = payload.get('error') if isinstance(payload, dict) else None
+            if isinstance(error_data, dict):
+                detail = error_data.get('message') or error_data.get('code') or ''
+            elif error_data:
+                detail = str(error_data)
+        except (AttributeError, ValueError, TypeError):
+            detail = ''
+        if not detail:
+            detail = getattr(response, 'text', '') or getattr(response, 'reason', '') or ''
+        return str(detail).strip()[:300]
+
+    def _ai_http_error_message(self, status, model, api_url, response):
+        """Return an actionable message for the setup screen and laboratory."""
+        detail = self._ai_http_error_detail(response)
+        if status == 404:
+            message = _(
+                'El proveedor de IA respondió HTTP 404. Verifica que el endpoint '
+                'sea la base compatible con chat/completions (por ejemplo '
+                'https://api.openai.com/v1), que el modelo «%s» exista y que no '
+                'haya una ruta duplicada. Endpoint usado: %s'
+            ) % (model, api_url)
+        elif status in (401, 403):
+            message = _(
+                'El proveedor de IA rechazó la credencial (HTTP %s). Verifica la '
+                'API Key, el proyecto y los permisos del modelo «%s».'
+            ) % (status, model)
+        elif status == 429:
+            message = _(
+                'El proveedor de IA limitó la solicitud (HTTP 429). Revisa cuota, '
+                'saldo y límites del proyecto antes de reintentar.'
+            )
+        else:
+            message = _('El proveedor de IA devolvió un error HTTP %s para el modelo «%s».') % (status, model)
+        return '%s Detalle: %s' % (message, detail) if detail else message
+
     def _ai_chat_completion(self, messages, task_type=None, model_id=None):
         """Ejecuta el modelo por tarea y usa el respaldo ante fallos recuperables."""
         self.ensure_one()
@@ -169,12 +220,15 @@ class ChatroomChannel(models.Model):
                 )
                 status = getattr(response, 'status_code', 200)
                 if status >= 400:
-                    last_error = 'HTTP %s' % status
+                    last_error = self._ai_http_error_message(
+                        status, model, api_url, response)
                     if status in (404, 408, 409, 429) or status >= 500:
                         if index < len(candidates) - 1:
-                            _logger.warning('Se activa el modelo de respaldo %s tras HTTP %s en %s.', candidates[index + 1][2], status, model)
+                            _logger.warning(
+                                'Se activa el modelo de respaldo %s tras HTTP %s en %s.',
+                                candidates[index + 1][2], status, model)
                             continue
-                    raise UserError(_('El proveedor de IA devolvio un error HTTP %s.') % status)
+                    raise UserError(last_error)
                 payload = response.json()
                 content = payload['choices'][0]['message']['content']
                 if not isinstance(content, str) or not content.strip():

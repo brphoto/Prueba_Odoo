@@ -10,6 +10,7 @@
                 <field name="provider" widget="badge"/>
                 <field name="owned_by" optional="hide"/>
                 <field name="supports_chat"/>
+                <field name="usage_roles" string="Asignado para" optional="show"/>
                 <field name="last_synced"/>
                 <field name="active"/><field name="health_state" widget="badge"/><field name="last_tested" optional="hide"/>
             </list>
@@ -36,12 +37,13 @@
                             <field name="last_synced" readonly="1"/>
                             <field name="health_state" widget="badge" readonly="1"/>
                             <field name="last_tested" readonly="1"/>
+                            <field name="usage_roles" readonly="1"/>
                         </group>
                     </group>
                     <div class="alert alert-info" role="alert">
                         Los modelos se sincronizan desde el proveedor configurado. Chatroom solo muestra como compatibles los modelos de texto detectados.
                     </div>
-                    <field name="health_message" readonly="1"/>
+                    <field name="health_message" readonly="1" placeholder="Aún no se ha probado este modelo."/>
                 </sheet>
                 <chatter/>
             </form>
@@ -381,12 +383,16 @@
                             <field name="scenario" string="Escenario"/>
                             <field name="task_type" string="Tipo de tarea"/>
                             <field name="execution_mode" string="Modo de prueba"/>
+                            <field name="ai_engine" string="Motor IA"/>
+                            <field name="native_engine_status" string="Estado IA nativa" readonly="1"
+                                   invisible="ai_engine == 'chatroom'"/>
                             <field name="provider_model_id" string="Modelo" invisible="execution_mode != 'provider'"/>
                             <field name="expected_keywords" string="Debe incluir"/>
                         </group>
                         <group string="Medición">
                             <field name="message_count" string="Mensajes" readonly="1"/>
                             <field name="model_used" string="Modelo utilizado" readonly="1"/>
+                            <field name="engine_used" string="Motor ejecutado" readonly="1"/>
                             <field name="input_tokens" string="Tokens de entrada" readonly="1"/>
                             <field name="output_tokens" string="Tokens de salida" readonly="1"/>
                             <field name="evaluation_state" string="Evaluación" widget="badge" readonly="1"/>
@@ -397,7 +403,9 @@
                             <div class="o_chatroom_ai_sandbox_chat_help">
                                 <strong>Prueba como cliente:</strong> escribe «Hola», «¿Cuál es la tarifa?» o «¿Qué productos tienen?».
                                 Usa <strong>Modo local</strong> para practicar sin tokens o <strong>Proveedor IA</strong> para consultar el modelo configurado.
-                                Si escribes «necesito una cotización en PDF» o «agenda una reunión», usa <strong>Preparar acción comercial</strong> para generar un plan aprobable del agente.
+                                Si escribes «necesito una cotización en PDF» se crea un presupuesto nativo independiente.
+                                Para sumar líneas al último borrador escribe «agrega también ... a la cotización»; para otra propuesta escribe «hazme otra cotización».
+                                Las dos opciones generan el PDF estándar de Ventas y lo dejan en el historial, sin enviar a WhatsApp.
                             </div>
                             <div class="o_chatroom_ai_sandbox_chat_input">
                                 <field name="draft_message" nolabel="1" widget="text" placeholder="Escribe aquí el mensaje del cliente..."/>
@@ -430,17 +438,35 @@
                                 <field name="delivery_note" string="Detalle de entrega" readonly="1"/>
                             </group>
                             <separator string="Resultados operativos en Odoo"/>
-                            <div class="alert alert-info" role="status">
+                            <div class="alert alert-info" role="alert">
                                 Las operaciones de esta sección son de prueba: crean registros nativos para que puedas revisarlos, pero no confirman ventas ni envían mensajes externos.
                             </div>
                             <group col="2">
                                 <field name="test_quote_id" string="Cotización creada" readonly="1"/>
+                                <field name="quote_count" string="Cotizaciones generadas" readonly="1"/>
                                 <field name="test_chat_message_id" string="Mensaje en Chatroom" readonly="1"/>
                                 <field name="test_activity_ids" string="Actividades creadas" readonly="1" widget="many2many_tags"/>
                                 <field name="test_meeting_name" string="Reunión en Calendario" readonly="1"/>
                                 <field name="test_meeting_link" string="Videollamada nativa" readonly="1" widget="url"/>
                                 <field name="test_meeting_id" string="ID evento" readonly="1"/>
                             </group>
+                            <separator string="Historial de cotizaciones"/>
+                            <div class="alert alert-info" role="alert">
+                                Cada solicitud nueva conserva su propio presupuesto nativo y PDF. Una ampliación mantiene el mismo presupuesto en borrador y agrega nuevas líneas.
+                            </div>
+                            <field name="quote_history_ids" nolabel="1" readonly="1">
+                                <list string="Historial de cotizaciones" create="0" delete="0">
+                                    <field name="created_at" string="Generada el"/>
+                                    <field name="operation" string="Operación" widget="badge"/>
+                                    <field name="sale_order_id" string="Presupuesto Odoo"/>
+                                    <field name="sale_order_state" string="Estado" widget="badge"/>
+                                    <field name="amount_total" string="Total"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="attachment_id" string="PDF estándar"/>
+                                    <field name="chat_message_id" string="Mensaje simulado" optional="hide"/>
+                                    <field name="product_summary" string="Líneas" optional="hide"/>
+                                </list>
+                            </field>
                             <group string="Cerebro utilizado por esta prueba" col="2">
                                 <field name="knowledge_sources" readonly="1"/>
                                 <field name="knowledge_live_sources" readonly="1"/>

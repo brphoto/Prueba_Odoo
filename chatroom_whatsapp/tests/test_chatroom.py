@@ -31,8 +31,11 @@ class TestChatroomWhatsapp(TransactionCase):
             'channel_type': 'whatsapp',
             'external_id': '573009991112',
         })
-        self.env['ir.config_parameter'].sudo().set_param(
-            'chatroom_whatsapp.ai_require_approval', 'False')
+        icp = self.env['ir.config_parameter'].sudo()
+        # Cuando está instalado el módulo moderno del agente, su parámetro es
+        # la fuente de verdad; el legado de WhatsApp queda como fallback.
+        icp.set_param('chatroom_ai_agent.require_approval', 'False')
+        icp.set_param('chatroom_whatsapp.ai_require_approval', 'False')
         self.assertFalse(channel._ai_requires_approval())
 
     def test_find_or_create_dedupes_existing_partner_by_phone(self):

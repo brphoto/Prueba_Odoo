@@ -9,4 +9,6 @@ access_chatroom_ai_sandbox_user,chatroom.ai.sandbox user,model_chatroom_ai_sandb
 access_chatroom_ai_sandbox_manager,chatroom.ai.sandbox manager,model_chatroom_ai_sandbox,chatroom_ai.group_chatroom_ai_manager,1,1,1,1
 access_chatroom_ai_sandbox_message_user,chatroom.ai.sandbox.message user,model_chatroom_ai_sandbox_message,chatroom_ai.group_chatroom_ai_user,1,1,1,0
 access_chatroom_ai_sandbox_message_manager,chatroom.ai.sandbox.message manager,model_chatroom_ai_sandbox_message,chatroom_ai.group_chatroom_ai_manager,1,1,1,1
+access_chatroom_ai_sandbox_quote_user,chatroom.ai.sandbox.quote user,model_chatroom_ai_sandbox_quote,chatroom_ai.group_chatroom_ai_user,1,1,1,0
+access_chatroom_ai_sandbox_quote_manager,chatroom.ai.sandbox.quote manager,model_chatroom_ai_sandbox_quote,chatroom_ai.group_chatroom_ai_manager,1,1,1,1
 access_chatroom_ai_setup_wizard_user,chatroom.ai.setup.wizard user,model_chatroom_ai_setup_wizard,chatroom_ai.group_chatroom_ai_user,1,1,1,1

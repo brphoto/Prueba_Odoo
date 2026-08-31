@@ -67,14 +67,14 @@
                         </div>
                     </page>
                     <page string="Fuente y publicación" name="source_control">
-                        <div class="alert alert-success" role="status">
+                        <div class="alert alert-success" role="alert">
                             Flujo recomendado: carga o escribe → Indexar → Analizar con IA (opcional) → revisar → Publicar para IA.
                         </div>
                         <field name="organized_text" nolabel="1" readonly="1" placeholder="Todavía no hay contenido organizado."/>
                         <field name="organization_notes" nolabel="1" readonly="1"/>
                     </page>
                     <page string="Mapa de memoria" name="memory_map">
-                        <div class="alert alert-info" role="status">
+                        <div class="alert alert-info" role="alert">
                             Expande cada bloque para entender qué tiene disponible la IA. La memoria documental se indexa localmente; el catálogo de productos de Odoo se consulta en tiempo real.
                         </div>
                         <field name="memory_map_html" nolabel="1" readonly="1" widget="html"/>

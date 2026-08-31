@@ -11,7 +11,7 @@
                 </header>
                 <sheet>
                     <div class="oe_title"><h1><field name="name" placeholder="Ej.: Cómo vendemos implementaciones Odoo"/></h1></div>
-                    <div class="alert alert-info" role="status">
+                    <div class="alert alert-info" role="alert">
                         Escribe la información con tus propias palabras. El sistema la ordenará en resumen, puntos clave, preguntas frecuentes y reglas operativas. Este proceso es local y no consume tokens.
                     </div>
                     <group col="2" class="o_chatroom_ai_knowledge_meta">

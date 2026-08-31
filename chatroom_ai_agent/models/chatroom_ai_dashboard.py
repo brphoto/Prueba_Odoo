@@ -31,6 +31,13 @@ class ChatroomAiDashboard(models.Model):
     feedback_edited = fields.Integer(string='Respuestas editadas', compute='_compute_metrics')
     feedback_unsafe = fields.Integer(string='Respuestas inseguras', compute='_compute_metrics')
     feedback_quality_percent = fields.Float(string='Calidad favorable (%)', compute='_compute_metrics')
+    official_cost = fields.Float(string='Costo oficial del periodo', compute='_compute_metrics')
+    estimated_balance = fields.Float(string='Saldo de control', compute='_compute_metrics')
+    cost_currency = fields.Char(string='Moneda del costo', compute='_compute_metrics')
+    usage_state = fields.Selection([
+        ('ok', 'Actualizado'), ('partial', 'Solo consumo local'),
+        ('error', 'Error'), ('none', 'Sin resumen'),
+    ], string='Estado del consumo', compute='_compute_metrics')
 
     @api.model
     def _company_domain(self, model_name, domain, company):
@@ -81,6 +88,19 @@ class ChatroomAiDashboard(models.Model):
                 ('date', '>=', start),
                 ('channel_id.company_id', '=', company.id),
             ]) if 'chatroom.message' in self.env and 'ai_generated' in self.env['chatroom.message']._fields else 0
+            dashboard.official_cost = 0.0
+            dashboard.estimated_balance = 0.0
+            dashboard.cost_currency = 'USD'
+            dashboard.usage_state = 'none'
+            if 'chatroom.ai.usage.snapshot' in self.env:
+                snapshot = self.env['chatroom.ai.usage.snapshot'].sudo().search([
+                    ('company_id', '=', company.id),
+                ], order='fetched_at desc, id desc', limit=1)
+                if snapshot:
+                    dashboard.official_cost = snapshot.cost or 0.0
+                    dashboard.estimated_balance = snapshot.estimated_balance or 0.0
+                    dashboard.cost_currency = (snapshot.currency or snapshot.funding_currency or 'USD').upper()
+                    dashboard.usage_state = snapshot.state or 'none'
 
     def _open_task_action(self, domain, title):
         self.ensure_one()

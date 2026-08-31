@@ -15,8 +15,8 @@ class ChatroomAiAutomation(models.Model):
     description = fields.Text(
         string='Que hace esta automatizacion',
         help='Explica en lenguaje sencillo cuando usar esta automatizacion y que resultado prepara.')
-    active = fields.Boolean(default=True, tracking=True)
-    sequence = fields.Integer(default=10)
+    active = fields.Boolean(string='Activa', default=True, tracking=True)
+    sequence = fields.Integer(string='Orden', default=10)
     trigger = fields.Selection([
         ('daily_review', 'Revisión periódica'),
         ('open_conversation', 'Conversación activa'),
@@ -35,8 +35,8 @@ class ChatroomAiAutomation(models.Model):
         ('sales_conversion', 'Convertir conversación en venta'),
         ('daily_review', 'Revisión diaria'),
     ], string='Tipo de tarea', required=True, default='daily_review', tracking=True)
-    approval_required = fields.Boolean(default=True, tracking=True)
-    max_tasks = fields.Integer(default=20)
+    approval_required = fields.Boolean(string='Requiere aprobación', default=True, tracking=True)
+    max_tasks = fields.Integer(string='Máximo de tareas por ejecución', default=20)
     max_attempts = fields.Integer(
         string='Intentos máximos por tarea', default=3,
         help='Cantidad máxima de ejecuciones antes de dejar una tarea bloqueada para revisión humana.')
@@ -44,13 +44,13 @@ class ChatroomAiAutomation(models.Model):
     only_unassigned = fields.Boolean(string='Solo conversaciones sin asignar')
     min_rfm_score = fields.Integer(string='Score RFM mínimo', default=0)
     instruction = fields.Text(string='Instrucción para la IA', help='Contexto adicional que se agregará a la tarea creada.')
-    last_run = fields.Datetime(readonly=True)
+    last_run = fields.Datetime(string='Última ejecución', readonly=True)
     last_run_count = fields.Integer(string='Tareas creadas en la última ejecución', readonly=True)
     last_error = fields.Text(string='Último error', readonly=True)
     last_scanned_count = fields.Integer(string='Canales revisados', readonly=True)
     last_skipped_count = fields.Integer(string='Canales omitidos', readonly=True)
     last_run_summary = fields.Char(string='Resumen de la última ejecución', readonly=True)
-    company_id = fields.Many2one('res.company', default=lambda self: self.env.company, index=True)
+    company_id = fields.Many2one('res.company', string='Empresa', default=lambda self: self.env.company, index=True)
     task_count = fields.Integer(string='Tareas generadas', compute='_compute_task_count')
 
     def _compute_task_count(self):

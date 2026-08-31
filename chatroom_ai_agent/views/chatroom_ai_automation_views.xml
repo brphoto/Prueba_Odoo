@@ -73,7 +73,7 @@
                             </div>
                         </page>
                         <page name="filters" string="Filtros">
-                            <div class="alert alert-info" role="status">
+                            <div class="alert alert-info" role="alert">
                                 Las automatizaciones de ejemplo llegan desactivadas para evitar envíos inesperados. Puedes pulsar «Ejecutar ahora» para probarlas manualmente; las acciones sensibles seguirán solicitando aprobación.
                             </div>
                             <group string="Filtros opcionales" class="o_chatroom_ai_automation_filters">

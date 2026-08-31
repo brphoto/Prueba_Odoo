@@ -33,7 +33,7 @@
                         <group string="Detalle"><field name="message" nolabel="1"/></group>
                     </page>
                     <page string="Entrega" name="delivery">
-                        <div class="alert alert-info" role="status">El cron solo registra la alerta. Usa «Enviar aviso» cuando un usuario autorizado confirme que corresponde notificar.</div>
+                        <div class="alert alert-info" role="alert">El cron solo registra la alerta. Usa «Enviar aviso» cuando un usuario autorizado confirme que corresponde notificar.</div>
                         <group><group><field name="delivery_mode"/><field name="delivery_state" widget="badge"/></group>
                             <group><field name="email_sent_at"/><field name="whatsapp_sent_at"/></group></group>
                         <field name="delivery_error" readonly="1" nolabel="1"/>

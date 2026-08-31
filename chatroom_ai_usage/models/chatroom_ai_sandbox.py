@@ -51,6 +51,15 @@ class ChatroomAiSandbox(models.Model):
         ('provider', 'Proveedor IA (consume tokens)'),
     ], string='Modo de prueba', default='local', required=True,
        help='Usa el modo local para validar el flujo sin llamadas externas. El modo proveedor consulta el modelo seleccionado.')
+    ai_engine = fields.Selection([
+        ('chatroom', 'Chatroom / OpenAI'),
+        ('odoo_native', 'IA nativa de Odoo'),
+        ('hybrid', 'Híbrida: Chatroom + Odoo'),
+    ], string='Motor IA', default='chatroom', required=True,
+       help='Chatroom usa el motor actual; IA nativa consulta el agente de Odoo; Híbrida usa la IA nativa como contexto y Chatroom para redactar la respuesta final.')
+    engine_used = fields.Char(string='Motor utilizado', readonly=True, copy=False)
+    native_engine_status = fields.Char(
+        string='Estado IA nativa', compute='_compute_native_engine_status')
     provider_model_id = fields.Many2one(
         'chatroom.ai.provider.model', string='Modelo de prueba',
         domain=[('active', '=', True), ('supports_chat', '=', True)],
@@ -65,6 +74,11 @@ class ChatroomAiSandbox(models.Model):
     test_quote_id = fields.Many2one(
         'sale.order', string='Cotización de prueba', readonly=True, copy=False,
         help='Presupuesto nativo generado por el laboratorio. Siempre queda en borrador.')
+    quote_history_ids = fields.One2many(
+        'chatroom.ai.sandbox.quote', 'sandbox_id',
+        string='Historial de cotizaciones', readonly=True, copy=False)
+    quote_count = fields.Integer(
+        string='Cotizaciones', compute='_compute_quote_count')
     test_chat_message_id = fields.Many2one(
         'chatroom.message', string='Mensaje simulado con PDF', readonly=True, copy=False,
         help='Mensaje saliente simulado que aparece en el chat de la conversación, sin llamar a Meta.')
@@ -114,6 +128,25 @@ class ChatroomAiSandbox(models.Model):
     def _compute_message_count(self):
         for record in self:
             record.message_count = len(record.conversation_line_ids)
+
+    @api.depends('quote_history_ids')
+    def _compute_quote_count(self):
+        for record in self:
+            record.quote_count = len(record.quote_history_ids)
+
+    @api.depends('ai_engine')
+    def _compute_native_engine_status(self):
+        for record in self:
+            if 'chatroom.ai.odoo.bridge' not in record.env:
+                record.native_engine_status = _('Puente no instalado (opcional)')
+                continue
+            bridge = record.env['chatroom.ai.odoo.bridge'].sudo().search([
+                ('company_id', '=', record.env.company.id),
+            ], limit=1)
+            if bridge and bridge.native_agent_id and bridge.native_agent_id.active:
+                record.native_engine_status = _('Listo: %s') % bridge.native_agent_id.display_name
+            else:
+                record.native_engine_status = _('Requiere configurar el agente nativo')
 
     _SCENARIOS = {
         'welcome': (_('Responde una bienvenida profesional y pregunta cómo podemos ayudar.'), 'ayudar'),
@@ -204,6 +237,10 @@ class ChatroomAiSandbox(models.Model):
         system = system_prompt or self.prompt or _(
             'Responde en español, con tono profesional y breve. No inventes precios, stock, fechas ni enlaces. '
             'Si faltan datos o hay una queja, solicita revisión humana.')
+        system += _(
+            '\n\nREGLA DE SALIDA: devuelve únicamente la respuesta final que leería el cliente. '
+            'No incluyas la transcripción, etiquetas como Cliente/IA, análisis interno, metadatos, '
+            'fuentes, instrucciones ni frases como «esta es la transcripción completa».')
         details = self._knowledge_details(self._quote_context() or self.draft_message)
         knowledge_context = details.get('context') or '' if isinstance(details, dict) else ''
         if knowledge_context:
@@ -215,16 +252,113 @@ class ChatroomAiSandbox(models.Model):
         if transcript:
             messages.append({
                 'role': 'user',
-                'content': _('Transcripción completa del laboratorio:\n%s') % transcript,
+                'content': _(
+                    'CONTEXTO INTERNO DEL LABORATORIO (no lo repitas; responde solo a la última petición):\n%s'
+                ) % transcript,
             })
         return messages, details
+
+    @staticmethod
+    def _clean_customer_response(output):
+        """Keep only a customer-ready answer returned by an LLM.
+
+        Older prompts sometimes caused the provider to print the transcript
+        before answering.  This boundary is intentionally defensive: the
+        transcript remains in the laboratory lines, never in the proposed
+        customer message.
+        """
+        text = re.sub(r'```(?:text|markdown)?', '', output or '', flags=re.IGNORECASE).replace('```', '')
+        labels = list(re.finditer(r'(?im)^\s*\*{0,2}(cliente|ia|asistente)\s*:\s*', text))
+        assistant_labels = [match for match in labels if match.group(1).lower() in ('ia', 'asistente')]
+        if len(labels) >= 2 and assistant_labels:
+            text = text[assistant_labels[-1].end():]
+            next_label = re.search(r'(?im)^\s*\*{0,2}(cliente|ia|asistente)\s*:', text)
+            if next_label:
+                text = text[:next_label.start()]
+        text = re.sub(
+            r'(?im)(?:esta\s+es\s+la\s+)?transcripci[óo?]n\s+completa[^\n]*',
+            '', text)
+        text = re.sub(r'(?m)^\s*\*+\s*', '', text)
+        text = re.sub(r'(?im)^\s*(?:l[ií]nea solicitada|solicitud del cliente usada).*$', '', text)
+        text = re.sub(r'\n{3,}', '\n\n', text).strip()
+        # Internal Odoo grounding data must never leak into the customer
+        # response when a provider echoes the prompt.
+        clean_paragraphs = []
+        for paragraph in re.split(r'\n\s*\n', text):
+            normalized = ''.join(
+                char for char in unicodedata.normalize('NFKD', paragraph.lower())
+                if not unicodedata.combining(char))
+            if any(marker in normalized for marker in (
+                'linea solicitada:',
+                'solicitud del cliente usada para preparar',
+                'estimacion de referencia:',
+                'datos comerciales verificados en odoo',
+                'contexto interno del laboratorio',
+            )):
+                continue
+            if 'precio actual de odoo' in normalized and 'producto' in normalized:
+                continue
+            if paragraph.strip():
+                clean_paragraphs.append(paragraph.strip())
+        text = '\n\n'.join(clean_paragraphs).strip()
+        return text or _('No se obtuvo una respuesta utilizable. Solicita revisión humana.')
+
+    def _native_ai_reply(self, question, details=None):
+        """Ask the optional native Odoo agent without touching WhatsApp."""
+        if 'chatroom.ai.odoo.bridge' not in self.env:
+            raise UserError(_('Instala Chatroom - Puente IA nativa para usar este motor.'))
+        bridge = self.env['chatroom.ai.odoo.bridge'].sudo().search([
+            ('company_id', '=', self.env.company.id), ('active', '=', True),
+        ], limit=1)
+        if not bridge or not bridge.native_agent_id or not bridge.native_agent_id.active:
+            raise UserError(_('Configura y activa el agente nativo de Odoo en Agente IA > Puente con Odoo.'))
+        question = (question or self._last_customer_request() or self._quote_context()).strip()
+        context = (details or {}).get('context', '') if isinstance(details, dict) else ''
+        context_message = bridge.system_instructions or ''
+        if context:
+            context_message += (
+                '\n\nCONTEXTO AUTORIZADO DE CHATROOM (úsalo sin repetirlo):\n%s'
+            ) % context
+        try:
+            response = bridge.native_agent_id.get_direct_response(
+                question, context_message=context_message, enable_html_response=False)
+        except Exception as error:
+            raise UserError(_('La IA nativa no pudo responder: %s') % error) from error
+        answer = '\n\n'.join(str(item) for item in (response or []))
+        return self._clean_customer_response(answer)
+
+    def _run_ai_reply(self, question, task_type='reply'):
+        """Run the selected engine and return a clean customer-ready answer."""
+        self.ensure_one()
+        messages, details = self._laboratory_messages(self.prompt)
+        commercial_context = self._local_commercial_context(question)
+        if commercial_context:
+            messages[0]['content'] += (
+                '\n\nDATOS COMERCIALES VERIFICADOS EN ODOO (no inventar ni repetir como transcripción): %s'
+            ) % commercial_context
+        if self.ai_engine in ('odoo_native', 'hybrid'):
+            native_answer = self._native_ai_reply(question, details)
+            if self.ai_engine == 'odoo_native':
+                return native_answer, details, 'IA nativa de Odoo'
+            messages[0]['content'] += (
+                '\n\nRESPUESTA DE APOYO DE LA IA NATIVA (úsala como dato; redacta una única respuesta final): %s'
+            ) % native_answer
+        reply = self.channel_id._ai_chat_completion(
+            messages, task_type=task_type,
+            model_id=self.provider_model_id.id if self.provider_model_id else None)
+        if task_type == 'classification':
+            final_reply = reply.strip()
+        else:
+            final_reply = self._clean_customer_response(reply)
+        return final_reply, details, (
+            'Chatroom / OpenAI' if self.ai_engine == 'chatroom' else 'Híbrida: Chatroom + Odoo')
 
     @staticmethod
     def _quantity_from_text(text):
         """Extract an explicit commercial quantity without reading dates/prices."""
         patterns = (
             (r'(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:horas?|hrs?|h)\b', 'hours'),
-            (r'(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:unidades?|uds?\.?|u)\b', 'units'),
+            (r'(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:unidad(?:es)?|uds?\.?|u)\b', 'units'),
             (r'\bx\s*(\d+(?:[.,]\d+)?)\b', 'units'),
         )
         for pattern, unit in patterns:
@@ -238,7 +372,7 @@ class ChatroomAiSandbox(models.Model):
                     return value, unit
         return False, False
 
-    def _quote_products(self, context):
+    def _quote_products(self, context, use_fallback=True):
         """Find mentioned products, then use the configured fallback."""
         if 'product.product' not in self.env:
             return self.env['product.product']
@@ -246,9 +380,15 @@ class ChatroomAiSandbox(models.Model):
         customer_text = ' '.join(
             line.body for line in self.conversation_line_ids
             if line.speaker == 'customer' and line.body)
-        search_text = customer_text or context
+        # Prefer the request currently being quoted.  The complete transcript
+        # is only a fallback for phrases such as «cotiza lo anterior».
+        search_text = context or customer_text
         if self.channel_id and hasattr(self.channel_id, '_ai_search_products_mentioned'):
-            products = self.channel_id._ai_search_products_mentioned(search_text, limit=8)
+            # Do not let an older, similarly named product win only because it
+            # appears earlier in an arbitrary limited search result.  The
+            # scorer below needs the complete candidate set to honor an exact
+            # product name from the current request.
+            products = self.channel_id._ai_search_products_mentioned(search_text, limit=None)
         # Generic words such as "cotización" must not select an arbitrary
         # product. Keep candidates with a meaningful name/code match only.
         if products:
@@ -289,27 +429,70 @@ class ChatroomAiSandbox(models.Model):
                     scored, key=lambda item: (item[0], -item[1].id))[1].id])
             else:
                 products = self.env['product.product'].browse()
-        return products or self._test_quote_product()
+        return products or (self._test_quote_product() if use_fallback else products)
 
     def _quote_lines_from_context(self, request=False):
         """Build quote lines from the transcript and live Odoo products."""
         self.ensure_one()
-        context = self._quote_context(request) or request or ''
-        products = self._quote_products(context)
+        current_request = (request or self._last_customer_request() or '').strip()
+        context = self._quote_context(request) or current_request or ''
+        products = self._quote_products(current_request, use_fallback=False)
+        if not products:
+            # If the last request uses a pronoun («lo anterior», «esas horas»)
+            # resolve it against the whole laboratory transcript.
+            products = self._quote_products(context)
         configured_quantity = self.env['ir.config_parameter'].sudo().get_param(
             'chatroom_ai_agent.quote_quantity', '1') or '1'
         try:
             default_quantity = max(float(configured_quantity), 0.01)
         except (TypeError, ValueError):
             default_quantity = 1.0
-        explicit_quantity, explicit_unit = self._quantity_from_text(context)
+        explicit_quantity, explicit_unit = self._quantity_from_text(current_request)
+        if not explicit_quantity:
+            explicit_quantity, explicit_unit = self._quantity_from_text(context)
         lines = []
         for product in products[:8]:
             quantity = default_quantity
-            if explicit_quantity and (explicit_unit == 'hours' or product.type != 'service'):
+            if explicit_quantity and explicit_unit in ('hours', 'units'):
                 quantity = explicit_quantity
             lines.append((product, quantity))
         return lines, context, explicit_quantity, explicit_unit
+
+    def _is_quote_append_request(self, request=False):
+        """Detect an explicit request to add lines to the latest draft quote."""
+        self.ensure_one()
+        if not self.test_quote_id or self.test_quote_id.state != 'draft':
+            return False
+        normalized = ''.join(
+            char for char in unicodedata.normalize(
+                'NFKD', request or '')
+            if not unicodedata.combining(char)
+        ).lower()
+        phrases = (
+            'agrega', 'anade', 'adiciona', 'sumale', 'incluye tambien',
+            'incluye ademas', 'a la cotizacion anterior',
+            'a la cotizacion actual', 'en la cotizacion actual',
+            'actualiza la cotizacion', 'amplia la cotizacion',
+        )
+        return any(phrase in normalized for phrase in phrases)
+
+    def _quote_unit_price(self, product, explicit_unit=False):
+        """Resolve the unit price for a supervised quote.
+
+        Normal product requests use the native Odoo price.  Hour requests use
+        the configured implementation hourly rate, so a demo product priced
+        at USD 1 cannot silently turn five hours into a USD 5 quotation.
+        The resulting value is still written to the native sale.order.line.
+        """
+        if explicit_unit != 'hours':
+            return product.lst_price
+        raw_rate = self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_ai_agent.quote_hourly_rate', '20') or '20'
+        try:
+            rate = float(raw_rate)
+        except (TypeError, ValueError):
+            rate = 20.0
+        return rate if rate > 0 else product.lst_price
 
     def _test_quote_product(self):
         """Return the configured product used by supervised quote tests.
@@ -332,12 +515,13 @@ class ChatroomAiSandbox(models.Model):
                 'Configura un producto de cotización o crea al menos un producto vendible para la prueba.'))
         return product[:1]
 
-    def _create_test_quote_pdf(self, request=False):
-        """Create a native draft quotation and attach its standard PDF.
+    def _create_test_quote_pdf(self, request=False, append_existing=None):
+        """Create or extend a native draft quotation and attach its PDF.
 
-        This is deliberately a sandbox operation: no confirmation, invoice,
-        payment or WhatsApp message is performed. The PDF is linked to the
-        quotation and to the sandbox so it is visible from both records.
+        A new commercial request creates an independent ``sale.order``.  An
+        explicit «agrega/añade» request extends the latest draft quotation.
+        Both paths use the standard Odoo Sales report and leave a trace in the
+        sandbox quote history; nothing is confirmed or sent to WhatsApp.
         """
         self.ensure_one()
         if 'sale.order' not in self.env:
@@ -345,23 +529,42 @@ class ChatroomAiSandbox(models.Model):
         if not self.channel_id or not self.channel_id.partner_id:
             raise UserError(_(
                 'Vincula una conversación con un contacto antes de generar el PDF de prueba.'))
+        request = (request or self._last_customer_request() or '').strip()
+        append_existing = (
+            self._is_quote_append_request(request)
+            if append_existing is None else append_existing)
+        target_order = self.test_quote_id if append_existing else self.env['sale.order']
+        if append_existing and not target_order:
+            append_existing = False
+        if append_existing and target_order.state != 'draft':
+            raise UserError(_('Solo se puede ampliar una cotización que siga en borrador.'))
         quote_lines, quote_context, explicit_quantity, explicit_unit = self._quote_lines_from_context(request)
         if not quote_lines:
             raise UserError(_('No se encontró ningún producto vendible para la cotización.'))
-        order_line = [(0, 0, {
-            'product_id': product.id,
-            'product_uom_qty': quantity,
-        }) for product, quantity in quote_lines]
-        request_ref = re.sub(r'\s+', ' ', quote_context or request or '').strip()[:180]
-        order_values = {
-            'partner_id': self.channel_id.partner_id.id,
-            'origin': _('Laboratorio IA: %s') % self.name,
-            'client_order_ref': _('Prueba supervisada; no enviar automáticamente'),
-            'order_line': order_line,
-        }
-        if 'note' in self.env['sale.order']._fields:
-            order_values['note'] = _('Solicitud del cliente (laboratorio IA):\n%s') % request_ref
-        order = self.env['sale.order'].create(order_values)
+        order_line = []
+        for product, quantity in quote_lines:
+            line_values = {
+                'product_id': product.id,
+                'product_uom_qty': quantity,
+            }
+            # Las unidades de horas son una tarifa comercial configurada por
+            # Chatroom. Para productos normales dejamos que Odoo resuelva el
+            # precio de la lista de precios, impuestos y reglas nativas.
+            if explicit_unit == 'hours':
+                line_values['price_unit'] = self._quote_unit_price(product, explicit_unit)
+            order_line.append((0, 0, line_values))
+        before_line_ids = set(target_order.order_line.ids) if append_existing else set()
+        if append_existing:
+            target_order.write({'order_line': order_line})
+            order = target_order
+        else:
+            order_values = {
+                'partner_id': self.channel_id.partner_id.id,
+                'origin': _('Laboratorio IA: %s') % self.name,
+                'client_order_ref': _('Prueba supervisada; no enviar automáticamente'),
+                'order_line': order_line,
+            }
+            order = self.env['sale.order'].create(order_values)
         report_xmlid = 'sale.action_report_saleorder'
         report = self.env.ref(report_xmlid, raise_if_not_found=False)
         if not report:
@@ -370,10 +573,12 @@ class ChatroomAiSandbox(models.Model):
             pdf_content, _report_type = self.env['ir.actions.report'].with_context(
                 force_report_rendering=True)._render_qweb_pdf(report_xmlid, res_ids=[order.id])
         except Exception as exc:
-            order.unlink()
+            if not append_existing:
+                order.unlink()
             raise UserError(_('No se pudo generar el PDF estándar de Ventas: %s') % exc) from exc
         if not pdf_content:
-            order.unlink()
+            if not append_existing:
+                order.unlink()
             raise UserError(_('El reporte estándar no devolvió contenido PDF.'))
         attachment = self.env['ir.attachment'].create({
             'name': _('%s - Cotización de prueba.pdf') % order.name,
@@ -395,25 +600,50 @@ class ChatroomAiSandbox(models.Model):
             'attachment_ids': [(4, attachment.id)],
             'sender_user_id': self.env.user.id,
         })
+        # This is an internal laboratory notification. Keep it concise: the
+        # detailed lines and the original request remain in the sandbox and
+        # quote history, not in a message that can be mistaken for a reply.
+        simulated_message.write({
+            'body': _(
+                'Prueba IA: cotización %s generada en borrador. PDF adjunto; '
+                'no se envió a WhatsApp.'
+            ) % order.name,
+        })
         order.message_post(
             body=_('PDF de cotización generado desde una prueba de IA. El presupuesto permanece en borrador.'),
             attachment_ids=[attachment.id],
             subtype_xmlid='mail.mt_note',
         )
+        generated_lines = order.order_line.filtered(
+            lambda line: line.id not in before_line_ids) if append_existing else order.order_line
         line_summary = ', '.join(
             '%s x %s (%.2f %s c/u)' % (
-                product.display_name, quantity, line.price_unit,
+                line.product_id.display_name, line.product_uom_qty, line.price_unit,
                 order.currency_id.symbol or order.currency_id.name)
-            for line, (product, quantity) in zip(order.order_line, quote_lines)
+            for line in generated_lines
         )
         quantity_note = (
             _(' Cantidad detectada: %s %s.') % (
                 explicit_quantity, 'hora(s)' if explicit_unit == 'hours' else 'unidad(es)')
             if explicit_quantity else '')
+        operation_label = _('ampliada') if append_existing else _('creada')
         note = _(
-            'Cotización %s creada en borrador con estas líneas: %s.%s PDF adjunto al presupuesto y a esta prueba. '
+            'Cotización %s %s en borrador con estas líneas: %s.%s PDF adjunto al presupuesto y a esta prueba. '
             'No se confirmó ni se envió ningún mensaje.'
-        ) % (order.name, line_summary, quantity_note)
+        ) % (order.name, operation_label, line_summary, quantity_note)
+        history = self.env['chatroom.ai.sandbox.quote'].create({
+            'sandbox_id': self.id,
+            'operation': 'append' if append_existing else 'new',
+            'request_text': request,
+            'sale_order_id': order.id,
+            'attachment_id': attachment.id,
+            'chat_message_id': simulated_message.id,
+            'product_summary': line_summary,
+            'detected_quantity': explicit_quantity or 0.0,
+            'amount_untaxed': order.amount_untaxed,
+            'amount_total': order.amount_total,
+            'currency_id': order.currency_id.id,
+        })
         self.write({
             'test_quote_id': order.id,
             'test_chat_message_id': simulated_message.id,
@@ -421,7 +651,7 @@ class ChatroomAiSandbox(models.Model):
             'operational_result': note,
         })
         self.message_post(body=note, attachment_ids=[attachment.id], subtype_xmlid='mail.mt_note')
-        return order, attachment, simulated_message
+        return order, attachment, simulated_message, history
 
     def action_generate_test_quote_pdf(self):
         """Button for an explicit, visible quote/PDF test."""
@@ -521,12 +751,14 @@ class ChatroomAiSandbox(models.Model):
         self.ensure_one()
         normalized = (request or '').lower()
         notes = []
-        if any(word in normalized for word in ('cotización', 'cotizacion', 'presupuesto', 'pdf')) and not self.test_quote_id:
+        if any(word in normalized for word in ('cotización', 'cotizacion', 'presupuesto', 'pdf')):
             try:
-                order, attachment, simulated_message = self._create_test_quote_pdf(request)
+                order, attachment, simulated_message, history = self._create_test_quote_pdf(request)
+                operation_label = (
+                    _('ampliada') if history.operation == 'append' else _('creada'))
                 notes.append(_(
-                    'PDF listo: %s (presupuesto %s). También se agregó al chat como mensaje simulado (%s).'
-                ) % (attachment.name, order.name, simulated_message.display_name))
+                    'PDF listo: %s (presupuesto %s %s). También se agregó al chat como mensaje simulado (%s).'
+                ) % (attachment.name, order.name, operation_label, simulated_message.display_name))
             except UserError as exc:
                 notes.append(_('No se pudo generar el PDF de prueba: %s') % exc)
         if any(word in normalized for word in ('actividad', 'tarea interna', 'llamada', 'seguimiento')) and not self.test_activity_ids:
@@ -636,7 +868,8 @@ class ChatroomAiSandbox(models.Model):
             for product, quantity in quote_lines:
                 facts = self.channel_id._ai_product_commercial_data(product, quantity=quantity)
                 currency = facts['currency']
-                amount = facts['price'] * quantity
+                price = self._quote_unit_price(product, _unit if is_quote_request else False)
+                amount = price * quantity
                 lines.append(_(
                     'Línea solicitada: %(product)s | cantidad %(quantity)s | '
                     'precio actual de Odoo %(price).2f %(currency)s | '
@@ -644,7 +877,7 @@ class ChatroomAiSandbox(models.Model):
                 ) % {
                     'product': product.display_name,
                     'quantity': quantity,
-                    'price': facts['price'],
+                    'price': price,
                     'currency': currency.symbol or currency.name,
                     'amount': amount,
                     'stock': facts['stock_label'],
@@ -735,19 +968,13 @@ class ChatroomAiSandbox(models.Model):
             'speaker': 'customer', 'body': question,
         })
         try:
-            knowledge_details = self._knowledge_details(self._quote_context(question))
             if self.execution_mode == 'provider':
-                playground_messages = self._playground_conversation()
-                commercial_context = self._local_commercial_context(question)
-                if commercial_context:
-                    playground_messages[0]['content'] += _(
-                        '\n\nContexto comercial verificado por Odoo (úsalo como fuente de verdad): %s'
-                    ) % commercial_context
-                reply = self.channel_id._ai_chat_completion(
-                    playground_messages, task_type='reply',
-                    model_id=self.provider_model_id.id if self.provider_model_id else None)
+                reply, knowledge_details, engine_used = self._run_ai_reply(question, task_type='reply')
             else:
-                reply = self._local_playground_reply(question)
+                reply = self._clean_customer_response(
+                    self._local_playground_reply(question))
+                knowledge_details = self._knowledge_details(self._quote_context(question))
+                engine_used = _('Motor local')
             next_sequence += 1
             assistant_line = self.env['chatroom.ai.sandbox.message'].create({
                 'sandbox_id': self.id, 'sequence': next_sequence,
@@ -765,6 +992,7 @@ class ChatroomAiSandbox(models.Model):
                     '- %s' % item for item in (knowledge_details.get('live_sources') or []) if item),
                 'knowledge_context_chars': knowledge_details.get('context_chars', 0),
                 'knowledge_estimated_input_tokens': knowledge_details.get('estimated_input_tokens', 0),
+                'engine_used': engine_used,
             }
             if self.execution_mode == 'local':
                 values.update({
@@ -785,15 +1013,18 @@ class ChatroomAiSandbox(models.Model):
                     })
             self.write(values)
             operation_note = self._process_test_operations(question)
-            if operation_note and operation_note not in (reply or ''):
-                assistant_line.write({'body': '%s\n\n%s' % (reply, operation_note)})
+            # Una reunión creada en Calendario sí debe ser visible y utilizable
+            # desde el chat simulado. Las notas internas permanecen en el
+            # resultado operativo; solo exponemos el enlace al cliente.
+            if self.test_meeting_link and self.test_meeting_link not in (assistant_line.body or ''):
+                assistant_line.write({
+                    'body': '%s\n\nEnlace de reunión: %s' % (
+                        assistant_line.body or '', self.test_meeting_link),
+                })
             # El PDF también queda en el turno de IA del laboratorio, no
             # únicamente en el chatter de la prueba o del presupuesto.
             if self.test_chat_message_id and self.test_chat_message_id.attachment_ids:
-                commercial_context = self._local_commercial_context(question)
                 values = {'attachment_ids': [(4, self.test_chat_message_id.attachment_ids[0].id)]}
-                if commercial_context and commercial_context not in (reply or ''):
-                    values['body'] = '%s\n\n%s' % (reply, commercial_context)
                 assistant_line.write(values)
         except Exception as exc:
             self.write({'state': 'error', 'error_message': str(exc)})
@@ -809,8 +1040,16 @@ class ChatroomAiSandbox(models.Model):
             if not record.channel_id:
                 raise UserError(_('Selecciona una conversación para aportar contexto.'))
             try:
-                messages, details = record._laboratory_messages(record.prompt)
-                result = record.channel_id._ai_chat_completion(messages, task_type=record.task_type)
+                if record.execution_mode == 'provider':
+                    result, details, engine_used = record._run_ai_reply(
+                        record._last_customer_request() or record.draft_message,
+                        task_type=record.task_type)
+                else:
+                    details = record._knowledge_details(record._quote_context(record.draft_message))
+                    result = record._clean_customer_response(
+                        record._local_playground_reply(
+                            record._last_customer_request() or record.draft_message))
+                    engine_used = _('Motor local')
                 evaluation_state, evaluation_note = record._evaluate_output(result)
                 record.write({
                     'output': result, 'state': 'done', 'error_message': False,
@@ -825,6 +1064,7 @@ class ChatroomAiSandbox(models.Model):
                         '- %s' % item for item in (details.get('live_sources') or []) if item),
                     'knowledge_context_chars': details.get('context_chars', 0),
                     'knowledge_estimated_input_tokens': details.get('estimated_input_tokens', 0),
+                    'engine_used': engine_used,
                     'operational_result': _(
                         'El análisis utilizó la conversación completa del laboratorio y la base de conocimiento publicada. '
                         'Fuentes: %s. Datos vivos: %s.'

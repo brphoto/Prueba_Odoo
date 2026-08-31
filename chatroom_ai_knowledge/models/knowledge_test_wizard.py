@@ -14,12 +14,21 @@ class ChatroomAiKnowledgeTest(models.TransientModel):
                            default='¿Qué información puede utilizar la IA?')
     channel_id = fields.Many2one('chatroom.channel', string='Conversación de referencia')
     partner_id = fields.Many2one('res.partner', string='Cliente de referencia')
+    execution_engine = fields.Selection([
+        ('chatroom', 'Chatroom / OpenAI'),
+        ('odoo_native', 'Odoo IA nativa'),
+        ('local', 'Local, sin tokens'),
+    ], string='Motor de prueba', default='chatroom', required=True,
+        help='Elige el motor que responderá la prueba. Ninguna opción envía mensajes a WhatsApp.')
+    native_engine_status = fields.Char(
+        string='Estado de Odoo IA nativa', compute='_compute_native_engine_status')
     context_preview = fields.Text(string='Contexto recuperado', readonly=True)
     source_summary = fields.Text(string='Fuentes utilizadas', readonly=True)
     live_summary = fields.Text(string='Datos vivos consultados', readonly=True)
     answer = fields.Text(string='Respuesta de la IA', readonly=True)
     answer_source = fields.Selection([
         ('provider', 'Proveedor IA'),
+        ('odoo_native', 'Odoo IA nativa'),
         ('local', 'Prueba local sin tokens'),
         ('none', 'Sin respuesta'),
     ], string='Origen de la respuesta', readonly=True)
@@ -37,6 +46,19 @@ class ChatroomAiKnowledgeTest(models.TransientModel):
         help='Opcional: escribe la versión final y pulsa Guardar corrección.')
     estimated_input_tokens = fields.Integer(string='Tokens de entrada estimados', readonly=True)
     context_chars = fields.Integer(string='Caracteres de contexto', readonly=True)
+
+    def _compute_native_engine_status(self):
+        available = 'chatroom.ai.odoo.bridge' in self.env
+        for record in self:
+            if not available:
+                record.native_engine_status = 'Instala el puente IA nativa para habilitar este motor.'
+                continue
+            bridge = self.env['chatroom.ai.odoo.bridge'].sudo().search(
+                [('company_id', '=', self.env.company.id), ('active', '=', True)], limit=1)
+            if bridge and bridge.native_agent_id and bridge.native_agent_id.active:
+                record.native_engine_status = 'Disponible: %s' % (bridge.native_agent_id.display_name or bridge.native_agent_id.name)
+            else:
+                record.native_engine_status = 'Pendiente: crea o selecciona un agente nativo en el puente.'
 
     def action_preview(self):
         self.ensure_one()
@@ -93,6 +115,56 @@ class ChatroomAiKnowledgeTest(models.TransientModel):
                 'answer_model': False, 'estimated_output_tokens': 0,
                 'answer_error': _('Publica un conocimiento o consulta un producto real de Odoo.'),
             })
+            return self._reopen()
+
+        if self.execution_engine == 'local':
+            snippets = knowledge_context[:2400]
+            self.write({
+                'answer': _('Prueba local (sin tokens):\n\n%s') % snippets,
+                'answer_source': 'local', 'answer_confidence': 0.55,
+                'answer_model': _('Motor local de contexto'),
+                'estimated_output_tokens': max(1, (len(snippets) + 3) // 4),
+                'answer_error': _('Se mostró el contexto recuperado sin consultar un proveedor externo.'),
+            })
+            return self._reopen()
+
+        if self.execution_engine == 'odoo_native':
+            if 'chatroom.ai.odoo.bridge' not in self.env:
+                raise UserError(_(
+                    'El motor Odoo IA nativa requiere instalar el módulo opcional '
+                    '«chatroom_ai_odoo_bridge».'))
+            bridge = self.env['chatroom.ai.odoo.bridge'].sudo().search([
+                ('company_id', '=', self.env.company.id), ('active', '=', True)], limit=1)
+            if not bridge or not bridge.native_agent_id or not bridge.native_agent_id.active:
+                raise UserError(_(
+                    'Configura primero el puente en Agente IA > IA nativa de Odoo y crea un agente nativo activo.'))
+            native_prompt = (
+                'Responde en español claro y profesional. Usa únicamente el contexto verificado de Chatroom. '
+                'No inventes precios, stock, fechas ni condiciones. Si falta información, dilo claramente.\n\n'
+                'CONTEXTO VERIFICADO DE CHATROOM:\n%s' % knowledge_context
+            )
+            try:
+                response = bridge.native_agent_id.get_direct_response(
+                    self.question, context_message=native_prompt, enable_html_response=False)
+                answer = '\n\n'.join(str(item) for item in (response or [])).strip()
+                if not answer:
+                    raise ValueError(_('El agente nativo no devolvió una respuesta.'))
+                self.write({
+                    'answer': answer,
+                    'answer_source': 'odoo_native',
+                    'answer_confidence': 0.0,
+                    'answer_model': bridge.native_agent_id.llm_model or _('Modelo nativo'),
+                    'estimated_output_tokens': max(1, (len(answer) + 3) // 4),
+                    'answer_error': False,
+                })
+            except Exception as error:  # noqa: BLE001 - el laboratorio debe permanecer utilizable
+                self.write({
+                    'answer': _('No se pudo completar la consulta con Odoo IA nativa.'),
+                    'answer_source': 'none', 'answer_confidence': 0.0,
+                    'answer_model': bridge.native_agent_id.llm_model or _('Modelo nativo'),
+                    'estimated_output_tokens': 0,
+                    'answer_error': str(error),
+                })
             return self._reopen()
 
         channel = self._provider_channel()

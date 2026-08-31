@@ -2089,6 +2089,15 @@ class ChatroomChannel(models.Model):
             json={"model": model, "messages": messages},
             timeout=30,
         )
+        if response.status_code == 404:
+            # Un 404 suele indicar una base URL, ruta o modelo incorrectos.
+            # El diagnóstico no expone nunca la API key ni el cuerpo remoto.
+            raise UserError(_(
+                "El proveedor de IA respondió HTTP 404. Verifica que el endpoint "
+                "sea la base compatible con chat/completions (por ejemplo "
+                "https://api.openai.com/v1), que el modelo «%s» exista y que no "
+                "haya quedado una ruta duplicada. Endpoint usado: %s") % (
+                    model, api_url))
         response.raise_for_status()
         try:
             payload = response.json()
@@ -2845,7 +2854,15 @@ class ChatroomChannel(models.Model):
                     quantity = 1.0
                 if quantity <= 0:
                     raise UserError(_("La cantidad de la cotización debe ser mayor que cero."))
-                requested_lines.append((product, quantity))
+                unit_price = line.get('unit_price')
+                if unit_price is not None:
+                    try:
+                        unit_price = float(unit_price)
+                    except (TypeError, ValueError):
+                        raise UserError(_("El precio unitario de la cotización no es válido."))
+                    if unit_price < 0:
+                        raise UserError(_("El precio unitario de la cotización no puede ser negativo."))
+                requested_lines.append((product, quantity, unit_price))
         elif product_id:
             product = self.env['product.product'].browse(int(product_id)).exists()
             if not product or not product.sale_ok:
@@ -2856,12 +2873,13 @@ class ChatroomChannel(models.Model):
                 quantity = 1.0
             if quantity <= 0:
                 raise UserError(_("La cantidad de la cotización debe ser mayor que cero."))
-            requested_lines.append((product, quantity))
+            requested_lines.append((product, quantity, False))
         if requested_lines:
             order_vals['order_line'] = [(0, 0, {
                 'product_id': product.id,
                 'product_uom_qty': quantity,
-            }) for product, quantity in requested_lines]
+                **({'price_unit': unit_price} if unit_price is not False else {}),
+            }) for product, quantity, unit_price in requested_lines]
         order = self.env['sale.order'].create(order_vals)
         return self._window_action(
             res_model='sale.order', res_id=order.id, view_mode='form')

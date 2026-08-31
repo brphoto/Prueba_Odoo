@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_channel_form_ai_orchestration" model="ir.ui.view">
+        <field name="name">chatroom.channel.form.ai.orchestration</field>
+        <field name="model">chatroom.channel</field>
+        <field name="inherit_id" ref="chatroom_whatsapp.view_chatroom_channel_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='tag_ids']" position="after">
+                <group string="Orquestador IA" class="o_chatroom_ai_orchestration_state" col="2" invisible="not id">
+                    <field name="ai_flow_state" widget="badge"/>
+                    <field name="ai_last_route" widget="badge"/>
+                    <field name="ai_pending_task_id"/>
+                    <field name="ai_last_agent_at"/>
+                    <field name="ai_handoff_reason" invisible="not ai_handoff_reason"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

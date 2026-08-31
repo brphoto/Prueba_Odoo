@@ -9,6 +9,21 @@ class ChatroomChannel(models.Model):
     meeting_count = fields.Integer(compute='_compute_meeting_data')
     next_meeting_date = fields.Datetime(compute='_compute_meeting_data')
 
+    def _calendar_conflicts(self, start, stop, user=False):
+        """Return overlapping native Calendar events for the responsible user."""
+        self.ensure_one()
+        start = fields.Datetime.to_datetime(start)
+        stop = fields.Datetime.to_datetime(stop)
+        user = user or self.assigned_user_id or self.env.user
+        if not user or not start or not stop:
+            return self.env['calendar.event']
+        return self.env['calendar.event'].search([
+            ('active', '=', True),
+            ('user_id', '=', user.id),
+            ('start', '<', stop),
+            ('stop', '>', start),
+        ], order='start, id')
+
     def action_create_meeting(self, start=False, stop=False, request=False):
         """Crea una reunión nativa y devuelve su enlace sin enviarlo.
 
@@ -23,6 +38,14 @@ class ChatroomChannel(models.Model):
         now = fields.Datetime.now()
         start = fields.Datetime.to_datetime(start) if start else fields.Datetime.add(now, hours=1)
         stop = fields.Datetime.to_datetime(stop) if stop else fields.Datetime.add(start, hours=1)
+        conflicts = self._calendar_conflicts(start, stop)
+        if conflicts:
+            details = ', '.join(
+                '%s (%s)' % (event.display_name, fields.Datetime.to_string(event.start))
+                for event in conflicts[:3])
+            raise UserError(_(
+                'El responsable ya tiene ocupado ese horario en Calendario: %s. '
+                'Selecciona otra hora o abre Calendario para revisar disponibilidad.') % details)
         event = self.env['calendar.event'].create({
             'name': _("Reunión con %s") % self.partner_id.name,
             'start': start,

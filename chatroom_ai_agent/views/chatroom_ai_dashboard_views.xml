@@ -63,6 +63,12 @@
                         <div class="chatroom_ai_dashboard_performance_card"><span>Respuestas inseguras</span><field name="feedback_unsafe" nolabel="1" readonly="1"/></div>
                         <div class="chatroom_ai_dashboard_performance_card"><span>Calidad favorable</span><field name="feedback_quality_percent" nolabel="1" readonly="1"/></div>
                     </div>
+                    <separator string="Control de consumo y costo"/>
+                    <div class="chatroom_ai_dashboard_performance_grid chatroom_ai_dashboard_finance_grid">
+                        <div class="chatroom_ai_dashboard_performance_card"><span>Costo oficial del periodo</span><field name="official_cost" nolabel="1" readonly="1"/><small><field name="cost_currency" nolabel="1" readonly="1"/></small></div>
+                        <div class="chatroom_ai_dashboard_performance_card"><span>Saldo de control</span><field name="estimated_balance" nolabel="1" readonly="1"/><small>Fondos registrados menos costo oficial</small></div>
+                        <div class="chatroom_ai_dashboard_performance_card"><span>Estado del consumo</span><field name="usage_state" nolabel="1" readonly="1" widget="badge"/></div>
+                    </div>
                     <separator string="Herramientas de control"/>
                     <div class="d-flex flex-wrap gap-2" invisible="1">
                         <button name="action_open_quality" type="object" string="Pruebas de calidad" class="btn-secondary" icon="fa-check-circle"/>

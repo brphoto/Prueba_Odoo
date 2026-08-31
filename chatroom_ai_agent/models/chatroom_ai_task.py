@@ -133,6 +133,14 @@ class ChatroomAiTask(models.Model):
     result_preview = fields.Text(
         string='Resultado para el agente', readonly=True,
         help='Resultado legible de las acciones ejecutadas. Las respuestas preparadas no se envían automáticamente.')
+    result_model = fields.Char(
+        string='Modelo del resultado', readonly=True,
+        help='Modelo nativo de Odoo creado o consultado por la última ejecución.')
+    result_res_id = fields.Integer(
+        string='ID del resultado', readonly=True,
+        help='Identificador del documento nativo relacionado con el resultado.')
+    result_document_name = fields.Char(
+        string='Documento generado', readonly=True)
     error_message = fields.Text(string='Detalle del error', readonly=True)
     channel_id = fields.Many2one('chatroom.channel', string='Conversación', ondelete='cascade', index=True)
     partner_id = fields.Many2one(related='channel_id.partner_id', string='Cliente', store=True, readonly=True)
@@ -140,18 +148,31 @@ class ChatroomAiTask(models.Model):
     company_id = fields.Many2one('res.company', string='Empresa', default=lambda self: self.env.company, index=True)
     automation_id = fields.Many2one('chatroom.ai.automation', string='Automatización de origen', readonly=True, index=True)
     playbook_id = fields.Many2one('chatroom.ai.playbook', string='Acción guardada de origen', readonly=True, index=True)
+    source_message_id = fields.Many2one(
+        'chatroom.message', string='Mensaje que activó la tarea', readonly=True,
+        index=True, ondelete='set null')
+    orchestration_key = fields.Char(
+        string='Clave de idempotencia', readonly=True, index=True,
+        help='Evita duplicar tareas si el webhook de entrada se reintenta.')
+    orchestration_route = fields.Selection([
+        ('general', 'Consulta comercial'),
+        ('product', 'Producto y disponibilidad'),
+        ('quote', 'Cotización'),
+        ('meeting', 'Reunión'),
+        ('payment', 'Pago'),
+    ], string='Ruta del orquestador', readonly=True, index=True)
     approval_required = fields.Boolean(string='Requiere aprobación', default=True)
     risk_level = fields.Selection([
         ('low', 'Bajo'), ('medium', 'Medio'), ('high', 'Alto'),
     ], string='Nivel de riesgo', compute='_compute_risk_level', store=True)
-    approved_by = fields.Many2one('res.users', readonly=True)
-    approved_at = fields.Datetime(readonly=True)
-    started_at = fields.Datetime(readonly=True)
-    completed_at = fields.Datetime(readonly=True)
-    next_run_at = fields.Datetime(default=fields.Datetime.now, index=True)
-    attempts = fields.Integer(default=0, readonly=True)
-    max_attempts = fields.Integer(default=3)
-    active = fields.Boolean(default=True)
+    approved_by = fields.Many2one('res.users', string='Aprobado por', readonly=True)
+    approved_at = fields.Datetime(string='Aprobado el', readonly=True)
+    started_at = fields.Datetime(string='Iniciada el', readonly=True)
+    completed_at = fields.Datetime(string='Completada el', readonly=True)
+    next_run_at = fields.Datetime(string='Próxima ejecución', default=fields.Datetime.now, index=True)
+    attempts = fields.Integer(string='Intentos realizados', default=0, readonly=True)
+    max_attempts = fields.Integer(string='Intentos máximos', default=3)
+    active = fields.Boolean(string='Activa', default=True)
     action_ids = fields.One2many('chatroom.ai.task.action', 'task_id', string='Plan de acciones')
     audit_ids = fields.One2many('chatroom.ai.audit', 'task_id', string='Auditoría')
 
@@ -206,8 +227,119 @@ class ChatroomAiTask(models.Model):
     def _json(self, value):
         return json.dumps(value, ensure_ascii=False, indent=2, default=str)
 
+    def _sync_channel_state(self, state=False, reason=False):
+        """Keep the inbox snapshot synchronized with the auditable task."""
+        self.ensure_one()
+        channel = self.channel_id
+        if not channel or not hasattr(channel, '_ai_set_orchestration_state'):
+            return
+        route = self.orchestration_route or 'general'
+        if state == 'awaiting_approval':
+            flow_state = 'waiting_confirmation'
+        elif state in ('failed', 'cancelled'):
+            flow_state = 'human' if state == 'failed' else 'idle'
+        elif state == 'done':
+            flow_state = 'idle'
+        else:
+            flow_state = {
+                'product': 'product', 'quote': 'quote',
+                'meeting': 'meeting', 'payment': 'payment',
+            }.get(route, 'idle')
+        channel.sudo()._ai_set_orchestration_state(
+            route=route, task=False if flow_state == 'idle' else self,
+            state=flow_state, reason=reason)
+
+    def _schedule_approval_activity(self):
+        """Create one native Odoo activity to make approval actionable."""
+        self.ensure_one()
+        if self.state != 'awaiting_approval' or 'mail.activity' not in self.env:
+            return False
+        activity_type = self.env.ref(
+            'mail.mail_activity_data_todo', raise_if_not_found=False)
+        model = self.env['ir.model']._get(self._name)
+        if not activity_type or not model:
+            return False
+        activity_model = self.env['mail.activity'].sudo()
+        existing = activity_model.search([
+            ('res_model_id', '=', model.id), ('res_id', '=', self.id),
+            ('activity_type_id', '=', activity_type.id),
+            ('user_id', '=', (self.user_id or self.env.user).id),
+        ], limit=1)
+        if existing:
+            return existing
+        return activity_model.create({
+            'activity_type_id': activity_type.id,
+            'res_model_id': model.id,
+            'res_id': self.id,
+            'user_id': (self.user_id or self.env.user).id,
+            'date_deadline': fields.Date.context_today(self),
+            'summary': _('Revisar plan del agente IA'),
+            'note': _('La tarea %s tiene acciones que requieren aprobación humana. Revisa el plan, el riesgo y el resultado antes de ejecutar.') % self.display_name,
+        })
+
+    def _close_approval_activity(self):
+        """Complete the native reminder once the plan is approved or done."""
+        self.ensure_one()
+        if 'mail.activity' not in self.env or 'ir.model' not in self.env:
+            return False
+        model = self.env['ir.model']._get(self._name)
+        activity_type = self.env.ref(
+            'mail.mail_activity_data_todo', raise_if_not_found=False)
+        if not model or not activity_type:
+            return False
+        activities = self.env['mail.activity'].sudo().search([
+            ('res_model_id', '=', model.id), ('res_id', '=', self.id),
+            ('activity_type_id', '=', activity_type.id),
+            ('summary', '=', _('Revisar plan del agente IA')),
+        ])
+        if activities:
+            try:
+                activities.action_done()
+            except Exception:  # noqa: BLE001 - no bloquear la aprobación
+                activities.unlink()
+        return True
+
+    def _store_native_result(self, outputs):
+        """Expose the native Odoo record produced by the task in one click."""
+        self.ensure_one()
+        priorities = (
+            ('order_id', 'sale.order', 'order_name'),
+            ('event_id', 'calendar.event', 'meeting_name'),
+            ('link_id', 'chatroom.payment.link', 'document'),
+            ('activity_id', 'mail.activity', False),
+            ('lead_id', 'crm.lead', 'lead_name'),
+        )
+        for key, model, name_key in priorities:
+            for output in reversed(outputs or []):
+                res_id = output.get(key)
+                if res_id and model in self.env and self.env[model].browse(res_id).exists():
+                    self.write({
+                        'result_model': model,
+                        'result_res_id': res_id,
+                        'result_document_name': output.get(name_key) if name_key else self.env[model].browse(res_id).display_name,
+                    })
+                    return True
+        return False
+
+    def action_open_result_document(self):
+        """Open the native document generated by the agent."""
+        self.ensure_one()
+        if not self.result_model or not self.result_res_id or self.result_model not in self.env:
+            raise UserError(_('Esta tarea todavía no tiene un documento nativo para abrir.'))
+        record = self.env[self.result_model].browse(self.result_res_id).exists()
+        if not record:
+            raise UserError(_('El documento nativo ya no existe.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': record.display_name,
+            'res_model': self.result_model,
+            'res_id': record.id,
+            'views': [(False, 'form')],
+            'target': 'new',
+        }
+
     @api.model
-    def create_from_channel(self, channel, task_type='orchestrate', prompt=False, approval_required=None, automation=False, playbook=False):
+    def create_from_channel(self, channel, task_type='orchestrate', prompt=False, approval_required=None, automation=False, playbook=False, source_message=False, orchestration_key=False, route=False):
         channel.ensure_one()
         icp = self.env['ir.config_parameter'].sudo()
         mode = icp.get_param('chatroom_ai_agent.mode', 'supervised')
@@ -227,6 +359,9 @@ class ChatroomAiTask(models.Model):
             'user_id': self.env.user.id,
             'automation_id': automation.id if automation else False,
             'playbook_id': playbook.id if playbook else False,
+            'source_message_id': source_message.id if source_message else False,
+            'orchestration_key': orchestration_key or False,
+            'orchestration_route': route or False,
         })
         return task
 
@@ -315,17 +450,20 @@ class ChatroomAiTask(models.Model):
             ' '.join((message.body or '') for message in self.channel_id.message_ids
                      if message.body) if self.channel_id else '',
         ]).lower()
-        quote_request = any(term in request_text for term in (
-            'cotización', 'cotizacion', 'presupuesto', 'propuesta comercial',
-            'pdf de la cotización', 'pdf de la cotizacion', 'cotizacion previa'))
-        meeting_request = any(term in request_text for term in (
-            'reunión', 'reunion', 'videollamada', 'google meet', 'meet',
-            'enlace de la reunión', 'enlace de la reunion'))
+        normalized_request = ''.join(
+            char for char in unicodedata.normalize('NFKD', request_text)
+            if not unicodedata.combining(char))
+        quote_request = any(term in normalized_request for term in (
+            'cotizacion', 'presupuesto', 'propuesta comercial',
+            'pdf de la cotizacion', 'cotizacion previa'))
+        meeting_request = any(term in normalized_request for term in (
+            'reunion', 'videollamada', 'google meet', 'meet',
+            'enlace de la reunion'))
         payment_request = any(term in request_text for term in (
             'pagar', 'pago', 'cobrar', 'link de pago', 'enlace de pago'))
-        product_request = any(term in request_text for term in (
-            'producto', 'precio', 'cuánto cuesta', 'cuanto cuesta',
-            'stock', 'disponibilidad', 'catálogo', 'catalogo'))
+        product_request = any(term in normalized_request for term in (
+            'producto', 'precio', 'cuanto cuesta',
+            'stock', 'disponibilidad', 'catalogo'))
         plans = {
             'classify_customer': [('classify_customer', 'Leer clasificación comercial del cliente')],
             'qualify_lead': [('classify_customer', 'Leer clasificación comercial del cliente'), ('create_lead', 'Crear o actualizar oportunidad')],
@@ -431,6 +569,9 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                 'knowledge_estimated_input_tokens': context.get('knowledge_estimated_input_tokens', 0),
                 'error_message': False,
             })
+            task._sync_channel_state('awaiting_approval' if needs_approval else 'planned')
+            if needs_approval:
+                task._schedule_approval_activity()
             task._audit('Plan generado', 'done', message=_('Se generó un plan de %s acción(es).') % len(actions))
         return True
 
@@ -487,7 +628,10 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             elif output.get('order_name'):
                 lines.append(_('Cotización disponible: %s.') % output['order_name'])
             elif output.get('link_id'):
-                lines.append(_('Enlace de pago preparado: %s.') % output.get('document', _('documento')))
+                link_url = output.get('link_url')
+                lines.append(_('Enlace de pago preparado: %s%s.') % (
+                    output.get('document', _('documento')),
+                    (' — %s' % link_url) if link_url else ''))
             elif output.get('invoices') is not None:
                 lines.append(_('Facturas pendientes encontradas: %s.') % len(output['invoices']))
             elif output.get('matches') is not None:
@@ -678,11 +822,20 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             default_quantity = 1.0
         explicit_quantity, explicit_unit = self._requested_quantity(context)
         lines = []
+        hourly_rate = self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_ai_agent.quote_hourly_rate', '20') or '20'
+        try:
+            hourly_rate = float(hourly_rate)
+        except (TypeError, ValueError):
+            hourly_rate = 20.0
         for product in products[:8]:
             quantity = default_quantity
             if explicit_quantity and (explicit_unit == 'hours' or product.type != 'service'):
                 quantity = explicit_quantity
-            lines.append({'product_id': product.id, 'quantity': quantity})
+            line = {'product_id': product.id, 'quantity': quantity}
+            if explicit_unit == 'hours' and hourly_rate > 0:
+                line['unit_price'] = hourly_rate
+            lines.append(line)
         return lines, context, explicit_quantity, explicit_unit
 
     def _execute_action(self, action):
@@ -776,14 +929,17 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                 result['status'] = 'skipped'
                 result['reason'] = _('El conector de ventas no está instalado.')
             else:
-                order = channel.ai_sales_last_order_id if 'ai_sales_last_order_id' in channel._fields else self.env['sale.order'].browse()
-                if not order or order.state not in ('draft', 'sent', 'sale'):
-                    order = self.env['sale.order'].search([
-                        ('partner_id', '=', partner.id),
-                        ('origin', '=', channel.display_name),
-                        ('state', 'in', ('draft', 'sent', 'sale')),
+                SaleOrder = self.env['sale.order']
+                order = SaleOrder.browse()
+                # La clave es por tarea, no por canal. Un reintento del mismo
+                # webhook reutiliza su pedido, pero una nueva solicitud del
+                # cliente puede generar otra cotizaciÃ³n independiente.
+                quote_marker = 'chatroom_ai_task:%s' % self.id
+                if 'client_order_ref' in SaleOrder._fields:
+                    order = SaleOrder.search([
+                        ('client_order_ref', '=', quote_marker),
                         ('company_id', '=', self.company_id.id),
-                    ], order='write_date desc, id desc', limit=1)
+                    ], limit=1)
                 if not order:
                     quote_lines, quote_context, explicit_quantity, explicit_unit = self._requested_quote_lines()
                     if quote_lines:
@@ -792,7 +948,9 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                         action_result = channel.action_create_quotation()
                         result['configuration_note'] = _(
                             'Cotización creada sin producto. Configura un producto fijo o menciona un producto vendible del catálogo de Odoo.')
-                    order = self.env['sale.order'].browse(action_result.get('res_id')).exists()
+                    order = SaleOrder.browse(action_result.get('res_id')).exists()
+                    if order and 'client_order_ref' in order._fields:
+                        order.client_order_ref = quote_marker
                 if not order:
                     result['status'] = 'skipped'
                     result['reason'] = _('No se pudo crear la cotización.')
@@ -937,6 +1095,7 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                         'provider': link.provider_id.display_name if link.provider_id else _('Pago en línea'),
                         'link_id': link.id,
                         'state': link.state,
+                        'link_url': link.link if 'link' in link._fields else False,
                     })
         elif action.key == 'create_activity':
             if 'mail.activity' not in self.env or not channel:
@@ -971,6 +1130,8 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             if task.state != 'awaiting_approval':
                 continue
             task.write({'state': 'planned', 'approved_by': self.env.user.id, 'approved_at': fields.Datetime.now(), 'error_message': False})
+            task._close_approval_activity()
+            task._sync_channel_state('planned')
             task._audit('Plan aprobado', 'done', message=_('Aprobado por %s.') % self.env.user.display_name)
         return True
 
@@ -988,6 +1149,7 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                     'result_summary': _('Simulación: no se modificaron datos ni se enviaron mensajes.'),
                     'result_preview': _('Modo simulación: el plan se validó, pero no ejecutó cambios ni envió mensajes.'),
                 })
+                task._sync_channel_state('done')
                 continue
             task.write({'state': 'running', 'started_at': fields.Datetime.now(), 'attempts': task.attempts + 1})
             try:
@@ -1015,10 +1177,14 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                     'result_preview': self._build_result_preview(outputs),
                     'error_message': False,
                 })
+                task._close_approval_activity()
+                task._store_native_result(outputs)
+                task._sync_channel_state('done')
                 if task.partner_id:
                     self.env['chatroom.ai.memory'].sudo().remember(task.result_summary, partner=task.partner_id, channel=task.channel_id, memory_type='outcome', source='agent')
             except Exception as exc:
                 task.write({'state': 'failed', 'error_message': str(exc)})
+                task._sync_channel_state('failed', reason=str(exc)[:255])
                 if task.attempts >= task.max_attempts:
                     task._audit('Tarea bloqueada', 'blocked', message=_('Se alcanzó el máximo de intentos.'))
                 else:
@@ -1027,11 +1193,15 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
         return True
 
     def action_retry(self):
-        self.write({
-            'state': 'planned', 'error_message': False,
-            'result_preview': False, 'next_run_at': fields.Datetime.now(),
-        })
-        self.action_ids.filtered(lambda line: line.state == 'error').write({'state': 'pending', 'error_message': False})
+        for task in self:
+            task.write({
+                'state': 'planned', 'error_message': False,
+                'result_preview': False, 'next_run_at': fields.Datetime.now(),
+            })
+            task.action_ids.filtered(lambda line: line.state == 'error').write({
+                'state': 'pending', 'error_message': False,
+            })
+            task._sync_channel_state('planned')
         return True
 
     def action_run_selected(self):

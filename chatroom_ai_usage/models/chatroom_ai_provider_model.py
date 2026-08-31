@@ -67,9 +67,27 @@ class ChatroomAiProviderModel(models.Model):
     def _api_base(self):
         icp = self.env['ir.config_parameter'].sudo()
         url = (icp.get_param('chatroom_whatsapp.ai_provider_url') or '').strip().rstrip('/')
-        if url.endswith('/chat/completions'):
-            url = url[:-len('/chat/completions')]
+        for suffix in ('/chat/completions', '/responses', '/models'):
+            if url.endswith(suffix):
+                url = url[:-len(suffix)].rstrip('/')
         return url
+
+    @staticmethod
+    def _provider_error_detail(response):
+        """Read a short provider message for diagnostics without credentials."""
+        detail = ''
+        try:
+            payload = response.json()
+            error_data = payload.get('error') if isinstance(payload, dict) else None
+            if isinstance(error_data, dict):
+                detail = error_data.get('message') or error_data.get('code') or ''
+            elif error_data:
+                detail = str(error_data)
+        except (AttributeError, ValueError, TypeError):
+            detail = ''
+        if not detail:
+            detail = getattr(response, 'text', '') or getattr(response, 'reason', '') or ''
+        return str(detail).strip()[:250]
 
     @api.model
     def _looks_like_chat_model(self, model_id):
@@ -119,8 +137,16 @@ class ChatroomAiProviderModel(models.Model):
                 headers={'Authorization': 'Bearer %s' % api_key},
                 timeout=30,
             )
+            if response.status_code >= 400:
+                detail = self._provider_error_detail(response)
+                raise UserError(_(
+                    'El catálogo del proveedor respondió HTTP %s. Revisa el endpoint, '
+                    'la API Key y los permisos. %s'
+                ) % (response.status_code, detail))
             response.raise_for_status()
             payload = response.json()
+        except UserError:
+            raise
         except (requests.RequestException, ValueError) as exc:
             raise UserError(_('No se pudieron cargar los modelos del proveedor: %s') % exc) from exc
 
@@ -178,10 +204,15 @@ class ChatroomAiProviderModel(models.Model):
                 response = requests.get(
                     '%s/models/%s' % (base, record.model_id),
                     headers={'Authorization': 'Bearer %s' % key}, timeout=15)
+                if response.status_code >= 400:
+                    detail = self._provider_error_detail(response)
+                    raise UserError(_(
+                        'HTTP %s al comprobar «%s». %s'
+                    ) % (response.status_code, record.model_id, detail))
                 response.raise_for_status()
                 record.write({'health_state': 'ok', 'last_tested': now,
                               'health_message': _('Modelo disponible.')})
-            except (requests.RequestException, ValueError) as exc:
+            except (UserError, requests.RequestException, ValueError) as exc:
                 record.write({'health_state': 'error', 'last_tested': now,
                               'health_message': str(exc)[:250]})
         return True

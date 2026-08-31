@@ -20,6 +20,8 @@
                         <field name="question" placeholder="Ej.: ¿Cuál es la garantía del producto?"/>
                         <field name="channel_id"/>
                         <field name="partner_id"/>
+                        <field name="execution_engine"/>
+                        <field name="native_engine_status" readonly="1" invisible="execution_engine != 'odoo_native'"/>
                     </group>
                     <group string="Medición de contexto" class="o_chatroom_ai_knowledge_metrics" col="2">
                         <field name="estimated_input_tokens"/>

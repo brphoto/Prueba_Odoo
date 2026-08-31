@@ -97,6 +97,17 @@ class TestChatroomAiUsage(TransactionCase):
         self.assertEqual(sandbox.delivery_state, 'simulated')
         self.assertIn('No se llamó a WhatsApp', sandbox.delivery_note)
 
+    def test_customer_response_does_not_expose_internal_quote_context(self):
+        raw = (
+            'Respuesta comercial lista.\n\n'
+            'Producto QA: precio actual de Odoo 33.00 USD (Disponible: 0).\n\n'
+            'Estimacion de referencia: USD 300.'
+        )
+        cleaned = self.env['chatroom.ai.sandbox']._clean_customer_response(raw)
+        self.assertEqual(cleaned, 'Respuesta comercial lista.')
+        self.assertNotIn('precio actual de Odoo', cleaned)
+        self.assertNotIn('Estimacion de referencia', cleaned)
+
     def test_sandbox_playground_supports_multi_turn_local_chat_without_tokens(self):
         channel = self.env['chatroom.channel'].create({
             'channel_type': 'whatsapp', 'external_id': 'sandbox-playground-001',
@@ -221,11 +232,112 @@ class TestChatroomAiUsage(TransactionCase):
         self.assertEqual(order.order_line.product_uom_qty, 3.0)
         self.assertEqual(order.order_line.price_unit, 20.0)
         self.assertEqual(order.amount_untaxed, 60.0)
-        self.assertIn('3 horas', order.note)
+        # The native Sales PDF prints ``sale.order.note``. The laboratory
+        # request is kept in its own history/chatter and must not leak into
+        # the customer-facing quotation report.
+        self.assertNotIn('Solicitud del cliente', str(order.note or ''))
         self.assertIn('cantidad detectada: 3', sandbox.operational_result.lower())
         assistant = sandbox.test_chat_message_id
-        self.assertIn('cantidad 3', assistant.body)
-        self.assertIn('importe 60.00', assistant.body)
+        self.assertIn('PDF adjunto', assistant.body)
+        self.assertNotIn('precio actual de Odoo', assistant.body)
+
+    def test_sandbox_hourly_quote_uses_configured_rate_when_demo_product_has_other_price(self):
+        _partner, channel = self._create_sandbox_channel('sandbox-hourly-rate-001')
+        product = self.env['product.product'].create({
+            'name': 'Servicio demo con precio de catálogo distinto', 'type': 'service',
+            'sale_ok': True, 'list_price': 1.0,
+        })
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_ai_agent.quote_product_id', str(product.id))
+        icp.set_param('chatroom_ai_agent.quote_hourly_rate', '20')
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Prueba tarifa por hora controlada', 'channel_id': channel.id,
+            'execution_mode': 'local', 'prompt': 'Responde en español.',
+        })
+        sandbox.write({'draft_message': 'Necesito cotizar 5 horas de consultoría en PDF.'})
+        with patch.object(
+            type(self.env['ir.actions.report']), '_render_qweb_pdf',
+            return_value=(b'%PDF-1.4 hourly rate', 'pdf'),
+        ):
+            sandbox.action_generate_test_quote_pdf()
+        order = sandbox.test_quote_id
+        self.assertEqual(order.order_line.product_id, product)
+        self.assertEqual(order.order_line.product_uom_qty, 5.0)
+        self.assertEqual(order.order_line.price_unit, 20.0)
+        self.assertEqual(order.amount_untaxed, 100.0)
+
+    def test_sandbox_supports_multiple_quotes_and_append_to_latest_draft(self):
+        _partner, channel = self._create_sandbox_channel('sandbox-multiple-quotes-001')
+        first = self.env['product.product'].create({
+            'name': 'Servicio implementación multi QA', 'type': 'service',
+            'sale_ok': True, 'list_price': 20.0,
+        })
+        second = self.env['product.product'].create({
+            'name': 'Capacitación multi QA', 'type': 'service',
+            'sale_ok': True, 'list_price': 35.0,
+        })
+        self.env['ir.config_parameter'].sudo().set_param(
+            'chatroom_ai_agent.quote_product_id', str(first.id))
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Prueba varias cotizaciones', 'channel_id': channel.id,
+            'execution_mode': 'local', 'prompt': 'Responde en español.',
+        })
+        with patch.object(
+            type(self.env['ir.actions.report']), '_render_qweb_pdf',
+            return_value=(b'%PDF-1.4 multi quote', 'pdf')):
+            sandbox.write({'draft_message': 'Necesito 2 unidades de Servicio implementación multi QA en PDF.'})
+            sandbox.action_send_test_message()
+            first_order = sandbox.test_quote_id
+            sandbox.write({'draft_message': 'Ahora hazme otra cotización de Capacitación multi QA por 3 unidades.'})
+            sandbox.action_send_test_message()
+            second_order = sandbox.test_quote_id
+            sandbox.write({'draft_message': 'Agrega 1 unidad de Servicio implementación multi QA a la cotización actual.'})
+            sandbox.action_send_test_message()
+        self.assertNotEqual(first_order, second_order)
+        self.assertEqual(first_order.order_line.product_id, first)
+        self.assertEqual(first_order.order_line.product_uom_qty, 2.0)
+        self.assertEqual(second_order.order_line.filtered(lambda line: line.product_id == second), second_order.order_line[:1])
+        self.assertEqual(second_order.order_line.filtered(lambda line: line.product_id == second).product_uom_qty, 3.0)
+        self.assertEqual(second_order.order_line.filtered(lambda line: line.product_id == first).product_uom_qty, 1.0)
+        self.assertEqual(len(sandbox.quote_history_ids), 3)
+        self.assertEqual(sandbox.quote_history_ids.sorted('id')[-1].operation, 'append')
+        history = sandbox.quote_history_ids.sorted('id')
+        self.assertAlmostEqual(history[0].amount_untaxed, 40.0)
+        self.assertAlmostEqual(history[1].amount_untaxed, 105.0)
+        self.assertAlmostEqual(history[2].amount_untaxed, 125.0)
+        self.assertEqual(len(sandbox.test_attachment_ids), 3)
+        self.assertEqual(sandbox.quote_count, 3)
+        self.assertIn('Cotización %s ampliada' % second_order.name, sandbox.operational_result)
+
+    def test_sandbox_removes_transcript_from_customer_ready_answer(self):
+        clean = self.env['chatroom.ai.sandbox']._clean_customer_response(
+            '**Cliente:** Hola\n**IA:** Respuesta final.\n\n'
+            'Esta es la transcripción completa de la interacción registrada.')
+        self.assertEqual(clean, 'Respuesta final.')
+
+    def test_sandbox_hybrid_engine_combines_native_context_and_chatroom(self):
+        bridge = self.env['chatroom.ai.odoo.bridge'].sudo().search([
+            ('company_id', '=', self.env.company.id),
+        ], limit=1)
+        if not bridge or not bridge.native_agent_id:
+            self.skipTest('Puente nativo no configurado')
+        _partner, channel = self._create_sandbox_channel('sandbox-hybrid-001')
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Prueba motor híbrido', 'channel_id': channel.id,
+            'execution_mode': 'provider', 'ai_engine': 'hybrid',
+            'prompt': 'Responde solamente con la respuesta final.',
+        })
+        sandbox.write({'draft_message': '¿Qué servicio de implementación ofrecen?'})
+        with patch.object(
+            type(bridge.native_agent_id), 'get_direct_response',
+            return_value=['Dato nativo verificado.']), patch.object(
+                type(channel), '_ai_chat_completion',
+                return_value='Respuesta final limpia') as completion:
+            sandbox.action_send_test_message()
+        self.assertEqual(completion.call_count, 1)
+        self.assertEqual(sandbox.engine_used, 'Híbrida: Chatroom + Odoo')
+        self.assertNotIn('**cliente:**', sandbox.output.lower())
+        self.assertNotIn('**ia:**', sandbox.output.lower())
 
     def test_sandbox_creates_native_internal_activity_on_channel(self):
         partner, channel = self._create_sandbox_channel('sandbox-activity-001')
@@ -275,12 +387,11 @@ class TestChatroomAiUsage(TransactionCase):
         assistant_line = sandbox.conversation_line_ids.filtered(
             lambda line: line.speaker == 'assistant')[-1]
         self.assertEqual(assistant_line.attachment_ids, sandbox.test_attachment_ids)
-        self.assertIn('precio actual de Odoo', assistant_line.body)
-        self.assertIn('20.00', assistant_line.body)
-        self.assertEqual(assistant_line.body.count('precio actual de Odoo'), 1)
+        self.assertNotIn('precio actual de Odoo', assistant_line.body)
+        self.assertNotIn('Solicitud del cliente usada', assistant_line.body)
         self.assertEqual(sandbox.test_chat_message_id.channel_id, channel)
         self.assertEqual(sandbox.test_chat_message_id.attachment_ids, sandbox.test_attachment_ids)
-        self.assertIn('precio actual de Odoo', sandbox.test_chat_message_id.body)
+        self.assertNotIn('precio actual de Odoo', sandbox.test_chat_message_id.body)
         self.assertEqual(sandbox.delivery_state, 'not_run')
         self.assertIn('PDF listo', sandbox.operational_result)
         self.assertIn('Actividad interna creada', sandbox.operational_result)
@@ -397,6 +508,19 @@ class TestChatroomAiUsage(TransactionCase):
                 'Respuesta correcta',
             )
         self.assertEqual(request.call_args.args[1], 'https://example.test/v1/chat/completions')
+
+    def test_provider_endpoint_variants_are_normalized_once(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.ai_enabled', 'True')
+        icp.set_param('chatroom_whatsapp.ai_provider_url', 'https://example.test/v1/responses')
+        icp.set_param('chatroom_whatsapp.ai_api_key', 'test-key')
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'usage-test-endpoint-variants',
+        })
+        self.assertEqual(
+            channel._ai_get_credentials()[0],
+            'https://example.test/v1/chat/completions',
+        )
 
     def test_sandbox_provider_mode_uses_selected_model_without_delivery(self):
         icp = self.env['ir.config_parameter'].sudo()
@@ -604,6 +728,32 @@ class TestChatroomAiUsage(TransactionCase):
         with patch.object(type(channel), '_meta_request', side_effect=[failed, success]):
             self.assertEqual(channel._ai_chat_completion([{'role': 'user', 'content': 'Hola'}]), 'Respuesta de respaldo')
         self.assertEqual(self.env['chatroom.ai.usage.event'].search_count([('model', '=', 'completion-backup')]), 1)
+
+    def test_completion_explains_not_found_model_without_leaking_key(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.ai_enabled', 'True')
+        icp.set_param('chatroom_whatsapp.ai_provider_url', 'https://example.test/v1')
+        icp.set_param('chatroom_whatsapp.ai_api_key', 'clave-que-no-debe-mostrarse')
+        model = self.env['chatroom.ai.provider.model'].create({
+            'name': 'modelo-inexistente', 'model_id': 'modelo-inexistente',
+            'provider': 'compatible', 'supports_chat': True, 'active': True,
+        })
+        icp.set_param('chatroom_whatsapp.ai_model_id', str(model.id))
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'usage-test-404',
+        })
+        response = Mock(status_code=404, text='Not found')
+        response.json.return_value = {
+            'error': {'message': 'The model does not exist'}
+        }
+        with patch.object(type(channel), '_meta_request', return_value=response):
+            with self.assertRaises(UserError) as error:
+                channel._ai_chat_completion([{'role': 'user', 'content': 'Hola'}])
+        message = str(error.exception)
+        self.assertIn('HTTP 404', message)
+        self.assertIn('modelo-inexistente', message)
+        self.assertIn('chat/completions', message)
+        self.assertNotIn('clave-que-no-debe-mostrarse', message)
 
     def test_daily_request_limit_blocks_external_completion(self):
         icp = self.env['ir.config_parameter'].sudo()

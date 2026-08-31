@@ -1,10 +1,63 @@
 # -*- coding: utf-8 -*-
-from odoo import _, models
+import unicodedata
+
+from odoo import _, fields, models
 from odoo.exceptions import UserError
 
 
 class ChatroomChannel(models.Model):
     _inherit = 'chatroom.channel'
+
+    ai_flow_state = fields.Selection([
+        ('idle', 'Disponible'),
+        ('product', 'Consultando producto'),
+        ('quote', 'Preparando cotización'),
+        ('meeting', 'Coordinando reunión'),
+        ('payment', 'Preparando pago'),
+        ('waiting_confirmation', 'Esperando confirmación'),
+        ('human', 'Atención humana'),
+    ], string='Flujo IA', default='idle', index=True,
+       help='Estado persistente del flujo comercial. No reemplaza la etapa de Chatroom: indica qué debe hacer el agente a continuación.')
+    ai_last_route = fields.Selection([
+        ('general', 'Consulta comercial'),
+        ('product', 'Producto y disponibilidad'),
+        ('quote', 'Cotización'),
+        ('meeting', 'Reunión'),
+        ('payment', 'Pago'),
+    ], string='Última ruta IA', readonly=True, index=True)
+    ai_pending_task_id = fields.Many2one(
+        'chatroom.ai.task', string='Tarea IA pendiente', readonly=True,
+        ondelete='set null', index=True)
+    ai_handoff_reason = fields.Char(
+        string='Motivo de escalamiento', readonly=True,
+        help='Motivo resumido por el que la atención quedó en manos de una persona.')
+    ai_last_agent_at = fields.Datetime(
+        string='Última operación IA', readonly=True, index=True)
+
+    def _ai_set_orchestration_state(self, route='general', task=False,
+                                    state=False, reason=False):
+        """Persist the small amount of state needed to resume a conversation.
+
+        The task remains the audit trail; these fields are the operational
+        snapshot used by the inbox and by the next inbound message.
+        """
+        self.ensure_one()
+        valid_routes = {'general', 'product', 'quote', 'meeting', 'payment'}
+        route = route if route in valid_routes else 'general'
+        if not state:
+            state = {
+                'product': 'product', 'quote': 'quote',
+                'meeting': 'meeting', 'payment': 'payment',
+            }.get(route, 'idle')
+        values = {
+            'ai_last_route': route,
+            'ai_flow_state': state,
+            'ai_pending_task_id': task.id if task else False,
+            'ai_handoff_reason': reason or False,
+            'ai_last_agent_at': fields.Datetime.now(),
+        }
+        self.with_context(skip_ai_state_sync=True).write(values)
+        return True
 
     def _ai_agent_route(self, message_text=False):
         """Detecta una ruta comercial inicial sin consumir tokens.
@@ -20,18 +73,31 @@ class ChatroomChannel(models.Model):
                 lambda message: message.direction == 'inbound' and message.body
             ).sorted('date')
             text = inbound[-1].body if inbound else ''
-        normalized = text.lower()
+        # La ruta nunca debe depender de que el navegador o el webhook haya
+        # conservado las tildes. Se compara una versión normalizada, pero el
+        # texto original sigue viajando al plan para conservar el español.
+        normalized = ''.join(
+            char for char in unicodedata.normalize('NFKD', text.lower())
+            if not unicodedata.combining(char))
         patterns = (
-            ('quote', ('cotización', 'cotizacion', 'presupuesto', 'propuesta', 'pdf')),
-            ('meeting', ('reunión', 'reunion', 'cita', 'videollamada', 'meet', 'agenda')),
+            ('quote', ('cotizacion', 'presupuesto', 'propuesta', 'pdf')),
+            ('meeting', ('reunion', 'cita', 'videollamada', 'meet', 'agenda')),
             ('payment', ('pagar', 'pago', 'cobrar', 'link de pago', 'enlace de pago')),
-            ('product', ('producto', 'precio', 'cuánto cuesta', 'cuanto cuesta', 'stock', 'disponibilidad', 'catálogo', 'catalogo')),
+            ('product', ('producto', 'precio', 'cuanto cuesta', 'stock', 'disponibilidad', 'catalogo')),
         )
         route = 'general'
         for candidate, words in patterns:
             if any(word in normalized for word in words):
                 route = candidate
                 break
+          # Si el cliente responde con un mensaje corto (por ejemplo «sí» o
+          # «adelante») después de una cotización, reunión o pago, conserva el
+          # flujo pendiente. Así el siguiente mensaje continúa la conversación
+          # y no vuelve a caer en una consulta general.
+        if route == 'general' and self.ai_flow_state in (
+                'product', 'quote', 'meeting', 'payment', 'waiting_confirmation'):
+            route = self.ai_last_route if self.ai_last_route in (
+                'product', 'quote', 'meeting', 'payment') else 'general'
         labels = {
             'quote': _('Cotización y PDF'),
             'meeting': _('Reunión y enlace de Calendario'),
@@ -105,6 +171,12 @@ class ChatroomChannel(models.Model):
             'commercial_router_enabled': icp.get_param(
                 'chatroom_ai_agent.commercial_router_enabled', 'False') == 'True',
             'route': self._ai_agent_route(),
+            'flow_state': self.ai_flow_state or 'idle',
+            'flow_state_label': dict(self._fields['ai_flow_state'].selection).get(
+                self.ai_flow_state, _('Disponible')),
+            'last_route': self.ai_last_route or '',
+            'pending_task_id': self.ai_pending_task_id.id or False,
+            'handoff_reason': self.ai_handoff_reason or '',
             'playbooks': playbooks,
             'task': {
                 'id': task.id,

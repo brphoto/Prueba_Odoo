@@ -521,6 +521,170 @@ class TestChatroomAiAgent(TransactionCase):
         self.assertIn('Fallo controlado', task.error_message)
         self.assertGreater(task.next_run_at, fields.Datetime.now())
 
+    def test_production_orchestrator_routes_and_deduplicates_inbound_message(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_ai_agent.production_orchestrator', 'True')
+        icp.set_param('chatroom_ai_agent.commercial_router_enabled', 'True')
+        icp.set_param('chatroom_ai_agent.mode', 'supervised')
+        partner = self.env['res.partner'].create({'name': 'Cliente orquestador QA'})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp',
+            'external_id': 'ai-production-orchestrator-001',
+            'partner_id': partner.id,
+        })
+        message = self.env['chatroom.message'].create({
+            'channel_id': channel.id,
+            'direction': 'inbound',
+            'message_type': 'text',
+            'body': 'Necesito una cotización en PDF de un servicio.',
+        })
+        task_model = self.env['chatroom.ai.task']
+        tasks = task_model.search([('source_message_id', '=', message.id)])
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks.orchestration_route, 'quote')
+        self.assertEqual(tasks.orchestration_key, 'message:%s' % message.id)
+        self.assertEqual(tasks.state, 'awaiting_approval')
+        self.assertEqual(
+            tasks.action_ids.mapped('key'),
+            ['search_catalog', 'create_quotation', 'send_quotation_pdf'],
+        )
+
+        # Un reintento del webhook no puede preparar una segunda cotización.
+        self.env['chatroom.ai.orchestrator'].process_inbound(message)
+        self.assertEqual(
+            task_model.search_count([('source_message_id', '=', message.id)]), 1)
+
+    def test_orchestrator_route_is_accent_insensitive_in_spanish(self):
+        for text, expected in (
+            ('Necesito una cotización en PDF', 'quote'),
+            ('Quiero agendar una reunión', 'meeting'),
+            ('¿Cuánto cuesta este catálogo?', 'product'),
+        ):
+            self.assertEqual(self.channel._ai_agent_route(text)['route'], expected)
+
+    def test_short_confirmation_resumes_pending_business_route(self):
+        self.channel._ai_set_orchestration_state(
+            route='quote', state='waiting_confirmation')
+        route = self.channel._ai_agent_route('si, adelante')
+        self.assertEqual(route['route'], 'quote')
+
+    def test_task_result_document_is_exposed_after_native_quote(self):
+        partner = self.env['res.partner'].create({'name': 'Cliente resultado nativo'})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'ai-result-native-001',
+            'partner_id': partner.id,
+        })
+        product = self.env['product.product'].create({
+            'name': 'Servicio resultado nativo', 'list_price': 20.0,
+            'sale_ok': True, 'type': 'service',
+        })
+        self.env['ir.config_parameter'].sudo().set_param(
+            'chatroom_ai_agent.quote_product_id', str(product.id))
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            channel, task_type='orchestrate', prompt='Cotizacion del servicio.')
+        task.action_plan()
+        task.action_approve()
+        # La prueba valida el enlace al documento nativo, no el envío real a
+        # Meta. Se simula el conector para que la suite nunca dependa de una
+        # red externa ni de credenciales de WhatsApp.
+        with patch(
+            'odoo.addons.chatroom_whatsapp.models.chatroom_channel.ChatroomChannel.action_send_sale_order_pdf',
+            return_value=True,
+        ):
+            task.action_run()
+        self.assertEqual(task.result_model, 'sale.order')
+        self.assertTrue(task.result_res_id)
+        action = task.action_open_result_document()
+        self.assertEqual(action['res_model'], 'sale.order')
+        self.assertEqual(action['target'], 'new')
+
+    def test_production_orchestrator_keeps_sensitive_flow_supervised(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_ai_agent.production_orchestrator', 'True')
+        icp.set_param('chatroom_ai_agent.commercial_router_enabled', 'True')
+        icp.set_param('chatroom_ai_agent.mode', 'automatic')
+        icp.set_param('chatroom_ai_agent.orchestrator_auto_reply', 'True')
+        partner = self.env['res.partner'].create({'name': 'Cliente aprobación QA'})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp',
+            'external_id': 'ai-production-approval-001',
+            'partner_id': partner.id,
+        })
+        self.env['chatroom.message'].create({
+            'channel_id': channel.id,
+            'direction': 'inbound',
+            'message_type': 'text',
+            'body': 'Quiero pagar mi factura con un link.',
+        })
+        task = self.env['chatroom.ai.task'].search([
+            ('channel_id', '=', channel.id),
+            ('orchestration_route', '=', 'payment'),
+        ], order='id desc', limit=1)
+        self.assertTrue(task)
+        self.assertEqual(task.state, 'awaiting_approval')
+        self.assertFalse(task.approved_by)
+        self.assertFalse(self.env['chatroom.payment.link'].search_count([
+            ('channel_id', '=', channel.id),
+        ]) if 'chatroom.payment.link' in self.env else False)
+
+    def test_distinct_orchestration_tasks_create_distinct_native_quotes(self):
+        partner = self.env['res.partner'].create({'name': 'Cliente varias cotizaciones IA'})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp',
+            'external_id': 'ai-production-multiple-quotes-001',
+            'partner_id': partner.id,
+        })
+        product = self.env['product.product'].create({
+            'name': 'Servicio por hora IA',
+            'list_price': 1.0,
+            'sale_ok': True,
+            'type': 'service',
+        })
+        self.env['ir.config_parameter'].sudo().set_param(
+            'chatroom_ai_agent.quote_product_id', str(product.id))
+        orders = self.env['sale.order'].browse()
+        for hours in (2, 5):
+            task = self.env['chatroom.ai.task'].create_from_channel(
+                channel,
+                task_type='orchestrate',
+                prompt='Necesito una cotizacion de %s horas.' % hours,
+            )
+            task.action_plan()
+            create_action = task.action_ids.filtered(
+                lambda line: line.key == 'create_quotation')
+            result = task._execute_action(create_action)
+            orders |= self.env['sale.order'].browse(result['order_id'])
+        self.assertEqual(len(orders), 2)
+        self.assertEqual(orders.mapped('order_line.product_uom_qty'), [2.0, 5.0])
+        markers = orders.mapped('client_order_ref')
+        self.assertEqual(len(set(markers)), 2)
+        self.assertTrue(all(marker.startswith('chatroom_ai_task:') for marker in markers))
+
+    def test_production_orchestrator_allows_only_guarded_safe_auto_reply(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_ai_agent.production_orchestrator', 'True')
+        icp.set_param('chatroom_ai_agent.commercial_router_enabled', 'True')
+        icp.set_param('chatroom_ai_agent.mode', 'automatic')
+        icp.set_param('chatroom_ai_agent.orchestrator_auto_reply', 'True')
+        icp.set_param('chatroom_whatsapp.ai_enabled', 'False')
+        icp.set_param('chatroom_whatsapp.ai_require_approval', 'False')
+        with patch.object(type(self.channel), 'action_send_text', return_value=True):
+            self.env['chatroom.message'].create({
+                'channel_id': self.channel.id,
+                'direction': 'inbound',
+                'message_type': 'text',
+                'body': 'Hola',
+            })
+        self.assertTrue(self.env['chatroom.ai.suggestion'].search([
+            ('channel_id', '=', self.channel.id),
+            ('confidence', '=', 1.0),
+        ], limit=1))
+        # Una consulta general atendida automáticamente no crea una tarea
+        # sensible ni una venta en segundo plano.
+        self.assertFalse(self.env['sale.order'].search([
+            ('origin', '=', self.channel.display_name),
+        ], limit=1))
+
     def test_agent_menu_is_exposed_from_chatroom_root(self):
         menu = self.env.ref('chatroom_ai_agent.menu_chatroom_ai_agent')
         self.assertEqual(menu.parent_id, self.env.ref('chatroom_whatsapp.menu_chatroom_root'))

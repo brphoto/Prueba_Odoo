@@ -18,6 +18,16 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='chatroom_ai_agent.enabled',
         help='Permite que las automatizaciones creen y ejecuten tareas según sus reglas.',
     )
+    chatroom_ai_production_orchestrator = fields.Boolean(
+        string='Activar orquestador de producción',
+        config_parameter='chatroom_ai_agent.production_orchestrator',
+        help='Conecta cada mensaje entrante con una única ruta operativa. Usa los modelos nativos de Odoo y deja las acciones sensibles para aprobación humana.',
+    )
+    chatroom_ai_orchestrator_auto_reply = fields.Boolean(
+        string='Permitir respuestas automáticas seguras',
+        config_parameter='chatroom_ai_agent.orchestrator_auto_reply',
+        help='En modo automático responde consultas de bajo riesgo usando la guardia de IA. Cotizaciones, reuniones, cobros y cambios siguen protegidos.',
+    )
     chatroom_ai_agent_require_approval = fields.Boolean(
         string='Requerir aprobación para acciones sensibles', default=True,
         config_parameter='chatroom_ai_agent.require_approval',
@@ -68,6 +78,12 @@ class ResConfigSettings(models.TransientModel):
         string='Cantidad predeterminada para cotizaciones IA', default=1.0,
         config_parameter='chatroom_ai_agent.quote_quantity',
         help='Cantidad que se añadirá al producto configurado en cada cotización preparada por el agente.',
+    )
+    chatroom_ai_agent_quote_hourly_rate = fields.Float(
+        string='Tarifa por hora para cotizaciones IA', default=20.0,
+        config_parameter='chatroom_ai_agent.quote_hourly_rate',
+        help='Precio unitario aplicado cuando el cliente solicita horas de implementación o consultoría. '
+             'Las demás ventas usan el precio nativo del producto en Odoo.',
     )
 
     chatroom_ai_safe_auto_reply = fields.Boolean(

@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_chatroom_ai_odoo_bridge_user,chatroom.ai.odoo.bridge user,model_chatroom_ai_odoo_bridge,chatroom_ai_agent.group_chatroom_ai_agent_user,1,1,1,0
+access_chatroom_ai_odoo_bridge_manager,chatroom.ai.odoo.bridge manager,model_chatroom_ai_odoo_bridge,chatroom_ai_agent.group_chatroom_ai_agent_manager,1,1,1,1

@@ -14,7 +14,7 @@
             </xpath>
             <xpath expr="//field[@name='content_text']" position="before">
                 <group string="Organización natural" class="o_chatroom_ai_knowledge_organization" col="2">
-                    <div class="alert alert-info" role="status" colspan="2">
+                    <div class="alert alert-info" role="alert" colspan="2">
                         Escribe la información como la explicarías a un compañero. Organizar crea un resumen, puntos clave, preguntas frecuentes y reglas para la IA sin consumir tokens.
                     </div>
                     <field name="organized_summary" nolabel="1" placeholder="Resumen que utilizará la IA..."/>

@@ -14,11 +14,14 @@
                 <field name="name"/>
                 <field name="task_type"/>
                 <field name="partner_id"/>
-                <field name="channel_id" optional="hide"/>
+                        <field name="channel_id" optional="hide"/>
+                        <field name="source_message_id" optional="hide"/>
+                        <field name="orchestration_route" optional="hide"/>
                 <field name="state" widget="badge"/>
                 <field name="risk_level" widget="badge"/>
                 <field name="approval_required"/>
                 <field name="user_id" optional="hide"/>
+                <field name="result_document_name" string="Resultado nativo" optional="hide"/>
             </list>
         </field>
     </record>
@@ -33,6 +36,7 @@
                     <button name="action_run" type="object" string="Ejecutar" class="btn-primary" invisible="state not in ('planned', 'failed')"/>
                     <button name="action_retry" type="object" string="Reintentar" class="btn-secondary" invisible="state != 'failed'"/>
                     <button name="action_cancel" type="object" string="Cancelar" class="btn-secondary" invisible="state in ('done', 'cancelled')"/>
+                    <button name="action_open_result_document" type="object" string="Abrir resultado nativo" class="btn-secondary" icon="fa-external-link" invisible="not result_model or not result_res_id"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,awaiting_approval,planned,running,done"/>
                 </header>
                 <sheet>
@@ -50,8 +54,14 @@
                             <field name="partner_id"/>
                             <field name="automation_id"/>
                             <field name="playbook_id"/>
+                            <field name="source_message_id"/>
+                            <field name="orchestration_route"/>
+                            <field name="orchestration_key" optional="hide"/>
                             <field name="company_id"/>
-                            <field name="next_run_at"/>
+                        <field name="next_run_at"/>
+                        <field name="result_model" invisible="1"/>
+                        <field name="result_res_id" invisible="1"/>
+                        <field name="result_document_name" string="Documento generado" readonly="1" invisible="not result_document_name"/>
                         </group>
                     </group>
                     <group string="Estado operativo" class="o_chatroom_ai_task_status">
@@ -60,7 +70,7 @@
                         <field name="operational_status" readonly="1"/>
                         <field name="action_progress" readonly="1"/>
                     </group>
-                    <div class="alert alert-info" role="status" invisible="state != 'done'">
+                    <div class="alert alert-info" role="alert" invisible="state != 'done'">
                         <strong>La tarea terminó.</strong>
                         Las respuestas preparadas quedan como borrador para revisión; no se envían a WhatsApp automáticamente.
                         Para enviar, revisa el texto en «Resultado para el agente» y usa la acción de envío desde la conversación.
@@ -75,7 +85,7 @@
                     </div>
                     <notebook>
                         <page string="Plan y ejecución">
-                            <div class="alert alert-info o_chatroom_ai_task_plan_hint" role="status">
+                            <div class="alert alert-info o_chatroom_ai_task_plan_hint" role="alert">
                                 Selecciona una acción del desplegable. Odoo completará automáticamente la clave técnica y el nivel de aprobación.
                             </div>
                             <field name="action_ids" context="{'default_task_id': id}">

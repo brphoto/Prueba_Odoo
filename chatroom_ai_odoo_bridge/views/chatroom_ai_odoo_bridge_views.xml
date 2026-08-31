@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chatroom_ai_odoo_bridge_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.odoo.bridge.list</field>
+        <field name="model">chatroom.ai.odoo.bridge</field>
+        <field name="arch" type="xml">
+            <list string="IA nativa de Odoo">
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="native_agent_id"/>
+                <field name="native_agent_model"/>
+                <field name="native_source_count"/>
+                <field name="state" widget="badge"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_ai_odoo_bridge_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.odoo.bridge.form</field>
+        <field name="model">chatroom.ai.odoo.bridge</field>
+        <field name="arch" type="xml">
+            <form string="IA nativa de Odoo" class="o_chatroom_ai_odoo_bridge_form">
+                <header>
+                    <button name="action_create_native_agent" type="object" string="Crear agente nativo" class="btn-primary" icon="fa-magic" invisible="native_agent_id"/>
+                    <button name="action_open_native_agent" type="object" string="Abrir agente nativo" icon="fa-external-link" invisible="not native_agent_id"/>
+                    <button name="action_sync_sources" type="object" string="Sincronizar fuentes" icon="fa-upload" invisible="not native_agent_id"/>
+                    <button name="action_test_native" type="object" string="Probar IA nativa" class="btn-primary" icon="fa-flask" invisible="not native_agent_id or not use_for_laboratory"/>
+                    <button name="action_prepare_optional_backend" type="object" string="Marcar como motor opcional" icon="fa-plug" invisible="not native_agent_id or use_as_optional_backend"/>
+                    <field name="state" widget="statusbar" statusbar_visible="not_configured,ready,error"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="IA nativa conectada a Chatroom"/></h1>
+                    </div>
+                    <div class="alert alert-info" role="alert">
+                        <strong>Integración opcional y reversible.</strong>
+                        La IA nativa mejora pruebas, organización de conocimiento y consultas internas.
+                        El motor conversacional actual de Chatroom no se reemplaza automáticamente.
+                    </div>
+                    <group col="2">
+                        <group string="Conexión">
+                            <field name="company_id"/>
+                            <field name="native_agent_id" options="{'no_create': True}"/>
+                            <field name="native_agent_model" readonly="1"/>
+                            <field name="native_source_count" readonly="1"/>
+                            <field name="status_message" readonly="1"/>
+                        </group>
+                        <group string="Capacidades">
+                            <field name="active"/>
+                            <field name="use_for_knowledge"/>
+                            <field name="use_for_laboratory"/>
+                            <field name="use_as_optional_backend"/>
+                            <field name="native_agent_topics" widget="many2many_tags" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Instrucciones">
+                            <field name="system_instructions" widget="text" placeholder="Define el comportamiento del agente nativo..."/>
+                        </page>
+                        <page string="Fuentes para Odoo IA">
+                    <div class="o_chatroom_ai_bridge_note">
+                                Selecciona documentos existentes de Odoo. Se registrarán como fuentes del agente nativo y su indexación puede ejecutarse en segundo plano.
+                            </div>
+                            <field name="source_attachment_ids" widget="many2many_binary"/>
+                        </page>
+                        <page string="Laboratorio">
+                            <group>
+                                <field name="test_question" widget="text"/>
+                            </group>
+                            <group string="Resultado de la última prueba" col="2">
+                                <field name="last_tested_at" readonly="1"/>
+                                <field name="last_test_question" readonly="1" widget="text"/>
+                                <field name="local_knowledge_preview" readonly="1" widget="text"/>
+                                <field name="last_error" readonly="1" widget="text" invisible="not last_error"/>
+                                <field name="last_test_answer" readonly="1" widget="text"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_chatroom_ai_odoo_bridge" model="ir.actions.act_window">
+        <field name="name">IA nativa de Odoo</field>
+        <field name="res_model">chatroom.ai.odoo.bridge</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'default_company_id': allowed_company_ids[0]}</field>
+    </record>
+
+    <menuitem id="menu_chatroom_ai_odoo_bridge" name="IA nativa de Odoo" parent="chatroom_ai_agent.menu_chatroom_ai_agent" action="action_chatroom_ai_odoo_bridge" sequence="25" groups="chatroom_ai_agent.group_chatroom_ai_agent_user"/>
+</odoo>
