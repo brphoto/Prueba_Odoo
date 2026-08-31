@@ -13,5 +13,5 @@ al cliente. Los pasos con error quedan registrados para reintento.''',
     'data': ['views/res_config_settings_views.xml'],
     'installable': True,
     'application': False,
-    'auto_install': True,
+    'auto_install': False,
 }

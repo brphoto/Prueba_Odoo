@@ -19,5 +19,5 @@
     'icon': '/chatroom_control_center/static/description/icon.svg',
     'installable': True,
     'application': False,
-    'auto_install': True,
+    'auto_install': False,
 }

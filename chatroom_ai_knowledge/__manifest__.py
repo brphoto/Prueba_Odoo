@@ -24,5 +24,5 @@ de WhatsApp o de ventas.''',
     },
     'installable': True,
     'application': False,
-    'auto_install': True,
+    'auto_install': False,
 }

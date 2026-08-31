@@ -1100,7 +1100,8 @@
 
 @media (max-width: 768px) {
     .o_chatroom_thread {
-        height: min(680px, calc(100dvh - 96px));
+        height: 70vh;
+        max-height: 680px;
         min-height: 420px;
         border-radius: 0;
     }
@@ -1171,7 +1172,8 @@
 
 @media (max-width: 480px) {
     .o_chatroom_thread {
-        height: calc(100dvh - 70px);
+        height: 82vh;
+        max-height: 760px;
         min-height: 360px;
     }
 

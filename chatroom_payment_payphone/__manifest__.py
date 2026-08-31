@@ -11,5 +11,5 @@
     'icon': '/chatroom_payment_payphone/static/description/icon.svg',
     'installable': True,
     'application': False,
-    'auto_install': True,
+    'auto_install': False,
 }
