@@ -27,5 +27,6 @@ from . import chatroom_reassign_wizard
 from . import chatroom_assignment_log
 from . import chatroom_canned_response
 from . import chatroom_onboarding_wizard
+from . import chatroom_webhook_event
 from . import sale_order
 from . import account_move

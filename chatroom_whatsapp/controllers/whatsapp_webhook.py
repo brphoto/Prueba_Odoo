@@ -7,7 +7,10 @@ respuestas se envían directo a graph.facebook.com (ver chatroom_channel.py).
 """
 import hashlib
 import hmac
+import json
 import logging
+
+from psycopg2 import IntegrityError
 
 from odoo import fields, http
 from odoo.http import request
@@ -39,11 +42,22 @@ class WhatsAppWebhookController(http.Controller):
         productos de Meta pueden compartir la misma App y el mismo
         webhook; 'object' en el payload indica cuál es."""
         raw_body = request.httprequest.get_data()
+        max_bytes = request.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_whatsapp.webhook_max_bytes', '2097152')
+        try:
+            max_bytes = max(65536, min(int(max_bytes), 10485760))
+        except (TypeError, ValueError):
+            max_bytes = 2097152
+        if len(raw_body) > max_bytes:
+            _logger.warning('Payload de webhook demasiado grande: %s bytes', len(raw_body))
+            return request.make_response('Payload Too Large', status=413)
         if not self._is_valid_signature(raw_body):
             _logger.warning("Firma inválida en webhook de WhatsApp, se descarta")
             return request.make_response('Forbidden', status=403)
 
         payload = request.get_json_data() or {}
+        if not isinstance(payload, dict):
+            return request.make_response('Bad Request', status=400)
         object_type = payload.get('object')
         env = request.env(su=True)
         # Timestamp de salud: "llegó algo del webhook", más allá de si el
@@ -51,6 +65,46 @@ class WhatsAppWebhookController(http.Controller):
         env['ir.config_parameter'].set_param(
             'chatroom_whatsapp.last_webhook_at', fields.Datetime.now())
 
+        event = env['chatroom.whatsapp.webhook.event'].create({
+            'name': 'Webhook %s' % (object_type or 'desconocido'),
+            'object_type': object_type or False,
+            'payload_json': json.dumps(payload, ensure_ascii=False),
+        })
+
+        # El camino normal es sincrónico: Meta recibe la respuesta después de
+        # que el mensaje ya fue creado, asociado a su conversación y publicado
+        # por bus para que el agente lo vea sin recargar la pantalla.
+        event.write({
+            'state': 'running',
+            'attempts': 1,
+            'error_message': False,
+        })
+        try:
+            with env.cr.savepoint():
+                self.process_payload(env, payload)
+            event.write({
+                'state': 'done',
+                'processed_at': fields.Datetime.now(),
+                'error_message': False,
+                'payload_json': '{}',
+            })
+        except Exception as error:  # noqa: BLE001 - el cron queda como respaldo
+            # Meta debe recibir 200 para no generar reintentos duplicados. El
+            # payload queda conservado y el cron solo recupera este caso.
+            _logger.exception(
+                'Falló el procesamiento directo del evento de webhook %s',
+                event.id)
+            event.write({
+                'state': 'pending',
+                'next_attempt_at': fields.Datetime.now(),
+                'error_message': str(error)[:4000],
+            })
+
+        return request.make_response('EVENT_RECEIVED')
+
+    def process_payload(self, env, payload):
+        """Procesa un payload encolado fuera de la petición HTTP pública."""
+        object_type = payload.get('object')
         for entry in payload.get('entry', []):
             if object_type == 'whatsapp_business_account':
                 for change in entry.get('changes', []):
@@ -61,8 +115,6 @@ class WhatsAppWebhookController(http.Controller):
                 channel_type = 'instagram' if object_type == 'instagram' else 'messenger'
                 for messaging_event in entry.get('messaging', []):
                     self._process_messenger_event(env, channel_type, messaging_event)
-
-        return request.make_response('EVENT_RECEIVED')
 
     # ------------------------------------------------------------------
     def _is_valid_signature(self, raw_body):
@@ -99,6 +151,27 @@ class WhatsAppWebhookController(http.Controller):
                 "Evento %s ya procesado, se omite (reintento de Meta)", wa_message_id)
         return exists
 
+    @staticmethod
+    def _create_inbound_message(env, values):
+        """Crea un mensaje entrante y tolera carreras entre reintentos.
+
+        La búsqueda previa evita la mayoría de duplicados, pero dos workers
+        pueden consultar al mismo tiempo antes de que alguno confirme su
+        transacción. La restricción única de ``wa_message_id`` es la última
+        barrera; si la activa otro worker, este evento ya quedó atendido.
+        """
+        try:
+            with env.cr.savepoint():
+                return env['chatroom.message'].create(values)
+        except IntegrityError:
+            if values.get('wa_message_id') and WhatsAppWebhookController._already_processed(
+                    env, values['wa_message_id']):
+                _logger.info(
+                    "Carrera controlada: el mensaje %s ya fue creado por otro worker",
+                    values['wa_message_id'])
+                return env['chatroom.message'].browse()
+            raise
+
     def _process_messages(self, env, value):
         contacts = {c['wa_id']: c.get('profile', {}).get('name')
                     for c in value.get('contacts', [])}
@@ -130,7 +203,7 @@ class WhatsAppWebhookController(http.Controller):
             reply_to = env['chatroom.message'].search(
                 [('wa_message_id', '=', context_id)], limit=1) if context_id else None
 
-            message = env['chatroom.message'].create({
+            message = self._create_inbound_message(env, {
                 'channel_id': channel.id,
                 'direction': 'inbound',
                 'message_type': msg_type if msg_type in dict(
@@ -141,6 +214,8 @@ class WhatsAppWebhookController(http.Controller):
                 'reply_to_id': reply_to.id if reply_to else False,
                 'state': 'received',
             })
+            if not message:
+                continue
             if media_id:
                 message._fetch_whatsapp_media(media_id)
             channel._handle_interactive_reply(msg_type, msg)
@@ -187,7 +262,7 @@ class WhatsAppWebhookController(http.Controller):
                 'image': 'image', 'video': 'video', 'audio': 'audio', 'file': 'document',
             }.get(attachments[0].get('type'), 'other')
 
-        message = env['chatroom.message'].create({
+        message = self._create_inbound_message(env, {
             'channel_id': channel.id,
             'direction': 'inbound',
             'message_type': message_type,
@@ -195,6 +270,8 @@ class WhatsAppWebhookController(http.Controller):
             'wa_message_id': message_data.get('mid'),
             'state': 'received',
         })
+        if not message:
+            return
         for attachment in attachments:
             url = (attachment.get('payload') or {}).get('url')
             if url:

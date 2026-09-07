@@ -19,4 +19,16 @@
         <field name="privilege_id" ref="privilege_marketing_meta"/>
         <field name="implied_ids" eval="[(4, ref('group_meta_user'))]"/>
     </record>
+    <record id="marketing_meta_connection_company_rule" model="ir.rule">
+        <field name="name">Meta: conexiones por compañía</field>
+        <field name="model_id" ref="model_marketing_meta_connection"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_meta_user'))]"/>
+    </record>
+    <record id="marketing_meta_page_company_rule" model="ir.rule">
+        <field name="name">Meta: páginas por compañía</field>
+        <field name="model_id" ref="model_marketing_meta_page"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_meta_user'))]"/>
+    </record>
 </odoo>

@@ -105,6 +105,10 @@ class ChatroomAiProviderModel(models.Model):
     def _api_base(self):
         icp = self.env['ir.config_parameter'].sudo()
         url = (icp.get_param('chatroom_whatsapp.ai_provider_url') or '').strip().rstrip('/')
+        # OpenAI is the default provider used by the guided setup. Keep a
+        # safe default when the official usage test is opened from Settings
+        # before the first configuration is saved.
+        url = url or 'https://api.openai.com/v1'
         for suffix in ('/chat/completions', '/responses', '/models'):
             if url.endswith(suffix):
                 url = url[:-len(suffix)].rstrip('/')

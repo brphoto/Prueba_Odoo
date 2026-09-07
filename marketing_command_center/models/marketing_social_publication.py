@@ -1,9 +1,6 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
-from .marketing_social_constants import PLATFORM_SELECTION
-
-
 class MarketingSocialPublication(models.Model):
     _name = 'marketing.social.publication'
     _description = 'Publicación de red social'
@@ -16,7 +13,7 @@ class MarketingSocialPublication(models.Model):
         'marketing.social.account', string='Cuenta', required=True,
         ondelete='restrict', tracking=True)
     platform = fields.Selection(
-        PLATFORM_SELECTION, string='Red', related='account_id.platform', store=True, index=True)
+        string='Red', related='account_id.platform', store=True, index=True)
     campaign_id = fields.Many2one('marketing.social.campaign', string='Campaña', ondelete='set null')
     published_at = fields.Datetime(string='Fecha de publicación', required=True, tracking=True)
     content_type = fields.Selection([
@@ -177,7 +174,7 @@ class MarketingSocialMetricSnapshot(models.Model):
         'marketing.social.account', string='Cuenta', related='publication_id.account_id',
         store=True, index=True)
     platform = fields.Selection(
-        PLATFORM_SELECTION, string='Red', related='publication_id.platform', store=True, index=True)
+        string='Red', related='publication_id.platform', store=True, index=True)
     snapshot_date = fields.Date(string='Fecha de medición', required=True, index=True)
     reach = fields.Integer(string='Alcance', default=0)
     impressions = fields.Integer(string='Impresiones', default=0)

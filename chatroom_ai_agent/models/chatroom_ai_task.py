@@ -53,7 +53,7 @@ class ChatroomAiTaskAction(models.Model):
             ) % (self.name or self.key or _('sin nombre')))
         if tool.requires_approval and not self.requires_approval:
             raise UserError(_(
-                'La herramienta exige aprobaciÃ³n humana para esta acciÃ³n.'
+                'La herramienta exige aprobación humana para esta acción.'
             ))
         user_groups = self.env.user.group_ids
         if tool.group_id and tool.group_id not in user_groups:
@@ -92,8 +92,7 @@ class ChatroomAiTaskAction(models.Model):
                 vals['key'] = tool.key
                 if not vals.get('name'):
                     vals['name'] = tool.name
-                if 'requires_approval' not in vals:
-                    vals['requires_approval'] = tool.requires_approval
+                vals['requires_approval'] = tool.requires_approval
             else:
                 vals['requires_approval'] = True
         return super().create(vals_list)

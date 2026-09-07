@@ -25,4 +25,3 @@ class MarketingSocialNetworkSyncLog(models.Model):
     publications_count = fields.Integer(string='Publicaciones', readonly=True)
     interactions_count = fields.Integer(string='Interacciones', readonly=True)
     error_message = fields.Text(string='Detalle del error', readonly=True)
-

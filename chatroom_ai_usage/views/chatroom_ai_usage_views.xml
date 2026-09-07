@@ -37,7 +37,7 @@
                             <field name="supports_chat"/>
                             <field name="recommended"/>
                             <field name="active"/>
-                            <separator string="Tarifa para estimaciÃ³n local"/>
+                            <separator string="Tarifa para estimación local"/>
                             <field name="input_price_per_million"/>
                             <field name="output_price_per_million"/>
                             <field name="pricing_source" widget="badge"/>
@@ -52,7 +52,7 @@
                         Los modelos se sincronizan desde el proveedor configurado. Chatroom solo muestra como compatibles los modelos de texto detectados.
                     </div>
                     <div class="alert alert-warning" role="alert">
-                        Configura la tarifa de entrada y salida por millÃ³n de tokens para obtener una estimaciÃ³n local. No sustituye el costo oficial del proveedor.
+                        Configura la tarifa de entrada y salida por millón de tokens para obtener una estimación local. No sustituye el costo oficial del proveedor.
                     </div>
                     <field name="health_message" readonly="1" placeholder="Aún no se ha probado este modelo."/>
                 </sheet>

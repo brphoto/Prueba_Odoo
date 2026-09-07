@@ -327,7 +327,6 @@ class ChatroomAiUsageSnapshot(models.Model):
         icp.set_param('chatroom_whatsapp.ai_usage_last_sync', fields.Datetime.now())
         icp.set_param('chatroom_whatsapp.ai_usage_last_error', error or '')
 
-    @api.model
     def action_test_platform_connection(self):
         """Comprueba uso y costos oficiales sin generar una solicitud de IA."""
         admin_key = self._admin_api_key()
@@ -433,7 +432,6 @@ class ChatroomAiUsageSnapshot(models.Model):
             'target': 'current',
         }
 
-    @api.model
     def action_refresh(self):
         icp = self.env['ir.config_parameter'].sudo()
         admin_key = self._admin_api_key()

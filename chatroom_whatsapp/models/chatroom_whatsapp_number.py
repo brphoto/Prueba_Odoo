@@ -32,6 +32,9 @@ class ChatroomWhatsappNumber(models.Model):
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
     color = fields.Integer(string="Color")
+    company_id = fields.Many2one(
+        'res.company', string="Compañía", required=True,
+        default=lambda self: self.env.company, index=True)
 
     phone_number_id = fields.Char(
         string="Phone Number ID", required=True,
@@ -211,4 +214,8 @@ class ChatroomWhatsappNumber(models.Model):
     def _find_by_phone_number_id(self, phone_number_id):
         if not phone_number_id:
             return self.browse()
-        return self.search([('phone_number_id', '=', phone_number_id)], limit=1)
+        return self.search([
+            ('phone_number_id', '=', phone_number_id),
+            ('company_id', '=', self.env.company.id),
+            ('active', '=', True),
+        ], limit=1)

@@ -56,6 +56,39 @@ class TestChatroomAiAgent(TransactionCase):
         tool.group_id = self.env.ref('base.group_system')
         self.assertEqual(action._check_execution_authorization(), tool)
 
+    def test_sensitive_action_cannot_disable_approval(self):
+        task = self.env['chatroom.ai.task'].create({
+            'name': 'Prueba de aprobación protegida',
+            'task_type': 'orchestrate',
+            'channel_id': self.channel.id,
+        })
+        action = self.env['chatroom.ai.task.action'].create({
+            'task_id': task.id,
+            'key': 'create_quotation',
+            'name': 'Crear cotización',
+            'requires_approval': False,
+        })
+        self.assertTrue(action.requires_approval)
+        action.write({'requires_approval': False})
+        self.assertTrue(action.requires_approval)
+
+    def test_only_agent_manager_can_approve(self):
+        user = self.env['res.users'].create({
+            'name': 'Agente sin permiso de aprobación',
+            'login': 'agent_without_approval_test',
+            'email': 'agent_without_approval_test@example.com',
+            'group_ids': [(6, 0, [self.env.ref(
+                'chatroom_ai_agent.group_chatroom_ai_agent_user').id])],
+        })
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            self.channel, task_type='classify_customer',
+            prompt='Prueba de separación de funciones.',
+        )
+        task.user_id = user.id
+        task.action_plan()
+        with self.assertRaises(UserError):
+            task.with_user(user).action_approve()
+
     def test_predefined_automations_are_visible_and_preview_safe(self):
         automations = self.env['chatroom.ai.automation'].with_context(
             active_test=False).search([])

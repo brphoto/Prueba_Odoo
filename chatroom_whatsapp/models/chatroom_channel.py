@@ -468,11 +468,19 @@ class ChatroomChannel(models.Model):
             `value.metadata` del webhook de WhatsApp, para asociar la
             conversación a la línea correcta cuando hay varias.
         """
+        whatsapp_number = self.env['chatroom.whatsapp.number']._find_by_phone_number_id(
+            meta_phone_number_id)
         channel = self.search([
             ('channel_type', '=', channel_type),
             ('external_id', '=', external_id),
+            ('company_id', '=', self.env.company.id),
         ], limit=1)
         if channel:
+            # Un contacto puede escribir por varias líneas. Conservamos una
+            # sola conversación por contacto y actualizamos la línea de
+            # entrada para que las respuestas salgan por el número correcto.
+            if whatsapp_number and channel.whatsapp_number_id != whatsapp_number:
+                channel.whatsapp_number_id = whatsapp_number.id
             return channel
 
         partner = self.env['res.partner'].search(
@@ -490,8 +498,6 @@ class ChatroomChannel(models.Model):
                 'phone': f"+{external_id}" if channel_type == 'whatsapp' else False,
             })
 
-        whatsapp_number = self.env['chatroom.whatsapp.number']._find_by_phone_number_id(
-            meta_phone_number_id)
         assignee = whatsapp_number._get_next_assignee() if whatsapp_number else self._get_next_assignee()
 
         return self.create({

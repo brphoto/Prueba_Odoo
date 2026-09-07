@@ -18,4 +18,78 @@
         <field name="privilege_id" ref="privilege_marketing_command_center"/>
         <field name="implied_ids" eval="[(4, ref('group_marketing_user'))]"/>
     </record>
+
+    <!-- Todos los registros de marketing están aislados por compañía. -->
+    <record id="marketing_social_company_rule" model="ir.rule">
+        <field name="name">Marketing social: compañías autorizadas</field>
+        <field name="model_id" ref="model_marketing_social_account"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_marketing_user'))]"/>
+    </record>
+    <record id="marketing_social_campaign_company_rule" model="ir.rule">
+        <field name="name">Marketing social: campañas por compañía</field>
+        <field name="model_id" ref="model_marketing_social_campaign"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_marketing_user'))]"/>
+    </record>
+    <record id="marketing_social_publication_company_rule" model="ir.rule">
+        <field name="name">Marketing social: publicaciones por compañía</field>
+        <field name="model_id" ref="model_marketing_social_publication"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_marketing_user'))]"/>
+    </record>
+    <record id="marketing_social_metric_company_rule" model="ir.rule">
+        <field name="name">Marketing social: métricas por compañía</field>
+        <field name="model_id" ref="model_marketing_social_metric_snapshot"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_marketing_user'))]"/>
+    </record>
+    <record id="marketing_social_interaction_company_rule" model="ir.rule">
+        <field name="name">Marketing social: interacciones por compañía</field>
+        <field name="model_id" ref="model_marketing_social_interaction"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_marketing_user'))]"/>
+    </record>
+    <record id="marketing_social_conversation_company_rule" model="ir.rule">
+        <field name="name">Marketing social: conversaciones por compañía</field>
+        <field name="model_id" ref="model_marketing_social_conversation"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_marketing_user'))]"/>
+    </record>
+    <record id="marketing_social_conversation_message_company_rule" model="ir.rule">
+        <field name="name">Marketing social: mensajes por compañía</field>
+        <field name="model_id" ref="model_marketing_social_conversation_message"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_marketing_user'))]"/>
+    </record>
+    <record id="marketing_social_alert_company_rule" model="ir.rule">
+        <field name="name">Marketing social: alertas por compañía</field>
+        <field name="model_id" ref="model_marketing_social_alert"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_marketing_user'))]"/>
+    </record>
+    <record id="marketing_social_agent_chat_company_rule" model="ir.rule">
+        <field name="name">Marketing social: chats del agente por compañía</field>
+        <field name="model_id" ref="model_marketing_social_agent_chat"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_marketing_user'))]"/>
+    </record>
+    <record id="marketing_social_agent_message_company_rule" model="ir.rule">
+        <field name="name">Marketing social: mensajes del agente por compañía</field>
+        <field name="model_id" ref="model_marketing_social_agent_message"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_marketing_user'))]"/>
+    </record>
+    <record id="marketing_product_catalog_company_rule" model="ir.rule">
+        <field name="name">Catálogo comercial por compañía</field>
+        <field name="model_id" ref="model_marketing_product_catalog_item"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_marketing_user'))]"/>
+    </record>
+    <record id="marketing_social_dashboard_company_rule" model="ir.rule">
+        <field name="name">Dashboard de marketing por compañía</field>
+        <field name="model_id" ref="model_marketing_social_dashboard"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_marketing_user'))]"/>
+    </record>
 </odoo>

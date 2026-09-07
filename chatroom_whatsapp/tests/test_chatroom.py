@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 from datetime import timedelta
 
 from odoo.exceptions import UserError
@@ -123,6 +124,16 @@ class TestChatroomWhatsapp(TransactionCase):
         not_yet = WhatsAppWebhookController._already_processed(self.env, 'wamid.NUEVO')
         self.assertFalse(not_yet)
 
+    def test_webhook_queue_processes_payload_and_releases_body(self):
+        event = self.env['chatroom.whatsapp.webhook.event'].create({
+            'name': 'Webhook de prueba',
+            'object_type': 'unknown',
+            'payload_json': json.dumps({'object': 'unknown', 'entry': []}),
+        })
+        self.assertEqual(self.env['chatroom.whatsapp.webhook.event']._cron_process_pending(), 1)
+        self.assertEqual(event.state, 'done')
+        self.assertEqual(event.payload_json, '{}')
+
     def test_opt_out_blocks_outbound_send(self):
         partner = self.env['res.partner'].create({
             'name': "Dado de baja",
@@ -215,6 +226,21 @@ class TestChatroomWhatsapp(TransactionCase):
             'whatsapp', '573008889999', 'Cliente de soporte',
             meta_phone_number_id='1112223330')
 
+        self.assertEqual(channel.whatsapp_number_id, number)
+
+    def test_existing_channel_switches_to_inbound_whatsapp_line(self):
+        """Una conversación existente responde por la línea que recibió
+        el nuevo mensaje, aunque se haya creado antes sin línea asociada."""
+        channel = self.env['chatroom.channel']._find_or_create_from_webhook(
+            'whatsapp', '573008889998', 'Cliente multílínea')
+        number = self.env['chatroom.whatsapp.number'].create({
+            'name': 'Ventas', 'phone_number_id': '1112223331',
+        })
+
+        same_channel = self.env['chatroom.channel']._find_or_create_from_webhook(
+            'whatsapp', '573008889998', meta_phone_number_id='1112223331')
+
+        self.assertEqual(same_channel, channel)
         self.assertEqual(channel.whatsapp_number_id, number)
 
     def test_webhook_without_matching_number_leaves_it_empty(self):

@@ -9,6 +9,9 @@ class MarketingSocialAgentMessage(models.Model):
     chat_id = fields.Many2one(
         'marketing.social.agent.chat', string='Sesión', required=True,
         ondelete='cascade', index=True)
+    company_id = fields.Many2one(
+        'res.company', related='chat_id.company_id', store=True, index=True,
+        readonly=True)
     sequence = fields.Integer(default=10)
     speaker = fields.Selection([
         ('user', 'Marketing'), ('agent', 'Agente'),

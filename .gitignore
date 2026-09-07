@@ -1,3 +1,12 @@
 __pycache__/
 *.pyc
 *.pyo
+
+# Nunca versionar credenciales locales o secretos de OAuth.
+**/client_secrets.json
+**/credentials*.json
+**/*secret*.json
+
+# Logs temporales de las ejecuciones locales de QA.
+clean_base_*.log
+marketing_tests_*.log

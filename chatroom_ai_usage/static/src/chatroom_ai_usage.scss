@@ -119,7 +119,13 @@
     }
 }
 .o_chatroom_ai_setup_wizard_form {
-    .o_form_sheet_bg > .o_form_sheet { max-width: 1100px; margin-left: auto; margin-right: auto; }
+    .o_form_sheet_bg > .o_form_sheet {
+        width: calc(100% - 40px);
+        max-width: 1180px;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 24px 28px 36px;
+    }
     .o_chatroom_ai_setup_steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 18px; }
     .o_chatroom_ai_setup_steps > div { display: flex; flex-direction: column; gap: 5px; min-height: 120px; padding: 16px; border: 1px solid #d9dce8; border-radius: 10px; background: #fafbfe; }
     .o_chatroom_ai_setup_steps b { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #795273; color: #fff; }
@@ -134,8 +140,59 @@
     .o_chatroom_ai_setup_knowledge .o_field_text,
     .o_chatroom_ai_setup_knowledge .o_chatroom_ai_setup_textarea,
     .o_chatroom_ai_setup_knowledge textarea { display: block; width: 100% !important; min-width: 100%; min-height: 220px; resize: vertical; line-height: 1.5; }
+
+    .o_chatroom_ai_setup_connection_grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+        margin: 4px 0 24px;
+    }
+
+    .o_chatroom_ai_setup_connection_panel {
+        min-width: 0;
+        padding: 18px 20px;
+        border: 1px solid #4a5265;
+        border-radius: 10px;
+        background: #2b3040;
+    }
+
+    .o_chatroom_ai_setup_connection_panel h3 {
+        margin: 0 0 16px;
+        color: #f4f6fb;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .o_chatroom_ai_setup_connection_field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 14px;
+    }
+
+    .o_chatroom_ai_setup_connection_field:last-child { margin-bottom: 0; }
+
+    .o_chatroom_ai_setup_connection_field > label {
+        color: #eef1f7;
+        font-weight: 600;
+    }
+
+    .o_chatroom_ai_setup_connection_field .o_field_widget,
+    .o_chatroom_ai_setup_connection_field input,
+    .o_chatroom_ai_setup_connection_field select {
+        width: 100% !important;
+        min-width: 0;
+    }
+
+    .o_chatroom_ai_setup_connection_panel .text-muted {
+        color: #b9c0d0 !important;
+        line-height: 1.45;
+    }
 }
-@media (max-width: 760px) { .o_chatroom_ai_setup_wizard_form .o_chatroom_ai_setup_steps { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 760px) {
+    .o_chatroom_ai_setup_wizard_form .o_chatroom_ai_setup_steps { grid-template-columns: 1fr 1fr; }
+    .o_chatroom_ai_setup_wizard_form .o_chatroom_ai_setup_connection_grid { grid-template-columns: 1fr; }
+}
 
 // The custom settings apps used to inherit Odoo's deliberately narrow
 // readability column.  Keep the native settings layout, but use the unused
@@ -191,9 +248,10 @@
     gap: 10px 18px;
     margin: 16px 0 20px;
     padding: 14px 16px;
-    border: 1px solid #dbe3ee;
+    border: 1px solid #4a5265;
     border-radius: 10px;
-    background: #f8fafc;
+    background: #2b3040;
+    color: #f4f6fb;
 }
 
 .o_chatroom_ai_setup_status_item {
@@ -205,8 +263,19 @@
 
 .o_chatroom_ai_setup_status_message {
     grid-column: span 2;
-    color: #52627a;
+    color: #c7cedc;
     line-height: 1.4;
+}
+
+.o_chatroom_ai_setup_current_status .o_form_label,
+.o_chatroom_ai_setup_current_status .o_field_widget,
+.o_chatroom_ai_setup_current_status .o_field_char,
+.o_chatroom_ai_setup_current_status .o_field_integer {
+    color: #f4f6fb !important;
+}
+
+.o_chatroom_ai_setup_current_status .o_field_widget.o_field_badge {
+    color: #ffffff !important;
 }
 
 @media (max-width: 900px) {

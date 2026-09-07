@@ -1,8 +1,5 @@
 from odoo import _, api, fields, models
 
-from .marketing_social_constants import PLATFORM_SELECTION
-
-
 class MarketingSocialConversation(models.Model):
     _name = 'marketing.social.conversation'
     _description = 'Conversación entrante de red social'
@@ -14,7 +11,7 @@ class MarketingSocialConversation(models.Model):
         'marketing.social.account', string='Cuenta', required=True,
         ondelete='cascade', index=True, tracking=True)
     platform = fields.Selection(
-        PLATFORM_SELECTION, string='Red', related='account_id.platform', store=True, index=True)
+        string='Red', related='account_id.platform', store=True, index=True)
     external_id = fields.Char(string='ID externo', required=True, index=True)
     contact_name = fields.Char(string='Contacto')
     contact_external_id = fields.Char(string='ID del contacto')
@@ -91,7 +88,7 @@ class MarketingSocialConversationMessage(models.Model):
         'marketing.social.account', string='Cuenta', related='conversation_id.account_id',
         store=True, index=True)
     platform = fields.Selection(
-        PLATFORM_SELECTION, string='Red', related='conversation_id.platform', store=True, index=True)
+        string='Red', related='conversation_id.platform', store=True, index=True)
     external_id = fields.Char(string='ID externo', required=True, index=True)
     direction = fields.Selection([
         ('inbound', 'Entrante'), ('outbound', 'Saliente'),

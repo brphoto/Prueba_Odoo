@@ -38,19 +38,35 @@
                     </div>
                     <notebook>
                         <page string="1. Conexión y modelos">
-                            <group col="2">
-                                <group string="Conexión de respuestas">
-                                    <field name="provider_url" placeholder="https://api.openai.com/v1"/>
-                                    <field name="api_key" password="True" placeholder="Pega la API Key o déjala vacía si ya está guardada"/>
-                                    <field name="enable_ai"/>
-                                </group>
-                                <group string="Control financiero (opcional)">
-                                <field name="admin_api_key" password="True" placeholder="Admin API Key con acceso a uso y costos"/>
-                                <div class="text-muted">La Admin API Key es distinta de la clave usada para responder chats. Solo consulta uso y costos.</div>
-                                <field name="initial_funding"/>
-                                <div class="text-muted">No es el saldo oficial de OpenAI: sirve como control interno de tus recargas.</div>
-                                </group>
-                            </group>
+                            <div class="o_chatroom_ai_setup_connection_grid">
+                                <div class="o_chatroom_ai_setup_connection_panel">
+                                    <h3>Conexión de respuestas</h3>
+                                    <div class="o_chatroom_ai_setup_connection_field">
+                                        <label for="provider_url">Endpoint de IA</label>
+                                        <field name="provider_url" placeholder="https://api.openai.com/v1"/>
+                                    </div>
+                                    <div class="o_chatroom_ai_setup_connection_field">
+                                        <label for="api_key">API Key para respuestas</label>
+                                        <field name="api_key" password="True" placeholder="Pega la API Key o déjala vacía si ya está guardada"/>
+                                    </div>
+                                    <div class="o_chatroom_ai_setup_connection_field">
+                                        <field name="enable_ai"/>
+                                    </div>
+                                </div>
+                                <div class="o_chatroom_ai_setup_connection_panel">
+                                    <h3>Control financiero <span class="text-muted">(opcional)</span></h3>
+                                    <div class="o_chatroom_ai_setup_connection_field">
+                                        <label for="admin_api_key">Admin API Key para costos</label>
+                                        <field name="admin_api_key" password="True" placeholder="Admin API Key con acceso a uso y costos"/>
+                                        <div class="text-muted">Es distinta de la clave usada para responder chats. Solo consulta uso y costos.</div>
+                                    </div>
+                                    <div class="o_chatroom_ai_setup_connection_field">
+                                        <label for="initial_funding">Recarga inicial para control interno</label>
+                                        <field name="initial_funding"/>
+                                        <div class="text-muted">No es el saldo oficial de OpenAI; sirve como control interno de tus recargas.</div>
+                                    </div>
+                                </div>
+                            </div>
                             <separator string="Selección de modelos"/>
                             <group col="2">
                                 <field name="selected_model_id" options="{'no_create': True}"/>

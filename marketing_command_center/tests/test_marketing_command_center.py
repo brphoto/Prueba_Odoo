@@ -11,6 +11,14 @@ class TestMarketingCommandCenter(TransactionCase):
 
     def _create_dataset(self):
         company = self.env['res.company'].create({'name': 'QA Marketing Social'})
+        # Las reglas multiempresa usan las compañías permitidas del usuario,
+        # no solo la compañía principal. El fixture debe modelar ese acceso
+        # para que la prueba se parezca a una sesión real autorizada.
+        self.env.user.write({'company_ids': [(4, company.id)]})
+        self.env = self.env(context=dict(
+            self.env.context,
+            allowed_company_ids=self.env.user.company_ids.ids,
+        ))
         account = self.env['marketing.social.account'].create({
             'name': 'QA Instagram', 'platform': 'instagram',
             'external_id': 'qa-instagram-001', 'company_id': company.id,
@@ -30,7 +38,7 @@ class TestMarketingCommandCenter(TransactionCase):
             'snapshot_date': fields.Date.context_today(self),
             'reach': 1000, 'impressions': 1500, 'views': 2500,
             'likes': 100, 'comments': 20, 'shares': 30, 'saves': 10,
-            'leads': 5, 'sales_amount': 100,
+            'leads': 5, 'sales_amount': 100, 'metric_status': 'partial',
         })
         self.env['marketing.social.interaction'].create({
             'publication_id': publication.id, 'interaction_type': 'comment',
