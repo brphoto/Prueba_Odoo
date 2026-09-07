@@ -73,6 +73,12 @@ export class ChatroomThreadCore extends Component {
         this.REACTION_EMOJIS = REACTION_EMOJIS;
 
         this._busChannel = false;
+        this._busGlobalChannel = false;
+        this._refreshInFlight = false;
+        this._refreshQueued = false;
+        this._realtimePollTimer = false;
+        this._realtimePollInFlight = false;
+        this._realtimeLatestMessageId = false;
 
         this.state = useState({
             loading: true,
@@ -145,6 +151,11 @@ export class ChatroomThreadCore extends Component {
         onMounted(() => {
             this.busService.addEventListener("notification", this._onBusNotification);
             window.addEventListener("chatroom-ai-use-response", this._onAiUseResponse);
+            // Algunos túneles de desarrollo no mantienen WebSocket. Esta
+            // comprobación solo consulta el último ID del hilo visible y
+            // recarga el historial cuando realmente cambió.
+            this._realtimePollTimer = setInterval(
+                () => this._pollActiveThread(), 2500);
             this._scrollToBottom();
         });
 
@@ -165,6 +176,8 @@ export class ChatroomThreadCore extends Component {
         onWillUnmount(() => {
             this.busService.removeEventListener("notification", this._onBusNotification);
             window.removeEventListener("chatroom-ai-use-response", this._onAiUseResponse);
+            clearInterval(this._realtimePollTimer);
+            this._realtimePollTimer = false;
             this._unsubscribeBus();
             this._stopMediaStream();
             clearInterval(this._recordingInterval);
@@ -226,6 +239,8 @@ export class ChatroomThreadCore extends Component {
         if (channelId) {
             this._busChannel = `chatroom_channel_${channelId}`;
             this.busService.addChannel(this._busChannel);
+            this._busGlobalChannel = "chatroom_whatsapp_global";
+            this.busService.addChannel(this._busGlobalChannel);
         }
     }
 
@@ -233,6 +248,10 @@ export class ChatroomThreadCore extends Component {
         if (this._busChannel) {
             this.busService.deleteChannel(this._busChannel);
             this._busChannel = false;
+        }
+        if (this._busGlobalChannel) {
+            this.busService.deleteChannel(this._busGlobalChannel);
+            this._busGlobalChannel = false;
         }
     }
 
@@ -269,16 +288,46 @@ export class ChatroomThreadCore extends Component {
     }
 
     _onBusNotification({ detail: notifications }) {
+        const currentChannelId = Number(this.channelId);
+        const hasCurrentChannelUpdate = notifications.some(({ type, payload }) =>
+            (type === "chatroom.message/new" || type === "chatroom.message/inbound")
+            && payload && Number(payload.channel_id) === currentChannelId);
+        if (hasCurrentChannelUpdate) {
+            this._refreshCurrentThread();
+        }
         for (const { type, payload } of notifications) {
-            if (type === "chatroom.message/new" && payload && payload.channel_id === this.channelId) {
-                this._loadMessages();
-                this._loadChannel();
-            }
-            if (type === "chatroom.message/waiting_response" && payload && payload.channel_id === this.channelId) {
+            if (type === "chatroom.message/waiting_response"
+                    && payload && Number(payload.channel_id) === currentChannelId) {
                 this.notification.add(
                     `${payload.partner_name || "El cliente"} está esperando respuesta en el chat.`,
                     { type: "warning", sticky: true }
                 );
+            }
+        }
+    }
+
+    async _refreshCurrentThread() {
+        if (!this.channelId) {
+            return;
+        }
+        if (this._refreshInFlight) {
+            this._refreshQueued = true;
+            return;
+        }
+        this._refreshInFlight = true;
+        const channelId = this.channelId;
+        try {
+            await Promise.all([
+                this._loadMessages(channelId),
+                this._loadChannel(channelId),
+            ]);
+        } catch (error) {
+            console.warn("No se pudo actualizar el hilo en tiempo real", error);
+        } finally {
+            this._refreshInFlight = false;
+            if (this._refreshQueued) {
+                this._refreshQueued = false;
+                this._refreshCurrentThread();
             }
         }
     }
@@ -611,6 +660,8 @@ export class ChatroomThreadCore extends Component {
         }));
         this.state.messages = [...messageItems, ...noteItems].sort(
             (a, b) => (a.dateObj || 0) - (b.dateObj || 0));
+        this._realtimeLatestMessageId = messages.length
+            ? messages[messages.length - 1].id : false;
         this.state.loading = false;
         const addedMessages = Math.max(this.state.messages.length - previousCount, 0);
         this.state.newMessages = wasNearBottom ? 0 : this.state.newMessages + addedMessages;
@@ -622,6 +673,29 @@ export class ChatroomThreadCore extends Component {
         }
         if (this.props.onMessagesLoaded) {
             this.props.onMessagesLoaded(channelId);
+        }
+    }
+
+    async _pollActiveThread() {
+        if (!this.channelId || this.state.loading || this._realtimePollInFlight) {
+            return;
+        }
+        this._realtimePollInFlight = true;
+        const channelId = this.channelId;
+        try {
+            const latest = await this.orm.searchRead(
+                "chatroom.message",
+                [["channel_id", "=", channelId]],
+                ["id"],
+                { order: "date desc, id desc", limit: 1 }
+            );
+            const latestId = latest.length ? latest[0].id : false;
+            if (channelId === this.channelId
+                    && latestId !== this._realtimeLatestMessageId) {
+                await this._refreshCurrentThread();
+            }
+        } finally {
+            this._realtimePollInFlight = false;
         }
     }
 

@@ -2,7 +2,7 @@
 <odoo>
 
     <record id="ir_cron_process_chatroom_webhook_events" model="ir.cron">
-        <field name="name">Chatroom: procesar cola de webhook</field>
+        <field name="name">Chatroom: recuperar webhooks con error</field>
         <field name="model_id" ref="model_chatroom_whatsapp_webhook_event"/>
         <field name="state">code</field>
         <field name="code">model._cron_process_pending(limit=20)</field>

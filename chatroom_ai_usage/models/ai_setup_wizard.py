@@ -26,6 +26,11 @@ class ChatroomAiSetupWizard(models.TransientModel):
     enable_ai = fields.Boolean(
         string='Activar IA para Chatroom', default=True,
         help='Activa la integración después de validar la configuración.')
+    response_mode = fields.Selection([
+        ('suggest', 'Preparar sugerencias para un agente'),
+        ('automatic', 'Responder automáticamente al cliente'),
+    ], string='Modo de respuesta', default='suggest', required=True,
+        help='En modo automático, la IA envía la respuesta por WhatsApp sin aprobación humana.')
     selected_model_id = fields.Many2one(
         'chatroom.ai.provider.model', string='Modelo principal',
         domain=[('active', '=', True), ('supports_chat', '=', True)],
@@ -141,6 +146,11 @@ class ChatroomAiSetupWizard(models.TransientModel):
         values['result_message'] = _(
             'Este asistente sirve para configurar o revisar una instalación existente. '
             'Las claves guardadas se muestran únicamente como «Configurada».')
+        auto_reply = str(icp.get_param('chatroom_whatsapp.ai_auto_reply') or '').lower() in (
+            '1', 'true', 'yes', 'on')
+        approval = str(icp.get_param('chatroom_whatsapp.ai_require_approval') or '').lower() in (
+            '1', 'true', 'yes', 'on')
+        values['response_mode'] = 'automatic' if auto_reply and not approval else 'suggest'
         return values
 
     def _save_configuration(self):
@@ -159,6 +169,9 @@ class ChatroomAiSetupWizard(models.TransientModel):
         if self.admin_api_key and self.admin_api_key.strip():
             icp.set_param('chatroom_whatsapp.ai_admin_api_key', self.admin_api_key.strip())
         icp.set_param('chatroom_whatsapp.ai_enabled', 'True' if self.enable_ai else 'False')
+        automatic = self.response_mode == 'automatic'
+        icp.set_param('chatroom_whatsapp.ai_auto_reply', 'True' if automatic else 'False')
+        icp.set_param('chatroom_whatsapp.ai_require_approval', 'False' if automatic else 'True')
         if self.selected_model_id:
             icp.set_param('chatroom_whatsapp.ai_model_id', str(self.selected_model_id.id))
             icp.set_param('chatroom_whatsapp.ai_model_reply_id', str(self.selected_model_id.id))

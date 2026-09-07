@@ -49,8 +49,11 @@
                                         <label for="api_key">API Key para respuestas</label>
                                         <field name="api_key" password="True" placeholder="Pega la API Key o déjala vacía si ya está guardada"/>
                                     </div>
-                                    <div class="o_chatroom_ai_setup_connection_field">
+                                    <div class="o_chatroom_ai_setup_connection_field o_chatroom_ai_setup_ai_mode">
                                         <field name="enable_ai"/>
+                                        <label for="enable_ai" string="Activar IA para Chatroom"/>
+                                        <label for="response_mode" string="Modo de respuesta"/>
+                                        <field name="response_mode"/>
                                     </div>
                                 </div>
                                 <div class="o_chatroom_ai_setup_connection_panel">

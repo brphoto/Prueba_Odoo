@@ -136,7 +136,7 @@
                         <i class="fa fa-flag"/>
                         <span>Urgente</span>
                     </button>
-                    <span t-if="false" t-attf-class="o_chatroom_ai_toggle {{ state.aiPaused ? 'o_chatroom_ai_toggle_paused' : 'o_chatroom_ai_toggle_active' }}"
+                    <span t-if="state.aiAvailable" t-attf-class="o_chatroom_ai_toggle {{ state.aiPaused ? 'o_chatroom_ai_toggle_paused' : 'o_chatroom_ai_toggle_active' }}"
                           t-on-click="toggleAiPaused"
                           t-att-title="state.aiPaused ? 'IA pausada: la está atendiendo un agente. Tocá para reactivarla.' : 'IA activa: puede responder sola. Tocá para pausarla y atender vos.'">
                         <i class="fa fa-android"/>

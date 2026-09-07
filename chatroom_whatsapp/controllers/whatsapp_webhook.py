@@ -12,8 +12,9 @@ import logging
 
 from psycopg2 import IntegrityError
 
-from odoo import fields, http
+from odoo import SUPERUSER_ID, api, fields, http
 from odoo.http import request
+from odoo.modules.registry import Registry
 
 _logger = logging.getLogger(__name__)
 
@@ -60,49 +61,91 @@ class WhatsAppWebhookController(http.Controller):
             return request.make_response('Bad Request', status=400)
         object_type = payload.get('object')
         env = request.env(su=True)
-        # Timestamp de salud: "llegó algo del webhook", más allá de si el
-        # evento en sí se termina procesando o descartando por duplicado.
-        env['ir.config_parameter'].set_param(
-            'chatroom_whatsapp.last_webhook_at', fields.Datetime.now())
-
-        event = env['chatroom.whatsapp.webhook.event'].create({
+        event_values = {
             'name': 'Webhook %s' % (object_type or 'desconocido'),
             'object_type': object_type or False,
             'payload_json': json.dumps(payload, ensure_ascii=False),
-        })
+        }
 
-        # El camino normal es sincrónico: Meta recibe la respuesta después de
-        # que el mensaje ya fue creado, asociado a su conversación y publicado
-        # por bus para que el agente lo vea sin recargar la pantalla.
-        event.write({
-            'state': 'running',
-            'attempts': 1,
-            'error_message': False,
-        })
+        # No escribimos un ir.config_parameter por cada webhook. Meta puede
+        # entregar al mismo tiempo un mensaje y varios estados; actualizar
+        # siempre la misma fila provocaba errores de serialización y respuestas
+        # 500. La fecha de creación del evento ya sirve como indicador de salud.
         try:
+            event = env['chatroom.whatsapp.webhook.event'].create(event_values)
+            # El camino normal es sincrónico: Meta recibe la respuesta después
+            # de que el mensaje ya fue creado, asociado a su conversación y
+            # publicado por bus para que el agente lo vea sin recargar.
+            event.write({
+                'state': 'running',
+                'attempts': 1,
+                'error_message': False,
+            })
+            ai_message_queue = []
             with env.cr.savepoint():
-                self.process_payload(env, payload)
+                self.process_payload(env, payload, ai_message_queue=ai_message_queue)
             event.write({
                 'state': 'done',
                 'processed_at': fields.Datetime.now(),
                 'error_message': False,
                 'payload_json': '{}',
             })
+            if ai_message_queue:
+                # El mensaje y el evento se confirman primero. El proveedor
+                # de IA no puede retrasar la recepción ni el refresco por bus.
+                env.cr.postcommit.add(
+                    lambda dbname=env.cr.dbname,
+                           message_ids=tuple(ai_message_queue):
+                    self._schedule_ai_processing(dbname, message_ids))
         except Exception as error:  # noqa: BLE001 - el cron queda como respaldo
-            # Meta debe recibir 200 para no generar reintentos duplicados. El
-            # payload queda conservado y el cron solo recupera este caso.
+            # Si la base quedó en estado abortado (por ejemplo, una carrera de
+            # PostgreSQL), no se puede escribir el evento original. Se revierte
+            # la transacción y se registra un evento nuevo para que el cron lo
+            # pueda recuperar sin devolver 500 a Meta.
             _logger.exception(
-                'Falló el procesamiento directo del evento de webhook %s',
-                event.id)
-            event.write({
-                'state': 'pending',
-                'next_attempt_at': fields.Datetime.now(),
-                'error_message': str(error)[:4000],
-            })
+                'Falló el procesamiento directo del evento de webhook')
+            error_message = str(error)[:4000]
+            env.cr.rollback()
+            try:
+                env['chatroom.whatsapp.webhook.event'].create({
+                    **event_values,
+                    'state': 'pending',
+                    'next_attempt_at': fields.Datetime.now(),
+                    'error_message': error_message,
+                })
+            except Exception:  # noqa: BLE001 - no ocultar el error original
+                env.cr.rollback()
+                _logger.exception(
+                    'No se pudo guardar el evento pendiente del webhook')
 
         return request.make_response('EVENT_RECEIVED')
 
-    def process_payload(self, env, payload):
+    @staticmethod
+    def _schedule_ai_processing(dbname, message_ids):
+        """Ejecuta la automatización después del commit, sin cron."""
+        from gevent import spawn_later
+
+        # Un pequeño retraso deja que la respuesta HTTP y la actualización del
+        # navegador salgan primero; la IA usa su propio cursor después.
+        spawn_later(0.05, WhatsAppWebhookController._process_ai_in_background,
+                    dbname, tuple(message_ids))
+
+    @staticmethod
+    def _process_ai_in_background(dbname, message_ids):
+        """Procesa IA con un cursor propio para no bloquear el webhook."""
+        registry = Registry(dbname)
+        with registry.cursor() as cr:
+            env = api.Environment(cr, SUPERUSER_ID, {})
+            _logger.info('IA en segundo plano: procesando mensajes %s', message_ids)
+            for message_id in message_ids:
+                message = env['chatroom.message'].browse(message_id).exists()
+                if not message or message.direction != 'inbound' or not message.channel_id:
+                    continue
+                message.channel_id._ai_process_inbound_message(message)
+            cr.commit()
+            _logger.info('IA en segundo plano: finalizó mensajes %s', message_ids)
+
+    def process_payload(self, env, payload, ai_message_queue=None):
         """Procesa un payload encolado fuera de la petición HTTP pública."""
         object_type = payload.get('object')
         for entry in payload.get('entry', []):
@@ -110,11 +153,13 @@ class WhatsAppWebhookController(http.Controller):
                 for change in entry.get('changes', []):
                     value = change.get('value', {})
                     self._process_statuses(env, value.get('statuses', []))
-                    self._process_messages(env, value)
+                    self._process_messages(env, value, ai_message_queue=ai_message_queue)
             elif object_type in ('page', 'instagram'):
                 channel_type = 'instagram' if object_type == 'instagram' else 'messenger'
                 for messaging_event in entry.get('messaging', []):
-                    self._process_messenger_event(env, channel_type, messaging_event)
+                    self._process_messenger_event(
+                        env, channel_type, messaging_event,
+                        ai_message_queue=ai_message_queue)
 
     # ------------------------------------------------------------------
     def _is_valid_signature(self, raw_body):
@@ -172,7 +217,7 @@ class WhatsAppWebhookController(http.Controller):
                 return env['chatroom.message'].browse()
             raise
 
-    def _process_messages(self, env, value):
+    def _process_messages(self, env, value, ai_message_queue=None):
         contacts = {c['wa_id']: c.get('profile', {}).get('name')
                     for c in value.get('contacts', [])}
         # Cuando hay varias líneas de WhatsApp dadas de alta, Meta indica
@@ -225,11 +270,14 @@ class WhatsAppWebhookController(http.Controller):
                 'state': 'pending',
             })
             channel._handle_opt_keywords(message)
-            if not channel._maybe_send_away_message():
-                channel._ai_process_inbound_message(message)
             channel._notify_assigned_agent(message)
             channel._notify_thread_update()
             channel._notify_new_inbound_message(message)
+            if not channel._maybe_send_away_message():
+                if ai_message_queue is None:
+                    channel._ai_process_inbound_message(message)
+                else:
+                    ai_message_queue.append(message.id)
 
     def _process_reaction(self, env, channel, msg):
         reaction = msg.get('reaction') or {}
@@ -242,7 +290,8 @@ class WhatsAppWebhookController(http.Controller):
         target.write({'partner_reaction': emoji})
         channel._notify_thread_update()
 
-    def _process_messenger_event(self, env, channel_type, event):
+    def _process_messenger_event(
+            self, env, channel_type, event, ai_message_queue=None):
         """Mensaje entrante de Messenger o Instagram Direct (mismo Send
         API de Meta, payload distinto al de WhatsApp)."""
         sender_id = (event.get('sender') or {}).get('id')
@@ -282,11 +331,14 @@ class WhatsAppWebhookController(http.Controller):
             'state': 'pending',
         })
         channel._handle_opt_keywords(message)
-        if not channel._maybe_send_away_message():
-            channel._ai_process_inbound_message(message)
         channel._notify_assigned_agent(message)
         channel._notify_thread_update()
         channel._notify_new_inbound_message(message)
+        if not channel._maybe_send_away_message():
+            if ai_message_queue is None:
+                channel._ai_process_inbound_message(message)
+            else:
+                ai_message_queue.append(message.id)
 
     def _process_statuses(self, env, statuses):
         state_map = {
