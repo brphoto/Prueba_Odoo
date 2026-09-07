@@ -104,19 +104,35 @@ class ResPartner(models.Model):
     # base, porque el campo ya no existe en el modelo.
     @api.depends('phone', 'email')
     def _compute_data_quality(self):
-        Partner = self.env['res.partner'].sudo()
+        # Antes cada contacto lanzaba dos `search_count`. Al abrir la
+        # lista de contactos (80 por página) eran 160 consultas solo para
+        # pintar el semáforo de calidad de datos; en bases con decenas de
+        # miles de contactos la vista tardaba segundos en cargar. Ahora
+        # son dos consultas agrupadas para toda la página.
+        phones = {partner.phone for partner in self if partner.phone}
+        emails = {partner.email.lower() for partner in self if partner.email}
+        phone_counts = {}
+        email_counts = {}
+        if phones or emails:
+            self.env['res.partner'].flush_model(['phone', 'email', 'active'])
+        if phones:
+            self.env.cr.execute(
+                "SELECT phone, COUNT(*) FROM res_partner "
+                " WHERE active = true AND phone IN %s GROUP BY phone",
+                (tuple(phones),))
+            phone_counts = dict(self.env.cr.fetchall())
+        if emails:
+            # `=ilike` sin comodines es una igualdad sin distinguir
+            # mayúsculas: lower() en ambos lados da el mismo resultado.
+            self.env.cr.execute(
+                "SELECT lower(email), COUNT(*) FROM res_partner "
+                " WHERE active = true AND lower(email) IN %s GROUP BY lower(email)",
+                (tuple(emails),))
+            email_counts = dict(self.env.cr.fetchall())
         for partner in self:
-            phone = partner.phone
-            phone_count = 0
-            email_count = 0
-            if phone:
-                phone_count = Partner.search_count([
-                    ('id', '!=', partner.id), ('phone', '=', phone),
-                ])
-            if partner.email:
-                email_count = Partner.search_count([
-                    ('id', '!=', partner.id), ('email', '=ilike', partner.email),
-                ])
+            # El propio contacto entra en el conteo agrupado: se descuenta.
+            phone_count = max(phone_counts.get(partner.phone, 0) - 1, 0)                 if partner.phone else 0
+            email_count = max(email_counts.get((partner.email or '').lower(), 0) - 1, 0)                 if partner.email else 0
             partner.duplicate_phone_count = phone_count
             partner.duplicate_email_count = email_count
             partner.data_quality_state = 'warning' if phone_count or email_count else 'ok'

@@ -887,6 +887,25 @@
     border-radius: 16px;
 }
 
+// Cabecera del historial paginado: separa visualmente "lo que ya está
+// cargado" del resto de la conversación sin robarle espacio al chat.
+.o_chatroom_load_older {
+    display: flex;
+    justify-content: center;
+    padding: 4px 0 10px;
+
+    .btn {
+        border-radius: 16px;
+        font-size: 12px;
+        text-decoration: none;
+        color: var(--chatroom-muted, #64748b);
+
+        &:hover:not(:disabled) {
+            background: rgba(15, 23, 42, .06);
+        }
+    }
+}
+
 .o_chatroom_new_messages {
     position: sticky;
     bottom: 12px;
@@ -1217,5 +1236,21 @@
         min-height: 48px;
         height: 48px;
         padding-inline: 12px;
+    }
+}
+
+// Contador de caracteres del compositor: solo aparece cerca del limite de
+// WhatsApp (4096) para no meter ruido en el 99% de los mensajes.
+.o_chatroom_body_counter {
+    align-self: center;
+    padding: 0 6px;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--chatroom-muted, #64748b);
+    white-space: nowrap;
+
+    &.o_over_limit {
+        color: #dc2626;
+        font-weight: 600;
     }
 }

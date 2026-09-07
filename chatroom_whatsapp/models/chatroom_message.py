@@ -18,6 +18,11 @@ class ChatroomMessage(models.Model):
     _wa_message_id_unique = models.Constraint(
         'unique(wa_message_id)',
         'El ID externo del mensaje ya fue procesado.')
+    # Todas las consultas calientes del chat son "los mensajes de esta
+    # conversación ordenados por fecha" (carga del hilo, sondeo del último
+    # mensaje, agregados de SLA). Sin este índice compuesto Postgres
+    # ordena en memoria el historial completo del canal en cada llamada.
+    _channel_date_index = models.Index('(channel_id, date, id)')
 
     display_name = fields.Char(compute='_compute_display_name')
     channel_id = fields.Many2one(
@@ -54,7 +59,7 @@ class ChatroomMessage(models.Model):
          ('read', "Leído"),
          ('failed', "Fallido")],
         default='received')
-    date = fields.Datetime(default=fields.Datetime.now, required=True)
+    date = fields.Datetime(default=fields.Datetime.now, required=True, index=True)
     retry_count = fields.Integer(
         default=0, copy=False,
         help="Cuántas veces se reintentó el envío (a mano o automático). "

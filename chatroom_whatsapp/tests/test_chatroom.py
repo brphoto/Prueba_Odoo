@@ -3,7 +3,7 @@ import json
 from datetime import timedelta
 
 from odoo.exceptions import UserError
-from odoo.fields import Datetime
+from odoo.fields import Date, Datetime
 from odoo.tests import TransactionCase, tagged
 
 from ..controllers.whatsapp_webhook import WhatsAppWebhookController
@@ -582,3 +582,187 @@ class TestChatroomWhatsapp(TransactionCase):
         self.assertTrue(data['truncated'])
         self.assertEqual(data['lines'][0]['body'], 'Mensaje 3')
         self.assertEqual(data['lines'][-1]['body'], 'Mensaje 7')
+
+    # ------------------------------------------------------------------
+    # Regresiones de los bugs corregidos en la revision de rendimiento
+    # ------------------------------------------------------------------
+
+    def _make_channel(self, external_id, **values):
+        return self.env['chatroom.channel'].create(dict({
+            'channel_type': 'whatsapp',
+            'external_id': external_id,
+        }, **values))
+
+    def _set_business_hours(self, start, end, tz='UTC'):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.business_hours_enabled', 'True')
+        icp.set_param('chatroom_whatsapp.business_hours_tz', tz)
+        icp.set_param('chatroom_whatsapp.business_hours_weekdays', '0,1,2,3,4,5,6')
+        icp.set_param('chatroom_whatsapp.business_hours_start', start)
+        icp.set_param('chatroom_whatsapp.business_hours_end', end)
+
+    def test_business_hours_supports_overnight_shift(self):
+        """Un turno que cruza medianoche (22:00-06:00) no puede dar
+        'fuera de horario' durante su propio turno."""
+        self._set_business_hours('22', '6')
+        channel = self._make_channel('573009000101')
+
+        def at(hour):
+            return Datetime.to_datetime('2026-09-07 %02d:30:00' % hour)
+
+        self.assertTrue(
+            channel._is_within_business_hours(at(23)), 'las 23:30 estan en turno')
+        self.assertTrue(
+            channel._is_within_business_hours(at(2)), 'las 02:30 estan en turno')
+        self.assertFalse(
+            channel._is_within_business_hours(at(12)), 'el mediodia no esta en turno')
+
+    def test_business_hours_ignores_non_numeric_setting(self):
+        """Un '9:00' escrito a mano en Ajustes no puede romper la
+        recepcion del webhook con un ValueError."""
+        self._set_business_hours('9:00', '18')
+        channel = self._make_channel('573009000102')
+        self.assertTrue(
+            channel._is_within_business_hours(
+                Datetime.to_datetime('2026-09-07 10:00:00')))
+
+    def test_opt_out_keyword_tolerates_punctuation(self):
+        """'STOP.', 'BAJA!' o ' Baja ' tienen que dar de baja igual: si no,
+        el cliente sigue recibiendo mensajes que pidio no recibir."""
+        variants = ['STOP.', 'BAJA!', ' Baja ', 'unsubscribe']
+        for index, text in enumerate(variants):
+            partner = self.env['res.partner'].create({'name': 'Opt out %s' % index})
+            channel = self._make_channel(
+                '5730090002%02d' % index, partner_id=partner.id)
+            message = self.env['chatroom.message'].create({
+                'channel_id': channel.id, 'direction': 'inbound', 'body': text,
+            })
+            channel._handle_opt_keywords(message)
+            self.assertTrue(
+                partner.whatsapp_opt_out,
+                'El texto %r deberia dar de baja al contacto.' % text)
+
+    def test_opt_out_keyword_does_not_match_inside_a_sentence(self):
+        """La comparacion es contra el mensaje completo: 'el precio baja?'
+        no puede dar de baja a un cliente que solo estaba preguntando."""
+        partner = self.env['res.partner'].create({'name': 'Opt out frase'})
+        channel = self._make_channel('573009000210', partner_id=partner.id)
+        message = self.env['chatroom.message'].create({
+            'channel_id': channel.id, 'direction': 'inbound',
+            'body': 'el precio baja?',
+        })
+        channel._handle_opt_keywords(message)
+        self.assertFalse(partner.whatsapp_opt_out)
+
+    def test_message_aggregates_match_per_record_values(self):
+        """Los agregados en lote devuelven lo mismo que recorrer los
+        mensajes de cada conversacion uno por uno."""
+        channels = self.env['chatroom.channel']
+        for index in range(3):
+            channel = self._make_channel('5730090003%02d' % index)
+            for offset in range(index + 1):
+                self.env['chatroom.message'].create({
+                    'channel_id': channel.id, 'direction': 'inbound',
+                    'body': 'hola %s' % offset, 'state': 'received',
+                    'date': Datetime.now() - timedelta(minutes=10 - offset),
+                })
+            channels |= channel
+        channels.invalidate_recordset()
+        stats = channels._message_aggregates()
+        for channel in channels:
+            data = stats[channel.id]
+            self.assertEqual(data['total'], len(channel.message_ids))
+            self.assertEqual(
+                data['unread'],
+                len(channel.message_ids.filtered(
+                    lambda m: m.direction == 'inbound' and m.state != 'read')))
+            self.assertEqual(data['last_in'], max(channel.message_ids.mapped('date')))
+
+    def test_sla_state_is_searchable_from_a_domain(self):
+        """El filtro de SLA se resuelve en el servidor. Aplicado en el
+        cliente despues del limite de la lista escondia conversaciones
+        vencidas sin avisar."""
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('chatroom_whatsapp.sla_enabled', 'True')
+        icp.set_param('chatroom_whatsapp.sla_yellow_minutes', '10')
+        icp.set_param('chatroom_whatsapp.sla_red_minutes', '15')
+        late = self._make_channel('573009000401')
+        self.env['chatroom.message'].create({
+            'channel_id': late.id, 'direction': 'inbound', 'body': 'hola',
+            'date': Datetime.now() - timedelta(hours=3),
+        })
+        answered = self._make_channel('573009000402')
+        self.env['chatroom.message'].create({
+            'channel_id': answered.id, 'direction': 'inbound', 'body': 'hola',
+            'date': Datetime.now() - timedelta(hours=3),
+        })
+        self.env['chatroom.message'].create({
+            'channel_id': answered.id, 'direction': 'outbound', 'body': 'ya te ayudo',
+            'date': Datetime.now() - timedelta(hours=2),
+        })
+        self.assertEqual(late.first_response_sla_state, 'red')
+        self.assertEqual(answered.first_response_sla_state, 'green')
+        found = self.env['chatroom.channel'].search([
+            ('id', 'in', (late | answered).ids),
+            ('first_response_sla_state', 'in', ('yellow', 'red')),
+        ])
+        self.assertEqual(found, late)
+
+    def test_related_counts_are_computed_in_batch(self):
+        """El calculo agrupado devuelve los mismos contadores que la
+        version que hacia un search_count por conversacion."""
+        partner = self.env['res.partner'].create({'name': 'Contador QA'})
+        channel = self._make_channel('573009000501', partner_id=partner.id)
+        empty = self._make_channel('573009000502')
+        if 'sale.order' in self.env:
+            self.env['sale.order'].create({'partner_id': partner.id})
+            (channel | empty).invalidate_recordset()
+            self.assertEqual(channel.sale_order_count, 1)
+            self.assertEqual(empty.sale_order_count, 0)
+        self.assertFalse(empty.partner_id)
+        self.assertEqual(empty.lead_count, 0)
+
+    def test_close_inactive_cron_sets_the_closing_stage(self):
+        """El cron de cierre por inactividad resuelve la etapa una sola vez
+        para todo el lote; el resultado tiene que ser el mismo."""
+        old = Datetime.now() - timedelta(days=30)
+        channels = self.env['chatroom.channel']
+        for index in range(3):
+            channels |= self._make_channel(
+                '5730090006%02d' % index, last_message_date=old)
+        self.env['chatroom.channel']._cron_close_inactive_channels(days=7)
+        channels.invalidate_recordset()
+        for channel in channels:
+            self.assertEqual(channel.state, 'closed')
+            if channel.stage_id:
+                self.assertEqual(channel.stage_id.technical_state, 'closed')
+
+    def test_next_activity_overdue_is_searchable_in_both_directions(self):
+        """El filtro 'Urgentes' de la bandeja usa este campo. Odoo
+        normaliza '=' a 'in' con un OrderedSet, y un OrderedSet([False])
+        es "verdadero" por tener un elemento: si se mira el contenedor en
+        vez del contenido, el filtro devuelve justo lo contrario."""
+        overdue_partner = self.env['res.partner'].create({'name': 'Vencida QA'})
+        overdue = self._make_channel('573009000601', partner_id=overdue_partner.id)
+        clean_partner = self.env['res.partner'].create({'name': 'Sin vencer QA'})
+        clean = self._make_channel('573009000602', partner_id=clean_partner.id)
+        self.env['mail.activity'].create({
+            'res_model_id': self.env['ir.model']._get_id('res.partner'),
+            'res_id': overdue_partner.id,
+            'activity_type_id': self.env.ref('mail.mail_activity_data_todo').id,
+            'summary': 'Llamar (atrasada)',
+            'date_deadline': Date.today() - timedelta(days=3),
+            'user_id': self.env.uid,
+        })
+        (overdue | clean).invalidate_recordset()
+        self.assertTrue(overdue.next_activity_overdue)
+        self.assertFalse(clean.next_activity_overdue)
+        base = [('id', 'in', (overdue | clean).ids)]
+        self.assertEqual(
+            self.env['chatroom.channel'].search(
+                base + [('next_activity_overdue', '=', True)]),
+            overdue)
+        self.assertEqual(
+            self.env['chatroom.channel'].search(
+                base + [('next_activity_overdue', '=', False)]),
+            clean)

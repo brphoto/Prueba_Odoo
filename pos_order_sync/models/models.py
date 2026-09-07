@@ -25,9 +25,11 @@ class PosConfig(models.Model):
     )
 
     def _compute_all_active_session(self):
+        # La busqueda no dependia de `obj`: era exactamente la misma para
+        # cada configuracion de TPV y se repetia una vez por registro.
+        all_session_ids = self.env['pos.session'].search(
+            [('state', '=', 'opened')]).ids
         for obj in self:
-            all_session_ids = self.env['pos.session'].search(
-                [('state', '=', 'opened')]).ids
             obj.all_active_session_ids = all_session_ids
 
     @api.constrains('quotation_print_type', 'iface_print_via_proxy')
@@ -133,13 +135,25 @@ class PosSession(models.Model):
 
     def _compute_transfer_counts(self):
         Quote = self.env['pos.quote']
+        # Dos consultas agrupadas en vez de dos por sesion.
+        session_ids = [session.id for session in self._origin if session.id]
+        sent, received = {}, {}
+        if session_ids:
+            sent = {
+                session.id: count
+                for session, count in Quote._read_group(
+                    [('session_id', 'in', session_ids)], ['session_id'], ['__count'])
+                if session
+            }
+            received = {
+                session.id: count
+                for session, count in Quote._read_group(
+                    [('to_session_id', 'in', session_ids)], ['to_session_id'], ['__count'])
+                if session
+            }
         for session in self:
-            session.transfer_sent_count = Quote.search_count([
-                ('session_id', '=', session.id),
-            ])
-            session.transfer_received_count = Quote.search_count([
-                ('to_session_id', '=', session.id),
-            ])
+            session.transfer_sent_count = sent.get(session._origin.id, 0)
+            session.transfer_received_count = received.get(session._origin.id, 0)
 
     def _open_transfer_quotes(self, domain, title):
         self.ensure_one()

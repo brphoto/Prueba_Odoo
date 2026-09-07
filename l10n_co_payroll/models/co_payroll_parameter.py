@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
+from odoo.tools import sql
 
 
 class CoPayrollParameter(models.Model):
@@ -134,6 +135,16 @@ class CoPayrollParameter(models.Model):
 
         # Repair old databases where mappings were created before the
         # parametrizable salary rules and kept salary_rule_id empty.
+        #
+        # `init()` corre justo despues de crear la tabla de ESTE modelo,
+        # cuando las de los demas modelos del modulo todavia pueden no
+        # existir. Sin esta comprobacion, instalar l10n_co_payroll en una
+        # base limpia moria con 'relation "l10n_co_payroll_rule_mapping"
+        # does not exist'. En una instalacion nueva no hay nada que
+        # reparar, asi que salir aqui es exactamente lo correcto.
+        if not sql.table_exists(self.env.cr, "l10n_co_payroll_rule_mapping"):
+            return
+
         mappings = self.env["l10n.co.payroll.rule.mapping"].sudo().search([
             ("salary_rule_id", "=", False),
             ("parameter_id", "!=", False),

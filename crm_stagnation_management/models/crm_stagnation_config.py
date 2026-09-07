@@ -78,13 +78,33 @@ class CrmStagnationConfig(models.Model):
     @api.model
     def get_for_company(self, company=False):
         company = company or self.env.company
-        config = self.sudo().search([('company_id', '=', company.id), ('active', '=', True)], limit=1)
-        if not config:
-            config = self.sudo().create({
-                'name': 'Reglas comerciales - %s' % company.display_name,
-                'company_id': company.id,
-            })
-        return config
+        return self.get_for_companies(company)[company.id]
+
+    @api.model
+    def get_for_companies(self, companies):
+        """{company_id: config} resuelto en una sola consulta.
+
+        `get_for_company` se llamaba dentro de bucles sobre oportunidades
+        (el cron de estancadas y la restriccion `_check_stagnation_reason`,
+        que corre en cada escritura masiva del recalculo). Eso era una
+        busqueda por oportunidad. Ademas puede CREAR la configuracion que
+        falte, asi que hacerlo de a una dentro de una validacion podia
+        crear varias filas para la misma empresa.
+        """
+        companies = companies or self.env.company
+        configs = self.sudo().search([
+            ('company_id', 'in', companies.ids), ('active', '=', True),
+        ])
+        result = {}
+        for config in configs:
+            result.setdefault(config.company_id.id, config)
+        for company in companies:
+            if company.id not in result:
+                result[company.id] = self.sudo().create({
+                    'name': 'Reglas comerciales - %s' % company.display_name,
+                    'company_id': company.id,
+                })
+        return result
 
     @api.model
     def level_rank(self, level):

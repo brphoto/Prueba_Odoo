@@ -248,9 +248,9 @@ class ResConfigSettings(models.TransientModel):
             rec.whatsapp_webhook_url = f"{base_url}/chatroom_whatsapp/webhook"
 
     def _compute_whatsapp_last_webhook_display(self):
-        raw = self.env['ir.config_parameter'].sudo().get_param(
-            'chatroom_whatsapp.last_webhook_at')
-        last = fields.Datetime.to_datetime(raw) if raw else False
+        last_event = self.env['chatroom.whatsapp.webhook.event'].search(
+            [], order='create_date desc, id desc', limit=1)
+        last = last_event.create_date if last_event else False
         for rec in self:
             rec.whatsapp_last_webhook_display = self._format_relative_time(last)
 

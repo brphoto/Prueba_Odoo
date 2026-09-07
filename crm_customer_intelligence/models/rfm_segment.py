@@ -158,8 +158,13 @@ class RfmSegment(models.Model):
         # clasificación RFM vigente (rfm_score o rfm_category != 'none'),
         # no sobre el total de contactos de Odoo.
         total_partners = self.env['res.partner'].search_count([('rfm_category', '!=', 'none')])
-        total_monetary_all = sum(self.env['res.partner'].search(
-            [('rfm_category', '!=', 'none')]).mapped('rfm_monetary_value'))
+        # Sumar con read_group en vez de traer a memoria TODOS los
+        # contactos con categoria RFM: en una base con decenas de miles de
+        # clientes, abrir la vista de segmentos cargaba el padron entero.
+        monetary_rows = self.env['res.partner']._read_group(
+            [('rfm_category', '!=', 'none')], [], ['rfm_monetary_value:sum'])
+        # SUM devuelve NULL (False) si no hay filas; se normaliza a float.
+        total_monetary_all = (monetary_rows[0][0] if monetary_rows else 0.0) or 0.0
         for record in self:
             partners = record.get_matching_partners()
             record.preview_count = len(partners)

@@ -2,7 +2,7 @@
 import base64
 from unittest.mock import Mock, patch
 
-from odoo import fields
+from odoo import _, fields
 from odoo.exceptions import UserError
 from odoo.exceptions import ValidationError
 from odoo.tests import TransactionCase, tagged
@@ -62,11 +62,15 @@ class TestChatroomAiUsage(TransactionCase):
         if 'ai.knowledge.base' not in self.env:
             self.skipTest('Conocimiento no instalado')
         wizard_model = self.env['chatroom.ai.setup.wizard']
+        existing = self.env['ai.knowledge.base'].search_count([
+            ('name', '=', _('Guía inicial de la empresa')),
+            ('company_id', '=', self.env.company.id),
+        ])
         wizard = wizard_model.create({
             'create_company_knowledge': True,
             'company_knowledge_text': 'Guía de prueba de la empresa.',
         })
-        self.assertEqual(wizard._create_knowledge(), 1)
+        self.assertEqual(wizard._create_knowledge(), 0 if existing else 1)
         self.assertEqual(wizard._create_knowledge(), 0)
         self.assertEqual(self.env['ai.knowledge.base'].search_count([
             ('name', '=', 'Guía inicial de la empresa'),
@@ -355,6 +359,8 @@ class TestChatroomAiUsage(TransactionCase):
         self.assertEqual(clean, 'Respuesta final.')
 
     def test_sandbox_hybrid_engine_combines_native_context_and_chatroom(self):
+        if 'chatroom.ai.odoo.bridge' not in self.env:
+            self.skipTest('Puente nativo no instalado')
         bridge = self.env['chatroom.ai.odoo.bridge'].sudo().search([
             ('company_id', '=', self.env.company.id),
         ], limit=1)
@@ -881,7 +887,8 @@ class TestChatroomAiUsage(TransactionCase):
         }
         with patch.object(type(channel), '_meta_request', return_value=response):
             with self.assertRaises(UserError) as error:
-                channel._ai_chat_completion([{'role': 'user', 'content': 'Hola'}])
+                channel._ai_chat_completion(
+                    [{'role': 'user', 'content': 'Hola'}], model_id=model.id)
         message = str(error.exception)
         self.assertIn('HTTP 404', message)
         self.assertIn('modelo-inexistente', message)

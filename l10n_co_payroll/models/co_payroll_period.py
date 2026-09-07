@@ -195,8 +195,30 @@ class CoPayrollPeriod(models.Model):
 
     @api.depends("date_from", "company_id")
     def _compute_previous_period(self):
+        # Una consulta por empresa en vez de una por periodo: la lista de
+        # periodos de nomina se pinta entera y cada fila lanzaba su propia
+        # busqueda del periodo anterior.
+        companies = self.mapped("company_id")
+        closed_by_company = {}
+        if companies:
+            closed = self.search(
+                [("company_id", "in", companies.ids), ("state", "=", "closed")],
+                order="date_to desc")
+            for candidate in closed:
+                closed_by_company.setdefault(
+                    candidate.company_id.id, []).append(candidate)
         for period in self:
-            period.previous_period_id = self.search([("id", "!=", period.id), ("company_id", "=", period.company_id.id), ("date_to", "<", period.date_from), ("state", "=", "closed")], order="date_to desc", limit=1) if period.date_from else False
+            if not period.date_from:
+                period.previous_period_id = False
+                continue
+            # `closed` viene ordenado por date_to descendente, asi que el
+            # primero que cumple la condicion es el mas reciente anterior.
+            period.previous_period_id = next((
+                candidate
+                for candidate in closed_by_company.get(period.company_id.id, [])
+                if candidate.id != period._origin.id
+                and candidate.date_to and candidate.date_to < period.date_from
+            ), False)
 
     @api.depends("line_ids.basic_wage", "line_ids.gross_wage", "line_ids.deduction_total", "line_ids.net_wage", "line_ids.employer_cost", "line_ids.worked_days", "adjustment_ids.amount", "adjustment_ids.state")
     def _compute_totals(self):

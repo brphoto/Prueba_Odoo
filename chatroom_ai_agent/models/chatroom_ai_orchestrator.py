@@ -49,8 +49,8 @@ class ChatroomAiOrchestrator(models.AbstractModel):
         task_model = self.env['chatroom.ai.task']
         orchestration_key = 'message:%s' % message.id
         try:
-            # La restricci\u00f3n \u00fanica protege tambi\u00e9n la ventana entre la
-            # b\u00fasqueda y el create cuando dos workers reciben el mismo webhook.
+            # La restricción única protege también la ventana entre la
+            # búsqueda y el create cuando dos workers reciben el mismo webhook.
             with self.env.cr.savepoint():
                 task = task_model.create_from_channel(
                     message.channel_id,

@@ -131,9 +131,46 @@
         background: var(--chatroom-ui-surface-dark-2);
     }
 
-    .o_chatroom_payment_wizard .o_chatroom_payment_intro {
-        border-color: var(--chatroom-ui-border-dark);
-        background: var(--chatroom-ui-surface-dark-2);
-        color: var(--chatroom-ui-muted-dark);
+    .o_chatroom_payment_wizard {
+        color: #e5e7eb;
+
+        .o_chatroom_payment_intro {
+            border-color: #356b68;
+            background: #193a3a;
+            color: #d6f5f1;
+        }
+
+        .o_chatroom_payment_intro p,
+        .o_chatroom_payment_field > small,
+        .o_chatroom_payment_section_header span { color: #a9c4c1; }
+
+        .o_chatroom_payment_field > label,
+        .o_chatroom_payment_section_header strong { color: #e5e7eb; }
+
+        .o_chatroom_payment_field .o_input,
+        .o_chatroom_payment_field input,
+        .o_chatroom_payment_field select {
+            border-color: #52606d;
+            background: #202936;
+            color: #f3f4f6;
+        }
+
+        .o_chatroom_payment_section {
+            border-color: #3b4654;
+            background: #202936;
+        }
+
+        .o_chatroom_payment_status {
+            border-color: #36536d;
+            background: #1c344b;
+            color: #c9e5ff;
+            .o_field_widget { color: #c9e5ff; }
+        }
+
+        .o_chatroom_payment_preview {
+            border-color: #574653;
+            background: #302431;
+            color: #f3e8f3;
+        }
     }
 }

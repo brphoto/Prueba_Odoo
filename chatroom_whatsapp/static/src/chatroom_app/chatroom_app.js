@@ -8,6 +8,15 @@ import { ChatroomThreadCore } from "../chatroom_thread/chatroom_thread_core";
 import { NewConversationDialog } from "./new_conversation_dialog";
 import { ContactPanel } from "./contact_panel";
 
+// Conversaciones por tanda en la bandeja. Antes se pedían 200 fijas y no
+// había forma de llegar a la 201: en cuentas con historial las más
+// antiguas eran inalcanzables desde la app.
+const CHANNEL_PAGE_SIZE = 40;
+// Orden de la bandeja: fijadas arriba, después favoritas y por último las
+// más recientes. Coincide con el _order del modelo, que la app se estaba
+// saltando al forzar el orden por fecha.
+const CHANNEL_ORDER = "is_pinned desc, is_favorite desc, last_message_date desc";
+
 const CONTACT_PANEL_STORAGE_KEY = "chatroom_whatsapp.contact_panel_open";
 
 const GLOBAL_BUS_CHANNEL = "chatroom_whatsapp_global";
@@ -107,7 +116,10 @@ export class ChatroomApp extends Component {
             // fuente evita que el encabezado se vea distinto a Apps.
             appLogoUrl: "/chatroom_whatsapp/static/description/icon.svg",
             selectedChannelIds: [],
+            hasMoreChannels: false,
+            loadingMoreChannels: false,
         });
+        this._channelLimit = CHANNEL_PAGE_SIZE;
 
         this._onBusNotification = this._onBusNotification.bind(this);
         this._onKeydown = this._onKeydown.bind(this);
@@ -254,27 +266,27 @@ export class ChatroomApp extends Component {
             // localStorage puede no estar disponible (modo privado, etc.):
             // el filtro sigue funcionando, solo no queda "pineado".
         }
-        this._loadChannels();
+        this._reloadFromFirstPage();
     }
 
     setFilter(value) {
         this.state.filter = value;
         this.state.selectedChannelIds = [];
-        this._loadChannels();
+        this._reloadFromFirstPage();
     }
 
     setStageFilter(value) {
         this.state.stageFilter = value;
         this._storeInboxFilters();
         this.state.selectedChannelIds = [];
-        this._loadChannels();
+        this._reloadFromFirstPage();
     }
 
     setChannelTypeFilter(value) {
         this.state.channelTypeFilter = value;
         this._storeInboxFilters();
         this.state.selectedChannelIds = [];
-        this._loadChannels();
+        this._reloadFromFirstPage();
     }
 
     clearInboxFilters() {
@@ -294,7 +306,7 @@ export class ChatroomApp extends Component {
         } catch {
             // La limpieza sigue funcionando durante la sesión.
         }
-        this._loadChannels();
+        this._reloadFromFirstPage();
     }
 
     hasActiveFilters() {
@@ -404,7 +416,7 @@ export class ChatroomApp extends Component {
 
     _debouncedReload() {
         clearTimeout(this._searchTimeout);
-        this._searchTimeout = setTimeout(() => this._loadChannels(), 300);
+        this._searchTimeout = setTimeout(() => this._reloadFromFirstPage(), 300);
     }
 
     _onBusNotification({ detail: notifications }) {
@@ -446,11 +458,19 @@ export class ChatroomApp extends Component {
         } else if (this.state.filter === "pending") {
             domain.push(["state", "=", "pending"]);
         } else if (this.state.filter === "urgent") {
-            // Estos dos indicadores dependen de la hora actual y no son
-            // campos almacenados. No se pueden enviar como dominio SQL;
-            // se filtran en _applyClientOnlyFilters después del searchRead.
+            // Urgente = marcada a mano, o con actividad vencida, o con el
+            // SLA de primera respuesta en rojo. Los dos últimos se
+            // calculan en vivo, pero ahora tienen método `search` en el
+            // modelo, así que el filtro lo resuelve Postgres y ya no se
+            // pierden conversaciones por el tope de la lista.
+            domain.push(
+                "|", "|",
+                ["manual_urgent", "=", true],
+                ["next_activity_overdue", "=", true],
+                ["first_response_sla_state", "=", "red"],
+            );
         } else if (this.state.filter === "sla") {
-            // El estado SLA se calcula en vivo y se filtra en el cliente.
+            domain.push(["first_response_sla_state", "in", ["yellow", "red"]]);
         } else if (this.state.filter === "unassigned") {
             domain.push(["assigned_user_id", "=", false]);
         } else if (this.state.filter === "pinned") {
@@ -484,52 +504,41 @@ export class ChatroomApp extends Component {
         return domain;
     }
 
-    _applyClientOnlyFilters(channels) {
-        if (this.state.filter === "sla") {
-            return channels.filter((channel) =>
-                channel.first_response_sla_state === "yellow"
-                || channel.first_response_sla_state === "red"
-            );
-        }
-        if (this.state.filter !== "urgent") {
-            return channels;
-        }
-        return channels.filter((channel) =>
-            channel.manual_urgent
-                || channel.next_activity_overdue
-                || channel.first_response_sla_state === "red"
-        );
+    /** Vuelve a la primera tanda: al cambiar filtro o búsqueda no tiene
+     *  sentido conservar las páginas extra que el usuario había abierto. */
+    _reloadFromFirstPage() {
+        this._channelLimit = CHANNEL_PAGE_SIZE;
+        return this._loadChannels();
     }
 
-    async _loadChannelsLegacy() {
-        this.state.loading = true;
-        const channels = await this.orm.searchRead(
-            "chatroom.channel", this._buildDomain(), CHANNEL_FIELDS,
-            { order: "last_message_date desc", limit: 200 });
-        this.state.channels = this._applyClientOnlyFilters(channels).map((c) => ({
-            ...c,
-            dateObj: odooDatetimeToDate(c.last_message_date),
-        }));
-        this.state.loading = false;
-        if (this.state.selectedChannelId
-                && !channels.some((c) => c.id === this.state.selectedChannelId)) {
-            // La conversación abierta ya no entra en el filtro activo (p.ej.
-            // se marcó como leída y el filtro es "No leídas"): no la cierro,
-            // solo dejo de resaltarla en la lista.
+    async loadMoreChannels() {
+        if (this.state.loadingMoreChannels || !this.state.hasMoreChannels) {
+            return;
         }
-    }
-
-    async _loadChannels() {
-        const generation = ++this._channelsLoadGeneration;
-        this.state.loading = true;
+        this.state.loadingMoreChannels = true;
+        this._channelLimit += CHANNEL_PAGE_SIZE;
         try {
+            await this._loadChannels({ keepSpinner: true });
+        } finally {
+            this.state.loadingMoreChannels = false;
+        }
+    }
+
+    async _loadChannels({ keepSpinner = false } = {}) {
+        const generation = ++this._channelsLoadGeneration;
+        if (!keepSpinner) {
+            this.state.loading = true;
+        }
+        try {
+            const limit = this._channelLimit;
             const channels = await this.orm.searchRead(
                 "chatroom.channel", this._buildDomain(), CHANNEL_FIELDS,
-                { order: "last_message_date desc", limit: 200 });
+                { order: CHANNEL_ORDER, limit });
             if (generation !== this._channelsLoadGeneration) {
                 return;
             }
-            this.state.channels = this._applyClientOnlyFilters(channels).map((c) => ({
+            this.state.hasMoreChannels = channels.length >= limit;
+            this.state.channels = channels.map((c) => ({
                 ...c,
                 dateObj: odooDatetimeToDate(c.last_message_date),
             }));
@@ -697,7 +706,10 @@ export class ChatroomApp extends Component {
     }
 
     onThreadMessagesLoaded() {
-        this._loadChannels();
+        // Refresca contadores de no leídos y vista previa, pero conserva
+        // las tandas ya cargadas: si no, abrir "Ver mensajes anteriores"
+        // en el hilo encogía la bandeja de la izquierda.
+        this._loadChannels({ keepSpinner: true });
     }
 
     channelIcon(channelType) {

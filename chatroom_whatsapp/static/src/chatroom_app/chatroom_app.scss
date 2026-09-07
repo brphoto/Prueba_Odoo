@@ -583,3 +583,17 @@
         box-shadow: -3px 0 14px rgba(0, 0, 0, 0.25);
     }
 }
+
+// Pie de la bandeja paginada: el botón vive dentro del scroll, después de
+// la última conversación cargada, como en cualquier lista "cargar más".
+.o_chatroom_app_list_more {
+    display: flex;
+    justify-content: center;
+    padding: 6px 0 14px;
+
+    .btn {
+        font-size: 12px;
+        text-decoration: none;
+        border-radius: 16px;
+    }
+}

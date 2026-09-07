@@ -225,8 +225,16 @@ class CrmLead(models.Model):
             ('stagnation_score', 'in', ('warning', 'critical', 'stagnant', 'dead')),
         ])
         notified = escalated = ai_tasks = 0
+        # Una consulta para todas las empresas involucradas, en vez de una
+        # busqueda de configuracion por cada oportunidad estancada.
+        # Se incluye la empresa del entorno en el mapa porque una
+        # oportunidad puede no tener empresa asignada (company_id vacio):
+        # `get_for_company` caia a `self.env.company` en ese caso y hay que
+        # conservar ese comportamiento.
+        configs = self.env['crm.stagnation.config'].get_for_companies(
+            leads.company_id | self.env.company)
         for lead in leads:
-            config = self.env['crm.stagnation.config'].get_for_company(lead.company_id)
+            config = configs[(lead.company_id or self.env.company).id]
             if lead._should_notify(config):
                 lead.message_post(
                     body=_('[CRM-SYSTEM] Oportunidad estancada: %(name)s. Nivel: %(level)s. Días en etapa: %(days)s. Capital atrapado: %(capital).2f. Próxima acción: %(action)s') % {
@@ -256,10 +264,15 @@ class CrmLead(models.Model):
 
     @api.constrains('stagnation_score', 'stagnation_reason')
     def _check_stagnation_reason(self):
+        if self.env.context.get('skip_stagnation_reason_check'):
+            return
+        configs = self.env['crm.stagnation.config'].get_for_companies(
+            self.company_id | self.env.company)
         for lead in self:
-            config = self.env['crm.stagnation.config'].get_for_company(lead.company_id)
-            if (not self.env.context.get('skip_stagnation_reason_check') and config.require_reason
-                    and lead.stagnation_score in ('critical', 'stagnant', 'dead') and not lead.stagnation_reason):
+            config = configs[(lead.company_id or self.env.company).id]
+            if (config.require_reason
+                    and lead.stagnation_score in ('critical', 'stagnant', 'dead')
+                    and not lead.stagnation_reason):
                 raise ValidationError(_('Debe especificar el motivo de estancamiento antes de continuar.'))
 
     def action_open_purge_wizard(self):

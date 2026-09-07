@@ -102,7 +102,11 @@ class SocialNetworkAdapter:
     @staticmethod
     def epoch_to_iso(value):
         """Convierte timestamps Unix de proveedores a ISO sin depender de Odoo."""
-        if value in (None, False, ''):
+        # OJO: `0 in (None, False, '')` es True en Python, porque
+        # `0 == False`. Con la comparacion por pertenencia, la epoca Unix 0
+        # (1970-01-01, un timestamp perfectamente valido que algunas APIs
+        # devuelven) se descartaba como "sin valor".
+        if value is None or value is False or value == '':
             return False
         try:
             return time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime(float(value)))

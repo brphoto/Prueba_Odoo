@@ -69,7 +69,7 @@ class ChatroomChannel(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Enviar Link de Pago'),
+            'name': _('Enviar enlace de pago'),
             'res_model': 'chatroom.payment.link.wizard',
             'view_mode': 'form',
             # Las acciones devueltas por orm.call no pasan por

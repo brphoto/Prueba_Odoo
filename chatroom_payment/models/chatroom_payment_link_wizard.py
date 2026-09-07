@@ -32,10 +32,10 @@ class ChatroomPaymentLinkWizard(models.TransientModel):
                 wizard.preview = _('Pedido %s · Importe: %s · Proveedor: %s') % (
                     wizard.sale_order_id.name, wizard.sale_order_id.amount_total, provider)
             elif wizard.product_id:
-                wizard.preview = _('Nuevo presupuesto · %s x %s · Proveedor: %s') % (
+                wizard.preview = _('Nuevo presupuesto: %s · Cantidad: %s · Proveedor: %s') % (
                     wizard.product_id.display_name, wizard.product_qty, provider)
             else:
-                wizard.preview = _('Selecciona un presupuesto existente o un producto.')
+                wizard.preview = _('El resumen aparecerá aquí cuando selecciones un presupuesto o un producto.')
 
     @api.depends('channel_id', 'sale_order_id', 'product_id', 'product_qty')
     def _compute_readiness(self):

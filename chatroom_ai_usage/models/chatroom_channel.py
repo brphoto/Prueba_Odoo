@@ -211,6 +211,7 @@ class ChatroomChannel(models.Model):
         if not candidates:
             raise UserError(_('Activa y configura la IA en Ajustes > Chatroom WhatsApp.'))
         last_error = False
+        error_details = []
         for index, (api_url, api_key, model) in enumerate(candidates):
             try:
                 response = self._meta_request(
@@ -222,12 +223,17 @@ class ChatroomChannel(models.Model):
                 if status >= 400:
                     last_error = self._ai_http_error_message(
                         status, model, api_url, response)
+                    error_details.append('%s: %s' % (model, last_error))
                     if status in (404, 408, 409, 429) or status >= 500:
                         if index < len(candidates) - 1:
                             _logger.warning(
                                 'Se activa el modelo de respaldo %s tras HTTP %s en %s.',
                                 candidates[index + 1][2], status, model)
                             continue
+                        # Conserva el diagnóstico de todos los modelos
+                        # probados para que el usuario vea también el modelo
+                        # principal que falló.
+                        break
                     raise UserError(last_error)
                 payload = response.json()
                 content = payload['choices'][0]['message']['content']
@@ -237,6 +243,7 @@ class ChatroomChannel(models.Model):
                 raise
             except (requests.RequestException, ValueError, TypeError, KeyError, IndexError) as exc:
                 last_error = str(exc)
+                error_details.append('%s: %s' % (model, last_error))
                 if index < len(candidates) - 1:
                     _logger.warning('Fallo de IA en %s; se probara %s.', model, candidates[index + 1][2])
                     continue
@@ -253,4 +260,8 @@ class ChatroomChannel(models.Model):
                     'success': True,
                 })
             return content.strip()
-        raise UserError(_('No se pudo obtener una respuesta de IA. Revisa el modelo principal y el respaldo. Detalle: %s') % (last_error or _('error desconocido')))
+        detail = ' | '.join(error_details) if error_details else last_error
+        raise UserError(_(
+            'No se pudo obtener una respuesta de IA. Revisa el modelo '
+            'principal y el respaldo. Detalle: %s') % (
+                detail or _('error desconocido')))

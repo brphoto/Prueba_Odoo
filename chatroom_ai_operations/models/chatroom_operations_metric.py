@@ -8,10 +8,10 @@ class ChatroomOperationsMetric(models.Model):
     _name = 'chatroom.operations.metric'
     _description = 'Indicadores comerciales diarios de Chatroom'
     _order = 'date desc, id desc'
-    _sql_constraints = [
-        ('date_company_unique', 'unique(date, company_id)',
-         'Ya existe un resumen para esta fecha y empresa.'),
-    ]
+    _date_company_unique = models.Constraint(
+        'unique(date, company_id)',
+        'Ya existe un resumen para esta fecha y empresa.',
+    )
 
     date = fields.Date(string='Fecha', required=True, index=True,
                        default=fields.Date.context_today)

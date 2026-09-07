@@ -119,17 +119,33 @@ class CoPayrollDianDocument(models.Model):
 
     @api.depends("period_id", "period_id.parameter_id", "period_line_id")
     def _compute_mapping_summary(self):
+        # El resultado solo depende del par (empresa, version legal), pero
+        # se buscaba una vez por documento. En una lista de nomina DIAN son
+        # cientos de documentos que comparten el mismo par: se resuelven
+        # todos los pares distintos en una sola consulta.
+        pairs = {
+            (document.company_id.id, document.period_id.parameter_id.id)
+            for document in self
+            if document.period_id and document.period_id.parameter_id
+        }
+        mapped_by_pair = {}
+        if pairs:
+            mappings = self.env["l10n.co.payroll.rule.mapping"].search([
+                ("company_id", "in", [pair[0] for pair in pairs]),
+                ("parameter_id", "in", [pair[1] for pair in pairs]),
+                ("active", "=", True),
+            ])
+            for mapping in mappings:
+                if not mapping.dian_concept:
+                    continue
+                key = (mapping.company_id.id, mapping.parameter_id.id)
+                mapped_by_pair[key] = mapped_by_pair.get(key, 0) + 1
         for document in self:
             if not document.period_id or not document.period_id.parameter_id:
                 document.mapping_summary = _("Sin versión legal")
                 continue
-            mappings = self.env["l10n.co.payroll.rule.mapping"].search([
-                ("company_id", "=", document.company_id.id),
-                ("parameter_id", "=", document.period_id.parameter_id.id),
-                ("active", "=", True),
-            ])
-            mapped = len(mappings.filtered("dian_concept"))
-            document.mapping_summary = _("%s reglas DIAN configuradas") % mapped
+            key = (document.company_id.id, document.period_id.parameter_id.id)
+            document.mapping_summary = _("%s reglas DIAN configuradas") % mapped_by_pair.get(key, 0)
 
     @api.depends("state", "preflight_state", "error_message", "status_message", "last_checked_at", "sent_at", "company_id.co_dian_pending_alert_hours")
     def _compute_attention(self):

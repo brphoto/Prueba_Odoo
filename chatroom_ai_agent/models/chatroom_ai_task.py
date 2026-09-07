@@ -145,13 +145,10 @@ class ChatroomAiTask(models.Model):
     _description = 'Tarea operativa del agente IA'
     _order = 'priority desc, create_date desc, id desc'
 
-    _sql_constraints = [
-        (
-            'orchestration_key_unique',
-            'unique(orchestration_key)',
-            'La clave de orquestaci\u00f3n ya fue procesada; se reutilizar\u00e1 la tarea existente.',
-        ),
-    ]
+    _orchestration_key_unique = models.Constraint(
+        'unique(orchestration_key)',
+        'La clave de orquestación ya fue procesada; se reutilizará la tarea existente.',
+    )
 
     name = fields.Char(string='Tarea', required=True, default=lambda self: _('Nueva tarea IA'), tracking=True)
     task_type = fields.Selection([

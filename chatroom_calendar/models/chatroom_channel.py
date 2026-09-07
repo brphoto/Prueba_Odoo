@@ -170,12 +170,34 @@ class ChatroomChannel(models.Model):
             [('partner_ids', 'in', self.partner_id.id)], order='start desc')
 
     def _compute_meeting_data(self):
+        # Antes cada conversacion lanzaba su propia busqueda de
+        # calendar.event y se traia TODAS las reuniones del contacto a
+        # memoria solo para contarlas. En la bandeja eso era una consulta
+        # por fila. Ahora son dos, para todos los contactos a la vez.
+        partner_ids = [ch.partner_id.id for ch in self if ch.partner_id]
+        counts = {}
+        next_dates = {}
+        if partner_ids:
+            Event = self.env['calendar.event']
+            for partner, count in Event._read_group(
+                    [('partner_ids', 'in', partner_ids)],
+                    ['partner_ids'], ['__count']):
+                counts[partner.id] = count
+            # La proxima reunion de cada contacto: se ordena ascendente y
+            # se queda la primera que aparece por contacto.
+            upcoming = Event.search(
+                [('partner_ids', 'in', partner_ids),
+                 ('start', '>=', fields.Datetime.now())],
+                order='start asc')
+            wanted = set(partner_ids)
+            for event in upcoming:
+                for partner in event.partner_ids:
+                    if partner.id in wanted:
+                        next_dates.setdefault(partner.id, event.start)
         for channel in self:
-            meetings = channel._get_meetings()
-            channel.meeting_count = len(meetings)
-            upcoming = meetings.filtered(
-                lambda m: m.start and m.start >= fields.Datetime.now()).sorted('start')
-            channel.next_meeting_date = upcoming[:1].start if upcoming else False
+            partner_id = channel.partner_id.id
+            channel.meeting_count = counts.get(partner_id, 0)
+            channel.next_meeting_date = next_dates.get(partner_id, False)
 
     def action_schedule_meeting(self):
         """Abre el formulario nativo de Calendario para agendar una

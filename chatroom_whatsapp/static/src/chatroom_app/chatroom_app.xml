@@ -245,6 +245,15 @@
                                 </div>
                             </div>
                         </t>
+                        <div t-if="state.hasMoreChannels" class="o_chatroom_app_list_more">
+                            <button type="button" class="btn btn-sm btn-link"
+                                    t-att-disabled="state.loadingMoreChannels"
+                                    t-on-click="loadMoreChannels">
+                                <i t-if="state.loadingMoreChannels" class="fa fa-spin fa-circle-o-notch me-1"/>
+                                <i t-else="" class="fa fa-angle-down me-1"/>
+                                Cargar más conversaciones
+                            </button>
+                        </div>
                     </t>
                 </div>
             </div>

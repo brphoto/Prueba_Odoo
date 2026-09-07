@@ -15,11 +15,19 @@ class ResPartner(models.Model):
         string='Eventos programados', compute='_compute_engagement_event_count')
 
     def _compute_engagement_event_count(self):
-        Event = self.env['crm.engagement.event']
+        # Una consulta agrupada para toda la pagina de contactos, en vez de
+        # un search_count por contacto: res.partner es un modelo que se
+        # lista de a 80 registros y este contador se pintaba en cada fila.
+        counts = {}
+        if self.ids:
+            counts = {
+                partner.id: count
+                for partner, count in self.env['crm.engagement.event']._read_group(
+                    [('partner_id', 'in', self.ids), ('active', '=', True)],
+                    ['partner_id'], ['__count'])
+            }
         for partner in self:
-            partner.engagement_event_count = Event.search_count([
-                ('partner_id', '=', partner.id), ('active', '=', True),
-            ])
+            partner.engagement_event_count = counts.get(partner.id, 0)
 
     def action_open_engagement_events(self):
         self.ensure_one()

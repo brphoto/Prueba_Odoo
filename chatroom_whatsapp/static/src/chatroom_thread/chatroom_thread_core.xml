@@ -177,12 +177,17 @@
                 </button>
                 <div t-if="state.messageSearchOpen" class="o_chatroom_message_search">
                     <input type="search" class="form-control form-control-sm"
-                           placeholder="Buscar mensajes..." t-model="state.messageSearch"/>
+                           placeholder="Buscar en toda la conversación..."
+                           t-model="state.messageSearch" t-on-input="onMessageSearchInput"/>
                     <button t-if="state.messageSearch" type="button" class="btn btn-sm btn-link"
                             title="Limpiar búsqueda" t-on-click="clearMessageSearch">
                         <i class="fa fa-times"/>
                     </button>
-                    <span t-if="state.messageSearch" class="text-muted small">
+                    <span t-if="state.messageSearchLoading" class="text-muted small">
+                        <i class="fa fa-spin fa-circle-o-notch"/>
+                    </span>
+                    <span t-elif="state.messageSearch" class="text-muted small"
+                          t-attf-title="{{ messageSearchCount }} coincidencia(s)">
                         <t t-esc="messageSearchCount"/>
                     </span>
                 </div>
@@ -205,6 +210,16 @@
                     </div>
                 </t>
                 <t t-else="">
+                    <div t-if="state.hasMoreMessages and !state.messageSearchResults"
+                         class="o_chatroom_load_older">
+                        <button type="button" class="btn btn-sm btn-link"
+                                t-att-disabled="state.loadingOlder"
+                                t-on-click="loadOlderMessages">
+                            <i t-if="state.loadingOlder" class="fa fa-spin fa-circle-o-notch me-1"/>
+                            <i t-else="" class="fa fa-history me-1"/>
+                            Ver mensajes anteriores
+                        </button>
+                    </div>
                     <t t-foreach="visibleMessages" t-as="message" t-key="message.id">
                         <div class="o_chatroom_date_separator" t-if="isNewDay(message_index, visibleMessages)">
                             <span t-esc="dateSeparatorLabel(message.dateObj)"/>
@@ -442,6 +457,11 @@
                                 t-on-click="toggleRecording">
                             <i class="fa fa-microphone"/>
                         </button>
+                        <span t-if="!state.noteMode and bodyLimitLabel"
+                              t-attf-class="o_chatroom_body_counter {{ bodyTooLong ? 'o_over_limit' : '' }}"
+                              title="Límite de caracteres de un mensaje de WhatsApp">
+                            <t t-esc="bodyLimitLabel"/>
+                        </span>
                         <button t-attf-class="btn o_chatroom_send_btn {{ state.noteMode ? 'btn-warning' : 'btn-primary' }}"
                                 t-att-disabled="state.sending"
                                 t-on-click="send">

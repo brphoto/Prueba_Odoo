@@ -78,7 +78,11 @@ class ChatroomOperationsPlaybook(models.Model):
         if self.trigger == 'post_sale':
             return Channel.search([('company_id', '=', self.company_id.id), ('ai_sales_status', '=', 'post_sale')], limit=limit) if 'ai_sales_status' in Channel._fields else Channel.browse()
         if self.trigger == 'birthday' and 'birthday' in self.env['res.partner']._fields:
-            today = fields.Date.today()
+            # `fields.Date.today()` es la fecha en UTC. En una zona atrasada
+            # respecto de UTC (America, por ejemplo) despues de las 19:00
+            # locales ya devuelve el dia siguiente: el playbook de cumpleanos
+            # felicitaba un dia antes y no felicitaba el dia correcto.
+            today = fields.Date.context_today(self)
             return Channel.search([('company_id', '=', self.company_id.id), ('partner_id.birthday', '!=', False), ('partner_id.birthday', 'like', today.strftime('-%m-%d'))], limit=limit)
         return Channel.browse()
 
@@ -95,7 +99,7 @@ class ChatroomOperationsPlaybook(models.Model):
             'partner_id': channel.partner_id.id,
             'res_model': 'chatroom.channel',
             'res_id': channel.id,
-            'dedupe_key': 'playbook:%s:%s:%s' % (self.id, channel.id, fields.Date.today()),
+            'dedupe_key': 'playbook:%s:%s:%s' % (self.id, channel.id, fields.Date.context_today(self)),
         })
 
     def _execute_channel(self, channel):

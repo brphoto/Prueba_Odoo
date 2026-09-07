@@ -52,9 +52,14 @@ class CrmEngagementAutomation(models.Model):
         execution_model = self.env['crm.engagement.execution'].sudo()
         counts = {}
         if self.ids:
-            grouped = execution_model.read_group(
-                [('automation_id', 'in', self.ids)], ['automation_id'], ['automation_id'])
-            counts = {row['automation_id'][0]: row['automation_id_count'] for row in grouped if row.get('automation_id')}
+            # `read_group` esta marcado como deprecado en Odoo 19; `_read_group`
+            # devuelve directamente el recordset agrupado y su conteo.
+            counts = {
+                automation.id: count
+                for automation, count in execution_model._read_group(
+                    [('automation_id', 'in', self.ids)], ['automation_id'], ['__count'])
+                if automation
+            }
         for automation in self:
             automation.execution_count = counts.get(automation.id, 0)
 

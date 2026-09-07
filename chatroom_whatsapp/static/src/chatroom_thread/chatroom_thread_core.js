@@ -31,6 +31,30 @@ const MESSAGE_FIELDS = [
     "partner_reaction",
 ];
 
+// Cuántos mensajes se traen de golpe. Una conversación de meses puede
+// tener miles: cargarlos todos en cada refresco (y hay refresco en cada
+// envío y en cada sondeo) hacía que el hilo tardara segundos en abrir.
+// Se muestran los últimos y el resto se pide bajo demanda.
+const MESSAGE_PAGE_SIZE = 60;
+
+// Cadencias del sondeo de respaldo (ver _pollActiveThread).
+const POLL_ACTIVE_MS = 2500;
+const POLL_IDLE_MS = 15000;
+const POLL_BUS_ALIVE_MS = 30000;
+const IDLE_AFTER_MS = 120000;
+
+// Limite de la Cloud API de Meta para el cuerpo de un mensaje de texto.
+// Pasarse devuelve un error generico del proveedor que no le dice nada al
+// agente, asi que se avisa antes de intentar el envio.
+const WHATSAPP_BODY_LIMIT = 4096;
+// A partir de aqui se muestra el contador de caracteres.
+const BODY_COUNTER_FROM = 3800;
+
+// Borradores por conversacion. Un agente que esta escribiendo y salta a
+// otro chat (algo constante en una bandeja con volumen) perdia el texto
+// sin aviso: al volver, el compositor aparecia vacio.
+const DRAFTS_STORAGE_KEY = "chatroom_whatsapp.composer_drafts";
+
 const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
 function odooDatetimeToDate(value) {
@@ -79,6 +103,17 @@ export class ChatroomThreadCore extends Component {
         this._realtimePollTimer = false;
         this._realtimePollInFlight = false;
         this._realtimeLatestMessageId = false;
+        this._messageLimit = MESSAGE_PAGE_SIZE;
+        this._searchTimer = false;
+        this._lastRealtimeChange = Date.now();
+        this._lastPollAt = 0;
+        this._lastBusEventAt = 0;
+        this._drafts = this._readStoredDrafts();
+        // A que conversacion pertenece el texto que hay ahora mismo en el
+        // compositor. No sirve `_loadedChannelId`: onWillUpdateProps ya lo
+        // apunta al chat NUEVO antes de llamar a _loadForCurrentRecord, asi
+        // que guardar con el se llevaria el borrador al chat equivocado.
+        this._composerChannelId = false;
 
         this.state = useState({
             loading: true,
@@ -126,7 +161,11 @@ export class ChatroomThreadCore extends Component {
             manualUrgent: false,
             messageSearchOpen: false,
             messageSearch: "",
+            messageSearchResults: false,
+            messageSearchLoading: false,
             newMessages: 0,
+            hasMoreMessages: false,
+            loadingOlder: false,
         });
 
         this._shouldScroll = true;
@@ -181,6 +220,8 @@ export class ChatroomThreadCore extends Component {
             this._unsubscribeBus();
             this._stopMediaStream();
             clearInterval(this._recordingInterval);
+            clearTimeout(this._searchTimer);
+            this._storeDraft(this._composerChannelId, this.state.composerText);
         });
     }
 
@@ -188,7 +229,52 @@ export class ChatroomThreadCore extends Component {
         return this.props.channelId;
     }
 
+    _readStoredDrafts() {
+        try {
+            return JSON.parse(localStorage.getItem(DRAFTS_STORAGE_KEY) || "{}") || {};
+        } catch {
+            return {};  // modo privado o almacenamiento bloqueado
+        }
+    }
+
+    _storeDraft(channelId, text) {
+        if (!channelId) {
+            return;
+        }
+        const value = (text || "").trim();
+        if (value) {
+            this._drafts[channelId] = text;
+        } else {
+            delete this._drafts[channelId];
+        }
+        try {
+            localStorage.setItem(DRAFTS_STORAGE_KEY, JSON.stringify(this._drafts));
+        } catch {
+            // Sin persistencia el borrador sigue vivo en memoria durante
+            // la sesion, que es el caso que de verdad importa.
+        }
+    }
+
+    get bodyLength() {
+        return (this.state.composerText || "").length;
+    }
+
+    get bodyLimitLabel() {
+        return this.bodyLength >= BODY_COUNTER_FROM
+            ? `${this.bodyLength} / ${WHATSAPP_BODY_LIMIT}` : "";
+    }
+
+    get bodyTooLong() {
+        return this.bodyLength > WHATSAPP_BODY_LIMIT;
+    }
+
     get visibleMessages() {
+        // Con el historial paginado, filtrar solo lo que está en pantalla
+        // daría "no se encontraron mensajes" para algo que sí existe más
+        // arriba: cuando hay búsqueda, manda el resultado del servidor.
+        if (this.state.messageSearchResults) {
+            return this.state.messageSearchResults;
+        }
         const query = (this.state.messageSearch || "").trim().toLowerCase();
         if (!query) {
             return this.state.messages;
@@ -206,12 +292,65 @@ export class ChatroomThreadCore extends Component {
     toggleMessageSearch() {
         this.state.messageSearchOpen = !this.state.messageSearchOpen;
         if (!this.state.messageSearchOpen) {
-            this.state.messageSearch = "";
+            this.clearMessageSearch();
         }
     }
 
     clearMessageSearch() {
+        clearTimeout(this._searchTimer);
         this.state.messageSearch = "";
+        this.state.messageSearchResults = false;
+        this.state.messageSearchLoading = false;
+    }
+
+    onMessageSearchInput() {
+        clearTimeout(this._searchTimer);
+        const query = (this.state.messageSearch || "").trim();
+        if (query.length < 2) {
+            this.state.messageSearchResults = false;
+            this.state.messageSearchLoading = false;
+            return;
+        }
+        this.state.messageSearchLoading = true;
+        this._searchTimer = setTimeout(() => this._runMessageSearch(query), 300);
+    }
+
+    async _runMessageSearch(query) {
+        const channelId = this.channelId;
+        if (!channelId) {
+            return;
+        }
+        const rows = await this.orm.searchRead(
+            "chatroom.message",
+            [["channel_id", "=", channelId], ["body", "ilike", query]],
+            MESSAGE_FIELDS,
+            { order: "date desc, id desc", limit: 200 }
+        );
+        if (channelId !== this.channelId
+                || (this.state.messageSearch || "").trim() !== query) {
+            return;  // el usuario siguió escribiendo o cambió de conversación
+        }
+        this.state.messageSearchResults = rows
+            .map((message) => ({
+                ...message,
+                dateObj: odooDatetimeToDate(message.date),
+                attachments: [],
+            }))
+            .reverse();
+        this.state.messageSearchLoading = false;
+    }
+
+    async loadOlderMessages() {
+        if (this.state.loadingOlder || !this.state.hasMoreMessages) {
+            return;
+        }
+        this.state.loadingOlder = true;
+        this._messageLimit += MESSAGE_PAGE_SIZE;
+        try {
+            await this._loadMessages(this.channelId, { keepScroll: true });
+        } finally {
+            this.state.loadingOlder = false;
+        }
     }
 
     onMessagesScroll() {
@@ -256,6 +395,10 @@ export class ChatroomThreadCore extends Component {
     }
 
     async _loadForCurrentRecord(channelId = this.channelId) {
+        // El borrador del chat que se esta dejando se guarda ANTES de
+        // limpiar el compositor; el del chat que se abre se restaura mas
+        // abajo, una vez que this.channelId ya apunta al nuevo.
+        this._storeDraft(this._composerChannelId, this.state.composerText);
         this._unsubscribeBus();
         this.state.composerText = "";
         this.state.pendingAttachments = [];
@@ -271,12 +414,19 @@ export class ChatroomThreadCore extends Component {
         this.state.messageSearch = "";
         this.state.newMessages = 0;
         this.state.messages = [];
+        this.state.messageSearchResults = false;
+        this.state.hasMoreMessages = false;
+        this._messageLimit = MESSAGE_PAGE_SIZE;
+        this._lastRealtimeChange = Date.now();
         if (!channelId) {
+            this._composerChannelId = false;
             this.state.loading = false;
             this.state.messages = [];
             this.state.scheduledMessages = [];
             return;
         }
+        this.state.composerText = this._drafts[channelId] || "";
+        this._composerChannelId = channelId;
         this.state.loading = true;
         this._subscribeBus(channelId);
         await Promise.all([
@@ -288,6 +438,7 @@ export class ChatroomThreadCore extends Component {
     }
 
     _onBusNotification({ detail: notifications }) {
+        this._lastBusEventAt = Date.now();
         const currentChannelId = Number(this.channelId);
         const hasCurrentChannelUpdate = notifications.some(({ type, payload }) =>
             (type === "chatroom.message/new" || type === "chatroom.message/inbound")
@@ -622,22 +773,29 @@ export class ChatroomThreadCore extends Component {
         });
     }
 
-    async _loadMessages(channelId = this.channelId) {
+    async _loadMessages(channelId = this.channelId, { keepScroll = false } = {}) {
         if (!channelId) {
             this.state.loading = false;
             return;
         }
         const previousCount = this.state.messages.length;
-        const wasNearBottom = this._isNearBottom() || !previousCount;
-        const [messages, notes] = await Promise.all([
+        const wasNearBottom = keepScroll ? false : (this._isNearBottom() || !previousCount);
+        // Se piden los MÁS RECIENTES (date desc + limit) y se invierten,
+        // que es lo que el usuario ve al abrir el chat; "Ver anteriores"
+        // sube el límite. Traer el historial completo en cada refresco es
+        // lo que volvía lento el hilo en conversaciones largas.
+        const limit = this._messageLimit;
+        const [recentMessages, notes] = await Promise.all([
             this.orm.searchRead(
                 "chatroom.message",
                 [["channel_id", "=", channelId]],
                 MESSAGE_FIELDS,
-                { order: "date asc" }
+                { order: "date desc, id desc", limit }
             ),
             this.orm.call("chatroom.channel", "get_internal_notes", [channelId]),
         ]);
+        this.state.hasMoreMessages = recentMessages.length >= limit;
+        const messages = recentMessages.slice().reverse();
         const attachmentIds = [...new Set(messages.flatMap((m) => m.attachment_ids))];
         let attachmentsById = {};
         if (attachmentIds.length) {
@@ -652,18 +810,26 @@ export class ChatroomThreadCore extends Component {
             dateObj: odooDatetimeToDate(m.date),
             attachments: m.attachment_ids.map((id) => attachmentsById[id]).filter(Boolean),
         }));
-        const noteItems = notes.map((n) => ({
-            ...n,
-            isNote: true,
-            dateObj: odooDatetimeToDate(n.date),
-            attachments: [],
-        }));
+        // Las notas internas se traen enteras (suelen ser pocas), pero con
+        // el historial paginado hay que recortarlas al mismo tramo: si no,
+        // una nota de hace seis meses aparecería arriba del todo, encima
+        // del botón "Ver mensajes anteriores" y fuera de contexto.
+        const oldestLoaded = messageItems.length ? messageItems[0].dateObj : false;
+        const noteItems = notes
+            .map((n) => ({
+                ...n,
+                isNote: true,
+                dateObj: odooDatetimeToDate(n.date),
+                attachments: [],
+            }))
+            .filter((n) => !oldestLoaded || !n.dateObj || n.dateObj >= oldestLoaded);
         this.state.messages = [...messageItems, ...noteItems].sort(
             (a, b) => (a.dateObj || 0) - (b.dateObj || 0));
         this._realtimeLatestMessageId = messages.length
             ? messages[messages.length - 1].id : false;
         this.state.loading = false;
-        const addedMessages = Math.max(this.state.messages.length - previousCount, 0);
+        const addedMessages = keepScroll
+            ? 0 : Math.max(this.state.messages.length - previousCount, 0);
         this.state.newMessages = wasNearBottom ? 0 : this.state.newMessages + addedMessages;
         this._shouldScroll = wasNearBottom;
 
@@ -676,10 +842,34 @@ export class ChatroomThreadCore extends Component {
         }
     }
 
+    _pollCadence() {
+        // El sondeo existe solo porque algunos túneles/proxies cortan el
+        // WebSocket del bus. Si el bus está entregando eventos, o la
+        // pestaña está en segundo plano, o hace rato que no pasa nada, no
+        // tiene sentido preguntar cada 2,5 s: son ~1.400 consultas por
+        // hora y por agente con la pestaña abierta sin usarse.
+        const now = Date.now();
+        if (now - this._lastBusEventAt < IDLE_AFTER_MS) {
+            return POLL_BUS_ALIVE_MS;
+        }
+        if (now - this._lastRealtimeChange > IDLE_AFTER_MS) {
+            return POLL_IDLE_MS;
+        }
+        return POLL_ACTIVE_MS;
+    }
+
     async _pollActiveThread() {
         if (!this.channelId || this.state.loading || this._realtimePollInFlight) {
             return;
         }
+        if (typeof document !== "undefined" && document.hidden) {
+            return;  // pestaña en segundo plano: el bus/recarga al volver alcanza
+        }
+        const now = Date.now();
+        if (now - this._lastPollAt < this._pollCadence()) {
+            return;
+        }
+        this._lastPollAt = now;
         this._realtimePollInFlight = true;
         const channelId = this.channelId;
         try {
@@ -692,6 +882,7 @@ export class ChatroomThreadCore extends Component {
             const latestId = latest.length ? latest[0].id : false;
             if (channelId === this.channelId
                     && latestId !== this._realtimeLatestMessageId) {
+                this._lastRealtimeChange = Date.now();
                 await this._refreshCurrentThread();
             }
         } finally {
@@ -847,6 +1038,7 @@ export class ChatroomThreadCore extends Component {
                 "chatroom.channel", "action_schedule_message", [this.channelId],
                 { body, scheduled_date: this._localDatetimeToOdoo(this.state.scheduleDate) });
             this.state.composerText = "";
+            this._storeDraft(this._composerChannelId, "");
             this.state.scheduleOpen = false;
             this.state.scheduleDate = "";
             await this._loadScheduledMessages();
@@ -1229,6 +1421,17 @@ export class ChatroomThreadCore extends Component {
             return;
         }
         const body = this.state.composerText.trim();
+        // Meta rechaza los textos de mas de 4096 caracteres con un error
+        // generico ("(#131009) Parameter value is not valid") que no le
+        // dice al agente que su mensaje era demasiado largo. Las notas
+        // internas no salen a WhatsApp, asi que no aplica el limite.
+        if (!this.state.noteMode && body.length > WHATSAPP_BODY_LIMIT) {
+            this.notification.add(
+                `El mensaje tiene ${body.length} caracteres y WhatsApp admite `
+                + `${WHATSAPP_BODY_LIMIT}. Recortalo o mandalo en dos partes.`,
+                { type: "warning" });
+            return;
+        }
         if (this.state.noteMode) {
             if (!body) {
                 return;
@@ -1238,6 +1441,7 @@ export class ChatroomThreadCore extends Component {
                 await this.orm.call(
                     "chatroom.channel", "action_post_internal_note", [this.channelId], { body });
                 this.state.composerText = "";
+                this._storeDraft(this._composerChannelId, "");
                 this.state.noteMode = false;
                 await this._loadMessages();
             } catch (error) {
@@ -1280,6 +1484,7 @@ export class ChatroomThreadCore extends Component {
                 });
             }
             this.state.composerText = "";
+            this._storeDraft(this._composerChannelId, "");
             this.state.pendingAttachments = [];
             this.state.replyingTo = false;
             await this._loadMessages();

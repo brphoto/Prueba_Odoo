@@ -191,14 +191,34 @@ class CoPayrollDianPayslip(models.Model):
     def _compute_co_dian_status(self):
         period_line_model = self.env["l10n.co.payroll.period.line"]
         document_model = self.env["l10n.co.payroll.dian.document"]
-        for slip in self:
-            lines = period_line_model.search([
-                ("source_payslip_ids", "in", slip.id),
+        # Antes eran dos consultas por nomina. Un periodo con 300 empleados
+        # abria la lista con 600 consultas. Ahora son dos para todo el lote.
+        slip_ids = [slip.id for slip in self._origin if slip.id]
+        lines_by_slip = {}
+        docs_by_line = {}
+        if slip_ids:
+            all_lines = period_line_model.search([
+                ("source_payslip_ids", "in", slip_ids),
             ])
-            documents = document_model.search([
-                ("period_line_id", "in", lines.ids),
-                ("is_adjustment", "=", False),
-            ], order="id desc") if lines else document_model
+            for line in all_lines:
+                for source_id in line.source_payslip_ids.ids:
+                    lines_by_slip.setdefault(source_id, []).append(line.id)
+            if all_lines:
+                for document in document_model.search([
+                    ("period_line_id", "in", all_lines.ids),
+                    ("is_adjustment", "=", False),
+                ]):
+                    docs_by_line.setdefault(
+                        document.period_line_id.id, []).append(document.id)
+        for slip in self:
+            # `order="id desc"` del search original se reproduce ordenando
+            # los ids ya reunidos: el primero sigue siendo el mas reciente.
+            document_ids = sorted({
+                document_id
+                for line_id in lines_by_slip.get(slip._origin.id, [])
+                for document_id in docs_by_line.get(line_id, [])
+            }, reverse=True)
+            documents = document_model.browse(document_ids)
             slip.co_dian_document_ids = documents
             document = documents[:1]
             slip.co_dian_document_id = document.id if document else False

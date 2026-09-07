@@ -4,12 +4,16 @@ import json
 import logging
 import mimetypes
 import re
+import string
+import time
+import unicodedata
 from datetime import timedelta
 
+from psycopg2 import errors as pg_errors
 import pytz
 import requests
 
-from odoo import _, api, fields, models, tools
+from odoo import _, api, fields, models, modules, tools
 from odoo.exceptions import AccessError, UserError
 from odoo.http import request
 
@@ -29,6 +33,10 @@ MESSAGE_TYPE_PREVIEW = {
 
 # Umbral de SLA de primera respuesta: minutos desde el primer mensaje del
 # cliente hasta la primera respuesta de un agente en esa conversación.
+# Signos que se recortan al comparar un mensaje con las palabras clave
+# de baja/alta ('STOP.', '!BAJA!', 'Baja ' deben contar como la palabra).
+KEYWORD_STRIP_CHARS = string.punctuation + string.whitespace + chr(161) + chr(191)
+
 SLA_FIRST_RESPONSE_YELLOW_MINUTES = 10
 SLA_FIRST_RESPONSE_RED_MINUTES = 15
 
@@ -152,13 +160,15 @@ class ChatroomChannel(models.Model):
          ('green', "A tiempo"),
          ('yellow', "Por vencer"),
          ('red', "Vencido")],
-        compute='_compute_first_response_sla', string="SLA 1ra respuesta")
+        compute='_compute_first_response_sla', search='_search_first_response_sla_state',
+        string="SLA 1ra respuesta")
     next_activity_id = fields.Integer(compute='_compute_next_activity')
     next_activity_summary = fields.Char(
         string="Resumen de próxima actividad",
         compute='_compute_next_activity')
     next_activity_date_deadline = fields.Date(compute='_compute_next_activity')
-    next_activity_overdue = fields.Boolean(compute='_compute_next_activity')
+    next_activity_overdue = fields.Boolean(
+        compute='_compute_next_activity', search='_search_next_activity_overdue')
     next_activity_user_id = fields.Many2one(
         'res.users', compute='_compute_next_activity')
     sla_breach_notified = fields.Boolean(
@@ -173,6 +183,80 @@ class ChatroomChannel(models.Model):
         help="Hay una encuesta de satisfacción mandada esperando "
              "respuesta del cliente.")
     csat_answered_at = fields.Datetime(copy=False)
+
+    # ------------------------------------------------------------------
+    # Agregados de mensajes en lote
+    # ------------------------------------------------------------------
+    # Varios campos calculados (contadores, ventana de 24h, semáforo de
+    # SLA) solo necesitan "la fecha del primer/último mensaje entrante o
+    # saliente". Leerlos recorriendo `rec.message_ids` obliga a cargar en
+    # memoria TODOS los mensajes de TODAS las conversaciones visibles: en
+    # una lista de 80 conversaciones con historial largo eso son decenas
+    # de miles de registros por pintar la vista. Estas dos consultas
+    # agregadas devuelven lo mismo en tiempo constante.
+
+    def _message_aggregates(self):
+        """{channel_id: dict} con fechas y contadores de sus mensajes."""
+        ids = [rec.id for rec in self._origin if rec.id]
+        if not ids:
+            return {}
+        self.env['chatroom.message'].flush_model(
+            ['channel_id', 'direction', 'state', 'date', 'body', 'message_type'])
+        self.env.cr.execute("""
+            SELECT channel_id,
+                   COUNT(*) AS total,
+                   COUNT(*) FILTER (
+                       WHERE direction = 'inbound' AND state != 'read') AS unread,
+                   MIN(date) FILTER (WHERE direction = 'inbound') AS first_in,
+                   MAX(date) FILTER (WHERE direction = 'inbound') AS last_in,
+                   MAX(date) FILTER (WHERE direction = 'outbound') AS last_out
+              FROM chatroom_message
+             WHERE channel_id IN %s
+          GROUP BY channel_id
+        """, (tuple(ids),))
+        result = {
+            row[0]: {
+                'total': row[1], 'unread': row[2],
+                'first_in': row[3], 'last_in': row[4], 'last_out': row[5],
+                'preview_body': '', 'preview_type': 'text',
+            }
+            for row in self.env.cr.fetchall()
+        }
+        # Último mensaje de cada conversación para la vista previa del
+        # kanban/sidebar: DISTINCT ON evita una consulta por conversación.
+        self.env.cr.execute("""
+            SELECT DISTINCT ON (channel_id) channel_id, body, message_type
+              FROM chatroom_message
+             WHERE channel_id IN %s
+          ORDER BY channel_id, date DESC, id DESC
+        """, (tuple(ids),))
+        for channel_id, body, message_type in self.env.cr.fetchall():
+            if channel_id in result:
+                result[channel_id]['preview_body'] = body or ''
+                result[channel_id]['preview_type'] = message_type or 'text'
+        return result
+
+    def _first_outbound_after_inbound(self):
+        """{channel_id: fecha} de la primera respuesta posterior al primer
+        mensaje del cliente (base del tiempo de primera respuesta)."""
+        ids = [rec.id for rec in self._origin if rec.id]
+        if not ids:
+            return {}
+        self.env['chatroom.message'].flush_model(
+            ['channel_id', 'direction', 'date'])
+        self.env.cr.execute("""
+            SELECT outbound.channel_id, MIN(outbound.date)
+              FROM chatroom_message outbound
+              JOIN (SELECT channel_id, MIN(date) AS first_in
+                      FROM chatroom_message
+                     WHERE channel_id IN %s AND direction = 'inbound'
+                  GROUP BY channel_id) inbound
+                ON inbound.channel_id = outbound.channel_id
+             WHERE outbound.direction = 'outbound'
+               AND outbound.date > inbound.first_in
+          GROUP BY outbound.channel_id
+        """, (tuple(ids),))
+        return dict(self.env.cr.fetchall())
 
     @api.depends('cart_line_ids.quantity', 'cart_line_ids.price_unit')
     def _compute_cart_total(self):
@@ -223,17 +307,16 @@ class ChatroomChannel(models.Model):
         mostrar)."""
         enabled, yellow_limit, red_limit = self._sla_settings()
         now = fields.Datetime.now()
+        stats = self._message_aggregates()
         for rec in self:
-            first_inbound = rec.message_ids.filtered(lambda m: m.direction == 'inbound').sorted('date')[:1]
-            if not first_inbound:
+            data = stats.get(rec._origin.id) or {}
+            first_inbound_date = data.get('first_in')
+            if not first_inbound_date:
                 rec.pending_response_minutes = 0
                 rec.first_response_sla_state = 'none'
                 continue
-            first_inbound_date = first_inbound.date
-            first_outbound = rec.message_ids.filtered(
-                lambda m: m.direction == 'outbound' and m.date >= first_inbound_date
-            ).sorted('date')[:1]
-            if first_outbound:
+            last_outbound_date = data.get('last_out')
+            if last_outbound_date and last_outbound_date >= first_inbound_date:
                 rec.pending_response_minutes = 0
                 rec.first_response_sla_state = 'green'
                 continue
@@ -247,6 +330,84 @@ class ChatroomChannel(models.Model):
                 rec.first_response_sla_state = 'yellow'
             else:
                 rec.first_response_sla_state = 'red'
+
+    def _search_first_response_sla_state(self, operator, value):
+        """Permite filtrar por el semáforo de SLA desde un dominio.
+
+        Sin esto la bandeja tenía que traerse las conversaciones y
+        descartarlas en el navegador: con el tope de 200 registros el
+        filtro "SLA en riesgo" escondía conversaciones vencidas que
+        estaban más abajo en la lista. Ahora filtra Postgres."""
+        enabled, yellow_limit, red_limit = self._sla_settings()
+        # Odoo normaliza el valor de un operador 'in' a un OrderedSet, que
+        # NO es subclase de set: comprobar isinstance(value, set) daba
+        # False y terminaba comparando cada estado contra una lista que
+        # contenia el conjunto entero, asi que el filtro no encontraba
+        # nunca nada. Se distingue por "es una cadena", no por el tipo del
+        # contenedor.
+        wanted = [value] if isinstance(value, str) else list(value or [])
+        negate = operator in ('!=', 'not in')
+        self.env['chatroom.message'].flush_model(
+            ['channel_id', 'direction', 'date'])
+        self.env.cr.execute("""
+            SELECT channel_id,
+                   MIN(date) FILTER (WHERE direction = 'inbound') AS first_in,
+                   MAX(date) FILTER (WHERE direction = 'outbound') AS last_out
+              FROM chatroom_message
+          GROUP BY channel_id
+        """)
+        now = fields.Datetime.now()
+        states = {}
+        for channel_id, first_in, last_out in self.env.cr.fetchall():
+            if not first_in:
+                states[channel_id] = 'none'
+            elif last_out and last_out >= first_in:
+                states[channel_id] = 'green'
+            elif not enabled:
+                states[channel_id] = 'none'
+            else:
+                minutes = int((now - first_in).total_seconds() / 60)
+                states[channel_id] = (
+                    'green' if minutes < yellow_limit
+                    else 'yellow' if minutes < red_limit
+                    else 'red')
+        matching = [
+            channel_id for channel_id, state in states.items()
+            if (state in wanted) != negate
+        ]
+        if 'none' in wanted and not negate:
+            # Las conversaciones sin ningún mensaje no aparecen en el
+            # agregado, pero su estado sí es "sin mensajes del cliente".
+            return ['|', ('id', 'in', matching), ('id', 'not in', list(states))]
+        return [('id', 'in', matching)]
+
+    def _search_next_activity_overdue(self, operator, value):
+        """Filtra por 'tiene una actividad vencida' (usado por la vista de
+        urgentes), resolviendo en una sola pasada las actividades del
+        contacto y las de sus oportunidades de CRM."""
+        today = fields.Date.context_today(self)
+        Activity = self.env['mail.activity']
+        overdue = Activity.search([('date_deadline', '<', today)])
+        partner_ids = {
+            activity.res_id for activity in overdue
+            if activity.res_model == 'res.partner'
+        }
+        lead_ids = [
+            activity.res_id for activity in overdue
+            if activity.res_model == 'crm.lead'
+        ]
+        if lead_ids and 'crm.lead' in self.env:
+            partner_ids |= set(
+                self.env['crm.lead'].browse(lead_ids).exists().mapped('partner_id').ids)
+        # Igual que en el SLA: Odoo normaliza '=' a 'in' con un OrderedSet,
+        # y un OrderedSet([False]) es "verdadero" por tener un elemento.
+        # Hay que mirar el contenido, no el contenedor.
+        wanted = [value] if isinstance(value, bool) else list(value or [])
+        looking_for_true = any(bool(item) for item in wanted)
+        positive = (operator in ('=', 'in')) == looking_for_true
+        if not partner_ids:
+            return [(1, '=', 1)] if not positive else [(0, '=', 1)]
+        return [('partner_id', 'in' if positive else 'not in', list(partner_ids))]
 
     @api.model
     def _cron_notify_sla_breach(self):
@@ -374,17 +535,19 @@ class ChatroomChannel(models.Model):
 
     @api.depends('message_ids.state', 'message_ids.direction', 'message_ids.body')
     def _compute_message_stats(self):
+        stats = self._message_aggregates()
         for rec in self:
-            messages = rec.message_ids
-            rec.message_count = len(messages)
-            rec.unread_count = len(messages.filtered(
-                lambda m: m.direction == 'inbound' and m.state != 'read'))
-            last = messages.sorted('date', reverse=True)[:1]
-            if last:
-                preview = last.body or MESSAGE_TYPE_PREVIEW.get(last.message_type, '')
-                rec.last_message_preview = preview[:120]
-            else:
+            data = stats.get(rec._origin.id)
+            if not data:
+                rec.message_count = 0
+                rec.unread_count = 0
                 rec.last_message_preview = ''
+                continue
+            rec.message_count = data['total']
+            rec.unread_count = data['unread']
+            preview = data['preview_body'] or MESSAGE_TYPE_PREVIEW.get(
+                data['preview_type'], '')
+            rec.last_message_preview = preview[:120]
 
     def _compute_related_counts(self):
         crm_installed = 'crm.lead' in self.env
@@ -401,6 +564,32 @@ class ChatroomChannel(models.Model):
                     lead.id: lead.display_name
                     for lead in self.env['crm.lead'].browse(pinned_ids).exists()
                 }
+
+        # Antes cada conversación lanzaba cinco `search_count` (CRM,
+        # ventas, compras, facturas, tareas). Con 80 conversaciones en la
+        # bandeja eran 400 consultas por pintar la lista. Ahora es una
+        # consulta agrupada por modelo, para todos los contactos a la vez.
+        partner_ids = [rec.partner_id.id for rec in self if rec.partner_id]
+
+        def _counts(model, extra_domain=()):
+            if not partner_ids or model not in self.env:
+                return {}
+            domain = [('partner_id', 'in', partner_ids)] + list(extra_domain)
+            return {
+                partner.id: count
+                for partner, count in self.env[model]._read_group(
+                    domain, ['partner_id'], ['__count'])
+            }
+
+        lead_counts = _counts('crm.lead') if crm_installed else {}
+        sale_counts = _counts('sale.order') if sale_installed else {}
+        purchase_counts = _counts('purchase.order') if purchase_installed else {}
+        invoice_counts = _counts(
+            'account.move',
+            [('move_type', 'in', ('out_invoice', 'out_refund'))],
+        ) if account_installed else {}
+        task_counts = _counts('project.task') if project_installed else {}
+
         for rec in self:
             rec.crm_installed = crm_installed
             rec.calendar_installed = calendar_installed
@@ -409,32 +598,21 @@ class ChatroomChannel(models.Model):
             rec.account_installed = account_installed
             rec.project_installed = project_installed
             rec.pinned_lead_name = pinned_leads.get(rec.pinned_lead_id, False)
-            partner = rec.partner_id
-            rec.lead_count = (
-                self.env['crm.lead'].search_count([('partner_id', '=', partner.id)])
-                if crm_installed and partner else 0)
-            rec.sale_order_count = (
-                self.env['sale.order'].search_count([('partner_id', '=', partner.id)])
-                if sale_installed and partner else 0)
-            rec.purchase_order_count = (
-                self.env['purchase.order'].search_count([('partner_id', '=', partner.id)])
-                if purchase_installed and partner else 0)
-            rec.invoice_count = (
-                self.env['account.move'].search_count([
-                    ('partner_id', '=', partner.id),
-                    ('move_type', 'in', ('out_invoice', 'out_refund')),
-                ]) if account_installed and partner else 0)
-            rec.task_count = (
-                self.env['project.task'].search_count([('partner_id', '=', partner.id)])
-                if project_installed and partner else 0)
+            partner_id = rec.partner_id.id
+            rec.lead_count = lead_counts.get(partner_id, 0)
+            rec.sale_order_count = sale_counts.get(partner_id, 0)
+            rec.purchase_order_count = purchase_counts.get(partner_id, 0)
+            rec.invoice_count = invoice_counts.get(partner_id, 0)
+            rec.task_count = task_counts.get(partner_id, 0)
 
+    @api.depends('message_ids.direction', 'message_ids.date')
     def _compute_session_window(self):
         now = fields.Datetime.now()
+        stats = self._message_aggregates()
         for rec in self:
-            last_inbound = rec.message_ids.filtered(
-                lambda m: m.direction == 'inbound').sorted('date', reverse=True)[:1]
+            last_inbound = (stats.get(rec._origin.id) or {}).get('last_in')
             if last_inbound:
-                rec.window_expires_at = fields.Datetime.add(last_inbound.date, hours=24)
+                rec.window_expires_at = fields.Datetime.add(last_inbound, hours=24)
                 rec.is_session_open = now < rec.window_expires_at
             else:
                 rec.window_expires_at = False
@@ -442,15 +620,13 @@ class ChatroomChannel(models.Model):
 
     @api.depends('message_ids.direction', 'message_ids.date')
     def _compute_first_response_minutes(self):
+        stats = self._message_aggregates()
+        replies = self._first_outbound_after_inbound()
         for rec in self:
-            messages = rec.message_ids.sorted('date')
-            first_inbound = next((m for m in messages if m.direction == 'inbound'), None)
-            first_outbound = next((
-                m for m in messages
-                if m.direction == 'outbound' and (not first_inbound or m.date > first_inbound.date)
-            ), None) if first_inbound else None
+            first_inbound = (stats.get(rec._origin.id) or {}).get('first_in')
+            first_outbound = replies.get(rec._origin.id)
             if first_inbound and first_outbound:
-                delta = first_outbound.date - first_inbound.date
+                delta = first_outbound - first_inbound
                 rec.first_response_minutes = round(delta.total_seconds() / 60.0, 2)
             else:
                 rec.first_response_minutes = 0.0
@@ -812,6 +988,11 @@ class ChatroomChannel(models.Model):
             'whatsapp_number_id': 'line', 'manual_urgent': 'urgent',
             'is_pinned': 'pinned', 'is_favorite': 'favorite',
         }
+        # Un solo create por lote: escribir 500 conversaciones a la vez
+        # (el cron de cierre por inactividad, un cambio masivo de etapa
+        # desde la lista) generaba un INSERT por cada campo de cada
+        # registro.
+        audit_values = []
         for rec in self:
             for field, change_type in audit_map.items():
                 if field not in vals:
@@ -819,11 +1000,13 @@ class ChatroomChannel(models.Model):
                 old_value = old_audit.get(rec.id, {}).get(field, '')
                 new_value = rec[field].display_name if rec._fields[field].type == 'many2one' else str(rec[field])
                 if old_value != new_value:
-                    self.env['chatroom.audit.log'].sudo().create({
+                    audit_values.append({
                         'channel_id': rec.id, 'user_id': self.env.user.id,
                         'change_type': change_type, 'old_value': old_value,
                         'new_value': new_value,
                     })
+        if audit_values:
+            self.env['chatroom.audit.log'].sudo().create(audit_values)
         return res
 
     # ------------------------------------------------------------------
@@ -851,7 +1034,8 @@ class ChatroomChannel(models.Model):
         #     persona real. Por eso hace falta el chequeo de `request`
         #     además de `_is_public()`; solo con `_is_public()` un mensaje
         #     programado o un reintento automático pausaban la IA solos.
-        if not self.ai_paused and request and not self.env.user._is_public():
+        if (not self.ai_paused and request and not self.env.user._is_public()
+                and not self.env.context.get('chatroom_ai_generated')):
             self.ai_paused = True
             self.message_post(
                 body=_("IA pausada automáticamente: %s tomó la conversación.")
@@ -876,13 +1060,45 @@ class ChatroomChannel(models.Model):
 
     def action_toggle_ai_paused(self):
         self.ensure_one()
+        was_paused = self.ai_paused
         self.ai_paused = not self.ai_paused
         self.message_post(
             body=_("IA %s por %s.") % (
                 _("pausada") if self.ai_paused else _("reactivada"), self.env.user.name),
             subtype_xmlid='mail.mt_note',
         )
+        if was_paused and not self.ai_paused:
+            # Si el agente reactiva la IA después de una respuesta manual,
+            # procesa el último mensaje entrante que quedó pendiente. Así no
+            # hace falta pedirle al cliente que escriba otra vez.
+            message_model = self.env['chatroom.message']
+            latest_inbound = message_model.search([
+                ('channel_id', '=', self.id), ('direction', '=', 'inbound'),
+            ], order='date desc, id desc', limit=1)
+            latest_ai = message_model.search([
+                ('channel_id', '=', self.id), ('direction', '=', 'outbound'),
+                ('ai_generated', '=', True),
+            ], order='date desc, id desc', limit=1) if 'ai_generated' in message_model._fields else False
+            if latest_inbound and (not latest_ai or latest_ai.date < latest_inbound.date):
+                self._ai_process_inbound_message(latest_inbound)
         return self.ai_paused
+
+    @api.model
+    def _normalize_keyword(self, text):
+        """Normaliza un mensaje para compararlo con las palabras clave de
+        baja/alta: minusculas, sin acentos y sin signos de puntuacion.
+
+        La comparacion sigue siendo del mensaje COMPLETO, no por
+        subcadena: buscar 'baja' dentro del texto daria de baja a quien
+        escriba "el precio baja?". Pero antes se exigia una igualdad
+        exacta contra el texto crudo, asi que "STOP.", "¡BAJA!" o
+        "Baja " no daban de baja a nadie. Eso deja al cliente recibiendo
+        mensajes que pidio no recibir, que es la causa mas comun de que
+        Meta limite o bloquee un numero de WhatsApp Business.
+        """
+        value = unicodedata.normalize('NFKD', (text or '').strip().lower())
+        value = ''.join(char for char in value if not unicodedata.combining(char))
+        return value.strip(KEYWORD_STRIP_CHARS)
 
     def _handle_opt_keywords(self, message):
         """Detecta palabras clave de baja/alta en un mensaje entrante
@@ -903,7 +1119,9 @@ class ChatroomChannel(models.Model):
                 'chatroom_whatsapp.opt_in_keywords', 'iniciar,start,alta'
             ).split(',') if w.strip()
         }
-        text = message.body.strip().lower()
+        text = self._normalize_keyword(message.body)
+        stop_words = {self._normalize_keyword(w) for w in stop_words}
+        start_words = {self._normalize_keyword(w) for w in start_words}
 
         if text in stop_words and not self.partner_id.whatsapp_opt_out:
             try:
@@ -944,18 +1162,52 @@ class ChatroomChannel(models.Model):
             tz = pytz.timezone(tz_name)
         except pytz.UnknownTimeZoneError:
             tz = pytz.UTC
-        now_utc = dt or fields.Datetime.now()
-        local = pytz.UTC.localize(now_utc).astimezone(tz)
+        local = self._business_hours_localize(dt, tz)
 
         weekdays_param = icp.get_param('chatroom_whatsapp.business_hours_weekdays', '0,1,2,3,4')
         weekdays = {int(d) for d in weekdays_param.split(',') if d.strip().isdigit()}
         if weekdays and local.weekday() not in weekdays:
             return False
 
-        start = float(icp.get_param('chatroom_whatsapp.business_hours_start', '0') or 0)
-        end = float(icp.get_param('chatroom_whatsapp.business_hours_end', '24') or 24)
+        # Un valor no numerico en Ajustes (alguien escribe "9:00" en vez de
+        # "9") reventaba con ValueError dentro del webhook y hacia fallar la
+        # recepcion del mensaje entrante. Ahora cae al horario de 24 h.
+        def _hour(key, default):
+            try:
+                return float(icp.get_param(key, default) or default)
+            except (TypeError, ValueError):
+                _logger.warning(
+                    "Valor de horario de atencion no numerico en %s; se ignora.", key)
+                return float(default)
+
+        start = _hour('chatroom_whatsapp.business_hours_start', 0)
+        end = _hour('chatroom_whatsapp.business_hours_end', 24)
         hour_decimal = local.hour + local.minute / 60.0
-        return start <= hour_decimal < end
+        if start == end:
+            return True
+        if start < end:
+            return start <= hour_decimal < end
+        # Turno que cruza medianoche (ej. 22:00 a 06:00). Con la comparacion
+        # simple de antes, un soporte nocturno quedaba SIEMPRE "fuera de
+        # horario" y mandaba el aviso automatico durante su propio turno.
+        return hour_decimal >= start or hour_decimal < end
+
+    def _business_hours_timezone(self):
+        """Zona horaria en la que esta expresado el horario de atencion."""
+        icp = self.env['ir.config_parameter'].sudo()
+        tz_name = (icp.get_param('chatroom_whatsapp.business_hours_tz')
+                   or self.env.user.tz or 'UTC')
+        try:
+            return pytz.timezone(tz_name)
+        except pytz.UnknownTimeZoneError:
+            return pytz.UTC
+
+    def _business_hours_localize(self, dt=None, tz=None):
+        """Pasa un datetime naive UTC (lo que guarda Odoo) a hora local."""
+        value = dt or fields.Datetime.now()
+        if value.tzinfo is None:
+            value = pytz.UTC.localize(value)
+        return value.astimezone(tz or self._business_hours_timezone())
 
     def _maybe_send_away_message(self):
         """Si el horario de atención está activo y ahora está fuera de
@@ -970,8 +1222,13 @@ class ChatroomChannel(models.Model):
             return False
         if self._is_within_business_hours():
             return False
-        today = fields.Date.context_today(self)
-        if self.last_away_message_date and self.last_away_message_date.date() == today:
+        # Comparar en la zona del negocio, no en UTC. En Ecuador (UTC-5) un
+        # mensaje de las 20:00 locales ya es del dia siguiente en UTC: la
+        # comparacion anterior daba "otro dia" y mandaba el aviso de fuera de
+        # horario dos veces la misma noche, justo lo que este control evita.
+        today = self._business_hours_localize().date()
+        last_sent = self.last_away_message_date
+        if last_sent and self._business_hours_localize(last_sent).date() == today:
             return False
         away_message = icp.get_param('chatroom_whatsapp.business_hours_away_message') or _(
             "Gracias por escribirnos. En este momento estamos fuera de "
@@ -1367,10 +1624,18 @@ class ChatroomChannel(models.Model):
             ('retry_count', '<', 3),
             ('date', '>=', cutoff),
         ], limit=50)
+        # Igual que en los mensajes programados: reintentar habla con la
+        # Cloud API. Atrapar solo UserError dejaba que un corte de red
+        # abortara la corrida entera y revirtiera los reintentos que sí
+        # habían salido, con riesgo de mandar el mensaje dos veces.
+        auto_commit = not modules.module.current_test
         for message in failed:
             try:
-                message.channel_id.action_retry_message(message.id)
-            except UserError as exc:
+                with self.env.cr.savepoint():
+                    message.channel_id.action_retry_message(message.id)
+                if auto_commit:
+                    self.env.cr.commit()
+            except Exception as exc:  # noqa: BLE001
                 _logger.info(
                     "Reintento automático omitido para el mensaje %s: %s", message.id, exc)
 
@@ -1858,13 +2123,25 @@ class ChatroomChannel(models.Model):
         cutoff = fields.Datetime.subtract(fields.Datetime.now(), minutes=threshold)
         template = self.env.ref(
             'chatroom_whatsapp.mail_template_waiting_response', raise_if_not_found=False)
-        for channel in self.search([
+        # `last_message_date` ya está almacenado e indexado: filtrando por él
+        # el cron solo mira las conversaciones que de verdad llevan rato
+        # calladas. Antes recorría TODAS las abiertas y de cada una cargaba
+        # el historial completo en memoria (`message_ids.sorted(...)`) solo
+        # para mirar el último mensaje.
+        candidates = self.search([
             ('state', 'in', ('open', 'pending')),
             ('assigned_user_id', '!=', False),
             ('waiting_response_notified', '=', False),
-        ]):
-            last = channel.message_ids.sorted('date', reverse=True)[:1]
-            if not last or last.direction != 'inbound' or not last.date or last.date > cutoff:
+            ('last_message_date', '<=', cutoff),
+        ])
+        stats = candidates._message_aggregates()
+        for channel in candidates:
+            data = stats.get(channel.id) or {}
+            last_in = data.get('last_in')
+            last_out = data.get('last_out')
+            # Solo avisa si el último mensaje de la conversación es del
+            # cliente (no hay ninguna respuesta posterior).
+            if not last_in or (last_out and last_out >= last_in):
                 continue
             self.env['bus.bus']._sendone(
                 f'chatroom_channel_{channel.id}', 'chatroom.message/waiting_response', {
@@ -1903,7 +2180,26 @@ class ChatroomChannel(models.Model):
             except (UserError, requests.RequestException) as exc:
                 _logger.warning("No se pudo enviar el acuse de lectura (canal %s): %s", self.id, exc)
 
-        unread.write({'state': 'read'})
+        # El acuse remoto puede tardar mientras la IA procesa el mensaje en
+        # otro cursor. Volvemos a leer después de esa llamada y reintentamos
+        # solo la actualización local si ambas operaciones tocaron la misma
+        # conversación al mismo tiempo.
+        for attempt in range(3):
+            try:
+                unread = self.message_ids.filtered(
+                    lambda m: m.direction == 'inbound' and m.state != 'read')
+                if unread:
+                    unread.write({'state': 'read'})
+                break
+            except (pg_errors.SerializationFailure,
+                    pg_errors.DeadlockDetected):
+                self.env.cr.rollback()
+                if attempt == 2:
+                    _logger.warning(
+                        'No se pudo actualizar el estado local de lectura '
+                        'en el canal %s después de 3 intentos.', self.id)
+                    break
+                time.sleep(0.1 * (attempt + 1))
         return True
 
     # ------------------------------------------------------------------
@@ -2010,9 +2306,11 @@ class ChatroomChannel(models.Model):
         if 'crm.management.alert' in self.env:
             management_alerts = self.env['crm.management.alert'].get_my_counts()
 
-        raw_last_webhook = self.env['ir.config_parameter'].sudo().get_param(
-            'chatroom_whatsapp.last_webhook_at')
-        last_webhook = fields.Datetime.to_datetime(raw_last_webhook) if raw_last_webhook else False
+        # La fecha del último evento evita escribir un ir.config_parameter
+        # compartido en cada webhook concurrente.
+        last_event = self.env['chatroom.whatsapp.webhook.event'].search(
+            [], order='create_date desc, id desc', limit=1)
+        last_webhook = last_event.create_date if last_event else False
 
         return {
             'last_webhook_display': self._format_relative_time(last_webhook),
@@ -2612,9 +2910,9 @@ class ChatroomChannel(models.Model):
         (`ai_paused`)."""
         self.ensure_one()
         if self.ai_paused:
-            return
+            return {'status': 'human_active', 'reason': _('La IA esta pausada porque atiende un agente.')}
         if not self._ai_param_enabled('chatroom_whatsapp.ai_enabled'):
-            return
+            return {'status': 'disabled', 'reason': _('La IA esta desactivada en la configuracion.')}
         try:
             if self._ai_param_enabled('chatroom_whatsapp.ai_auto_classify'):
                 self.ai_intent = self._ai_classify_intent()
@@ -2642,15 +2940,23 @@ class ChatroomChannel(models.Model):
                 safe_handler = getattr(self, 'action_ai_auto_reply_safe', None)
                 if safe_handler and self._ai_param_enabled(
                         'chatroom_ai_agent.safe_auto_reply', default=True):
-                    safe_handler()
+                    result = safe_handler()
+                    if isinstance(result, dict):
+                        _logger.info(
+                            'Automatización de IA en canal %s: %s',
+                            self.id, result.get('status', 'sin estado'))
+                    return result or {'status': 'completed'}
                 else:
                     self.action_ai_suggest_reply()
                     if not self._ai_requires_approval():
                         self.action_send_ai_suggestion()
+                    return {'status': 'sent'}
         except UserError as exc:
             _logger.warning("Automatización de IA omitida en canal %s: %s", self.id, exc)
+            return {'status': 'error', 'reason': str(exc)}
         except Exception:  # noqa: BLE001 - no debe romper la ingesta del webhook
             _logger.exception("Error inesperado en automatización de IA (canal %s)", self.id)
+            return {'status': 'error', 'reason': _('Error inesperado en automatizacion de IA.')}
 
     # ------------------------------------------------------------------
     # Flujo comercial: crear oportunidad / presupuesto desde la conversación
@@ -3103,8 +3409,11 @@ class ChatroomChannel(models.Model):
     @api.depends('partner_id', 'pinned_lead_id')
     def _compute_next_activity(self):
         today = fields.Date.context_today(self)
+        # Una consulta por modelo para toda la bandeja, en vez de dos
+        # búsquedas de mail.activity por cada conversación de la lista.
+        next_by_partner = self._next_activity_by_partner()
         for rec in self:
-            activity = rec._get_partner_activities(limit=1)
+            activity = next_by_partner.get(rec.partner_id.id, self.env['mail.activity'])
             if not activity:
                 rec.next_activity_id = False
                 rec.next_activity_summary = False
@@ -3117,6 +3426,34 @@ class ChatroomChannel(models.Model):
             rec.next_activity_date_deadline = activity.date_deadline
             rec.next_activity_overdue = activity.date_deadline < today
             rec.next_activity_user_id = activity.user_id
+
+    def _next_activity_by_partner(self):
+        """{partner_id: mail.activity} con la actividad pendiente más
+        próxima de cada contacto (propia o de sus oportunidades de CRM)."""
+        partner_ids = [rec.partner_id.id for rec in self if rec.partner_id]
+        if not partner_ids:
+            return {}
+        Activity = self.env['mail.activity']
+        pairs = []  # (partner_id, activity)
+        for activity in Activity.search(
+                [('res_model', '=', 'res.partner'), ('res_id', 'in', partner_ids)],
+                order='date_deadline asc, id asc'):
+            pairs.append((activity.res_id, activity))
+        if 'crm.lead' in self.env:
+            leads = self.env['crm.lead'].search([('partner_id', 'in', partner_ids)])
+            partner_by_lead = {lead.id: lead.partner_id.id for lead in leads}
+            if partner_by_lead:
+                for activity in Activity.search(
+                        [('res_model', '=', 'crm.lead'),
+                         ('res_id', 'in', list(partner_by_lead))],
+                        order='date_deadline asc, id asc'):
+                    pairs.append((partner_by_lead[activity.res_id], activity))
+        far_future = fields.Date.to_date('9999-12-31')
+        result = {}
+        for partner_id, activity in sorted(
+                pairs, key=lambda pair: (pair[1].date_deadline or far_future, pair[1].id)):
+            result.setdefault(partner_id, activity)
+        return result
 
     def _get_partner_activities(self, limit=10):
         """Actividades pendientes del contacto: las que están puestas
@@ -3435,14 +3772,24 @@ class ChatroomChannel(models.Model):
             channel._maybe_send_csat_survey()
 
     @api.model
-    def _cron_close_inactive_channels(self, days=7):
+    def _cron_close_inactive_channels(self, days=7, limit=500):
         """Cierra automáticamente conversaciones sin actividad reciente."""
         limit_date = fields.Datetime.subtract(fields.Datetime.now(), days=days)
         stale = self.search([
             ('state', 'in', ['open', 'pending']),
             ('last_message_date', '<', limit_date),
-        ])
-        stale.write({'state': 'closed'})
+        ], limit=limit)
+        if not stale:
+            return
+        # Escribir solo `state` hacía que `write` buscara la etapa de cierre
+        # una vez por conversación (dos consultas cada una) desde su bucle de
+        # sincronización. Resolviéndola acá una sola vez y mandando ambos
+        # campos juntos, ese bucle no se ejecuta.
+        values = {'state': 'closed'}
+        closing_stage = self._get_stage_for_state('closed', final=True)
+        if closing_stage:
+            values['stage_id'] = closing_stage.id
+        stale.write(values)
 
     # ------------------------------------------------------------------
     # Datos de demostración (uso manual desde Configuración, no se cargan

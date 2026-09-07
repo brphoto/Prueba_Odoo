@@ -455,16 +455,24 @@
         display: flex;
         align-items: flex-start;
         gap: 12px;
-        margin-bottom: 14px;
-        padding: 14px;
-        border: 1px solid #eadfea;
+        margin: 0 0 18px;
+        padding: 14px 16px;
+        border: 1px solid #bfe7e2;
+        border-left: 4px solid #0b9e94;
         border-radius: 12px;
-        background: #faf7fa;
-        color: #667085;
+        background: linear-gradient(135deg, #f0fcfa, #e8f7f5);
+        color: #174c49;
 
-        i {
-            color: var(--chatroom-ui-primary);
-            font-size: 1.2rem;
+        i { color: #fff; font-size: 16px; }
+
+        .o_chatroom_payment_intro_icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #0b9e94;
         }
     }
 

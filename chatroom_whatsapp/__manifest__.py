@@ -135,6 +135,10 @@ Requisitos
             'chatroom_whatsapp/static/src/chatroom_dashboard/chatroom_dashboard.xml',
             'chatroom_whatsapp/static/src/chatroom_dashboard/chatroom_dashboard.scss',
         ],
+        # Bundle que Odoo carga solo durante los tests de navegador.
+        'web.assets_tests': [
+            'chatroom_whatsapp/static/tests/tours/chatroom_app_tour.js',
+        ],
         'web.assets_web_dark': [
             'chatroom_whatsapp/static/src/chatroom_thread/chatroom_thread.dark.scss',
             'chatroom_whatsapp/static/src/chatroom_app/chatroom_app.dark.scss',

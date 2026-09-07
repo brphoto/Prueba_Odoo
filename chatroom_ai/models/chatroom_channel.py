@@ -151,13 +151,55 @@ class ChatroomChannel(models.Model):
         text = re.sub(r'[^\wáéíóúñü ]', '', text)
         if not text:
             return False
-        if re.fullmatch(r'(hola|buenas|buenos días|buenas tardes|buenas noches|hello|hi)', text):
+        if re.fullmatch(
+                r'(hola|alo|buenas|buenos días|buenas tardes|buenas noches|hello|hi)',
+                text):
             name = self.partner_id.name.split(' ')[0] if self.partner_id and self.partner_id.name else ''
             greeting = _('Hola') + (', %s' % name if name else '') + _('. ¿En qué podemos ayudarte?')
             return greeting
         if re.fullmatch(r'(gracias|muchas gracias|gracias por la atención|ok gracias)', text):
             return _('Con gusto. Quedamos atentos para ayudarte.')
+        if re.fullmatch(
+                r'(ayuda|quiero ayuda|necesito ayuda|necesito que me ayude|'
+                r'necesito me colabore|necesito colaboración|necesito colaboracion)',
+                text):
+            return _(
+                'Claro, con gusto te ayudamos. Cuéntanos qué necesitas o '
+                'qué deseas implementar.')
+        if re.fullmatch(
+                r'(cual es su servicio|cuales son sus servicios|'
+                r'que servicio ofrecen|que servicios ofrece|'
+                r'que servicios ofrecen|implementan odoo)',
+                text):
+            return _(
+                'Ofrecemos implementación y configuración de Odoo para '
+                'distintos tipos de negocio. ¿Qué necesitas gestionar?')
+        if re.fullmatch(r'(no funciona|no me funciona|no sirve|no me sirve)', text):
+            return _(
+                'Lamento el inconveniente. Cuéntame qué parte no funciona '
+                'y te ayudamos a revisarla.')
         return False
+
+    def _ai_can_auto_qualify(self, reply, intent, sentiment, urgency, confidence):
+        """Permite una pregunta comercial segura aunque el modelo pida datos.
+
+        Una cotización no debe inventar precios ni enviarse sin revisión, pero
+        sí puede responder automáticamente para recopilar alcance, módulos y
+        ubicación. Esto evita dejar al cliente sin respuesta cuando la IA
+        marcó ``needs_human`` únicamente por falta de datos.
+        """
+        if not reply or intent not in ('consulta', 'venta'):
+            return False
+        if sentiment == 'negative' or urgency in ('high', 'critical'):
+            return False
+        if confidence < 0.55:
+            return False
+        normalized = re.sub(r'\s+', ' ', reply.lower())
+        blocked_terms = (
+            'precio exacto', 'monto exacto', 'pago', 'reembolso',
+            'contraseña', 'reclamo', 'demanda', 'urgente',
+        )
+        return not any(term in normalized for term in blocked_terms)
 
     def _ai_deliver_guarded_reply(self, reply, confidence, intent=False, reason=False):
         """Registra, aprueba y envía una respuesta ya validada."""
@@ -195,8 +237,16 @@ class ChatroomChannel(models.Model):
             return {'status': 'human_active', 'reason': _('La IA esta pausada porque atiende un agente.')}
         if self.partner_id and getattr(self.partner_id, 'whatsapp_opt_out', False):
             return {'status': 'opted_out', 'reason': _('El contacto desactivo los mensajes.')}
-        if not policy['allow_outside_hours'] and hasattr(self, '_is_within_business_hours') \
-                and not self._is_within_business_hours():
+        # El horario solo debe bloquear respuestas cuando el usuario activó
+        # explícitamente el control de horario comercial. Antes se aplicaban
+        # los valores predeterminados (lunes a viernes) aunque esa función
+        # estuviera desactivada, dejando la IA muda durante noches y fines de
+        # semana.
+        business_hours_enabled = self._ai_param_enabled(
+            'chatroom_whatsapp.business_hours_enabled')
+        if (business_hours_enabled and not policy['allow_outside_hours']
+                and hasattr(self, '_is_within_business_hours')
+                and not self._is_within_business_hours()):
             reason = _('Fuera del horario de atencion; se requiere revision humana.')
             self._ai_guard_notification(reason)
             return {'status': 'human_review', 'reason': reason}
@@ -296,6 +346,14 @@ class ChatroomChannel(models.Model):
                 confidence * 100, policy['min_confidence'] * 100)
 
         if needs_human:
+            if self._ai_can_auto_qualify(
+                    reply, intent, sentiment, urgency, confidence):
+                return self._ai_deliver_guarded_reply(
+                    reply, confidence, intent=intent,
+                    reason=_(
+                        'Respuesta automática de calificación comercial; '
+                        'no incluye precio ni compromiso.'),
+                )
             suggestion = self._ai_create_guarded_suggestion(
                 reply or _('La IA no genero texto; revisar la conversacion.'),
                 confidence, 'human_review', reason, intent=intent)

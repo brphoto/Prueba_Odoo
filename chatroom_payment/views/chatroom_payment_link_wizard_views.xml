@@ -4,34 +4,58 @@
         <field name="name">chatroom.payment.link.wizard.form</field>
         <field name="model">chatroom.payment.link.wizard</field>
         <field name="arch" type="xml">
-            <form string="Enviar Link de Pago" class="o_chatroom_payment_wizard">
+            <form string="Enviar enlace de pago" class="o_chatroom_payment_wizard">
                 <div class="o_chatroom_payment_intro">
-                    <i class="fa fa-credit-card" title="Pago seguro" aria-hidden="true"/>
-                    <div>
-                        <strong>Enviar un enlace de pago seguro</strong>
-                        <div>El cliente recibirá el enlace directamente en esta conversación.</div>
+                    <div class="o_chatroom_payment_intro_icon"><i class="fa fa-credit-card" title="Pago seguro" aria-hidden="true"/></div>
+                    <div class="o_chatroom_payment_intro_copy">
+                        <strong>Enviar enlace de pago</strong>
+                        <p>El cliente recibirá el enlace directamente en esta conversación.</p>
                     </div>
                 </div>
-                <group>
+                <div class="o_chatroom_payment_fields">
                     <field name="channel_id" invisible="1"/>
                     <field name="channel_partner_id" invisible="1"/>
                     <field name="company_id" invisible="1"/>
-                    <field name="provider_id"/>
-                    <field name="sale_order_id"/>
-                </group>
-                <div class="o_chatroom_payment_section" invisible="sale_order_id">
-                    <separator string="Crear un presupuesto nuevo"/>
-                    <group>
-                        <field name="product_id"/>
-                        <field name="product_qty" invisible="not product_id"/>
-                    </group>
+                    <div class="o_chatroom_payment_field">
+                        <label for="provider_id" string="Proveedor de pago"/>
+                        <field name="provider_id" nolabel="1"/>
+                        <small>PayPhone u otro proveedor habilitado.</small>
+                    </div>
+                    <div class="o_chatroom_payment_field">
+                        <label for="sale_order_id" string="Presupuesto existente"/>
+                        <field name="sale_order_id" nolabel="1"/>
+                        <small>Usa un presupuesto del cliente o crea uno nuevo abajo.</small>
+                    </div>
                 </div>
-                <div class="o_chatroom_payment_preview">
+                <div class="o_chatroom_payment_section" invisible="sale_order_id">
+                    <div class="o_chatroom_payment_section_header">
+                        <div>
+                            <strong>Crear presupuesto nuevo</strong>
+                            <span>Selecciona el producto y la cantidad que se cobrarán.</span>
+                        </div>
+                        <i class="fa fa-file-text-o" aria-hidden="true"/>
+                    </div>
+                    <div class="o_chatroom_payment_new_order_fields">
+                        <div class="o_chatroom_payment_field">
+                            <label for="product_id" string="Producto"/>
+                            <field name="product_id" nolabel="1"/>
+                        </div>
+                        <div class="o_chatroom_payment_field o_chatroom_payment_quantity_field">
+                            <label for="product_qty" string="Cantidad"/>
+                            <field name="product_qty" nolabel="1" invisible="not product_id"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="o_chatroom_payment_status">
+                    <i class="fa fa-info-circle" aria-hidden="true"/>
                     <field name="readiness_message" nolabel="1" readonly="1"/>
+                </div>
+                <div class="o_chatroom_payment_preview" invisible="not ready_to_send">
+                    <div class="o_chatroom_payment_preview_title"><i class="fa fa-list-alt" aria-hidden="true"/> Resumen del envío</div>
                     <field name="preview" nolabel="1" readonly="1"/>
                 </div>
                 <footer>
-                    <button name="action_send" type="object" string="Generar y enviar" class="btn-primary"/>
+                    <button name="action_send" type="object" string="Generar y enviar enlace" class="btn-primary o_chatroom_payment_send"/>
                     <button string="Cancelar" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>

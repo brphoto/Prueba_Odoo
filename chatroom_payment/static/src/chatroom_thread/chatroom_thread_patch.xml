@@ -4,7 +4,7 @@
         <xpath expr="//button[@t-on-click='sendLocation']" position="before">
             <button t-if="!state.noteMode"
                     class="btn btn-link o_chatroom_attach_btn"
-                    title="Enviar Link de Pago" t-on-click="openPaymentWizard">
+                    title="Enviar enlace de pago" t-on-click="openPaymentWizard">
                 <i class="fa fa-money"/>
             </button>
         </xpath>

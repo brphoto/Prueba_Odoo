@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from odoo import _, api, fields, models
+from odoo import _, api, fields, models, modules
 from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
@@ -122,16 +122,36 @@ class ChatroomScheduledMessage(models.Model):
             ('state', '=', 'pending'),
             ('scheduled_date', '<=', fields.Datetime.now()),
         ], limit=100)
+        # `_send` tiene un efecto externo irreversible: el mensaje ya salió
+        # a la Cloud API de Meta y el cliente ya lo recibió. Si más adelante
+        # en la misma corrida algo lanza una excepción no controlada, la
+        # transacción entera se revierte y esos registros vuelven a quedar
+        # 'pending': el cron siguiente los reenvía y el cliente recibe el
+        # mismo mensaje dos veces. Se confirma cada envío por separado,
+        # igual que hace la cola de correo de Odoo (mail_mail.process_email_queue).
+        auto_commit = not modules.module.current_test
         consecutive_failures = 0
         for rec in due:
             try:
-                rec._send()
-                rec.state = 'sent'
+                # El savepoint aísla el fallo de un mensaje: deja la
+                # transacción utilizable para marcarlo como fallido y
+                # seguir con el resto, sin revertir los ya enviados.
+                with self.env.cr.savepoint():
+                    rec._send()
+                    rec.state = 'sent'
                 consecutive_failures = 0
-            except UserError as exc:
-                _logger.info(
+                if auto_commit:
+                    self.env.cr.commit()
+            except Exception as exc:  # noqa: BLE001
+                # Antes solo se atrapaba UserError. Un corte de red
+                # (requests.RequestException) o cualquier fallo inesperado
+                # abortaba el cron completo y se llevaba puestos los envíos
+                # que ya habían salido bien.
+                _logger.warning(
                     "No se pudo enviar el mensaje programado %s: %s", rec.id, exc)
-                rec.write({'state': 'failed', 'error_message': str(exc)})
+                rec.write({'state': 'failed', 'error_message': str(exc)[:500]})
+                if auto_commit:
+                    self.env.cr.commit()
                 consecutive_failures += 1
                 if consecutive_failures >= 5:
                     # 5 fallos seguidos casi siempre significa credenciales

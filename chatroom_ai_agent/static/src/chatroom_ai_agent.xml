@@ -16,34 +16,43 @@
                     </h6>
                     <i t-attf-class="fa {{ aiAgent.open ? 'fa-chevron-down' : 'fa-chevron-right' }}"/>
                 </div>
-                    <div class="o_chatroom_ai_agent_body" t-if="aiAgent.open">
+                <div class="o_chatroom_ai_agent_body" t-if="aiAgent.open">
                     <div class="alert alert-warning py-2 px-2 mb-2" t-if="aiAgent.canUse === false">
                         Tu usuario no tiene el grupo de acceso al Agente IA. Solicita al administrador que active “Usuario del agente IA”.
                     </div>
                     <t t-if="aiAgent.canUse !== false">
-                    <p class="mb-2">Crea un plan de trabajo con contexto comercial, acciones autorizadas y trazabilidad.</p>
+                    <div class="o_chatroom_ai_agent_intro">
+                        <div class="o_chatroom_ai_agent_intro_icon"><i class="fa fa-magic"/></div>
+                        <div>
+                            <strong>Asistente operativo</strong>
+                            <p>Analiza la conversación y propone el siguiente paso con control humano.</p>
+                        </div>
+                    </div>
                     <div class="o_chatroom_ai_agent_route mb-2" t-if="aiAgent.route">
-                        <span class="text-muted">Ruta sugerida:</span>
-                        <strong t-esc="aiAgent.route.label"/>
-                        <small t-if="aiAgent.route.message" class="d-block text-muted text-truncate">
+                        <div class="o_chatroom_ai_agent_eyebrow">Ruta detectada</div>
+                        <div class="o_chatroom_ai_agent_route_row">
+                            <strong t-esc="aiAgent.route.label"/>
+                            <span class="o_chatroom_ai_agent_route_badge">Sugerida</span>
+                        </div>
+                        <small t-if="aiAgent.route.message" class="o_chatroom_ai_agent_route_message">
                             “<t t-esc="aiAgent.route.message"/>”
                         </small>
                     </div>
-                    <button type="button" class="btn btn-sm btn-primary w-100 mb-2"
+                    <button type="button" class="btn btn-sm btn-primary w-100 mb-2 o_chatroom_ai_agent_primary"
                             t-att-disabled="aiAgent.busy"
                             t-on-click="runCommercialRouter">
                         <i t-if="aiAgent.busy" class="fa fa-spinner fa-spin"/>
-                        <i t-else="" class="fa fa-route me-1"/> Atender solicitud comercial
+                        <i t-else="" class="fa fa-route me-1"/> Preparar atención comercial
                     </button>
                     <div class="o_chatroom_ai_agent_playbook mb-2" t-if="aiAgent.playbooks.length">
-                        <label class="form-label mb-1">Acción guardada</label>
+                        <div class="o_chatroom_ai_agent_section_title">Acción guardada</div>
                         <select class="form-select form-select-sm" t-on-change="(ev) => aiAgent.selectedPlaybookId = ev.target.value">
                             <option value="">Selecciona una acción para este chat...</option>
                             <option t-foreach="aiAgent.playbooks" t-as="playbook" t-key="playbook.id" t-att-value="playbook.id">
                                 <t t-esc="playbook.name"/> · <t t-esc="playbook.task_type_label"/>
                             </option>
                         </select>
-                        <small class="d-block mt-1">Las acciones crean una tarea con contexto de este cliente y conservan la aprobación configurada.</small>
+                        <small class="d-block mt-1">Crea una tarea con contexto del cliente y conserva la aprobación configurada.</small>
                         <button type="button" class="btn btn-sm btn-outline-primary w-100 mt-2"
                                 t-att-disabled="aiAgent.busy || !aiAgent.selectedPlaybookId"
                                 t-on-click="applyAiPlaybook">
@@ -52,28 +61,43 @@
                         </button>
                     </div>
                     <div class="o_chatroom_ai_agent_metrics mb-2">
-                        <span><strong t-esc="aiAgent.metrics.pending_count"/> pendientes</span>
-                        <span><strong t-esc="aiAgent.metrics.approval_count"/> por aprobar</span>
-                        <span t-if="aiAgent.metrics.high_risk_count"><strong t-esc="aiAgent.metrics.high_risk_count"/> alto riesgo</span>
+                        <div class="o_chatroom_ai_agent_metric">
+                            <strong t-esc="aiAgent.metrics.pending_count"/>
+                            <span>Pendientes</span>
+                        </div>
+                        <div class="o_chatroom_ai_agent_metric">
+                            <strong t-esc="aiAgent.metrics.approval_count"/>
+                            <span>Por aprobar</span>
+                        </div>
+                        <div class="o_chatroom_ai_agent_metric" t-if="aiAgent.metrics.high_risk_count">
+                            <strong t-esc="aiAgent.metrics.high_risk_count"/>
+                            <span>Alto riesgo</span>
+                        </div>
                     </div>
-                    <div class="alert alert-info py-1 px-2 mb-2">Modo: <strong t-esc="aiAgent.metrics.mode"/>. Las acciones sensibles conservan aprobacion.</div>
+                    <div class="o_chatroom_ai_agent_mode mb-2">
+                        <i class="fa fa-shield"/>
+                        <div><strong>Modo <t t-esc="aiAgent.metrics.mode"/></strong><span>Las acciones sensibles conservan aprobación.</span></div>
+                    </div>
                     <div class="alert alert-danger py-2 px-2 mb-2" t-if="aiAgent.error">
                         <t t-esc="aiAgent.error"/>
                     </div>
                     <div class="o_chatroom_ai_agent_task" t-if="aiAgent.task">
-                        <strong t-esc="aiAgent.task.name"/>
-                        <span><t t-esc="aiAgent.task.action_count"/> acción(es) · <t t-esc="aiAgent.task.state_label"/></span>
+                        <div class="o_chatroom_ai_agent_task_header">
+                            <strong t-esc="aiAgent.task.name"/>
+                            <span class="o_chatroom_ai_agent_task_badge"><t t-esc="aiAgent.task.state_label"/></span>
+                        </div>
+                        <span><t t-esc="aiAgent.task.action_count"/> acción(es) preparadas</span>
                         <small t-if="aiAgent.task.result_summary" t-esc="aiAgent.task.result_summary"/>
                         <div t-if="aiAgent.task.result_preview" class="o_chatroom_ai_agent_result mt-2">
                             <strong><i class="fa fa-check-circle me-1"/> Resultado</strong>
                             <div class="mt-1" t-esc="aiAgent.task.result_preview"/>
                         </div>
                     </div>
-                    <button type="button" class="btn btn-sm btn-primary w-100"
+                    <button type="button" class="btn btn-sm btn-primary w-100 o_chatroom_ai_agent_primary"
                             t-att-disabled="aiAgent.busy"
                             t-on-click="createAiAgentTask">
                         <i t-if="aiAgent.busy" class="fa fa-spinner fa-spin"/>
-                        <i t-else="" class="fa fa-magic"/> Crear plan operativo
+                        <i t-else="" class="fa fa-plus-circle me-1"/> Crear plan operativo
                     </button>
                     </t>
                 </div>

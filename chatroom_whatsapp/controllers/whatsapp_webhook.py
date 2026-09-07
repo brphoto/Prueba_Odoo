@@ -9,14 +9,17 @@ import hashlib
 import hmac
 import json
 import logging
+import threading
+import time
 
-from psycopg2 import IntegrityError
+from psycopg2 import IntegrityError, errors as pg_errors
 
 from odoo import SUPERUSER_ID, api, fields, http
 from odoo.http import request
 from odoo.modules.registry import Registry
 
 _logger = logging.getLogger(__name__)
+_AI_PROCESS_LOCK = threading.Lock()
 
 
 class WhatsAppWebhookController(http.Controller):
@@ -90,13 +93,19 @@ class WhatsAppWebhookController(http.Controller):
                 'error_message': False,
                 'payload_json': '{}',
             })
+            # Confirmamos primero el mensaje y el evento. En el servidor
+            # Werkzeug de Windows los callbacks postcommit pueden no ceder el
+            # control al greenlet de IA antes de cerrar la petición, así que
+            # el lanzamiento explícito después del commit es más confiable.
+            env.cr.commit()
+            _logger.info(
+                'Webhook %s confirmado; mensajes pendientes de IA: %s',
+                event.id, ai_message_queue)
             if ai_message_queue:
                 # El mensaje y el evento se confirman primero. El proveedor
                 # de IA no puede retrasar la recepción ni el refresco por bus.
-                env.cr.postcommit.add(
-                    lambda dbname=env.cr.dbname,
-                           message_ids=tuple(ai_message_queue):
-                    self._schedule_ai_processing(dbname, message_ids))
+                self._schedule_ai_processing(
+                    env.cr.dbname, tuple(ai_message_queue))
         except Exception as error:  # noqa: BLE001 - el cron queda como respaldo
             # Si la base quedó en estado abortado (por ejemplo, una carrera de
             # PostgreSQL), no se puede escribir el evento original. Se revierte
@@ -123,27 +132,65 @@ class WhatsAppWebhookController(http.Controller):
     @staticmethod
     def _schedule_ai_processing(dbname, message_ids):
         """Ejecuta la automatización después del commit, sin cron."""
-        from gevent import spawn_later
-
-        # Un pequeño retraso deja que la respuesta HTTP y la actualización del
-        # navegador salgan primero; la IA usa su propio cursor después.
-        spawn_later(0.05, WhatsAppWebhookController._process_ai_in_background,
-                    dbname, tuple(message_ids))
+        # El servidor de pruebas corre con Werkzeug en Windows y no siempre
+        # ejecuta greenlets programados. Un hilo real comienza después del
+        # commit, usa su propio cursor y no bloquea la respuesta a Meta.
+        thread = threading.Thread(
+            target=WhatsAppWebhookController._process_ai_in_background,
+            args=(dbname, tuple(message_ids)),
+            name='chatroom-ai-webhook',
+            daemon=True,
+        )
+        thread.start()
 
     @staticmethod
     def _process_ai_in_background(dbname, message_ids):
         """Procesa IA con un cursor propio para no bloquear el webhook."""
-        registry = Registry(dbname)
-        with registry.cursor() as cr:
-            env = api.Environment(cr, SUPERUSER_ID, {})
-            _logger.info('IA en segundo plano: procesando mensajes %s', message_ids)
+        with _AI_PROCESS_LOCK:
+            registry = Registry(dbname)
             for message_id in message_ids:
-                message = env['chatroom.message'].browse(message_id).exists()
-                if not message or message.direction != 'inbound' or not message.channel_id:
-                    continue
-                message.channel_id._ai_process_inbound_message(message)
-            cr.commit()
-            _logger.info('IA en segundo plano: finalizó mensajes %s', message_ids)
+                for attempt in range(3):
+                    try:
+                        # Un cursor por mensaje limita el alcance de un fallo:
+                        # si un contacto provoca un error, no se pierden las
+                        # respuestas automáticas de los demás contactos.
+                        with registry.cursor() as cr:
+                            env = api.Environment(cr, SUPERUSER_ID, {})
+                            message = env['chatroom.message'].browse(message_id).exists()
+                            if (not message or message.direction != 'inbound'
+                                    or not message.channel_id):
+                                cr.rollback()
+                                break
+                            _logger.info(
+                                'IA en segundo plano: procesando mensaje %s '
+                                '(intento %s/3)', message_id, attempt + 1)
+                            result = message.channel_id._ai_process_inbound_message(message)
+                            cr.commit()
+                            _logger.info(
+                                'IA en segundo plano: mensaje %s finalizado: %s',
+                                message_id,
+                                result.get('status', 'sin estado')
+                                if isinstance(result, dict) else 'sin estado')
+                        break
+                    except (pg_errors.SerializationFailure,
+                            pg_errors.DeadlockDetected) as exc:
+                        if attempt == 2:
+                            _logger.exception(
+                                'IA no pudo guardar el mensaje %s después de '
+                                '3 intentos por una carrera de base de datos: %s',
+                                message_id, exc)
+                            break
+                        wait_seconds = 0.15 * (attempt + 1)
+                        _logger.warning(
+                            'Carrera de base de datos al procesar mensaje %s; '
+                            'reintento en %.2fs: %s',
+                            message_id, wait_seconds, exc)
+                        time.sleep(wait_seconds)
+                    except Exception:  # noqa: BLE001 - aislar cada mensaje
+                        _logger.exception(
+                            'Error inesperado procesando IA para el mensaje %s',
+                            message_id)
+                        break
 
     def process_payload(self, env, payload, ai_message_queue=None):
         """Procesa un payload encolado fuera de la petición HTTP pública."""

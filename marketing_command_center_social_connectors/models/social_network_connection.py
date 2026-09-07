@@ -1,9 +1,12 @@
+import logging
 import time
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 from .social_network_api import ADAPTERS, SocialNetworkApiError
+
+_logger = logging.getLogger(__name__)
 
 
 PLATFORM_SELECTION = [
@@ -51,8 +54,19 @@ class MarketingSocialNetworkConnection(models.Model):
     @api.depends('profile_ids.sync_log_ids')
     def _compute_sync_log_count(self):
         Log = self.env['marketing.social.network.sync.log']
+        # Una consulta agrupada en vez de un search_count por conexion.
+        connection_ids = [record.id for record in self._origin if record.id]
+        counts = {}
+        if connection_ids:
+            counts = {
+                connection.id: count
+                for connection, count in Log._read_group(
+                    [('connection_id', 'in', connection_ids)],
+                    ['connection_id'], ['__count'])
+                if connection
+            }
         for record in self:
-            record.sync_log_count = Log.search_count([('connection_id', '=', record.id)])
+            record.sync_log_count = counts.get(record._origin.id, 0)
 
     @api.constrains('sync_days')
     def _check_sync_days(self):
@@ -141,6 +155,30 @@ class MarketingSocialNetworkConnection(models.Model):
 
     @api.model
     def _cron_sync_networks(self):
-        for record in self.search([('active', '=', True), ('profile_ids.active', '=', True)]):
-            record.action_sync_all_profiles()
+        """Sincroniza cada red por separado.
+
+        `action_sync_all_profiles` solo atrapa SocialNetworkApiError y
+        UserError por perfil. Cualquier otro fallo (un dato inesperado de
+        la API, una restriccion del ORM) se escapaba hasta aca y tumbaba la
+        corrida entera: se perdia tambien lo que ya se habia sincronizado
+        de las redes anteriores, porque la transaccion se revierte.
+        """
+        connections = self.search([
+            ('active', '=', True), ('profile_ids.active', '=', True),
+        ])
+        for record in connections:
+            try:
+                with self.env.cr.savepoint():
+                    record.action_sync_all_profiles()
+            except Exception as error:  # noqa: BLE001
+                _logger.exception(
+                    'Fallo la sincronizacion de la red social %s (%s)',
+                    record.display_name, record.platform)
+                # El savepoint revirtio lo de esta conexion; el estado de
+                # error se escribe fuera para que quede visible en la ficha.
+                record.write({
+                    'state': 'error',
+                    'last_error': str(error)[:1000],
+                    'last_sync_at': fields.Datetime.now(),
+                })
         return True

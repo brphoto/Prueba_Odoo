@@ -12,8 +12,8 @@ NS = {
     "ext": "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2",
     "xsi": "http://www.w3.org/2001/XMLSchema-instance",
 }
-NOMINA_VERSION = "V1.0: Documento Soporte de Pago de N\u00f3mina Electr\u00f3nica"
-NOMINA_AJUSTE_VERSION = "V1.0: Nota de Ajuste de Documento Soporte de Pago de N\u00f3mina Electr\u00f3nica"
+NOMINA_VERSION = "V1.0: Documento Soporte de Pago de Nómina Electrónica"
+NOMINA_AJUSTE_VERSION = "V1.0: Nota de Ajuste de Documento Soporte de Pago de Nómina Electrónica"
 COUNTRY_NUMERIC_CODES = {
     "CO": "170",
     "US": "840",

@@ -156,7 +156,13 @@ class MarketingSocialAgentChat(models.Model):
     def _vehicle_rows(self):
         """Read the optional external catalog without making it a hard dependency."""
         if 'marketing.vehicle.listing' not in self.env:
-            return self.env['marketing.vehicle.listing']
+            # El `return self.env['marketing.vehicle.listing']` que habia
+            # aqui anulaba la propia comprobacion: acceder al modelo que
+            # se acaba de descartar lanza KeyError. Sin el modulo opcional
+            # de Patiotuerca instalado, preguntarle al agente por
+            # vehiculos (o por cualquier cosa, porque esto corre en cada
+            # consulta) reventaba con un error de servidor.
+            return None
         return self.env['marketing.vehicle.listing'].sudo().search([
             ('company_id', '=', self.company_id.id), ('active', '=', True),
         ], order='status, price, name', limit=100)
@@ -178,10 +184,13 @@ class MarketingSocialAgentChat(models.Model):
             'reserved': ('reservado', 'reservados'),
             'sold': ('vendido', 'vendidos'),
         }.items() if any(word in normalized for word in words)), False)
-        selected = vehicles.filtered(lambda vehicle: vehicle.status == requested_status) if requested_status else vehicles
+        # El `if not vehicles` va ANTES de filtrar: sin catalogo instalado
+        # `vehicles` es None y no tiene `.filtered`.
         if not vehicles:
             self.intent = 'audience'
             return _('No hay vehículos activos en el catálogo externo. Sincroniza Patiotuerca o carga el demo para consultar anuncios.')
+        selected = vehicles.filtered(
+            lambda vehicle: vehicle.status == requested_status) if requested_status else vehicles
         self.intent = 'audience'
         counts = {
             status: len(vehicles.filtered(lambda vehicle, status=status: vehicle.status == status))
