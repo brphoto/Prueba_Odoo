@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_marketing_meta_connection_list" model="ir.ui.view">
+        <field name="name">marketing.meta.connection.list</field>
+        <field name="model">marketing.meta.connection</field>
+        <field name="arch" type="xml">
+            <list string="Conexiones Meta" open_form_view="1">
+                <field name="name"/>
+                <field name="state" widget="badge"/>
+                <field name="api_version"/>
+                <field name="page_count"/>
+                <field name="last_checked_at"/>
+                <field name="last_sync_at"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_marketing_meta_connection_form" model="ir.ui.view">
+        <field name="name">marketing.meta.connection.form</field>
+        <field name="model">marketing.meta.connection</field>
+        <field name="arch" type="xml">
+            <form string="Conexión Meta" class="o_marketing_meta_connection_form">
+                <header>
+                    <button name="action_test_connection" type="object" string="Probar conexión"
+                            class="oe_highlight" icon="fa-plug" groups="marketing_command_center_meta.group_meta_manager"/>
+                    <button name="action_discover_pages" type="object" string="Descubrir páginas"
+                            class="btn-secondary" icon="fa-search" groups="marketing_command_center_meta.group_meta_manager"/>
+                    <button name="action_sync_all_pages" type="object" string="Sincronizar páginas"
+                            class="btn-secondary" icon="fa-refresh" groups="marketing_command_center_meta.group_meta_manager"/>
+                    <button name="action_sync_all_inboxes" type="object" string="Sincronizar bandejas"
+                            class="btn-secondary" icon="fa-comments" groups="marketing_command_center_meta.group_meta_manager"/>
+                    <button name="action_check_permissions" type="object" string="Comprobar permisos" class="btn-secondary" icon="fa-shield" groups="marketing_command_center_meta.group_meta_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,connected,error"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" placeholder="Ej.: Meta corporativo"/></h1></div>
+                    <div class="alert alert-info o_marketing_meta_notice" role="status">
+                        Usa esta conexión para descubrir y sincronizar varias páginas de Facebook. La versión actual es de lectura: no publica ni modifica contenido.
+                    </div>
+                    <notebook>
+                        <page string="Credenciales" name="credentials">
+                            <group col="2">
+                                <group string="Aplicación Meta">
+                                    <field name="app_id" placeholder="ID de la aplicación"/>
+                                    <field name="app_secret" password="True" placeholder="Secreto de la aplicación"/>
+                                    <field name="api_version" placeholder="v25.0"/>
+                                </group>
+                                <group string="Token de consulta">
+                                    <field name="user_access_token" password="True" placeholder="Token de usuario o de sistema"/>
+                                    <field name="company_id" groups="base.group_multi_company"/>
+                                    <field name="active"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-warning">
+                                El token de usuario es obligatorio para probar y descubrir páginas. El ID y secreto de aplicación son opcionales en este flujo manual y quedan preparados para una futura conexión OAuth. Los secretos solo son visibles para administradores del conector; nunca los compartas en el chat.
+                            </div>
+                        </page>
+                        <page string="Páginas descubiertas" name="pages">
+                            <div class="alert alert-info">
+                                <b>Sincronización por lotes:</b> se procesa primero la página que lleva más tiempo sin actualizar. Así puedes sincronizar varias páginas sin bloquear el servidor.
+                            </div>
+                            <group col="2">
+                                <field name="max_pages_per_run"/>
+                                <field name="last_sync_summary" readonly="1"/>
+                            </group>
+                            <field name="page_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="page_id"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="follower_count"/>
+                                    <field name="last_posts_count"/>
+                                    <field name="last_comments_count"/>
+                                    <field name="last_conversations_count"/>
+                                    <field name="last_messages_count"/>
+                                    <field name="last_sync_at"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Estado y diagnóstico" name="diagnostic">
+                            <group col="2">
+                                <group>
+                                    <field name="last_checked_at" readonly="1"/>
+                                    <field name="last_sync_at" readonly="1"/>
+                                </group>
+                                <group>
+                                    <field name="last_error" readonly="1" nolabel="1" widget="text"/>
+                                    <field name="permissions_state" widget="badge"/>
+                                    <field name="last_permissions_check" readonly="1"/>
+                                    <field name="permissions_summary" readonly="1" nolabel="1" widget="text"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_marketing_meta_page_list" model="ir.ui.view">
+        <field name="name">marketing.meta.page.list</field>
+        <field name="model">marketing.meta.page</field>
+        <field name="arch" type="xml">
+            <list string="Páginas de Facebook" open_form_view="1">
+                <field name="name"/>
+                <field name="page_id"/>
+                <field name="connection_id"/>
+                <field name="state" widget="badge"/>
+                <field name="follower_count"/>
+                <field name="last_sync_at"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_marketing_meta_page_form" model="ir.ui.view">
+        <field name="name">marketing.meta.page.form</field>
+        <field name="model">marketing.meta.page</field>
+        <field name="arch" type="xml">
+            <form string="Página de Facebook" class="o_marketing_meta_page_form">
+                <header>
+                    <button name="action_test_page" type="object" string="Probar página" class="oe_highlight"
+                            icon="fa-plug" groups="marketing_command_center_meta.group_meta_manager"/>
+                    <button name="action_sync_page" type="object" string="Sincronizar ahora" class="btn-secondary"
+                            icon="fa-refresh" groups="marketing_command_center_meta.group_meta_manager"/>
+                    <button name="action_sync_inbox" type="object" string="Sincronizar bandeja"
+                            class="btn-secondary" icon="fa-comments"
+                            groups="marketing_command_center_meta.group_meta_manager"/>
+                    <button name="action_open_conversations" type="object" string="Conversaciones"
+                            class="btn-secondary" icon="fa-comment"/>
+                    <button name="action_open_messages" type="object" string="Mensajes"
+                            class="btn-secondary" icon="fa-envelope"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,connected,error"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <div class="alert alert-info o_marketing_meta_notice" role="status">
+                        Cada página puede usar su propio token y se sincroniza contra la cuenta social equivalente del centro de mando.
+                    </div>
+                    <group col="2">
+                        <group string="Identificación">
+                            <field name="connection_id"/>
+                            <field name="page_id"/>
+                            <field name="page_url" widget="url"/>
+                            <field name="category"/>
+                            <field name="website" widget="url"/>
+                            <field name="instagram_business_account_id" readonly="1"/>
+                            <field name="instagram_username" readonly="1"/>
+                        </group>
+                        <group string="Acceso y sincronización">
+                            <field name="page_access_token" password="True"/>
+                            <field name="sync_days"/>
+                            <field name="follower_count" readonly="1"/>
+                            <field name="social_account_id" readonly="1"/>
+                            <field name="instagram_social_account_id" readonly="1"/>
+                            <field name="instagram_followers" readonly="1"/>
+                            <field name="instagram_media_count" readonly="1"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Información pública">
+                            <field name="about" readonly="1" nolabel="1" widget="text"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Estado">
+                            <group col="2">
+                                <field name="last_sync_at" readonly="1"/>
+                                <field name="last_sync_summary" readonly="1"/>
+                                <field name="last_posts_count" readonly="1"/>
+                                <field name="last_comments_count" readonly="1"/>
+                                <field name="last_conversations_count" readonly="1"/>
+                                <field name="last_messages_count" readonly="1"/>
+                                <field name="last_error" readonly="1" nolabel="1" widget="text"/>
+                                <field name="last_conversations_error" readonly="1" nolabel="1" widget="text"/>
+                                <field name="last_metrics_error" readonly="1" nolabel="1" widget="text"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_marketing_meta_connections" model="ir.actions.act_window">
+        <field name="name">Conexiones Meta</field>
+        <field name="res_model">marketing.meta.connection</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="action_marketing_meta_pages" model="ir.actions.act_window">
+        <field name="name">Páginas de Facebook</field>
+        <field name="res_model">marketing.meta.page</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_marketing_meta_instagram_accounts" model="ir.actions.act_window">
+        <field name="name">Cuentas de Instagram</field>
+        <field name="res_model">marketing.social.account</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('platform', '=', 'instagram')]</field>
+    </record>
+    <record id="action_marketing_meta_instagram_publications" model="ir.actions.act_window">
+        <field name="name">Publicaciones de Instagram</field>
+        <field name="res_model">marketing.social.publication</field>
+        <field name="view_mode">kanban,list,form,graph</field>
+        <field name="domain">[('platform', '=', 'instagram')]</field>
+        <field name="view_id" ref="marketing_command_center.view_marketing_social_publication_catalog_kanban"/>
+        <field name="search_view_id" ref="marketing_command_center.view_marketing_social_publication_search"/>
+    </record>
+
+    <menuitem id="menu_marketing_meta_root" name="Meta / Facebook"
+              parent="marketing_command_center.menu_marketing_command_configuration"
+              sequence="40" groups="marketing_command_center_meta.group_meta_user"/>
+    <menuitem id="menu_marketing_meta_connections" name="Conexiones Meta"
+              parent="menu_marketing_meta_root" action="action_marketing_meta_connections" sequence="10"
+              groups="marketing_command_center_meta.group_meta_user"/>
+    <menuitem id="menu_marketing_meta_pages" name="Páginas de Facebook"
+              parent="menu_marketing_meta_root" action="action_marketing_meta_pages" sequence="20"
+              groups="marketing_command_center_meta.group_meta_user"/>
+    <menuitem id="menu_marketing_meta_conversations" name="Bandeja de conversaciones"
+              parent="menu_marketing_meta_root"
+              action="marketing_command_center.action_marketing_social_conversations" sequence="25"
+              groups="marketing_command_center_meta.group_meta_user"/>
+    <menuitem id="menu_marketing_meta_messages" name="Mensajes recibidos"
+              parent="menu_marketing_meta_root"
+              action="marketing_command_center.action_marketing_social_conversation_messages" sequence="26"
+              groups="marketing_command_center_meta.group_meta_user"/>
+    <menuitem id="menu_marketing_meta_instagram_accounts" name="Cuentas de Instagram"
+              parent="menu_marketing_meta_root" action="action_marketing_meta_instagram_accounts" sequence="30"
+              groups="marketing_command_center_meta.group_meta_user"/>
+    <menuitem id="menu_marketing_meta_instagram_publications" name="Publicaciones de Instagram"
+              parent="menu_marketing_meta_root" action="action_marketing_meta_instagram_publications" sequence="40"
+              groups="marketing_command_center_meta.group_meta_user"/>
+
+    <record id="view_marketing_meta_publication_form_edit" model="ir.ui.view">
+        <field name="name">marketing.social.publication.form.meta.edit</field>
+        <field name="model">marketing.social.publication</field>
+        <field name="inherit_id" ref="marketing_command_center.view_marketing_social_publication_form_media"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header" position="inside">
+                <button name="action_check_meta_edit_capability" type="object" string="Comprobar edición" class="btn-secondary" icon="fa-check-circle" groups="marketing_command_center_meta.group_meta_manager"/>
+                <button name="action_push_edit_to_meta" type="object" string="Sincronizar edición con Meta" class="oe_highlight" icon="fa-upload" invisible="not draft_caption or platform != 'facebook'" groups="marketing_command_center_meta.group_meta_manager"/>
+            </xpath>
+            <xpath expr="//field[@name='edit_last_error']" position="before">
+                <field name="meta_edit_capability" widget="badge" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

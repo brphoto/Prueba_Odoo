@@ -25,6 +25,19 @@ class ChatroomAiProviderModel(models.Model):
     supports_chat = fields.Boolean(string='Compatible con Chatroom', default=False, index=True)
     recommended = fields.Boolean(string='Recomendado', default=False, index=True)
     active = fields.Boolean(default=True)
+    input_price_per_million = fields.Float(
+        string='Precio entrada / 1M tokens', digits=(16, 8),
+        help='Precio manual de referencia en USD por un millón de tokens de entrada. '
+             'Se usa únicamente para estimar costos locales en Odoo.')
+    output_price_per_million = fields.Float(
+        string='Precio salida / 1M tokens', digits=(16, 8),
+        help='Precio manual de referencia en USD por un millón de tokens de salida. '
+             'Se usa únicamente para estimar costos locales en Odoo.')
+    pricing_source = fields.Selection([
+        ('manual', 'Configurado manualmente'),
+        ('unavailable', 'Sin tarifa configurada'),
+    ], string='Origen de tarifa', default='unavailable', required=True)
+    pricing_updated_at = fields.Datetime(string='Tarifa actualizada el', readonly=True)
     last_synced = fields.Datetime(string='Ultima sincronizacion', readonly=True)
     usage_roles = fields.Char(
         string='Usado para', compute='_compute_usage_roles')
@@ -34,6 +47,31 @@ class ChatroomAiProviderModel(models.Model):
     ], string='Salud', default='unknown', readonly=True)
     health_message = fields.Char(string='Detalle de salud', readonly=True)
     last_tested = fields.Datetime(string='Última prueba', readonly=True)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        now = fields.Datetime.now()
+        for values in vals_list:
+            has_price = any(
+                key in values for key in ('input_price_per_million', 'output_price_per_million'))
+            if has_price and 'pricing_source' not in values:
+                values['pricing_source'] = 'manual'
+            if values.get('pricing_source') == 'manual':
+                values['pricing_updated_at'] = now
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if {'input_price_per_million', 'output_price_per_million'} & set(vals):
+            vals = dict(vals)
+            vals.setdefault('pricing_source', 'manual')
+            vals['pricing_updated_at'] = fields.Datetime.now()
+        return super().write(vals)
+
+    @api.constrains('input_price_per_million', 'output_price_per_million')
+    def _check_pricing(self):
+        for record in self:
+            if record.input_price_per_million < 0 or record.output_price_per_million < 0:
+                raise UserError(_('Las tarifas de tokens no pueden ser negativas.'))
 
     @api.depends('model_id')
     def _compute_usage_roles(self):
@@ -124,6 +162,25 @@ class ChatroomAiProviderModel(models.Model):
         except (TypeError, ValueError, OverflowError, OSError):
             return False
 
+    @api.model
+    def _pricing_for_model(self, model_id):
+        """Return configured local rates without guessing provider prices.
+
+        Provider prices change and are not reliably returned by the models
+        endpoint.  The administrator therefore owns these two reference rates.
+        """
+        if not model_id:
+            return 0.0, 0.0, 'usd'
+        record = self.sudo().search([
+            '|', ('model_id', '=', model_id), ('name', '=', model_id),
+        ], limit=1)
+        if not record or record.pricing_source != 'manual':
+            return 0.0, 0.0, 'usd'
+        return (
+            max(record.input_price_per_million or 0.0, 0.0),
+            max(record.output_price_per_million or 0.0, 0.0),
+            'usd',
+        )
     @api.model
     def action_sync_from_provider(self):
         icp = self.env['ir.config_parameter'].sudo()

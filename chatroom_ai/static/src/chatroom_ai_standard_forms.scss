@@ -1,0 +1,242 @@
+/*
+ * Base visual común para las fichas de Chatroom IA.
+ *
+ * Odoo mantiene el layout nativo y el chatter; esta capa solo evita que
+ * formularios con instrucciones, resultados o JSON se reduzcan a una
+ * columna estrecha por el grid de campos del formulario.
+ */
+.o_chatroom_ai_task_form,
+.o_chatroom_ai_automation_form,
+.o_chatroom_ai_automation_run_form,
+.o_chatroom_ai_audit_form,
+.o_chatroom_ai_memory_form,
+.o_chatroom_ai_tool_form,
+.o_chatroom_ai_playbook_form,
+.o_chatroom_ai_autonomy_form,
+.o_chatroom_ai_policy_form,
+.o_chatroom_ai_request_form,
+.o_chatroom_ai_simulator_form,
+.o_chatroom_ai_setup_form,
+.o_chatroom_ai_setup_wizard_form,
+.o_chatroom_ai_sandbox_form,
+.o_chatroom_ai_quality_test_form,
+.o_chatroom_ai_provider_model_form,
+.o_chatroom_ai_funding_form,
+.o_chatroom_ai_usage_snapshot_form,
+.o_chatroom_ai_knowledge_composer_form,
+.o_chatroom_ai_sandbox_quote_form,
+.o_chatroom_ai_knowledge_test_form,
+.o_chatroom_ai_knowledge_brain_form,
+.o_chatroom_ai_bridge_form,
+.o_chatroom_ai_odoo_bridge_form,
+.o_chatroom_ai_sales_event_form,
+.o_chatroom_ai_operations_check_form,
+.chatroom_operations_check_form,
+.o_chatroom_operations_run_form,
+.o_marketing_command_dashboard,
+.o_marketing_account_form,
+.o_marketing_campaign_form,
+.o_marketing_publication_form,
+.o_marketing_metric_form,
+.o_marketing_interaction_form,
+.o_marketing_alert_form,
+.o_marketing_agent_form {
+    .o_form_sheet,
+    .o_form_sheet_bg {
+        min-width: 0;
+    }
+
+    /* Aprovecha el ancho disponible sin cambiar el layout del chatter. */
+    .o_form_sheet {
+        width: 100%;
+        max-width: none;
+        box-sizing: border-box;
+    }
+
+    .o_form_label,
+    .o_field_widget,
+    .o_inner_group,
+    .o_group {
+        min-width: 0;
+    }
+
+    .oe_title h1,
+    .oe_title .o_field_widget,
+    .oe_title input {
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .o_field_text,
+    .o_field_text textarea,
+    textarea {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        resize: vertical;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        line-height: 1.5;
+    }
+
+    .o_chatroom_ai_task_prompt .o_field_widget,
+    .o_chatroom_ai_task_payload .o_field_widget,
+    .o_chatroom_ai_automation_textarea .o_field_widget,
+    .o_chatroom_ai_setup_textarea,
+    .o_chatroom_ai_knowledge_source_text,
+    .o_chatroom_ai_knowledge_content .o_field_widget {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .o_field_text textarea {
+        min-height: 130px;
+    }
+
+    /* Los bloques que expresamente contienen texto largo salen del grid de
+       dos columnas de Odoo y ocupan todo el ancho disponible. */
+    .o_chatroom_ai_task_prompt,
+    .o_chatroom_ai_task_payload,
+    .o_chatroom_ai_task_result,
+    .o_chatroom_ai_automation_textarea,
+    .o_chatroom_ai_quality_text,
+    .o_chatroom_ai_quality_output,
+    .o_chatroom_ai_sandbox_text,
+    .o_chatroom_ai_sandbox_output,
+    .o_chatroom_ai_sandbox_error,
+    .o_chatroom_ai_long_text,
+    .o_chatroom_ai_knowledge_content {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        clear: both;
+    }
+
+    .o_chatroom_ai_setup_knowledge,
+    .o_chatroom_ai_knowledge_content,
+    .o_chatroom_ai_knowledge_test_preview {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .alert {
+        max-width: 100%;
+        line-height: 1.45;
+    }
+
+    /* Un texto largo no debe quedar atrapado en la columna de etiquetas. */
+    .o_chatroom_ai_long_text,
+    .o_chatroom_long_text,
+    .o_chatroom_ai_result_block,
+    .o_chatroom_ai_source_block,
+    .o_marketing_agent_input {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+
+        > .o_field_widget,
+        > .o_field_text,
+        > textarea {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+        }
+    }
+
+    .o_chatroom_ai_knowledge_brain,
+    .o_chatroom_ai_knowledge_brain .o_field_text,
+    .o_chatroom_ai_knowledge_brain textarea {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+}
+
+/* Los campos de texto puestos directamente dentro de un group son un caso
+   frecuente en las fichas antiguas. Esta regla conserva la etiqueta, pero
+   evita que el valor se reduzca a una columna de pocos caracteres. */
+.o_chatroom_ai_task_form,
+.o_chatroom_ai_automation_form,
+.o_chatroom_ai_automation_run_form,
+.o_chatroom_ai_memory_form,
+.o_chatroom_ai_playbook_form,
+.o_chatroom_ai_sandbox_quote_form,
+.o_chatroom_ai_knowledge_brain_form,
+.o_marketing_campaign_form,
+.o_marketing_publication_form,
+.o_marketing_interaction_form,
+.o_marketing_alert_form,
+.o_marketing_agent_form {
+    .o_field_text {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .o_field_text .o_input,
+    .o_field_text textarea {
+        min-height: 120px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+}
+
+.o_chatroom_ai_result_actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 0 4px;
+    padding: 12px 14px;
+    border: 1px solid #e2e8f0;
+    border-left: 3px solid #76506f;
+    border-radius: 10px;
+    background: #fbfcfe;
+
+    .o_chatroom_ai_result_actions_title {
+        flex: 1 1 100%;
+        color: #475569;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .btn {
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 720px) {
+    .o_chatroom_ai_task_form,
+    .o_chatroom_ai_automation_form,
+    .o_chatroom_ai_automation_run_form,
+    .o_chatroom_ai_memory_form,
+    .o_chatroom_ai_playbook_form,
+    .o_chatroom_ai_knowledge_brain_form,
+    .o_marketing_campaign_form,
+    .o_marketing_publication_form,
+    .o_marketing_interaction_form,
+    .o_marketing_alert_form,
+    .o_marketing_agent_form {
+        .o_form_sheet {
+            padding-left: 16px;
+            padding-right: 16px;
+        }
+
+        .o_group,
+        .o_inner_group {
+            grid-template-columns: minmax(0, 1fr) !important;
+        }
+    }
+
+    .o_chatroom_ai_result_actions {
+        align-items: stretch;
+
+        .btn {
+            flex: 1 1 100%;
+        }
+    }
+}

@@ -45,7 +45,7 @@
                         <group>
                             <field name="task_type"/>
                             <field name="priority" widget="priority"/>
-                            <field name="approval_required"/>
+                            <field name="approval_required" readonly="1"/>
                             <field name="risk_level" widget="badge" readonly="1"/>
                             <field name="user_id"/>
                         </group>
@@ -94,7 +94,7 @@
                                     <field name="tool_id" string="Acción" options="{'no_create': True}"/>
                                     <field name="name" string="Nombre visible"/>
                                     <field name="key" optional="hide"/>
-                                    <field name="requires_approval"/>
+                                    <field name="requires_approval" readonly="1"/>
                                     <field name="risk_level" widget="badge"/>
                                     <field name="state" widget="badge"/>
                                     <field name="error_message" optional="hide"/>
@@ -105,6 +105,11 @@
                                 <field name="result_summary" readonly="1"/>
                                 <field name="error_message" readonly="1"/>
                             </group>
+                            <div class="o_chatroom_ai_result_actions" role="status" invisible="not result_model or not result_res_id">
+                                <span class="o_chatroom_ai_result_actions_title">Resultado nativo preparado</span>
+                                <field name="result_document_name" readonly="1" nolabel="1"/>
+                                <button name="action_open_result_document" type="object" string="Abrir documento" icon="fa-external-link" class="btn-primary"/>
+                            </div>
                         </page>
                         <page string="Contexto técnico">
                             <group string="Trazabilidad del conocimiento" col="2">
@@ -196,7 +201,7 @@
         <field name="context">{'search_default_pending': 1}</field>
     </record>
     <record id="action_chatroom_ai_control" model="ir.actions.act_window">
-        <field name="name">Centro de control IA</field><field name="res_model">chatroom.ai.task</field>
+        <field name="name">Cola operativa IA</field><field name="res_model">chatroom.ai.task</field>
         <field name="view_mode">kanban,list,pivot,graph,form</field>
         <field name="search_view_id" ref="view_chatroom_ai_task_search"/>
         <field name="context">{'search_default_pending': 1}</field>

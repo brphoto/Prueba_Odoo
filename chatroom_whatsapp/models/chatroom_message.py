@@ -15,6 +15,10 @@ class ChatroomMessage(models.Model):
     _description = "Mensaje de Chatroom (WhatsApp / Redes Sociales)"
     _order = 'date asc, id asc'
 
+    _wa_message_id_unique = models.Constraint(
+        'unique(wa_message_id)',
+        'El ID externo del mensaje ya fue procesado.')
+
     display_name = fields.Char(compute='_compute_display_name')
     channel_id = fields.Many2one(
         'chatroom.channel', string="Conversación", required=True,

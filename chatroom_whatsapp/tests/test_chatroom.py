@@ -11,6 +11,27 @@ from ..controllers.whatsapp_webhook import WhatsAppWebhookController
 @tagged('post_install', '-at_install')
 class TestChatroomWhatsapp(TransactionCase):
 
+    def test_new_partner_uses_logged_user_language(self):
+        """Los contactos nuevos heredan el idioma de la sesión actual."""
+        language = self.env.user.lang or self.env.lang
+        partner = self.env['res.partner'].create({'name': 'Contacto idioma QA'})
+        self.assertEqual(partner.lang, language)
+
+    def test_new_partner_respects_explicit_language(self):
+        """El valor indicado por una integración o por el usuario tiene prioridad."""
+        installed = self.env['res.lang'].get_installed()
+        explicit = next(
+            (lang[0] for lang in installed if lang[0] != (self.env.user.lang or self.env.lang)),
+            False,
+        )
+        if not explicit:
+            self.skipTest('Solo hay un idioma instalado en esta base.')
+        partner = self.env['res.partner'].create({
+            'name': 'Contacto idioma explícito QA',
+            'lang': explicit,
+        })
+        self.assertEqual(partner.lang, explicit)
+
     def test_ai_boolean_parameters_and_approval_are_safe_by_default(self):
         channel = self.env['chatroom.channel'].create({
             'channel_type': 'whatsapp',
@@ -57,6 +78,7 @@ class TestChatroomWhatsapp(TransactionCase):
 
         self.assertEqual(channel.partner_id.whatsapp_id, '573009998888')
         self.assertEqual(channel.partner_id.name, 'Contacto nuevo')
+        self.assertEqual(channel.partner_id.lang, self.env.user.lang or self.env.lang)
 
     def test_find_or_create_is_idempotent_for_same_number(self):
         """Una segunda llamada con el mismo wa_id debe reusar el canal,

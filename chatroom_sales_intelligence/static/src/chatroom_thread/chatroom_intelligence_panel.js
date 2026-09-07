@@ -53,7 +53,7 @@ export class ChatroomIntelligencePanel extends Component {
         if (amount === undefined || amount === null) {
             return "";
         }
-        const formatted = Number(amount).toLocaleString(undefined, {
+        const formatted = Number(amount).toLocaleString("es-EC", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         });

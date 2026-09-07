@@ -372,6 +372,56 @@ class ChatroomAiSandbox(models.Model):
                     return value, unit
         return False, False
 
+    @staticmethod
+    def _quantity_matches(text):
+        """Return all explicit quantities with their position in the text."""
+        patterns = (
+            (r'(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:horas?|hrs?|h)\b', 'hours'),
+            (r'(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:unidad(?:es)?|uds?\.?|u)\b', 'units'),
+            (r'\bx\s*(\d+(?:[.,]\d+)?)\b', 'units'),
+        )
+        matches = []
+        for pattern, unit in patterns:
+            for match in re.finditer(pattern, text or '', re.IGNORECASE | re.UNICODE):
+                try:
+                    value = float(match.group(1).replace(',', '.'))
+                except (TypeError, ValueError):
+                    continue
+                if value > 0:
+                    matches.append((match.start(), match.end(), value, unit))
+        return matches
+
+    @classmethod
+    def _quantity_for_product(cls, text, product, max_distance=100):
+        """Associate the closest explicit quantity with one product."""
+        normalize = lambda value: ''.join(
+            char for char in unicodedata.normalize('NFKD', value or '').lower()
+            if not unicodedata.combining(char))
+        normalized_text = normalize(text)
+        quantities = cls._quantity_matches(normalized_text)
+        candidates = []
+        for name in (product.name, product.default_code, product.display_name):
+            normalized_name = normalize(name)
+            if len(normalized_name) < 2:
+                continue
+            offset = 0
+            while True:
+                occurrence = normalized_text.find(normalized_name, offset)
+                if occurrence < 0:
+                    break
+                end = occurrence + len(normalized_name)
+                for start, stop, value, unit in quantities:
+                    if start < occurrence - max_distance or stop > end + max_distance:
+                        continue
+                    distance = min(abs(stop - occurrence), abs(start - end))
+                    direction = 0 if stop <= occurrence else 1
+                    candidates.append((direction, distance, -occurrence, value, unit))
+                offset = occurrence + 1
+        if not candidates:
+            return False, False
+        _direction, _distance, _latest, value, unit = min(candidates)
+        return value, unit
+
     def _quote_products(self, context, use_fallback=True):
         """Find mentioned products, then use the configured fallback."""
         if 'product.product' not in self.env:
@@ -453,9 +503,15 @@ class ChatroomAiSandbox(models.Model):
         lines = []
         for product in products[:8]:
             quantity = default_quantity
-            if explicit_quantity and explicit_unit in ('hours', 'units'):
-                quantity = explicit_quantity
-            lines.append((product, quantity))
+            local_quantity, local_unit = self._quantity_for_product(
+                current_request, product, max_distance=48)
+            if not local_quantity:
+                local_quantity, local_unit = self._quantity_for_product(context, product)
+            effective_quantity = local_quantity or explicit_quantity
+            effective_unit = local_unit or explicit_unit
+            if effective_quantity and effective_unit in ('hours', 'units'):
+                quantity = effective_quantity
+            lines.append((product, quantity, effective_unit))
         return lines, context, explicit_quantity, explicit_unit
 
     def _is_quote_append_request(self, request=False):
@@ -542,7 +598,7 @@ class ChatroomAiSandbox(models.Model):
         if not quote_lines:
             raise UserError(_('No se encontró ningún producto vendible para la cotización.'))
         order_line = []
-        for product, quantity in quote_lines:
+        for product, quantity, line_unit in quote_lines:
             line_values = {
                 'product_id': product.id,
                 'product_uom_qty': quantity,
@@ -550,8 +606,8 @@ class ChatroomAiSandbox(models.Model):
             # Las unidades de horas son una tarifa comercial configurada por
             # Chatroom. Para productos normales dejamos que Odoo resuelva el
             # precio de la lista de precios, impuestos y reglas nativas.
-            if explicit_unit == 'hours':
-                line_values['price_unit'] = self._quote_unit_price(product, explicit_unit)
+            if line_unit == 'hours':
+                line_values['price_unit'] = self._quote_unit_price(product, line_unit)
             order_line.append((0, 0, line_values))
         before_line_ids = set(target_order.order_line.ids) if append_existing else set()
         if append_existing:
@@ -673,6 +729,16 @@ class ChatroomAiSandbox(models.Model):
             raise UserError(_('Vincula una conversación antes de crear una actividad interna.'))
         model_name = target._name
         model = self.env['ir.model']._get(model_name)
+        summary = _('Revisar solicitud del laboratorio IA')
+        marker = '[Chatroom sandbox:%s]' % self.id
+        existing = self.env['mail.activity'].search([
+            ('res_model_id', '=', model.id), ('res_id', '=', target.id),
+            ('summary', '=', summary), ('note', 'ilike', marker),
+        ], order='id desc', limit=1)
+        if existing:
+            if existing not in self.test_activity_ids:
+                self.write({'test_activity_ids': [(4, existing.id)]})
+            return existing
         activity_type = self.test_activity_type_id or self.env.ref(
             'mail.mail_activity_data_todo', raise_if_not_found=False)
         activity_type = activity_type or self.env['mail.activity.type'].search(
@@ -686,8 +752,8 @@ class ChatroomAiSandbox(models.Model):
             'res_id': target.id,
             'user_id': (self.test_activity_user_id or self.env.user).id,
             'date_deadline': self.test_activity_deadline or fields.Date.context_today(self),
-            'summary': _('Revisar solicitud del laboratorio IA'),
-            'note': _('Solicitud de prueba: %s') % request,
+            'summary': summary,
+            'note': _('%s Solicitud de prueba: %s') % (marker, request),
         })
         note = _(
             'Actividad interna creada en %s para %s: «%s». La actividad queda en Odoo para seguimiento; '
@@ -719,7 +785,21 @@ class ChatroomAiSandbox(models.Model):
         if not hasattr(channel, 'action_create_meeting'):
             raise UserError(_(
                 'Instala el módulo Chatroom - Calendario para usar la agenda nativa y la videollamada de Odoo.'))
-        meeting = channel.action_create_meeting(request=request or self._last_customer_request())
+        existing_event = self.env['calendar.event'].browse(self.test_meeting_id).exists()
+        if existing_event:
+            activity = self.test_activity_ids.filtered(
+                lambda item: item.res_model == 'chatroom.channel' and item.res_id == channel.id
+            )[:1]
+            return {
+                'event_id': existing_event.id,
+                'name': existing_event.name,
+                'link': existing_event.videocall_location or existing_event.access_token or '',
+                'activity_id': activity.id if activity else False,
+            }
+        meeting = channel.action_create_meeting(
+            request=request or self._last_customer_request(),
+            idempotency_key='chatroom_ai_sandbox:%s' % self.id,
+        )
         note = _(
             'Reunión nativa creada en Calendario para %s. Enlace generado: %s. '
             'La prueba no envió ningún mensaje externo.'
@@ -744,6 +824,71 @@ class ChatroomAiSandbox(models.Model):
             'type': 'ir.actions.act_window', 'name': _('Prueba IA'),
             'res_model': self._name, 'res_id': self.id,
             'view_mode': 'form', 'target': 'current',
+        }
+
+    def _open_native_record(self, model_name, record_id, title):
+        """Open a native Odoo artifact created by this laboratory run."""
+        self.ensure_one()
+        record = self.env[model_name].browse(record_id).exists()
+        if not record:
+            raise UserError(_('Todavía no existe el resultado que deseas abrir.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': title,
+            'res_model': model_name,
+            'res_id': record.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def action_open_test_quote(self):
+        self.ensure_one()
+        return self._open_native_record(
+            'sale.order', self.test_quote_id.id, _('Cotización nativa de prueba'))
+
+    def action_open_test_activity(self):
+        self.ensure_one()
+        activity = self.test_activity_ids[:1]
+        return self._open_native_record(
+            'mail.activity', activity.id, _('Actividad nativa de prueba'))
+
+    def action_open_test_meeting(self):
+        self.ensure_one()
+        return self._open_native_record(
+            'calendar.event', self.test_meeting_id, _('Reunión nativa de prueba'))
+
+    def action_open_quote_history(self):
+        """Open every quotation generated by this laboratory run.
+
+        ``test_quote_id`` intentionally points to the latest draft so the
+        common case remains one click.  This action is the complete audit
+        path for conversations that contain several independent requests or
+        an explicit append operation.
+        """
+        self.ensure_one()
+        if not self.quote_history_ids:
+            raise UserError(_('Todavía no hay cotizaciones generadas en esta prueba.'))
+        list_view = self.env.ref(
+            'chatroom_ai_usage.view_chatroom_ai_sandbox_quote_list',
+            raise_if_not_found=False)
+        form_view = self.env.ref(
+            'chatroom_ai_usage.view_chatroom_ai_sandbox_quote_form',
+            raise_if_not_found=False)
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Historial de cotizaciones de la prueba'),
+            'res_model': 'chatroom.ai.sandbox.quote',
+            'view_mode': 'list,form',
+            'views': [
+                (list_view.id, 'list') if list_view else (False, 'list'),
+                (form_view.id, 'form') if form_view else (False, 'form'),
+            ],
+            'domain': [('sandbox_id', '=', self.id)],
+            'context': {
+                'default_sandbox_id': self.id,
+                'search_default_sandbox_id': self.id,
+            },
+            'target': 'new',
         }
 
     def _process_test_operations(self, request):
@@ -865,10 +1010,10 @@ class ChatroomAiSandbox(models.Model):
                 quote_lines, quote_context, _quantity, _unit = self._quote_lines_from_context(question)
             except UserError:
                 quote_lines, quote_context = [], question or ''
-            for product, quantity in quote_lines:
+            for product, quantity, line_unit in quote_lines:
                 facts = self.channel_id._ai_product_commercial_data(product, quantity=quantity)
                 currency = facts['currency']
-                price = self._quote_unit_price(product, _unit if is_quote_request else False)
+                price = self._quote_unit_price(product, line_unit if is_quote_request else False)
                 amount = price * quantity
                 lines.append(_(
                     'Línea solicitada: %(product)s | cantidad %(quantity)s | '
@@ -883,7 +1028,7 @@ class ChatroomAiSandbox(models.Model):
                     'stock': facts['stock_label'],
                 })
             products = self.env['product.product'].browse([
-                product.id for product, _quantity in quote_lines])
+                product.id for product, _quantity, _line_unit in quote_lines])
         elif self.channel_id and hasattr(self.channel_id, '_ai_search_products_mentioned'):
             products = self.channel_id._ai_search_products_mentioned(question, limit=5)
         else:

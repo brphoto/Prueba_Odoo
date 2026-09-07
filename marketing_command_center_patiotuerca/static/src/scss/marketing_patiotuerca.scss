@@ -1,0 +1,18 @@
+.o_marketing_patiotuerca_connection,
+.o_marketing_vehicle_form {
+    .o_marketing_patiotuerca_intro {
+        margin: 0 0 1.25rem;
+        padding: .8rem 1rem;
+        border-left: 4px solid #0f9d8a;
+        border-radius: 8px;
+        background: #edf9f7;
+        color: #315e59;
+    }
+    .o_form_label { font-weight: 600; }
+}
+.o_marketing_vehicle_kanban {
+    .o_marketing_vehicle_media { height: 150px; overflow: hidden; border-radius: 10px 10px 0 0; background: #edf1f5; }
+    .o_marketing_vehicle_media img { width: 100%; height: 100%; object-fit: cover; }
+    .o_marketing_vehicle_media_empty { display: grid; place-items: center; color: #7d8792; font-size: 3rem; }
+    .o_marketing_vehicle_actions { margin-top: .75rem; }
+}

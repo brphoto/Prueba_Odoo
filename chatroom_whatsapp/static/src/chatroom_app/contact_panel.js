@@ -201,7 +201,7 @@ export class ContactPanel extends Component {
     }
 
     formatMoney(amount, symbol) {
-        const value = (amount || 0).toLocaleString(undefined, {
+        const value = (amount || 0).toLocaleString("es-EC", {
             minimumFractionDigits: 2, maximumFractionDigits: 2,
         });
         return symbol ? `${value} ${symbol}` : value;

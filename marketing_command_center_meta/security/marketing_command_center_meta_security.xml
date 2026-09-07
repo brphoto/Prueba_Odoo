@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_marketing_command_center_meta" model="ir.module.category">
+        <field name="name">Conector Meta</field>
+        <field name="description">Permisos para conectar páginas de Facebook al marketing social.</field>
+        <field name="sequence">36</field>
+    </record>
+    <record id="privilege_marketing_meta" model="res.groups.privilege">
+        <field name="name">Conector Meta</field>
+        <field name="category_id" ref="module_category_marketing_command_center_meta"/>
+    </record>
+    <record id="group_meta_user" model="res.groups">
+        <field name="name">Usuario del conector Meta</field>
+        <field name="privilege_id" ref="privilege_marketing_meta"/>
+        <field name="implied_ids" eval="[(4, ref('marketing_command_center.group_marketing_user'))]"/>
+    </record>
+    <record id="group_meta_manager" model="res.groups">
+        <field name="name">Administrador del conector Meta</field>
+        <field name="privilege_id" ref="privilege_marketing_meta"/>
+        <field name="implied_ids" eval="[(4, ref('group_meta_user'))]"/>
+    </record>
+</odoo>

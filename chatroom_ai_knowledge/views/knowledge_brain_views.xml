@@ -18,6 +18,9 @@
         <field name="model">ai.knowledge.base</field>
         <field name="inherit_id" ref="chatroom_sales_intelligence.view_ai_knowledge_base_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes">
+                <attribute name="class" add="o_chatroom_ai_knowledge_brain_form" separator=" "/>
+            </xpath>
             <xpath expr="//header" position="inside">
                 <button name="action_analyze_with_ai" type="object" string="Analizar con IA" icon="fa-magic" class="btn-primary"/>
             </xpath>

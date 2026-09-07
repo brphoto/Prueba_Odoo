@@ -28,6 +28,7 @@ class MarketingSocialAgentChat(models.Model):
         ('summary', 'Resumen'), ('top', 'Mejor contenido'),
         ('engagement', 'Engagement'), ('trend', 'Tendencia'),
         ('comments', 'Comentarios'), ('audience', 'Audiencia'),
+        ('inbox', 'Bandeja social'), ('quality', 'Calidad de datos'),
     ], string='Consulta interpretada', readonly=True)
     chat_message_ids = fields.One2many(
         'marketing.social.agent.message', 'chat_id', string='Conversación', readonly=True)
@@ -84,9 +85,143 @@ class MarketingSocialAgentChat(models.Model):
     def _platform_text(self):
         return 'todas las redes' if self.platform_filter == 'all' else PLATFORM_LABELS.get(self.platform_filter, self.platform_filter)
 
+    def _social_accounts(self):
+        domain = [
+            ('company_id', '=', self.company_id.id), ('active', '=', True),
+        ]
+        if self.platform_filter != 'all':
+            domain.append(('platform', '=', self.platform_filter))
+        return self.env['marketing.social.account'].search(domain)
+
+    def _answer_inbox_question(self, question):
+        normalized = self._normalize(question)
+        if not any(word in normalized for word in (
+                'bandeja', 'inbox', 'conversacion', 'conversaciones', 'mensaje',
+                'mensajes', 'chat', 'chats')):
+            return False
+        accounts = self._social_accounts()
+        Conversation = self.env['marketing.social.conversation']
+        Message = self.env['marketing.social.conversation.message']
+        conversations = Conversation.search([('account_id', 'in', accounts.ids)])
+        messages = Message.search([('account_id', 'in', accounts.ids)])
+        open_count = len(conversations.filtered(lambda item: item.state == 'open'))
+        unread = len(messages.filtered(
+            lambda item: item.direction == 'inbound' and item.read_state == 'unread'))
+        self.intent = 'inbox'
+        if not accounts:
+            return _('No hay cuentas sociales activas para consultar la bandeja. Conecta Meta o importa una cuenta primero.')
+        return _(
+            'Bandeja social de %s: %s conversación(es), %s abierta(s), %s mensaje(s) y %s entrante(s) sin leer. '
+            'La sincronización de conversaciones es independiente de las publicaciones: una página puede tener mensajes aunque no entregue posts o Insights.'
+        ) % (
+            self._platform_text(), self._number(len(conversations)), self._number(open_count),
+            self._number(len(messages)), self._number(unread),
+        )
+
+    def _answer_quality_question(self, question):
+        normalized = self._normalize(question)
+        if not any(word in normalized for word in (
+                'calidad', 'real', 'calculable', 'disponible', 'insights',
+                'medida', 'medicion', 'cero', 'por que', 'porque')):
+            return False
+        date_from, date_to = self._date_range()
+        domain = [
+            ('company_id', '=', self.company_id.id),
+            ('snapshot_date', '>=', date_from), ('snapshot_date', '<=', date_to),
+        ]
+        if self.platform_filter != 'all':
+            domain.append(('platform', '=', self.platform_filter))
+        metrics = self.env['marketing.social.metric.snapshot'].search(domain)
+        counts = {
+            status: len(metrics.filtered(lambda metric, status=status: metric.metric_status == status))
+            for status in ('verified', 'partial', 'unavailable', 'demo')
+        }
+        self.intent = 'quality'
+        if not metrics:
+            return _('No hay instantáneas de métricas en el período. El engagement todavía no se puede calcular.')
+        measured = counts['verified'] + counts['partial'] + counts['demo']
+        if not measured:
+            return _(
+                'El engagement aparece en 0,00%% porque no existen métricas utilizables: %s publicación(es) están sin datos del proveedor. '
+                'Esto significa «no calculable», no necesariamente cero interacción. Revisa permisos de Insights y sincroniza nuevamente Meta.'
+            ) % self._number(counts['unavailable'])
+        return _(
+            'Calidad de métricas en %s: %s verificadas, %s parciales, %s demo y %s no disponibles. '
+            'El engagement se calcula solo con %s registro(s) medible(s); las métricas no disponibles se excluyen para no convertir un vacío en un falso cero.'
+        ) % (
+            self._platform_text(), self._number(counts['verified']), self._number(counts['partial']),
+            self._number(counts['demo']), self._number(counts['unavailable']), self._number(measured),
+        )
+
+    def _vehicle_rows(self):
+        """Read the optional external catalog without making it a hard dependency."""
+        if 'marketing.vehicle.listing' not in self.env:
+            return self.env['marketing.vehicle.listing']
+        return self.env['marketing.vehicle.listing'].sudo().search([
+            ('company_id', '=', self.company_id.id), ('active', '=', True),
+        ], order='status, price, name', limit=100)
+
+    def _answer_vehicle_question(self, question, vehicles):
+        normalized = self._normalize(question)
+        if not any(word in normalized for word in (
+                'vehiculo', 'vehiculos', 'auto', 'autos', 'carro', 'carros',
+                'patiotuerca', 'catalogo', 'publicado', 'despublicado',
+                'reservado', 'vendido')):
+            return False
+        status_labels = {
+            'published': 'publicado', 'unpublished': 'despublicado',
+            'paused': 'pausado', 'reserved': 'reservado', 'sold': 'vendido',
+        }
+        requested_status = next((status for status, words in {
+            'published': ('publicado', 'publicados', 'online', 'activos'),
+            'unpublished': ('despublicado', 'despublicizados', 'inactivos'),
+            'reserved': ('reservado', 'reservados'),
+            'sold': ('vendido', 'vendidos'),
+        }.items() if any(word in normalized for word in words)), False)
+        selected = vehicles.filtered(lambda vehicle: vehicle.status == requested_status) if requested_status else vehicles
+        if not vehicles:
+            self.intent = 'audience'
+            return _('No hay vehículos activos en el catálogo externo. Sincroniza Patiotuerca o carga el demo para consultar anuncios.')
+        self.intent = 'audience'
+        counts = {
+            status: len(vehicles.filtered(lambda vehicle, status=status: vehicle.status == status))
+            for status in ('published', 'unpublished', 'paused', 'reserved', 'sold')
+        }
+        summary = ', '.join('%s %s' % (count, label) for label, count in (
+            ('publicados', counts['published']), ('despublicados', counts['unpublished']),
+            ('pausados', counts['paused']), ('reservados', counts['reserved']),
+            ('vendidos', counts['sold']),
+        ) if count)
+        if not selected:
+            return _('No encontré vehículos %s. El catálogo tiene %s.') % (
+                status_labels.get(requested_status, requested_status), summary)
+        lines = []
+        for vehicle in selected[:8]:
+            price = ('%.2f %s' % (vehicle.price, vehicle.currency or 'USD')).replace('.', ',')
+            details = ' · '.join(filter(None, [vehicle.brand, vehicle.model, vehicle.version]))
+            lines.append('• %s — %s — %s%s' % (
+                vehicle.name, details or 'sin detalle', price,
+                (' — %s' % vehicle.url) if vehicle.url else ''))
+        qualifier = ' %s' % status_labels[requested_status] if requested_status else ''
+        return _('Catálogo Patiotuerca: %s. Mostrando%s %s anuncio(s):\n%s') % (
+            summary, qualifier, len(selected), '\n'.join(lines))
+
     def _answer_question(self, question):
         normalized = self._normalize(question)
         rows = self._rows()
+        vehicles = self._vehicle_rows()
+        vehicle_answer = self._answer_vehicle_question(question, vehicles)
+        if vehicle_answer:
+            self.source_publication_ids = [(6, 0, [])]
+            return vehicle_answer
+        inbox_answer = self._answer_inbox_question(question)
+        if inbox_answer:
+            self.source_publication_ids = [(6, 0, [])]
+            return inbox_answer
+        quality_answer = self._answer_quality_question(question)
+        if quality_answer:
+            self.source_publication_ids = [(6, 0, [])]
+            return quality_answer
         self.source_publication_ids = [(6, 0, [publication.id for publication, _metric in rows])]
         if not rows:
             self.intent = 'summary'
@@ -180,6 +315,12 @@ class MarketingSocialAgentChat(models.Model):
             answer = self._answer_question(question)
             sources = self.source_publication_ids.sorted('published_at', reverse=True)
             source_summary = _('Respuesta calculada con %s publicación(es) y su última métrica disponible.') % len(sources)
+            if self.intent == 'inbox':
+                source_summary = _('Respuesta calculada con las cuentas, conversaciones y mensajes sociales sincronizados.')
+            elif self.intent == 'quality':
+                source_summary = _('Respuesta calculada con las instantáneas de calidad de métricas del período.')
+            elif not sources and self.intent == 'audience':
+                source_summary = _('Respuesta calculada con el catálogo externo de vehículos sincronizado.')
             if sources:
                 source_summary += ' ' + _('Fuentes: %s.') % ', '.join(sources.mapped('name')[:5])
             self.env['marketing.social.agent.message'].create({

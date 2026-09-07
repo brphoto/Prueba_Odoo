@@ -128,7 +128,7 @@ export class RfmDashboard extends Component {
     }
 
     formatMoney(value) {
-        return (value || 0).toLocaleString(undefined, {
+        return (value || 0).toLocaleString("es-EC", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         });

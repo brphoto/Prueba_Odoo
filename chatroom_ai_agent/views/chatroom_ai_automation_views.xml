@@ -43,6 +43,9 @@
                         <button name="action_view_tasks" type="object" class="oe_stat_button" icon="fa-tasks">
                             <field name="task_count" widget="statinfo" string="Tareas generadas"/>
                         </button>
+                        <button name="action_view_runs" type="object" class="oe_stat_button" icon="fa-history">
+                            <field name="run_count" widget="statinfo" string="Ejecuciones"/>
+                        </button>
                     </div>
                     <notebook class="o_chatroom_ai_automation_notebook">
                         <page name="configuration" string="Configuración">
@@ -71,6 +74,25 @@
                                 <label for="description" string="Cómo usarla"/>
                                 <field name="description" nolabel="1" widget="text" placeholder="Explica en lenguaje sencillo cuándo usar esta automatización..."/>
                             </div>
+                        </page>
+                        <page name="run_history" string="Historial de ejecuciones">
+                            <div class="alert alert-info" role="alert">
+                                Cada ejecución queda registrada para consultar cuándo se ejecutó, cuántos canales revisó, qué tareas creó y qué incidencias tuvo.
+                            </div>
+                            <field name="run_ids" nolabel="1" readonly="1">
+                                <list string="Historial de ejecuciones" create="0" delete="0">
+                                    <field name="execution_date" string="Ejecutada el"/>
+                                    <field name="execution_type" string="Origen" widget="badge"/>
+                                    <field name="state" string="Estado" widget="badge"/>
+                                    <field name="channels_scanned" string="Revisados"/>
+                                    <field name="tasks_created" string="Tareas creadas"/>
+                                    <field name="channels_skipped" string="Omitidos"/>
+                                    <field name="tasks_reused" string="Ya existentes" optional="hide"/>
+                                    <field name="channels_failed" string="Con incidencia" optional="hide"/>
+                                    <field name="summary" string="Resumen"/>
+                                    <field name="error_details" string="Incidencias" optional="hide"/>
+                                </list>
+                            </field>
                         </page>
                         <page name="filters" string="Filtros">
                             <div class="alert alert-info" role="alert">

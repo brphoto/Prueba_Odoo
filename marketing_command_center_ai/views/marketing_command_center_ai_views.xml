@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_marketing_social_agent_form_ai" model="ir.ui.view">
+        <field name="name">marketing.social.agent.chat.form.ai</field>
+        <field name="model">marketing.social.agent.chat</field>
+        <field name="inherit_id" ref="marketing_command_center.view_marketing_social_agent_chat_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/field[@name='state']" position="before">
+                <button name="action_generate_ai_summary" type="object" string="Resumen IA" class="btn-secondary" icon="fa-magic"/>
+            </xpath>
+            <xpath expr="//notebook/page[1]" position="inside">
+                <group col="2" string="Motor de análisis">
+                    <field name="analysis_mode"/>
+                    <field name="provider_model_id" invisible="analysis_mode != 'provider'"/>
+                    <field name="ai_model_used" readonly="1" invisible="not ai_model_used"/>
+                    <field name="ai_run_at" readonly="1" invisible="not ai_run_at"/>
+                </group>
+            </xpath>
+            <xpath expr="//notebook/page[2]" position="inside">
+                <group string="Consumo IA" invisible="analysis_mode != 'provider'">
+                    <field name="ai_input_tokens" readonly="1"/>
+                    <field name="ai_output_tokens" readonly="1"/>
+                    <field name="ai_vehicle_count" readonly="1"/>
+                    <field name="ai_error" readonly="1" widget="text" invisible="not ai_error"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

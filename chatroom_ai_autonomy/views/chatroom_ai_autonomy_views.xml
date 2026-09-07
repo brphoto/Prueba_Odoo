@@ -180,4 +180,14 @@
             <xpath expr="//form" position="attributes"><attribute name="class" add="o_chatroom_ai_autonomy_request_form" separator=" "/></xpath>
         </field>
     </record>
+    <record id="view_chatroom_ai_autonomy_request_form_visual" model="ir.ui.view">
+        <field name="name">chatroom.ai.autonomy.request.form.visual</field>
+        <field name="model">chatroom.ai.autonomy.request</field>
+        <field name="inherit_id" ref="view_chatroom_ai_autonomy_request_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes">
+                <attribute name="class" add="o_chatroom_ai_request_form" separator=" "/>
+            </xpath>
+        </field>
+    </record>
 </odoo>

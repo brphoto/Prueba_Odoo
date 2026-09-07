@@ -13,7 +13,7 @@ class ChatroomAiAutomation(models.Model):
 
     name = fields.Char(required=True, tracking=True)
     description = fields.Text(
-        string='Que hace esta automatizacion',
+        string='Qué hace esta automatización',
         help='Explica en lenguaje sencillo cuando usar esta automatizacion y que resultado prepara.')
     active = fields.Boolean(string='Activa', default=True, tracking=True)
     sequence = fields.Integer(string='Orden', default=10)
@@ -52,11 +52,22 @@ class ChatroomAiAutomation(models.Model):
     last_run_summary = fields.Char(string='Resumen de la última ejecución', readonly=True)
     company_id = fields.Many2one('res.company', string='Empresa', default=lambda self: self.env.company, index=True)
     task_count = fields.Integer(string='Tareas generadas', compute='_compute_task_count')
+    run_ids = fields.One2many(
+        'chatroom.ai.automation.run', 'automation_id',
+        string='Historial de ejecuciones', readonly=True)
+    run_count = fields.Integer(string='Ejecuciones', compute='_compute_run_count')
 
     def _compute_task_count(self):
         task_model = self.env['chatroom.ai.task'].sudo()
         for automation in self:
             automation.task_count = task_model.search_count([
+                ('automation_id', '=', automation.id),
+            ])
+
+    def _compute_run_count(self):
+        run_model = self.env['chatroom.ai.automation.run'].sudo()
+        for automation in self:
+            automation.run_count = run_model.search_count([
                 ('automation_id', '=', automation.id),
             ])
 
@@ -66,6 +77,18 @@ class ChatroomAiAutomation(models.Model):
         action = self.env.ref('chatroom_ai_agent.action_chatroom_ai_task').read()[0]
         action.update({
             'name': _('Resultados: %s') % self.name,
+            'domain': [('automation_id', '=', self.id)],
+            'context': {'default_automation_id': self.id},
+        })
+        return action
+
+    def action_view_runs(self):
+        """Open the execution history without losing the automation context."""
+        self.ensure_one()
+        action = self.env.ref(
+            'chatroom_ai_agent.action_chatroom_ai_automation_run').read()[0]
+        action.update({
+            'name': _('Ejecuciones: %s') % self.name,
             'domain': [('automation_id', '=', self.id)],
             'context': {'default_automation_id': self.id},
         })
@@ -244,9 +267,9 @@ class ChatroomAiAutomation(models.Model):
     def action_run_now(self):
         self.ensure_one()
         channels = self._channels_for(self)
-        created = self._run_for_channels(channels)
+        created = self._run_for_channels(channels, execution_type='manual')
         skipped = max(len(channels) - created, 0)
-        self.message_post(body=_('Ejecucion manual: %s tarea(s) creada(s), %s canal(es) revisado(s) y %s omitido(s).') % (
+        self.message_post(body=_('Ejecución manual: %s tarea(s) creada(s), %s canal(es) revisado(s) y %s omitido(s).') % (
             created, len(channels), skipped))
         return {
             'type': 'ir.actions.client',
@@ -266,7 +289,7 @@ class ChatroomAiAutomation(models.Model):
         channels = self._channels_for(self)
         filters = []
         if self.only_unread:
-            filters.append(_('no leidas'))
+            filters.append(_('no leídas'))
         if self.only_unassigned:
             filters.append(_('sin asignar'))
         if self.min_rfm_score:
@@ -276,18 +299,27 @@ class ChatroomAiAutomation(models.Model):
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
-                'title': _('Previsualizacion de alcance'),
-                'message': _('Se revisarian %s conversacion(es), %s. No se creo ninguna tarea ni se envio ningun mensaje.') % (
+                'title': _('Previsualización de alcance'),
+                'message': _('Se revisarían %s conversación(es), %s. No se creó ninguna tarea ni se envió ningún mensaje.') % (
                     len(channels), detail),
                 'type': 'info',
                 'sticky': True,
             },
         }
 
-    def _run_for_channels(self, channels):
+    def _run_for_channels(self, channels, execution_type='manual'):
         self.ensure_one()
         tasks = self.env['chatroom.ai.task'].sudo()
+        run = self.env['chatroom.ai.automation.run'].sudo().create({
+            'automation_id': self.id,
+            'execution_type': execution_type,
+            'execution_date': fields.Datetime.now(),
+            'summary': _('Ejecución en curso'),
+        })
         created = 0
+        created_task_ids = []
+        reused = 0
+        skipped_details = []
         errors = []
         for channel in channels:
             try:
@@ -298,6 +330,9 @@ class ChatroomAiAutomation(models.Model):
                         ('state', 'in', ('awaiting_approval', 'planned', 'running')),
                     ])
                     if duplicate:
+                        reused += 1
+                        skipped_details.append(
+                            _('Tarea ya existente: %s') % channel.display_name)
                         continue
                     instruction = self.instruction or (_('Automatización: %s') % self.name)
                     template = getattr(self, 'template_id', False)
@@ -311,15 +346,30 @@ class ChatroomAiAutomation(models.Model):
                     if not self.approval_required and task.state == 'planned':
                         task.action_run()
                     created += 1
+                    created_task_ids.append(task.id)
             except Exception as exc:
                 errors.append('%s: %s' % (channel.display_name, exc))
+        skipped = max(len(channels) - created, 0)
+        summary = _('%s creadas · %s revisadas · %s omitidas · %s con incidencia') % (
+            created, len(channels), skipped, len(errors))
+        run.write({
+            'state': 'failed' if errors else 'completed',
+            'channels_scanned': len(channels),
+            'tasks_created': created,
+            'channels_skipped': skipped,
+            'tasks_reused': reused,
+            'channels_failed': len(errors),
+            'summary': summary,
+            'skip_details': '\n'.join(skipped_details)[:4000] or False,
+            'error_details': '\n'.join(errors)[:4000] or False,
+            'task_ids': [(6, 0, created_task_ids)],
+        })
         self.write({
             'last_run': fields.Datetime.now(),
             'last_run_count': created,
             'last_scanned_count': len(channels),
-            'last_skipped_count': max(len(channels) - created, 0),
-            'last_run_summary': _('%s creadas · %s revisadas · %s omitidas') % (
-                created, len(channels), max(len(channels) - created, 0)),
+            'last_skipped_count': skipped,
+            'last_run_summary': summary,
             'last_error': '\n'.join(errors)[:4000] or False,
         })
         return created
@@ -333,7 +383,8 @@ class ChatroomAiAutomation(models.Model):
         total = 0
         for automation in self.sudo().search([('active', '=', True), ('trigger', 'in', ('daily_review', 'open_conversation', 'open_opportunity', 'pending_quote', 'pending_activity', 'overdue_invoice'))]):
             try:
-                total += automation._run_for_channels(automation._channels_for(automation))
+                total += automation._run_for_channels(
+                    automation._channels_for(automation), execution_type='automatic')
             except Exception as exc:
                 self.env.cr.rollback()
                 automation.write({'last_run': fields.Datetime.now(), 'last_error': str(exc)[:4000]})

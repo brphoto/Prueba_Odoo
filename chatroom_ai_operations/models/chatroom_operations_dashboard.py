@@ -52,6 +52,9 @@ class ChatroomOperationsDashboard(models.TransientModel):
     ], string='Prioridad operativa', readonly=True)
     next_action = fields.Char(string='Siguiente acción recomendada', readonly=True)
     setup_next_step = fields.Char(string='Siguiente paso de configuración', readonly=True)
+    readiness_ok = fields.Integer(string='Comprobaciones correctas', readonly=True)
+    readiness_attention = fields.Integer(string='Comprobaciones pendientes', readonly=True)
+    readiness_total = fields.Integer(string='Comprobaciones totales', readonly=True)
 
     @api.model
     def action_open_dashboard(self):
@@ -167,6 +170,15 @@ class ChatroomOperationsDashboard(models.TransientModel):
                 record.payphone_state = 'unavailable'
             record.unread_notifications = self._count('chatroom.notification', [('state', '=', 'unread')])
             record.demo_count = self._count('res.partner', [('name', 'like', 'DEMO QA%')])
+            if 'chatroom.operations.check' in self.env:
+                checks = self.env['chatroom.operations.check'].sudo().search([
+                    ('company_id', '=', self.env.company.id), ('active', '=', True),
+                ])
+                record.readiness_total = len(checks)
+                record.readiness_ok = len(checks.filtered(lambda check: check.state == 'ok'))
+                record.readiness_attention = len(checks.filtered(lambda check: check.state != 'ok'))
+            else:
+                record.readiness_total = record.readiness_ok = record.readiness_attention = 0
             record.attention_count = (
                 record.failed_payments + record.ai_failed + record.sla_attention
                 + record.overdue_activities + record.deliveries_late
@@ -351,6 +363,15 @@ class ChatroomOperationsDashboard(models.TransientModel):
 
     def action_open_demos(self):
         return self._open('res.partner', _('Contactos demo'), [('name', 'like', 'DEMO QA%')])
+
+    def action_open_readiness_checks(self):
+        return self._open('chatroom.operations.check', _('Salud y preparación'), [])
+
+    def action_refresh_readiness_checks(self):
+        if 'chatroom.operations.check' in self.env:
+            self.env['chatroom.operations.check'].action_run_all()
+        self._refresh_metrics()
+        return {'type': 'ir.actions.client', 'tag': 'reload'}
 
     def action_open_sla(self):
         ids = self._sla_channel_ids()

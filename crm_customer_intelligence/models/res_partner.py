@@ -62,7 +62,7 @@ class ResPartner(models.Model):
              "El score y las métricas siguen calculándose normalmente.")
     rfm_category_origin = fields.Selection([
         ('automatic', 'Automática'), ('manual', 'Manual'),
-    ], string="Origen de categoría", compute='_compute_rfm_category_origin')
+    ], string="Origen de categoría RFM", compute='_compute_rfm_category_origin')
     rfm_recency_days = fields.Integer(
         string="Recencia (días)", default=0, copy=False, readonly=True,
         help="Días transcurridos desde la última compra usada para el cálculo RFM.")

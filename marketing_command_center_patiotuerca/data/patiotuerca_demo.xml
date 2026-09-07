@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="patiotuerca_demo_connection" model="marketing.patiotuerca.connection">
+        <field name="name">DEMO Patiotuerca</field>
+        <field name="demo_mode">True</field>
+        <field name="state">demo</field>
+        <field name="last_sync_summary">Catálogo demo listo para probar publicaciones y despublicaciones.</field>
+    </record>
+    <record id="patiotuerca_demo_vehicle_1" model="marketing.vehicle.listing">
+        <field name="name">Chevrolet Tracker Premier</field><field name="external_id">PT-DEMO-001</field><field name="connection_id" ref="patiotuerca_demo_connection"/><field name="source">demo</field><field name="status">published</field><field name="brand">Chevrolet</field><field name="model">Tracker</field><field name="version">Premier</field><field name="year">2024</field><field name="mileage">18000</field><field name="price">24900</field><field name="currency">USD</field><field name="location">Quito</field><field name="description">SUV publicada para pruebas de catálogo.</field><field name="image_url">https://images.unsplash.com/photo-1553440569-bcc63803a83d?auto=format&amp;fit=crop&amp;w=900&amp;q=80</field>
+    </record>
+    <record id="patiotuerca_demo_vehicle_2" model="marketing.vehicle.listing">
+        <field name="name">Kia Sportage LX</field><field name="external_id">PT-DEMO-002</field><field name="connection_id" ref="patiotuerca_demo_connection"/><field name="source">demo</field><field name="status">published</field><field name="brand">Kia</field><field name="model">Sportage</field><field name="version">LX</field><field name="year">2023</field><field name="mileage">26000</field><field name="price">28900</field><field name="currency">USD</field><field name="location">Guayaquil</field><field name="description">SUV publicada para pruebas de catálogo.</field><field name="image_url">https://images.unsplash.com/photo-1542282088-fe8426682b8f?auto=format&amp;fit=crop&amp;w=900&amp;q=80</field>
+    </record>
+    <record id="patiotuerca_demo_vehicle_3" model="marketing.vehicle.listing">
+        <field name="name">Toyota Hilux 4x4</field><field name="external_id">PT-DEMO-003</field><field name="connection_id" ref="patiotuerca_demo_connection"/><field name="source">demo</field><field name="status">unpublished</field><field name="brand">Toyota</field><field name="model">Hilux</field><field name="version">4x4</field><field name="year">2022</field><field name="mileage">41000</field><field name="price">33700</field><field name="currency">USD</field><field name="location">Cuenca</field><field name="description">Registro despublicado para probar filtros y control de inventario.</field>
+    </record>
+    <record id="patiotuerca_demo_vehicle_4" model="marketing.vehicle.listing">
+        <field name="name">Hyundai Tucson</field><field name="external_id">PT-DEMO-004</field><field name="connection_id" ref="patiotuerca_demo_connection"/><field name="source">demo</field><field name="status">sold</field><field name="brand">Hyundai</field><field name="model">Tucson</field><field name="version">Limited</field><field name="year">2021</field><field name="mileage">52000</field><field name="price">21900</field><field name="currency">USD</field><field name="location">Manta</field><field name="description">Registro vendido conservado en histórico.</field>
+    </record>
+</odoo>

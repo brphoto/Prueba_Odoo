@@ -19,15 +19,38 @@
     }
 
     .o_marketing_dashboard_stats {
+        display: grid !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
         margin: 18px 0;
         gap: 10px;
+        width: 100%;
     }
 
     .o_marketing_dashboard_stats .oe_stat_button {
+        width: 100% !important;
+        min-width: 0;
+        margin: 0 !important;
         min-height: 82px;
         border: 1px solid #dce5ee;
         border-radius: 10px;
         background: #ffffff;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, .04);
+        transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+
+        &:hover {
+            border-color: #a855f7;
+            box-shadow: 0 5px 14px rgba(15, 23, 42, .10);
+            transform: translateY(-1px);
+        }
+    }
+
+    .o_marketing_dashboard_stats .o_stat_info {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .o_marketing_dashboard_stats .o_stat_text {
+        white-space: normal;
     }
 
     .o_marketing_dashboard_help {
@@ -38,6 +61,34 @@
 
         p { margin: 0 0 10px; }
         p:last-child { margin-bottom: 0; }
+    }
+
+    .o_marketing_dashboard_sections {
+        margin-top: 14px;
+
+        .o_marketing_dashboard_detail_group {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+            width: 100%;
+            align-items: start;
+
+            > .o_group {
+                min-width: 0;
+                width: 100%;
+                padding: 14px 16px;
+                border: 1px solid #e1e8f0;
+                border-radius: 10px;
+                background: #fbfcfe;
+                box-sizing: border-box;
+            }
+
+            .o_field_widget,
+            .o_form_label {
+                min-width: 0;
+                overflow-wrap: anywhere;
+            }
+        }
     }
 
     .o_marketing_agent_input {
@@ -57,6 +108,26 @@
     }
 }
 
+/* El centro de mando es un tablero y aprovecha todo el ancho disponible.
+   Los formularios de las fichas sociales conservan el ancho estándar de Odoo. */
+.o_marketing_command_dashboard {
+    .o_form_sheet_bg {
+        padding: 0 !important;
+    }
+
+    .o_form_sheet {
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .o_marketing_dashboard_filters,
+    .o_marketing_dashboard_stats {
+        box-sizing: border-box;
+    }
+}
+
 .o_marketing_publication_kanban {
     .o_kanban_record {
         min-height: 120px;
@@ -66,11 +137,369 @@
         background: #ffffff;
     }
 
+    .o_marketing_kanban_media {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 120px;
+        margin: -14px -14px 12px;
+        overflow: hidden;
+        background: linear-gradient(135deg, #f3f6fa, #e7edf4);
+        color: #8a9aad;
+    }
+
+    .o_marketing_kanban_media img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .o_marketing_kanban_media_empty i { font-size: 28px; }
+
     .o_marketing_kanban_metric {
         display: flex;
         justify-content: space-between;
         margin-top: 22px;
         color: #5e7184;
         font-size: 12px;
+    }
+
+    .o_marketing_kanban_actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 12px;
+
+        .btn {
+            flex: 1 1 auto;
+            white-space: nowrap;
+        }
+    }
+}
+
+.o_marketing_publication_catalog {
+    .o_kanban_record {
+        padding: 0;
+        border: 0;
+        background: transparent;
+    }
+
+    .o_marketing_publication_card {
+        height: 100%;
+        overflow: hidden;
+        border: 1px solid #dce5ee;
+        border-radius: 14px;
+        background: #ffffff;
+        box-shadow: 0 4px 14px rgba(35, 52, 70, .06);
+        transition: transform .15s ease, box-shadow .15s ease;
+    }
+
+    .o_marketing_publication_card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 22px rgba(35, 52, 70, .12);
+    }
+
+    .o_marketing_publication_media {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 180px;
+        overflow: hidden;
+        background: linear-gradient(135deg, #f4f7fa, #e8eef5);
+        color: #8293a5;
+    }
+
+    .o_marketing_publication_media img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .o_marketing_publication_media_empty {
+        flex-direction: column;
+        gap: 8px;
+        font-size: 13px;
+    }
+
+    .o_marketing_publication_media_empty i {
+        font-size: 28px;
+    }
+
+    .o_marketing_publication_card_body {
+        padding: 14px;
+    }
+
+    .o_marketing_publication_card_top,
+    .o_marketing_publication_actions,
+    .o_marketing_kanban_metric {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .o_marketing_publication_card_top {
+        justify-content: space-between;
+        margin-bottom: 8px;
+        color: #627489;
+        font-size: 11px;
+        text-transform: uppercase;
+    }
+
+    .o_marketing_platform {
+        font-weight: 600;
+        color: #76506f;
+    }
+
+    .o_marketing_publication_title {
+        display: -webkit-box;
+        min-height: 40px;
+        overflow: hidden;
+        color: #1e2d3d;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    .o_marketing_publication_date {
+        margin-top: 5px;
+        color: #8293a5;
+        font-size: 11px;
+    }
+
+    .o_marketing_publication_caption {
+        display: -webkit-box;
+        min-height: 38px;
+        margin: 10px 0;
+        overflow: hidden;
+        color: #526579;
+        font-size: 12px;
+        line-height: 1.45;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    .o_marketing_publication_catalog .o_marketing_kanban_metric {
+        justify-content: space-between;
+        margin: 10px 0 12px;
+        color: #627489;
+        font-size: 11px;
+    }
+
+    .o_marketing_publication_actions .btn {
+        flex: 1 1 auto;
+        white-space: nowrap;
+    }
+}
+
+.o_marketing_publication_form_media {
+    max-width: 640px;
+    margin: 20px auto 4px;
+    overflow: hidden;
+    border: 1px solid #dce5ee;
+    border-radius: 12px;
+    background: #f4f7fa;
+    text-align: center;
+}
+
+.o_marketing_publication_form_media img {
+    display: block;
+    width: 100%;
+    max-height: 420px;
+    object-fit: contain;
+}
+
+/* Fichas sociales: lectura uniforme en pantallas grandes y pequeñas. */
+.o_marketing_account_form,
+.o_marketing_campaign_form,
+.o_marketing_publication_form,
+.o_marketing_metric_form,
+.o_marketing_interaction_form,
+.o_marketing_alert_form,
+.o_marketing_agent_form {
+    .o_form_sheet {
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .o_group,
+    .o_inner_group,
+    .o_field_widget,
+    .o_form_label {
+        min-width: 0;
+    }
+
+    .o_field_text,
+    .o_field_text textarea,
+    textarea {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        min-height: 110px;
+        resize: vertical;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        line-height: 1.5;
+    }
+
+    .o_marketing_publication_stats {
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px 18px;
+        margin: 16px 0;
+        padding: 14px 16px;
+        border: 1px solid #e0e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+    }
+
+    .o_marketing_publication_stats .o_field_widget {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 720px) {
+    .o_marketing_command_dashboard .o_marketing_dashboard_stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .o_marketing_command_dashboard .o_marketing_dashboard_detail_group {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    .o_marketing_account_form,
+    .o_marketing_campaign_form,
+    .o_marketing_publication_form,
+    .o_marketing_metric_form,
+    .o_marketing_interaction_form,
+    .o_marketing_alert_form,
+    .o_marketing_agent_form {
+        .o_group,
+        .o_inner_group {
+            grid-template-columns: minmax(0, 1fr) !important;
+        }
+    }
+
+    .o_marketing_publication_form .o_marketing_publication_stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 721px) and (max-width: 1100px) {
+    .o_marketing_command_dashboard .o_marketing_dashboard_stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+}
+
+.o_marketing_product_catalog {
+    .o_kanban_record {
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+    }
+
+    .o_marketing_product_card {
+        display: flex;
+        min-height: 300px;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid #d9e2ec;
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: 0 5px 18px rgba(28, 52, 77, .08);
+    }
+
+    .o_marketing_product_media {
+        display: flex;
+        height: 170px;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        background: linear-gradient(135deg, #eef6f7, #f8fafc);
+    }
+
+    .o_marketing_product_media img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        padding: 12px;
+    }
+
+    .o_marketing_product_media_empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        color: #94a3b8;
+        font-size: 12px;
+        gap: 8px;
+    }
+
+    .o_marketing_product_media_empty i {
+        font-size: 36px;
+        color: #79506f;
+    }
+
+    .o_marketing_product_body {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        padding: 14px 16px 16px;
+    }
+
+    .o_marketing_product_badges {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 8px;
+    }
+
+    .o_marketing_product_title {
+        display: -webkit-box;
+        min-height: 38px;
+        overflow: hidden;
+        color: #172b4d;
+        font-size: 15px;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    .o_marketing_product_sku,
+    .o_marketing_product_stock {
+        margin-top: 5px;
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .o_marketing_product_price {
+        margin-top: 10px;
+        color: #79506f;
+        font-size: 19px;
+        font-weight: 700;
+    }
+
+    .o_marketing_product_actions {
+        display: flex;
+        margin-top: auto;
+        padding-top: 13px;
+        gap: 7px;
+    }
+
+    .o_marketing_product_actions .btn {
+        flex: 1 1 auto;
+        white-space: nowrap;
+    }
+}
+
+.o_marketing_product_catalog_form {
+    .o_form_sheet {
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+    }
+
+    textarea {
+        min-height: 150px;
+        line-height: 1.55;
+        resize: vertical;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
     }
 }

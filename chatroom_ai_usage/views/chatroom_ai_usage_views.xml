@@ -11,6 +11,9 @@
                 <field name="owned_by" optional="hide"/>
                 <field name="supports_chat"/>
                 <field name="usage_roles" string="Asignado para" optional="show"/>
+                <field name="input_price_per_million" string="Entrada / 1M" optional="hide"/>
+                <field name="output_price_per_million" string="Salida / 1M" optional="hide"/>
+                <field name="pricing_source" string="Tarifa" widget="badge" optional="hide"/>
                 <field name="last_synced"/>
                 <field name="active"/><field name="health_state" widget="badge"/><field name="last_tested" optional="hide"/>
             </list>
@@ -34,6 +37,11 @@
                             <field name="supports_chat"/>
                             <field name="recommended"/>
                             <field name="active"/>
+                            <separator string="Tarifa para estimaciÃ³n local"/>
+                            <field name="input_price_per_million"/>
+                            <field name="output_price_per_million"/>
+                            <field name="pricing_source" widget="badge"/>
+                            <field name="pricing_updated_at" readonly="1"/>
                             <field name="last_synced" readonly="1"/>
                             <field name="health_state" widget="badge" readonly="1"/>
                             <field name="last_tested" readonly="1"/>
@@ -42,6 +50,9 @@
                     </group>
                     <div class="alert alert-info" role="alert">
                         Los modelos se sincronizan desde el proveedor configurado. Chatroom solo muestra como compatibles los modelos de texto detectados.
+                    </div>
+                    <div class="alert alert-warning" role="alert">
+                        Configura la tarifa de entrada y salida por millÃ³n de tokens para obtener una estimaciÃ³n local. No sustituye el costo oficial del proveedor.
                     </div>
                     <field name="health_message" readonly="1" placeholder="Aún no se ha probado este modelo."/>
                 </sheet>
@@ -54,26 +65,28 @@
         <field name="model">chatroom.ai.usage.snapshot</field>
         <field name="arch" type="xml">
             <list string="Consumo de IA" decoration-danger="state == 'error'" decoration-warning="state == 'partial'">
-                <field name="company_id" optional="hide"/>
-                <field name="fetched_at"/>
-                <field name="period_start" optional="hide"/>
-                <field name="period_end" optional="hide"/>
-                 <field name="state" widget="badge"/>
-                 <field name="source" widget="badge"/>
-                 <field name="official_sync_at" optional="hide"/>
-                <field name="request_count"/>
-                <field name="input_tokens" optional="hide"/>
-                <field name="output_tokens" optional="hide"/>
-                <field name="total_tokens"/>
-                <field name="cost"/>
-                <field name="cost_breakdown" optional="hide"/>
-                <field name="currency"/>
-                <field name="funding_net" optional="hide"/>
-                <field name="estimated_balance" optional="hide"/>
-                <field name="financial_state" widget="badge" optional="hide"/>
-                <field name="budget_remaining" optional="hide"/>
-                <field name="budget_state" widget="badge" optional="hide"/>
-                <field name="local_request_count" optional="hide"/>
+                <field name="company_id" string="Empresa" optional="hide"/>
+                <field name="fetched_at" string="Actualizado"/>
+                <field name="period_start" string="Desde" optional="hide"/>
+                <field name="period_end" string="Hasta" optional="hide"/>
+                <field name="state" string="Estado" widget="badge"/>
+                <field name="source" string="Origen" widget="badge"/>
+                <field name="official_sync_at" string="Sincronización oficial" optional="hide"/>
+                <field name="request_count" string="Solicitudes"/>
+                <field name="input_tokens" string="Tokens de entrada" optional="hide"/>
+                <field name="output_tokens" string="Tokens de salida" optional="hide"/>
+                <field name="total_tokens" string="Tokens totales"/>
+                <field name="cost" string="Costo oficial"/>
+                <field name="estimated_cost" string="Costo local estimado"/>
+                <field name="cost_basis" string="Base del costo" widget="badge" optional="show"/>
+                <field name="cost_breakdown" string="Detalle de costos" optional="hide"/>
+                <field name="currency" string="Moneda"/>
+                <field name="funding_net" string="Fondos netos" optional="hide"/>
+                <field name="estimated_balance" string="Saldo estimado" optional="hide"/>
+                <field name="financial_state" string="Estado financiero" widget="badge" optional="hide"/>
+                <field name="budget_remaining" string="Presupuesto restante" optional="hide"/>
+                <field name="budget_state" string="Estado del presupuesto" widget="badge" optional="hide"/>
+                <field name="local_request_count" string="Solicitudes locales" optional="hide"/>
             </list>
         </field>
     </record>
@@ -81,7 +94,7 @@
         <field name="name">chatroom.ai.usage.snapshot.form</field>
         <field name="model">chatroom.ai.usage.snapshot</field>
         <field name="arch" type="xml">
-            <form string="Resumen de consumo de IA">
+            <form string="Resumen de consumo de IA" class="o_chatroom_ai_usage_snapshot_form">
                 <header>
                     <button name="action_refresh" type="object" string="Actualizar desde OpenAI" class="btn-primary" icon="fa-cloud-download"/>
                     <button name="action_test_platform_connection" type="object" string="Probar conexión" class="btn-secondary" icon="fa-plug"/>
@@ -110,6 +123,9 @@
                             <field name="total_tokens" readonly="1"/>
                             <field name="cost" readonly="1"/>
                             <field name="currency" readonly="1"/>
+                            <field name="estimated_cost" readonly="1"/>
+                            <field name="estimated_cost_currency" readonly="1"/>
+                            <field name="cost_basis" widget="badge" readonly="1"/>
                         </group>
                     </group>
                     <group string="Presupuesto de referencia">
@@ -134,6 +150,8 @@
                     <group string="Control local">
                         <field name="local_request_count" readonly="1"/>
                         <field name="local_total_tokens" readonly="1"/>
+                        <field name="estimated_cost" readonly="1"/>
+                        <field name="estimated_cost_currency" readonly="1"/>
                     </group>
                     <group string="Solicitudes por modelo"><field name="model_breakdown" nolabel="1" readonly="1" widget="text"/></group>
                     <group string="Costos oficiales por concepto"><field name="cost_breakdown" nolabel="1" readonly="1" widget="text"/></group>
@@ -201,6 +219,7 @@
                 <field name="request_count" type="measure"/>
                 <field name="total_tokens" type="measure"/>
                 <field name="cost" type="measure"/>
+                <field name="estimated_cost" type="measure"/>
             </pivot>
         </field>
     </record>
@@ -211,7 +230,10 @@
             <field name="company_id" optional="hide"/>
             <field name="request_date"/><field name="model"/><field name="task_type"/>
             <field name="channel_id" optional="hide"/><field name="input_tokens" optional="hide"/>
-            <field name="output_tokens" optional="hide"/><field name="total_tokens"/><field name="success"/>
+            <field name="output_tokens" optional="hide"/><field name="total_tokens"/>
+            <field name="estimated_cost" string="Costo local estimado"/>
+            <field name="cost_source" string="Tarifa" widget="badge" optional="show"/>
+            <field name="success"/>
         </list></field>
     </record>
     <record id="view_chatroom_ai_usage_event_graph" model="ir.ui.view">
@@ -220,6 +242,7 @@
         <field name="arch" type="xml"><graph string="Actividad de IA" type="bar">
             <field name="request_date" interval="day" type="row"/>
             <field name="total_tokens" type="measure"/>
+            <field name="estimated_cost" type="measure"/>
         </graph></field>
     </record>
     <record id="view_chatroom_ai_quality_test_list" model="ir.ui.view">
@@ -450,6 +473,13 @@
                                 <field name="test_meeting_link" string="Videollamada nativa" readonly="1" widget="url"/>
                                 <field name="test_meeting_id" string="ID evento" readonly="1"/>
                             </group>
+                            <div class="o_chatroom_ai_result_actions" role="status">
+                                <span class="o_chatroom_ai_result_actions_title">Resultados listos en Odoo</span>
+                                <button name="action_open_test_quote" type="object" string="Abrir cotización" icon="fa-file-text-o" class="btn-primary" invisible="not test_quote_id"/>
+                                <button name="action_open_quote_history" type="object" string="Ver historial de cotizaciones" icon="fa-list" class="btn-secondary" invisible="not quote_count"/>
+                                <button name="action_open_test_activity" type="object" string="Abrir actividad" icon="fa-check-square-o" class="btn-secondary" invisible="not test_activity_ids"/>
+                                <button name="action_open_test_meeting" type="object" string="Abrir reunión" icon="fa-calendar" class="btn-secondary" invisible="not test_meeting_id"/>
+                            </div>
                             <separator string="Historial de cotizaciones"/>
                             <div class="alert alert-info" role="alert">
                                 Cada solicitud nueva conserva su propio presupuesto nativo y PDF. Una ampliación mantiene el mismo presupuesto en borrador y agrega nuevas líneas.
@@ -493,6 +523,55 @@
                     </notebook>
                 </sheet>
                 <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_sandbox_quote_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.sandbox.quote.list</field>
+        <field name="model">chatroom.ai.sandbox.quote</field>
+        <field name="arch" type="xml">
+            <list string="Historial de cotizaciones">
+                <field name="created_at" string="Generada el"/>
+                <field name="name" string="Referencia"/>
+                <field name="operation" string="Operación" widget="badge"/>
+                <field name="sale_order_id" string="Presupuesto Odoo"/>
+                <field name="sale_order_state" string="Estado" widget="badge"/>
+                <field name="amount_total" string="Total"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="attachment_id" string="PDF estándar de Odoo"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chatroom_ai_sandbox_quote_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.sandbox.quote.form</field>
+        <field name="model">chatroom.ai.sandbox.quote</field>
+        <field name="arch" type="xml">
+            <form string="Resultado de cotización" class="o_chatroom_ai_sandbox_quote_form">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group col="2">
+                        <group string="Resultado nativo">
+                            <field name="sandbox_id" readonly="1"/>
+                            <field name="operation" widget="badge" readonly="1"/>
+                            <field name="sale_order_id" readonly="1"/>
+                            <field name="sale_order_state" widget="badge" readonly="1"/>
+                            <field name="attachment_id" readonly="1"/>
+                        </group>
+                        <group string="Importes">
+                            <field name="amount_untaxed" readonly="1"/>
+                            <field name="amount_total" readonly="1"/>
+                            <field name="currency_id" readonly="1"/>
+                            <field name="detected_quantity" readonly="1"/>
+                            <field name="created_at" readonly="1"/>
+                        </group>
+                    </group>
+                    <separator string="Solicitud del cliente"/>
+                    <field name="request_text" nolabel="1" readonly="1" widget="text"/>
+                    <separator string="Líneas generadas"/>
+                    <field name="product_summary" nolabel="1" readonly="1" widget="text"/>
+                </sheet>
             </form>
         </field>
     </record>

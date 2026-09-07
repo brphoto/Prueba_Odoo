@@ -9,6 +9,29 @@ DIGITS_RE = re.compile(r'\D')
 class ResPartner(models.Model):
     _inherit = 'res.partner'
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Conserva el idioma del usuario que crea el contacto.
+
+        En Odoo 19 ``res.partner.lang`` es un campo calculado y, para un
+        contacto sin empresa padre, puede quedar vacío al crearlo desde una
+        integración. Eso provoca que las plantillas, correos y documentos no
+        tengan un idioma inicial coherente. Usamos primero el idioma del
+        contexto web (el usuario conectado) y luego el idioma del usuario,
+        respetando siempre un idioma enviado explícitamente por la operación.
+        """
+        current_lang = (
+            self.env.context.get('lang')
+            or self.env.user.lang
+            or self.env.lang
+        )
+        if current_lang:
+            vals_list = [
+                dict(vals, lang=current_lang) if not vals.get('lang') else vals
+                for vals in vals_list
+            ]
+        return super().create(vals_list)
+
     whatsapp_id = fields.Char(
         string="WhatsApp ID (wa_id)", copy=False,
         help="Número en formato internacional tal como lo entrega Meta "

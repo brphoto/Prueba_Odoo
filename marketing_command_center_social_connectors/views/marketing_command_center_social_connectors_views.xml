@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_marketing_network_connection_list" model="ir.ui.view">
+        <field name="name">marketing.social.network.connection.list</field>
+        <field name="model">marketing.social.network.connection</field>
+        <field name="arch" type="xml">
+            <list string="Conexiones sociales" open_form_view="1">
+                <field name="name"/>
+                <field name="platform"/>
+                <field name="state" widget="badge"/>
+                <field name="profile_count"/>
+                <field name="last_checked_at"/>
+                <field name="last_sync_at"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_marketing_network_connection_form" model="ir.ui.view">
+        <field name="name">marketing.social.network.connection.form</field>
+        <field name="model">marketing.social.network.connection</field>
+        <field name="arch" type="xml">
+            <form string="Conexión social" class="o_marketing_network_connection_form">
+                <header>
+                    <button name="action_test_connection" type="object" string="Probar conexión" class="oe_highlight" icon="fa-plug" groups="marketing_command_center_social_connectors.group_network_manager"/>
+                    <button name="action_discover_accounts" type="object" string="Descubrir cuentas" class="btn-secondary" icon="fa-search" groups="marketing_command_center_social_connectors.group_network_manager"/>
+                    <button name="action_sync_all_profiles" type="object" string="Sincronizar cuentas" class="btn-secondary" icon="fa-refresh" groups="marketing_command_center_social_connectors.group_network_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,connected,error"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" placeholder="Ej.: YouTube corporativo"/></h1></div>
+                    <div class="alert alert-info" role="status">
+                        Una conexión representa una red y puede descubrir una o varias cuentas. Los datos se guardan en las mismas publicaciones y métricas del Centro de mando.
+                    </div>
+                    <group col="2" class="o_marketing_network_summary">
+                        <group string="Proveedor">
+                            <field name="platform"/>
+                            <field name="api_version" placeholder="Ej.: 202501"/>
+                            <field name="external_account_id" placeholder="ID de canal u organización opcional"/>
+                            <field name="sync_days"/>
+                        </group>
+                        <group string="Credenciales">
+                            <field name="access_token" password="True" placeholder="Token OAuth"/>
+                            <field name="api_key" password="True" placeholder="API key, si aplica"/>
+                            <field name="client_id"/>
+                            <field name="client_secret" password="True"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group col="4" class="o_marketing_network_kpis">
+                        <field name="profile_count" readonly="1"/>
+                        <field name="sync_log_count" readonly="1"/>
+                        <field name="last_sync_publications" readonly="1"/>
+                        <field name="last_sync_interactions" readonly="1"/>
+                    </group>
+                    <div class="alert alert-warning">
+                        El token y las claves solo son visibles para administradores. Instagram usa la API de Meta; YouTube usa OAuth o API key; LinkedIn y TikTok requieren una aplicación aprobada y los permisos de lectura correspondientes.
+                    </div>
+                    <notebook>
+                        <page string="Cuentas descubiertas">
+                            <field name="profile_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="platform"/>
+                                    <field name="external_id"/>
+                                    <field name="follower_count"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="last_posts_count"/>
+                                    <field name="last_comments_count"/>
+                                    <field name="last_sync_at"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Diagnóstico">
+                            <group col="2">
+                                <field name="last_checked_at" readonly="1"/>
+                                <field name="last_sync_at" readonly="1"/>
+                                <field name="last_sync_duration" readonly="1"/>
+                                <field name="last_error" readonly="1" nolabel="1" widget="text"/>
+                            </group>
+                            <button name="action_open_sync_logs" type="object" string="Ver historial de sincronizaciones" class="btn-secondary" icon="fa-history"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_marketing_network_profile_list" model="ir.ui.view">
+        <field name="name">marketing.social.network.profile.list</field>
+        <field name="model">marketing.social.network.profile</field>
+        <field name="arch" type="xml">
+            <list string="Cuentas sociales conectadas" open_form_view="1">
+                <field name="name"/>
+                <field name="platform"/>
+                <field name="external_id"/>
+                <field name="connection_id"/>
+                <field name="follower_count"/>
+                <field name="last_posts_count"/>
+                <field name="last_comments_count"/>
+                <field name="state" widget="badge"/>
+                <field name="last_sync_at"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_marketing_network_profile_form" model="ir.ui.view">
+        <field name="name">marketing.social.network.profile.form</field>
+        <field name="model">marketing.social.network.profile</field>
+        <field name="arch" type="xml">
+            <form string="Cuenta social" class="o_marketing_network_profile_form">
+                <header>
+                    <button name="action_test_profile" type="object" string="Probar cuenta" class="oe_highlight" icon="fa-plug" groups="marketing_command_center_social_connectors.group_network_manager"/>
+                    <button name="action_sync_profile" type="object" string="Sincronizar ahora" class="btn-secondary" icon="fa-refresh" groups="marketing_command_center_social_connectors.group_network_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,connected,error"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <div class="alert alert-info" role="status">
+                        Esta cuenta alimenta el mismo tablero de publicaciones, engagement, comentarios y oportunidades atribuidas.
+                    </div>
+                    <group col="2">
+                        <group string="Identificación">
+                            <field name="connection_id"/>
+                            <field name="platform"/>
+                            <field name="external_id"/>
+                            <field name="username"/>
+                            <field name="profile_url" widget="url"/>
+                        </group>
+                        <group string="Sincronización">
+                            <field name="follower_count" readonly="1"/>
+                            <field name="sync_days"/>
+                            <field name="last_posts_count" readonly="1"/>
+                            <field name="last_comments_count" readonly="1"/>
+                            <field name="last_sync_duration" readonly="1"/>
+                            <field name="sync_log_count" readonly="1"/>
+                            <field name="social_account_id" readonly="1"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Estado">
+                            <group col="2">
+                                <field name="last_sync_at" readonly="1"/>
+                                <field name="last_sync_summary" readonly="1"/>
+                                <field name="last_error" readonly="1" nolabel="1" widget="text"/>
+                            </group>
+                            <button name="action_open_sync_logs" type="object" string="Ver historial de sincronizaciones" class="btn-secondary" icon="fa-history"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_marketing_network_sync_log_list" model="ir.ui.view">
+        <field name="name">marketing.social.network.sync.log.list</field>
+        <field name="model">marketing.social.network.sync.log</field>
+        <field name="arch" type="xml">
+            <list string="Historial de sincronizaciones" open_form_view="1">
+                <field name="started_at"/>
+                <field name="platform" widget="badge"/>
+                <field name="connection_id"/>
+                <field name="profile_id"/>
+                <field name="state" widget="badge"/>
+                <field name="duration_seconds"/>
+                <field name="publications_count"/>
+                <field name="interactions_count"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_marketing_network_sync_log_form" model="ir.ui.view">
+        <field name="name">marketing.social.network.sync.log.form</field>
+        <field name="model">marketing.social.network.sync.log</field>
+        <field name="arch" type="xml">
+            <form string="Ejecución de sincronización">
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group col="2">
+                        <group string="Contexto">
+                            <field name="connection_id"/>
+                            <field name="profile_id"/>
+                            <field name="platform" readonly="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Resultado">
+                            <field name="state" widget="badge"/>
+                            <field name="started_at"/>
+                            <field name="finished_at"/>
+                            <field name="duration_seconds"/>
+                            <field name="publications_count"/>
+                            <field name="interactions_count"/>
+                        </group>
+                    </group>
+                    <field name="error_message" widget="text" readonly="1" nolabel="1"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_marketing_network_connections" model="ir.actions.act_window">
+        <field name="name">Conexiones sociales</field>
+        <field name="res_model">marketing.social.network.connection</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="action_marketing_network_profiles" model="ir.actions.act_window">
+        <field name="name">Cuentas sociales</field>
+        <field name="res_model">marketing.social.network.profile</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="action_marketing_network_sync_logs" model="ir.actions.act_window">
+        <field name="name">Historial de sincronizaciones</field>
+        <field name="res_model">marketing.social.network.sync.log</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <menuitem id="menu_marketing_network_root" name="Conectores sociales" parent="marketing_command_center.menu_marketing_command_configuration" sequence="45" groups="marketing_command_center_social_connectors.group_network_user"/>
+    <menuitem id="menu_marketing_network_connections" name="Conexiones sociales" parent="menu_marketing_network_root" action="action_marketing_network_connections" sequence="10" groups="marketing_command_center_social_connectors.group_network_user"/>
+    <menuitem id="menu_marketing_network_profiles" name="Cuentas conectadas" parent="menu_marketing_network_root" action="action_marketing_network_profiles" sequence="20" groups="marketing_command_center_social_connectors.group_network_user"/>
+    <menuitem id="menu_marketing_network_sync_logs" name="Historial de sincronizaciones" parent="menu_marketing_network_root" action="action_marketing_network_sync_logs" sequence="30" groups="marketing_command_center_social_connectors.group_network_user"/>
+</odoo>

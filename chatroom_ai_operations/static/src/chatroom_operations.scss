@@ -52,6 +52,65 @@
     }
 }
 
+/* Formularios operativos: lectura en dos columnas y bloques largos anchos,
+   conservando el Chatter nativo de Odoo a la derecha. */
+.o_chatroom_operations_playbook_form,
+.o_chatroom_operations_run_form,
+.chatroom_operations_check_form {
+    .o_form_sheet {
+        min-width: 0;
+    }
+
+    .o_field_widget,
+    .o_group,
+    .o_inner_group {
+        min-width: 0;
+    }
+
+    .oe_title h1,
+    .oe_title input {
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .alert {
+        line-height: 1.5;
+        white-space: normal;
+    }
+
+    .o_field_text,
+    textarea {
+        width: 100%;
+        max-width: 100%;
+        min-height: 88px;
+        resize: vertical;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        line-height: 1.5;
+    }
+}
+
+.chatroom_operations_check_form {
+    .o_form_sheet {
+        width: 100%;
+        max-width: none;
+        box-sizing: border-box;
+    }
+
+    .chatroom_operations_readonly_text,
+    .chatroom_operations_readonly_text .o_field_widget,
+    .chatroom_operations_readonly_text textarea {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        min-height: 120px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        line-height: 1.5;
+    }
+}
+
 .o_form_view:has(form.chatroom_operations_dashboard_form),
 .o_form_view:has(.chatroom_operations_dashboard_form),
 .o_action_manager:has(.chatroom_operations_dashboard_form) .o_action,

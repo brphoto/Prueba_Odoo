@@ -39,6 +39,23 @@ class TestChatroomAiAgent(TransactionCase):
         self.assertIn('Cliente clasificado', task.result_preview)
         self.assertTrue(task.audit_ids)
 
+    def test_action_rechecks_tool_group_before_execution(self):
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            self.channel, task_type='classify_customer',
+            prompt='Valida los permisos antes de clasificar.',
+        )
+        task.action_plan()
+        action = task.action_ids.filtered(lambda line: line.key == 'classify_customer')
+        tool = self.env['chatroom.ai.tool'].search([
+            ('key', '=', 'classify_customer'),
+        ], limit=1)
+        group = self.env['res.groups'].create({'name': 'QA Agente IA restringido'})
+        tool.group_id = group
+        with self.assertRaises(UserError):
+            action._check_execution_authorization()
+        tool.group_id = self.env.ref('base.group_system')
+        self.assertEqual(action._check_execution_authorization(), tool)
+
     def test_predefined_automations_are_visible_and_preview_safe(self):
         automations = self.env['chatroom.ai.automation'].with_context(
             active_test=False).search([])
@@ -51,7 +68,7 @@ class TestChatroomAiAgent(TransactionCase):
         preview = automations[0].action_preview_scope()
         self.assertEqual(preview['type'], 'ir.actions.client')
         self.assertEqual(preview['tag'], 'display_notification')
-        self.assertIn('No se creo ninguna tarea', preview['params']['message'])
+        self.assertIn('No se creó ninguna tarea', preview['params']['message'])
 
     def test_completed_plan_exposes_human_result_in_channel_panel(self):
         task = self.env['chatroom.ai.task'].create_from_channel(
@@ -202,6 +219,22 @@ class TestChatroomAiAgent(TransactionCase):
             self.assertEqual(activity.res_model, 'chatroom.channel')
             self.assertEqual(activity.res_id, meeting_channel.id)
             self.assertEqual(activity.activity_type_id.category, 'meeting')
+            events_before_retry = self.env['calendar.event'].search_count([
+                ('partner_ids', 'in', meeting_channel.partner_id.id),
+            ])
+            retry_result = meeting_channel.action_create_meeting(
+                start=meeting_result['start'], stop=meeting_result['stop'],
+                idempotency_key='chatroom_ai_task:%s' % meeting_task.id)
+            self.assertEqual(retry_result['event_id'], meeting_result['event_id'])
+            self.assertEqual(
+                self.env['calendar.event'].search_count([
+                    ('partner_ids', 'in', meeting_channel.partner_id.id),
+                ]), events_before_retry)
+            self.assertEqual(retry_result['activity_id'], meeting_result['activity_id'])
+            with self.assertRaises(UserError):
+                meeting_channel.action_create_meeting(
+                    start=meeting_result['stop'], stop=meeting_result['start'],
+                    idempotency_key='chatroom_ai_task:invalid-window')
 
     def test_commercial_router_detects_native_business_flows(self):
         partner = self.env['res.partner'].create({'name': 'Cliente enrutador IA'})
@@ -291,6 +324,41 @@ class TestChatroomAiAgent(TransactionCase):
         self.assertEqual(result['lines'][0]['unit_price'], 20.0)
         self.assertIn('Cotización %s creada con' % order.name, task._build_result_preview([result]))
 
+    def test_quote_keeps_quantity_per_mentioned_product(self):
+        partner = self.env['res.partner'].create({'name': 'Cliente varias líneas IA'})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'ai-context-quote-lines-001',
+            'partner_id': partner.id,
+        })
+        first = self.env['product.product'].create({
+            'name': 'Implementación Odoo por horas', 'list_price': 1.0,
+            'sale_ok': True, 'type': 'service',
+        })
+        second = self.env['product.product'].create({
+            'name': 'Capacitación Odoo empresarial', 'list_price': 35.0,
+            'sale_ok': True, 'type': 'service',
+        })
+        self.env['chatroom.message'].create({
+            'channel_id': channel.id, 'direction': 'inbound',
+            'message_type': 'text',
+            'body': 'Cotízame 2 horas de Implementación Odoo por horas y 3 unidades de Capacitación Odoo empresarial.',
+        })
+        self.env['ir.config_parameter'].sudo().set_param(
+            'chatroom_ai_agent.quote_hourly_rate', '20')
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            channel, task_type='orchestrate', prompt='Prepara la cotización solicitada.')
+        task.action_plan()
+        action = task.action_ids.filtered(lambda line: line.key == 'create_quotation')
+        result = task._execute_action(action)
+        order = self.env['sale.order'].browse(result['order_id'])
+        lines = {line.product_id: line for line in order.order_line}
+        self.assertEqual(set(lines), {first, second})
+        self.assertEqual(lines[first].product_uom_qty, 2.0)
+        self.assertEqual(lines[first].price_unit, 20.0)
+        self.assertEqual(lines[second].product_uom_qty, 3.0)
+        self.assertEqual(lines[second].price_unit, 35.0)
+        self.assertAlmostEqual(order.amount_untaxed, 145.0)
+
     def test_inbound_commercial_router_is_independent_from_periodic_automations(self):
         icp = self.env['ir.config_parameter'].sudo()
         icp.set_param('chatroom_ai_agent.event_orchestration', 'False')
@@ -324,6 +392,17 @@ class TestChatroomAiAgent(TransactionCase):
         self.assertGreaterEqual(automation.last_run_count, 0)
         self.assertTrue(automation.last_run)
         self.assertFalse(automation.last_error)
+        run = automation.run_ids[:1]
+        self.assertTrue(run)
+        self.assertEqual(run.execution_type, 'manual')
+        self.assertEqual(run.state, 'completed')
+        self.assertEqual(run.channels_scanned, automation.last_scanned_count)
+        self.assertEqual(run.tasks_created, automation.last_run_count)
+        self.assertEqual(run.channels_skipped, automation.last_skipped_count)
+        self.assertGreaterEqual(run.tasks_reused, 0)
+        self.assertGreaterEqual(run.channels_failed, 0)
+        self.assertEqual(run.action_view_tasks()['res_model'], 'chatroom.ai.task')
+        self.assertEqual(automation.action_view_runs()['res_model'], 'chatroom.ai.automation.run')
 
     def test_automation_propagates_retry_policy_to_tasks(self):
         automation = self.env['chatroom.ai.automation'].create({
@@ -494,6 +573,11 @@ class TestChatroomAiAgent(TransactionCase):
             ('partner_id', '=', partner.id), ('type', '=', 'opportunity'),
             ('company_id', '=', self.env.company.id),
         ]), 1)
+        lead = self.env['crm.lead'].search([
+            ('partner_id', '=', partner.id), ('type', '=', 'opportunity'),
+        ], limit=1)
+        self.assertEqual(channel.pinned_lead_id, lead.id)
+        self.assertTrue(lead.phone)
         if 'sale.order' not in self.env:
             return
         quote_action = self.env['chatroom.ai.task.action'].create({
@@ -659,6 +743,46 @@ class TestChatroomAiAgent(TransactionCase):
         markers = orders.mapped('client_order_ref')
         self.assertEqual(len(set(markers)), 2)
         self.assertTrue(all(marker.startswith('chatroom_ai_task:') for marker in markers))
+
+    def test_new_quote_uses_last_request_without_mixing_previous_products(self):
+        partner = self.env['res.partner'].create({'name': 'Cliente solicitudes separadas IA'})
+        channel = self.env['chatroom.channel'].create({
+            'channel_type': 'whatsapp', 'external_id': 'ai-production-separated-001',
+            'partner_id': partner.id,
+        })
+        first = self.env['product.product'].create({
+            'name': 'Servicio anterior IA', 'list_price': 10.0,
+            'sale_ok': True, 'type': 'service',
+        })
+        second = self.env['product.product'].create({
+            'name': 'Servicio nuevo IA', 'list_price': 30.0,
+            'sale_ok': True, 'type': 'service',
+        })
+        self.env['chatroom.message'].create({
+            'channel_id': channel.id, 'direction': 'inbound',
+            'message_type': 'text', 'body': 'Cotízame 2 unidades de Servicio anterior IA.',
+        })
+        first_task = self.env['chatroom.ai.task'].create_from_channel(
+            channel, task_type='orchestrate', prompt='Prepara la primera cotización.')
+        first_task.action_plan()
+        first_result = first_task._execute_action(
+            first_task.action_ids.filtered(lambda line: line.key == 'create_quotation'))
+
+        self.env['chatroom.message'].create({
+            'channel_id': channel.id, 'direction': 'inbound',
+            'message_type': 'text', 'body': 'Ahora necesito otra cotización de 3 unidades de Servicio nuevo IA.',
+        })
+        second_task = self.env['chatroom.ai.task'].create_from_channel(
+            channel, task_type='orchestrate', prompt='Prepara otra cotización distinta.')
+        second_task.action_plan()
+        second_result = second_task._execute_action(
+            second_task.action_ids.filtered(lambda line: line.key == 'create_quotation'))
+        first_order = self.env['sale.order'].browse(first_result['order_id'])
+        second_order = self.env['sale.order'].browse(second_result['order_id'])
+        self.assertEqual(first_order.order_line.product_id, first)
+        self.assertEqual(second_order.order_line.product_id, second)
+        self.assertEqual(second_order.order_line.product_uom_qty, 3.0)
+        self.assertNotIn(first, second_order.order_line.product_id)
 
     def test_production_orchestrator_allows_only_guarded_safe_auto_reply(self):
         icp = self.env['ir.config_parameter'].sudo()

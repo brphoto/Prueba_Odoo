@@ -715,9 +715,9 @@ export class ChatroomApp extends Component {
         }
         const now = new Date();
         if (isSameDay(dateObj, now)) {
-            return dateObj.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+            return dateObj.toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });
         }
-        return dateObj.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" });
+        return dateObj.toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit" });
     }
 
     activityLabel(channel) {
@@ -732,7 +732,7 @@ export class ChatroomApp extends Component {
         const today = new Date();
         const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
         const label = deadline.toDateString() === tomorrow.toDateString()
-            ? "Mañana" : deadline.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" });
+            ? "Mañana" : deadline.toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit" });
         return `Siguiente actividad: ${label}`;
     }
 }

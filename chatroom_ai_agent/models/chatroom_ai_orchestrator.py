@@ -9,6 +9,7 @@ Facturación ni Pagos.
 
 import logging
 
+from psycopg2 import IntegrityError
 from odoo import _, api, fields, models
 
 
@@ -46,14 +47,24 @@ class ChatroomAiOrchestrator(models.AbstractModel):
     @api.model
     def _create_task(self, message, route):
         task_model = self.env['chatroom.ai.task']
-        task = task_model.create_from_channel(
-            message.channel_id,
-            task_type='orchestrate',
-            prompt=route['prompt'],
-            source_message=message,
-            orchestration_key='message:%s' % message.id,
-            route=route['route'],
-        )
+        orchestration_key = 'message:%s' % message.id
+        try:
+            # La restricci\u00f3n \u00fanica protege tambi\u00e9n la ventana entre la
+            # b\u00fasqueda y el create cuando dos workers reciben el mismo webhook.
+            with self.env.cr.savepoint():
+                task = task_model.create_from_channel(
+                    message.channel_id,
+                    task_type='orchestrate',
+                    prompt=route['prompt'],
+                    source_message=message,
+                    orchestration_key=orchestration_key,
+                    route=route['route'],
+                )
+        except IntegrityError:
+            task = task_model.sudo().search(
+                [('orchestration_key', '=', orchestration_key)], limit=1)
+            if not task:
+                raise
         task.action_plan()
         return task
 

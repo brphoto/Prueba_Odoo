@@ -34,6 +34,35 @@ class ChatroomAiTaskAction(models.Model):
     output_json = fields.Text(string='Salida', readonly=True)
     error_message = fields.Text(string='Error', readonly=True)
 
+    def _check_execution_authorization(self):
+        """Validate the tool policy again immediately before execution.
+
+        A plan can be edited after it is generated, so filtering tools while
+        planning is not sufficient.  Re-check the active tool and its group
+        at the execution boundary to keep automatic mode safe as well.
+        """
+        self.ensure_one()
+        tool = self.tool_id
+        if not tool and self.key:
+            tool = self.env['chatroom.ai.tool'].search([
+                ('key', '=', self.key),
+            ], limit=1)
+        if not tool or not tool.active:
+            raise UserError(_(
+                'La acción "%s" no está disponible o fue desactivada.'
+            ) % (self.name or self.key or _('sin nombre')))
+        if tool.requires_approval and not self.requires_approval:
+            raise UserError(_(
+                'La herramienta exige aprobaciÃ³n humana para esta acciÃ³n.'
+            ))
+        user_groups = self.env.user.group_ids
+        if tool.group_id and tool.group_id not in user_groups:
+            raise UserError(_(
+                'No tienes permiso para ejecutar la acción "%s". Solicita '
+                'acceso al grupo "%s".'
+            ) % (tool.name, tool.group_id.display_name))
+        return tool
+
     @api.onchange('tool_id')
     def _onchange_tool_id(self):
         for action in self:
@@ -65,9 +94,12 @@ class ChatroomAiTaskAction(models.Model):
                     vals['name'] = tool.name
                 if 'requires_approval' not in vals:
                     vals['requires_approval'] = tool.requires_approval
+            else:
+                vals['requires_approval'] = True
         return super().create(vals_list)
 
     def write(self, vals):
+        vals = dict(vals)
         if vals.get('tool_id'):
             tool = self.env['chatroom.ai.tool'].browse(vals['tool_id']).exists()
             if tool:
@@ -81,7 +113,17 @@ class ChatroomAiTaskAction(models.Model):
             tool = self.env['chatroom.ai.tool'].search([('key', '=', vals['key'])], limit=1)
             if tool:
                 vals = dict(vals)
-                vals['tool_id'] = tool.id
+                vals.update({
+                    'tool_id': tool.id,
+                    'requires_approval': tool.requires_approval,
+                })
+        elif 'requires_approval' in vals:
+            for action in self:
+                tool = action.tool_id or self.env['chatroom.ai.tool'].search([
+                    ('key', '=', action.key),
+                ], limit=1)
+                vals['requires_approval'] = tool.requires_approval if tool else True
+                break
         return super().write(vals)
 
     @api.depends('key')
@@ -103,6 +145,14 @@ class ChatroomAiTask(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Tarea operativa del agente IA'
     _order = 'priority desc, create_date desc, id desc'
+
+    _sql_constraints = [
+        (
+            'orchestration_key_unique',
+            'unique(orchestration_key)',
+            'La clave de orquestaci\u00f3n ya fue procesada; se reutilizar\u00e1 la tarea existente.',
+        ),
+    ]
 
     name = fields.Char(string='Tarea', required=True, default=lambda self: _('Nueva tarea IA'), tracking=True)
     task_type = fields.Selection([
@@ -736,7 +786,7 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
         """Read explicit hours/units from the conversation, not dates or prices."""
         patterns = (
             (r'(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:horas?|hrs?|h)\b', 'hours'),
-            (r'(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:unidades?|uds?\.?|u)\b', 'units'),
+            (r'(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:unidad(?:es)?|uds?\.?|u)\b', 'units'),
             (r'\bx\s*(\d+(?:[.,]\d+)?)\b', 'units'),
         )
         for pattern, unit in patterns:
@@ -750,6 +800,66 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                     return value, unit
         return False, False
 
+    @staticmethod
+    def _quantity_matches(text):
+        """Return all explicit quantities with their position in the text."""
+        patterns = (
+            (r'(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:horas?|hrs?|h)\b', 'hours'),
+            (r'(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:unidad(?:es)?|uds?\.?|u)\b', 'units'),
+            (r'\bx\s*(\d+(?:[.,]\d+)?)\b', 'units'),
+        )
+        matches = []
+        for pattern, unit in patterns:
+            for match in re.finditer(pattern, text or '', re.IGNORECASE | re.UNICODE):
+                try:
+                    value = float(match.group(1).replace(',', '.'))
+                except (TypeError, ValueError):
+                    continue
+                if value > 0:
+                    matches.append((match.start(), match.end(), value, unit))
+        return matches
+
+    @classmethod
+    def _requested_quantity_for_product(cls, text, product, max_distance=100):
+        """Associate the closest quantity to a product mention.
+
+        This prevents a request such as «2 unidades de A y 3 de B» from
+        applying the first quantity to every line.  The method is deliberately
+        local and deterministic; it does not ask the provider to infer values.
+        """
+        normalize = lambda value: ''.join(
+            char for char in unicodedata.normalize('NFKD', value or '').lower()
+            if not unicodedata.combining(char))
+        normalized_text = normalize(text)
+        quantities = cls._quantity_matches(normalized_text)
+        names = (product.name, product.default_code, product.display_name)
+        candidates = []
+        for name in names:
+            normalized_name = normalize(name)
+            if len(normalized_name) < 2:
+                continue
+            offset = 0
+            while True:
+                occurrence = normalized_text.find(normalized_name, offset)
+                if occurrence < 0:
+                    break
+                end = occurrence + len(normalized_name)
+                for start, stop, value, unit in quantities:
+                    if start < occurrence - max_distance or stop > end + max_distance:
+                        continue
+                    distance = min(abs(stop - occurrence), abs(start - end))
+                    # In Spanish commercial phrasing the quantity before the
+                    # product («2 unidades de A») is the strongest signal.
+                    # Prefer it over a following quantity that happens to be
+                    # close to a long product name («A y 3 unidades de B»).
+                    direction = 0 if stop <= occurrence else 1
+                    candidates.append((direction, distance, -occurrence, value, unit))
+                offset = occurrence + 1
+        if not candidates:
+            return False, False
+        _direction, _distance, _latest, value, unit = min(candidates)
+        return value, unit
+
     def _requested_quote_lines(self):
         """Return the products and quantities explicitly requested by the client.
 
@@ -761,12 +871,24 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
         if not self.channel_id or 'product.product' not in self.env:
             return [], False, False, False
         context = self._conversation_text()
+        inbound_messages = self.channel_id.message_ids.filtered(
+            lambda message: message.direction == 'inbound' and message.body
+        ).sorted('date')
+        current_request = inbound_messages[-1].body if inbound_messages else context
         customer_text = ' '.join(
             message.body for message in self.channel_id.message_ids
             if message.direction == 'inbound' and message.body)
-        search_text = customer_text or context
+        # Una nueva petición debe producir una cotización independiente. El
+        # historial completo solo se consulta si la última frase usa un
+        # pronombre («esas horas», «lo anterior») y no vuelve a nombrar el
+        # producto.
+        search_text = current_request or customer_text or context
         products = self.channel_id._ai_search_products_mentioned(search_text, limit=8) \
             if hasattr(self.channel_id, '_ai_search_products_mentioned') else self.env['product.product']
+        if not products and customer_text and customer_text != search_text:
+            search_text = customer_text
+            products = self.channel_id._ai_search_products_mentioned(search_text, limit=8) \
+                if hasattr(self.channel_id, '_ai_search_products_mentioned') else self.env['product.product']
         if products:
             ignored = {
                 'cotizacion', 'cotización', 'presupuesto', 'propuesta', 'pdf',
@@ -820,7 +942,9 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             default_quantity = max(float(configured_quantity), 0.01)
         except (TypeError, ValueError):
             default_quantity = 1.0
-        explicit_quantity, explicit_unit = self._requested_quantity(context)
+        explicit_quantity, explicit_unit = self._requested_quantity(current_request)
+        if not explicit_quantity:
+            explicit_quantity, explicit_unit = self._requested_quantity(context)
         lines = []
         hourly_rate = self.env['ir.config_parameter'].sudo().get_param(
             'chatroom_ai_agent.quote_hourly_rate', '20') or '20'
@@ -830,10 +954,17 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             hourly_rate = 20.0
         for product in products[:8]:
             quantity = default_quantity
-            if explicit_quantity and (explicit_unit == 'hours' or product.type != 'service'):
-                quantity = explicit_quantity
+            local_quantity, local_unit = self._requested_quantity_for_product(
+                current_request, product, max_distance=48)
+            if not local_quantity:
+                local_quantity, local_unit = self._requested_quantity_for_product(
+                    context, product)
+            effective_quantity = local_quantity or explicit_quantity
+            effective_unit = local_unit or explicit_unit
+            if effective_quantity and effective_unit in ('hours', 'units'):
+                quantity = effective_quantity
             line = {'product_id': product.id, 'quantity': quantity}
-            if explicit_unit == 'hours' and hourly_rate > 0:
+            if effective_unit == 'hours' and hourly_rate > 0:
                 line['unit_price'] = hourly_rate
             lines.append(line)
         return lines, context, explicit_quantity, explicit_unit
@@ -887,9 +1018,25 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                         'name': _('Oportunidad IA - %s') % partner.display_name,
                         'partner_id': partner.id, 'type': 'opportunity',
                         'company_id': self.company_id.id,
+                        'phone': partner.phone if 'phone' in self.env['crm.lead']._fields else False,
+                        'email_from': partner.email if 'email_from' in self.env['crm.lead']._fields else False,
+                        'description': self._conversation_text() if 'description' in self.env['crm.lead']._fields else False,
                     })
+                else:
+                    # Completa solo datos vacíos: nunca pisa información
+                    # comercial que un usuario haya editado manualmente.
+                    lead_values = {}
+                    if 'phone' in lead._fields and not lead.phone and partner.phone:
+                        lead_values['phone'] = partner.phone
+                    if 'email_from' in lead._fields and not lead.email_from and partner.email:
+                        lead_values['email_from'] = partner.email
+                    if lead_values:
+                        lead.write(lead_values)
+                if channel and 'pinned_lead_id' in channel._fields:
+                    channel.sudo().write({'pinned_lead_id': lead.id})
                 result['lead_id'] = lead.id
                 result['lead_name'] = lead.display_name
+                result['lead_linked'] = bool(channel and 'pinned_lead_id' in channel._fields)
         elif action.key == 'search_catalog':
             if 'product.product' not in self.env:
                 result['status'] = 'skipped'
@@ -1014,7 +1161,8 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                 ]).strip()
                 start, stop = self._requested_meeting_window()
                 meeting = channel.action_create_meeting(
-                    start=start, stop=stop, request=request_text)
+                    start=start, stop=stop, request=request_text,
+                    idempotency_key='chatroom_ai_task:%s' % self.id)
                 result.update({
                     'event_id': meeting.get('event_id'),
                     'activity_id': meeting.get('activity_id'),
@@ -1126,6 +1274,8 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
         return result
 
     def action_approve(self):
+        if not self.env.user.has_group('chatroom_ai_agent.group_chatroom_ai_agent_manager'):
+            raise UserError(_('Solo un administrador del agente IA puede aprobar planes.'))
         for task in self:
             if task.state != 'awaiting_approval':
                 continue
@@ -1155,7 +1305,11 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             try:
                 outputs = []
                 for action in task.action_ids.filtered(lambda line: line.state in ('pending', 'error')):
-                    if action.requires_approval and not task.approved_by:
+                    tool = action._check_execution_authorization()
+                    if tool.requires_approval and (
+                            not task.approved_by
+                            or not task.approved_by.has_group(
+                                'chatroom_ai_agent.group_chatroom_ai_agent_manager')):
                         raise UserError(_('La acción "%s" requiere aprobación humana.') % action.name)
                     action.write({'state': 'running', 'error_message': False})
                     try:

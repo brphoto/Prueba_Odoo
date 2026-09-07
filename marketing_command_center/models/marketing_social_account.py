@@ -29,14 +29,18 @@ class MarketingSocialAccount(models.Model):
         default=lambda self: self.env.company, index=True)
     publication_ids = fields.One2many(
         'marketing.social.publication', 'account_id', string='Publicaciones')
-    publication_count = fields.Integer(compute='_compute_counts', string='Publicaciones')
+    publication_count = fields.Integer(compute='_compute_counts', string='Número de publicaciones')
     interaction_count = fields.Integer(compute='_compute_counts', string='Interacciones')
+    conversation_ids = fields.One2many(
+        'marketing.social.conversation', 'account_id', string='Conversaciones')
+    conversation_count = fields.Integer(compute='_compute_counts', string='Conversaciones')
 
-    @api.depends('publication_ids', 'publication_ids.interaction_ids')
+    @api.depends('publication_ids', 'publication_ids.interaction_ids', 'conversation_ids')
     def _compute_counts(self):
         for record in self:
             record.publication_count = len(record.publication_ids)
             record.interaction_count = sum(len(item.interaction_ids) for item in record.publication_ids)
+            record.conversation_count = len(record.conversation_ids)
 
     @api.constrains('external_id', 'platform')
     def _check_external_id_unique(self):

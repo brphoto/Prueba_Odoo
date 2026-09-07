@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_marketing_patiotuerca_connection_list" model="ir.ui.view">
+        <field name="name">marketing.patiotuerca.connection.list</field>
+        <field name="model">marketing.patiotuerca.connection</field>
+        <field name="arch" type="xml"><list string="Conexiones de catálogo" open_form_view="1"><field name="name"/><field name="state" widget="badge"/><field name="listing_count"/><field name="published_count"/><field name="unpublished_count"/><field name="stale_count"/><field name="last_sync_at"/><field name="active"/></list></field>
+    </record>
+    <record id="view_marketing_patiotuerca_connection_form" model="ir.ui.view">
+        <field name="name">marketing.patiotuerca.connection.form</field>
+        <field name="model">marketing.patiotuerca.connection</field>
+        <field name="arch" type="xml"><form string="Conexión de catálogo" class="o_marketing_patiotuerca_connection"><header><button name="action_test_connection" type="object" string="Probar conexión" class="btn-secondary" icon="fa-plug"/><button name="action_sync" type="object" string="Sincronizar catálogo" class="oe_highlight" icon="fa-refresh"/><button name="action_load_demo" type="object" string="Cargar demo" class="btn-secondary" icon="fa-magic"/><button name="action_open_listings" type="object" string="Ver vehículos" class="btn-secondary" icon="fa-car"/><field name="state" widget="statusbar" statusbar_visible="draft,connected,demo,error"/></header><sheet><div class="oe_title"><h1><field name="name"/></h1></div><div class="o_marketing_patiotuerca_intro">Centraliza vehículos publicados, despublicados, vendidos y pausados. La conexión real necesita el endpoint/feed y credencial entregados por Patiotuerca.</div><notebook><page string="Conexión"><group col="2"><group string="Fuente"><field name="endpoint_url" widget="url"/><field name="api_token" password="True" groups="marketing_command_center_patiotuerca.group_patiotuerca_manager"/><field name="feed_file" filename="feed_filename"/><field name="feed_filename" invisible="1"/><field name="active"/><field name="demo_mode"/></group><group string="Resumen"><field name="listing_count" readonly="1"/><field name="published_count" readonly="1"/><field name="unpublished_count" readonly="1"/><field name="stale_count" readonly="1"/><field name="last_sync_at" readonly="1"/></group></group><group string="Control de vigencia"><field name="stale_after_hours"/><field name="mark_missing_unpublished"/><div class="text-muted">La ausencia de un anuncio solo cambia su estado si activas expresamente la opción y el feed es completo.</div></group></page><page string="Vehículos"><field name="listing_ids" readonly="1"><list open_form_view="1"><field name="name"/><field name="brand"/><field name="model"/><field name="year"/><field name="price"/><field name="status" widget="badge"/><field name="is_stale" widget="badge"/><field name="last_seen_at"/></list></field></page><page string="Diagnóstico"><field name="last_sync_summary" readonly="1" widget="text"/><field name="last_error" readonly="1" widget="text"/></page></notebook></sheet><chatter/></form></field>
+    </record>
+    <record id="view_marketing_vehicle_listing_list" model="ir.ui.view">
+        <field name="name">marketing.vehicle.listing.list</field><field name="model">marketing.vehicle.listing</field>
+        <field name="arch" type="xml"><list string="Vehículos del catálogo" open_form_view="1"><field name="name"/><field name="external_id"/><field name="brand"/><field name="model"/><field name="year"/><field name="price"/><field name="currency"/><field name="location"/><field name="status" widget="badge"/><field name="source" widget="badge"/><field name="is_stale" widget="badge"/><field name="last_seen_at"/><button name="action_open_external" type="object" string="Abrir" icon="fa-external-link" invisible="not url"/></list></field>
+    </record>
+    <record id="view_marketing_vehicle_listing_kanban" model="ir.ui.view">
+        <field name="name">marketing.vehicle.listing.kanban</field><field name="model">marketing.vehicle.listing</field>
+        <field name="arch" type="xml"><kanban class="o_marketing_vehicle_kanban"><field name="name"/><field name="image_url"/><field name="brand"/><field name="model"/><field name="year"/><field name="price"/><field name="currency"/><field name="location"/><field name="status"/><field name="url"/><templates><t t-name="card"><article class="o_kanban_record"><div t-if="record.image_url.raw_value" class="o_marketing_vehicle_media"><img t-att-src="record.image_url.raw_value" t-att-alt="record.name.value" loading="lazy"/></div><div t-else="" class="o_marketing_vehicle_media o_marketing_vehicle_media_empty"><i class="fa fa-car"/></div><h3><field name="name"/></h3><div><field name="brand"/> <field name="model"/> · <field name="year"/></div><strong><field name="price"/> <field name="currency"/></strong><div><field name="location"/> · <field name="status" widget="badge"/></div><div class="o_marketing_vehicle_actions"><button name="action_open_external" type="object" class="btn btn-sm btn-light" invisible="not url"><i class="fa fa-external-link me-1"/> Ver anuncio</button></div></article></t></templates></kanban></field>
+    </record>
+    <record id="view_marketing_vehicle_listing_form" model="ir.ui.view">
+        <field name="name">marketing.vehicle.listing.form</field><field name="model">marketing.vehicle.listing</field>
+        <field name="arch" type="xml"><form string="Ficha del vehículo" class="o_marketing_vehicle_form"><header><button name="action_mark_published" type="object" string="Marcar publicado" class="oe_highlight" invisible="status == 'published'"/><button name="action_mark_unpublished" type="object" string="Marcar despublicado" class="btn-secondary" invisible="status != 'published'"/><button name="action_open_external" type="object" string="Ver anuncio" class="btn-secondary" icon="fa-external-link" invisible="not url"/><field name="status" widget="statusbar" statusbar_visible="published,unpublished,paused,reserved,sold"/></header><sheet><div class="oe_title"><h1><field name="name"/></h1></div><group col="2"><group string="Identificación"><field name="connection_id"/><field name="external_id"/><field name="source"/><field name="external_status"/><field name="url" widget="url"/></group><group string="Estado comercial"><field name="status" widget="badge"/><field name="published_at"/><field name="unpublished_at"/><field name="last_seen_at" readonly="1"/></group></group><group string="Características"><group><field name="brand"/><field name="model"/><field name="version"/><field name="year"/></group><group><field name="mileage"/><field name="price"/><field name="currency"/><field name="location"/></group></group><field name="image_url" widget="url"/><field name="description" widget="text" placeholder="Descripción comercial del vehículo..."/><notebook><page string="Datos recibidos"><field name="raw_payload" readonly="1" widget="text"/></page></notebook></sheet><chatter/></form></field>
+    </record>
+    <record id="view_marketing_vehicle_listing_search" model="ir.ui.view">
+        <field name="name">marketing.vehicle.listing.search</field>
+        <field name="model">marketing.vehicle.listing</field>
+        <field name="arch" type="xml">
+            <search string="Buscar vehículos">
+                <field name="name" string="Vehículo"/>
+                <field name="brand" string="Marca"/>
+                <field name="model" string="Modelo"/>
+                <field name="external_id" string="ID externo"/>
+                <field name="connection_id" string="Conexión"/>
+                <filter name="published" string="Publicados" domain="[('status', '=', 'published')]"/>
+                <filter name="unpublished" string="Despublicados" domain="[('status', '=', 'unpublished')]"/>
+                <filter name="available" string="Disponibles para venta" domain="[('status', '=', 'published')]"/>
+                <filter name="stale" string="Sin actualizar" domain="[('is_stale', '=', True)]"/>
+                <separator/>
+                <filter name="group_status" string="Estado" domain="[]" context="{'group_by': 'status'}"/>
+                <filter name="group_brand" string="Marca" domain="[]" context="{'group_by': 'brand'}"/>
+                <filter name="group_connection" string="Conexión" domain="[]" context="{'group_by': 'connection_id'}"/>
+            </search>
+        </field>
+    </record>
+    <record id="action_marketing_patiotuerca_connections" model="ir.actions.act_window"><field name="name">Conexiones Patiotuerca</field><field name="res_model">marketing.patiotuerca.connection</field><field name="view_mode">list,form</field></record>
+    <record id="action_marketing_vehicle_listings" model="ir.actions.act_window"><field name="name">Vehículos y catálogo</field><field name="res_model">marketing.vehicle.listing</field><field name="view_mode">kanban,list,form</field><field name="search_view_id" ref="view_marketing_vehicle_listing_search"/></record>
+    <menuitem id="menu_marketing_patiotuerca_root" name="Catálogo externo" parent="marketing_command_center.menu_marketing_command_root" sequence="45" groups="marketing_command_center_patiotuerca.group_patiotuerca_user"/>
+    <menuitem id="menu_marketing_patiotuerca_listings" name="Vehículos y anuncios" parent="menu_marketing_patiotuerca_root" action="action_marketing_vehicle_listings" sequence="10" groups="marketing_command_center_patiotuerca.group_patiotuerca_user"/>
+    <menuitem id="menu_marketing_patiotuerca_connections" name="Conexiones Patiotuerca" parent="menu_marketing_patiotuerca_root" action="action_marketing_patiotuerca_connections" sequence="20" groups="marketing_command_center_patiotuerca.group_patiotuerca_manager"/>
+</odoo>

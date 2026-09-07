@@ -5,11 +5,11 @@
 interacciones y campañas de redes sociales. Incluye dashboard ejecutivo,
 modo demo y un agente conversacional local que responde con datos exactos.
 Los conectores de cada red y los puentes con CRM o Chatroom son opcionales.''',
-    'version': '19.0.1.0.2',
+    'version': '19.0.1.0.11',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
     'category': 'Marketing/Marketing',
-    'depends': ['mail'],
+    'depends': ['mail', 'product'],
     'data': [
         'security/marketing_command_center_security.xml',
         'security/ir.model.access.csv',

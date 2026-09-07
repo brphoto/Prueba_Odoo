@@ -308,6 +308,45 @@ class TestChatroomAiUsage(TransactionCase):
         self.assertEqual(len(sandbox.test_attachment_ids), 3)
         self.assertEqual(sandbox.quote_count, 3)
         self.assertIn('Cotización %s ampliada' % second_order.name, sandbox.operational_result)
+        history_action = sandbox.action_open_quote_history()
+        self.assertEqual(history_action['res_model'], 'chatroom.ai.sandbox.quote')
+        self.assertEqual(history_action['target'], 'new')
+        self.assertEqual(history_action['domain'], [('sandbox_id', '=', sandbox.id)])
+        self.assertEqual(history_action['views'][0][1], 'list')
+        self.assertEqual(history_action['views'][1][1], 'form')
+
+    def test_sandbox_quote_keeps_quantity_and_price_per_product_line(self):
+        _partner, channel = self._create_sandbox_channel('sandbox-multiple-lines-001')
+        first = self.env['product.product'].create({
+            'name': 'Implementación multi línea QA', 'type': 'service',
+            'sale_ok': True, 'list_price': 1.0,
+        })
+        second = self.env['product.product'].create({
+            'name': 'Capacitación multi línea QA', 'type': 'service',
+            'sale_ok': True, 'list_price': 35.0,
+        })
+        self.env['ir.config_parameter'].sudo().set_param(
+            'chatroom_ai_agent.quote_hourly_rate', '20')
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Prueba cantidades por línea', 'channel_id': channel.id,
+            'execution_mode': 'local', 'prompt': 'Responde en español.',
+        })
+        sandbox.write({
+            'draft_message': (
+                'Necesito 2 horas de Implementación multi línea QA y '
+                '3 unidades de Capacitación multi línea QA en PDF.')
+        })
+        with patch.object(
+            type(self.env['ir.actions.report']), '_render_qweb_pdf',
+            return_value=(b'%PDF-1.4 lines', 'pdf')):
+            sandbox.action_generate_test_quote_pdf()
+        lines = {line.product_id: line for line in sandbox.test_quote_id.order_line}
+        self.assertEqual(set(lines), {first, second})
+        self.assertEqual(lines[first].product_uom_qty, 2.0)
+        self.assertEqual(lines[first].price_unit, 20.0)
+        self.assertEqual(lines[second].product_uom_qty, 3.0)
+        self.assertEqual(lines[second].price_unit, 35.0)
+        self.assertAlmostEqual(sandbox.test_quote_id.amount_untaxed, 145.0)
 
     def test_sandbox_removes_transcript_from_customer_ready_answer(self):
         clean = self.env['chatroom.ai.sandbox']._clean_customer_response(
@@ -356,6 +395,44 @@ class TestChatroomAiUsage(TransactionCase):
         self.assertIn('seguimiento', activity.note.lower())
         self.assertIn('no se envió WhatsApp', sandbox.operational_result)
         self.assertEqual(channel.partner_id, partner)
+
+    def test_sandbox_reuses_native_activity_when_button_is_pressed_again(self):
+        _partner, channel = self._create_sandbox_channel('sandbox-activity-repeat-001')
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Actividad repetible', 'channel_id': channel.id,
+            'execution_mode': 'local', 'prompt': 'Seguimiento.',
+        })
+        sandbox.write({'draft_message': 'Crear seguimiento para el cliente.'})
+        sandbox.action_create_test_activity()
+        first_id = sandbox.test_activity_ids.id
+        sandbox.action_create_test_activity()
+        self.assertEqual(len(sandbox.test_activity_ids), 1)
+        self.assertEqual(sandbox.test_activity_ids.id, first_id)
+
+    def test_sandbox_result_buttons_open_native_records(self):
+        _partner, channel = self._create_sandbox_channel('sandbox-result-links-001')
+        product = self.env['product.product'].create({
+            'name': 'Servicio de enlace de resultados', 'type': 'service',
+            'sale_ok': True, 'list_price': 20.0,
+        })
+        self.env['ir.config_parameter'].sudo().set_param(
+            'chatroom_ai_agent.quote_product_id', str(product.id))
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Resultados accionables', 'channel_id': channel.id,
+            'execution_mode': 'local', 'prompt': 'Responde en español.',
+        })
+        sandbox.write({'draft_message': 'Necesito una cotización en PDF y una actividad de seguimiento.'})
+        with patch.object(
+            type(self.env['ir.actions.report']), '_render_qweb_pdf',
+            return_value=(b'%PDF-1.4 resultado', 'pdf'),
+        ):
+            sandbox.action_send_test_message()
+        quote_action = sandbox.action_open_test_quote()
+        activity_action = sandbox.action_open_test_activity()
+        self.assertEqual(quote_action['res_model'], 'sale.order')
+        self.assertEqual(quote_action['res_id'], sandbox.test_quote_id.id)
+        self.assertEqual(activity_action['res_model'], 'mail.activity')
+        self.assertEqual(activity_action['res_id'], sandbox.test_activity_ids[0].id)
 
     def test_sandbox_uses_upper_bound_for_knowledge_price_ranges(self):
         amounts = self.env['chatroom.ai.sandbox']._maximum_amounts_from_context(
@@ -450,6 +527,21 @@ class TestChatroomAiUsage(TransactionCase):
         self.assertIn(sandbox.test_meeting_link, assistant.body)
         self.assertIn('Reunión nativa creada', sandbox.operational_result)
         self.assertIn('Enlace:', sandbox.operational_result)
+
+    def test_sandbox_reuses_native_meeting_when_button_is_pressed_again(self):
+        _partner, channel = self._create_sandbox_channel('sandbox-meeting-repeat-001')
+        sandbox = self.env['chatroom.ai.sandbox'].create({
+            'name': 'Reunion repetible', 'channel_id': channel.id,
+            'execution_mode': 'local', 'prompt': 'Agenda la reunion.',
+        })
+        request = 'Quiero agendar una reunion virtual.'
+        first = sandbox._create_test_meeting(request)
+        self.assertTrue(self.env['calendar.event'].browse(first['event_id']).exists())
+        second = sandbox._create_test_meeting(request)
+        self.assertEqual(second['event_id'], first['event_id'])
+        self.assertEqual(
+            self.env['calendar.event'].search_count([('id', '=', first['event_id'])]), 1)
+        self.assertEqual(len(sandbox.test_activity_ids), 1)
 
     def test_sandbox_analysis_materializes_native_actions_from_complete_transcript(self):
         _partner, channel = self._create_sandbox_channel('sandbox-analysis-actions-001')
@@ -591,6 +683,47 @@ class TestChatroomAiUsage(TransactionCase):
         })
         self.assertEqual(event.total_tokens, event.input_tokens + event.output_tokens)
         self.assertEqual(event.company_id, self.env.company)
+
+    def test_local_usage_event_calculates_cost_only_from_configured_model_rate(self):
+        model = self.env['chatroom.ai.provider.model'].create({
+            'name': 'qa-priced-model', 'model_id': 'qa-priced-model',
+            'provider': 'openai', 'supports_chat': True,
+            'input_price_per_million': 2.0,
+            'output_price_per_million': 4.0,
+        })
+        self.assertEqual(model.pricing_source, 'manual')
+        event = self.env['chatroom.ai.usage.event'].create({
+            'model': model.model_id, 'input_tokens': 500000,
+            'output_tokens': 250000,
+        })
+        self.assertEqual(event.total_tokens, 750000)
+        self.assertAlmostEqual(event.estimated_cost, 2.0, places=8)
+        self.assertEqual(event.cost_source, 'configured')
+
+        unknown = self.env['chatroom.ai.usage.event'].create({
+            'model': 'qa-model-without-rate', 'input_tokens': 1000,
+            'output_tokens': 1000,
+        })
+        self.assertEqual(unknown.estimated_cost, 0.0)
+        self.assertEqual(unknown.cost_source, 'unavailable')
+
+    def test_local_usage_summary_exposes_estimated_cost_and_not_official_cost(self):
+        self.env['chatroom.ai.provider.model'].create({
+            'name': 'qa-summary-priced', 'model_id': 'qa-summary-priced',
+            'provider': 'openai', 'supports_chat': True,
+            'input_price_per_million': 1.0,
+            'output_price_per_million': 1.0,
+        })
+        event = self.env['chatroom.ai.usage.event'].create({
+            'model': 'qa-summary-priced', 'input_tokens': 100000,
+            'output_tokens': 100000,
+        })
+        self.assertAlmostEqual(event.estimated_cost, 0.2, places=8)
+        snapshot = self.env['chatroom.ai.usage.snapshot'].action_refresh_local()
+        self.assertAlmostEqual(snapshot.estimated_cost, 0.2, places=8)
+        self.assertEqual(snapshot.cost, 0.0)
+        self.assertEqual(snapshot.cost_basis, 'estimated')
+        self.assertEqual(snapshot.state, 'partial')
 
     def test_budget_alert_thresholds(self):
         self.env['ir.config_parameter'].sudo().set_param('chatroom_whatsapp.ai_monthly_budget', '10')

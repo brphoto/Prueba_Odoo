@@ -58,7 +58,7 @@ class CrmNpsCampaign(models.Model):
         ('done', 'Completada'), ('cancelled', 'Cancelada'),
     ], string='Estado', default='draft', required=True, copy=False, tracking=True)
     recipient_ids = fields.One2many('crm.nps.campaign.recipient', 'campaign_id', string='Destinatarios')
-    recipient_count = fields.Integer(string='Destinatarios', compute='_compute_stats')
+    recipient_count = fields.Integer(string='Número de destinatarios', compute='_compute_stats')
     pending_count = fields.Integer(string='Pendientes', compute='_compute_stats')
     sent_count = fields.Integer(string='Enviados', compute='_compute_stats')
     failed_count = fields.Integer(string='Fallidos', compute='_compute_stats')

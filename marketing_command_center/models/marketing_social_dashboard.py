@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 
 from .marketing_social_constants import PLATFORM_LABELS
 
@@ -29,9 +30,32 @@ class MarketingSocialDashboard(models.Model):
     views_total = fields.Integer(string='Reproducciones', readonly=True)
     interactions_total = fields.Integer(string='Interacciones', readonly=True)
     engagement_rate = fields.Float(string='Engagement (%)', readonly=True)
+    verified_metric_count = fields.Integer(string='Métricas verificadas', readonly=True)
+    partial_metric_count = fields.Integer(string='Métricas parciales', readonly=True)
+    unavailable_metric_count = fields.Integer(string='Métricas no disponibles', readonly=True)
+    metric_quality_summary = fields.Text(
+        string='Calidad de medición', readonly=True,
+        help='Indica si el engagement proviene de Insights, contadores básicos o datos no disponibles.')
+    demo_metric_count = fields.Integer(string='Métricas demo', readonly=True)
+    measured_publication_count = fields.Integer(
+        string='Publicaciones con medición', readonly=True,
+        help='Publicaciones cuya última métrica es verificable, parcial o demo.')
+    engagement_data_state = fields.Selection([
+        ('verified', 'Verificado'), ('partial', 'Orientativo'),
+        ('demo', 'Demo'), ('mixed', 'Mixto'), ('unavailable', 'No calculable'),
+    ], string='Confianza del engagement', readonly=True)
     pending_comments = fields.Integer(string='Comentarios pendientes', readonly=True)
     leads_total = fields.Integer(string='Oportunidades atribuidas', readonly=True)
     sales_total = fields.Monetary(string='Ventas atribuidas', currency_field='currency_id', readonly=True)
+    conversation_count = fields.Integer(string='Conversaciones', readonly=True)
+    open_conversation_count = fields.Integer(string='Conversaciones abiertas', readonly=True)
+    message_count = fields.Integer(string='Mensajes recibidos', readonly=True)
+    crm_lead_count = fields.Integer(string='Leads atribuidos', readonly=True)
+    crm_opportunity_count = fields.Integer(string='Oportunidades CRM', readonly=True)
+    crm_pipeline_amount = fields.Monetary(
+        string='Pipeline CRM', currency_field='currency_id', readonly=True)
+    crm_won_amount = fields.Monetary(
+        string='Ventas ganadas CRM', currency_field='currency_id', readonly=True)
     currency_id = fields.Many2one(
         'res.currency', string='Moneda', default=lambda self: self.env.company.currency_id)
     top_publication_id = fields.Many2one(
@@ -67,6 +91,12 @@ class MarketingSocialDashboard(models.Model):
             record.date_to = fields.Date.context_today(record)
             record.date_from = record.date_to - timedelta(days=days - 1)
 
+    @api.constrains('period_days')
+    def _check_period_days(self):
+        for record in self:
+            if not 1 <= record.period_days <= 365:
+                raise ValidationError(_('El período debe estar entre 1 y 365 días.'))
+
     @api.depends('alert_ids.state')
     def _compute_open_alert_count(self):
         for record in self:
@@ -99,13 +129,22 @@ class MarketingSocialDashboard(models.Model):
             previous_to = record.date_from - timedelta(days=1)
             previous_from = previous_to - timedelta(days=period_size - 1)
             previous_rows = record._latest_metrics(previous_from, previous_to)
-            reach = sum(metric.reach for _publication, metric in rows)
-            interactions = sum(metric.total_interactions for _publication, metric in rows)
-            previous_reach = sum(metric.reach for _publication, metric in previous_rows)
-            previous_interactions = sum(metric.total_interactions for _publication, metric in previous_rows)
+            usable_statuses = ('verified', 'partial', 'demo')
+            measured_rows = [
+                (publication, metric) for publication, metric in rows
+                if metric.metric_status in usable_statuses
+            ]
+            measured_previous_rows = [
+                (publication, metric) for publication, metric in previous_rows
+                if metric.metric_status in usable_statuses
+            ]
+            reach = sum(metric.reach for _publication, metric in measured_rows)
+            interactions = sum(metric.total_interactions for _publication, metric in measured_rows)
+            previous_reach = sum(metric.reach for _publication, metric in measured_previous_rows)
+            previous_interactions = sum(metric.total_interactions for _publication, metric in measured_previous_rows)
             previous_engagement = (
                 previous_interactions / previous_reach * 100 if previous_reach else 0.0)
-            top = max(rows, key=lambda item: item[1].engagement_rate, default=(False, False))
+            top = max(measured_rows, key=lambda item: item[1].engagement_rate, default=(False, False))
             pending_domain = [
                 ('company_id', '=', record.company_id.id),
                 ('response_state', '=', 'pending'),
@@ -117,21 +156,97 @@ class MarketingSocialDashboard(models.Model):
                 pending_domain.append(('platform', '=', record.platform_filter))
             pending = self.env['marketing.social.interaction'].search_count(pending_domain)
             engagement = interactions / reach * 100 if reach else 0.0
+            verified_metrics = len([metric for _publication, metric in rows
+                                    if metric.metric_status == 'verified'])
+            partial_metrics = len([metric for _publication, metric in rows
+                                   if metric.metric_status == 'partial'])
+            unavailable_metrics = len([metric for _publication, metric in rows
+                                       if metric.metric_status == 'unavailable'])
+            demo_metrics = len([metric for _publication, metric in rows
+                                if metric.metric_status == 'demo'])
+            quality_states = {metric.metric_status for _publication, metric in measured_rows}
+            if not measured_rows:
+                engagement_data_state = 'unavailable'
+            elif quality_states == {'verified'}:
+                engagement_data_state = 'verified'
+            elif quality_states == {'partial'}:
+                engagement_data_state = 'partial'
+            elif quality_states == {'demo'}:
+                engagement_data_state = 'demo'
+            else:
+                engagement_data_state = 'mixed'
+            if unavailable_metrics and measured_rows:
+                quality_summary = _(
+                    '%s publicación(es) no tienen métricas completas del proveedor. '
+                    'Se excluyeron del cálculo; el engagement se calculó con %s publicación(es) medible(s). '
+                    'Revisa permisos de Insights y el detalle de cada métrica.'
+                ) % (unavailable_metrics, len(measured_rows))
+            elif unavailable_metrics:
+                quality_summary = _(
+                    'No hay métricas utilizables en el período. Un engagement de 0,00%% aquí significa «no calculable», '
+                    'no necesariamente cero interacción. Sincroniza Meta o carga datos demo para validar el flujo.'
+                )
+            elif partial_metrics:
+                quality_summary = _(
+                    '%s publicación(es) usan contadores básicos; el engagement es orientativo hasta sincronizar Insights.'
+                ) % partial_metrics
+            elif demo_metrics:
+                quality_summary = _(
+                    '%s publicaciones contienen datos demo. Sirven para probar el panel, pero no representan resultados reales.'
+                ) % demo_metrics
+            else:
+                quality_summary = _('Todas las publicaciones del período tienen métricas verificadas por el proveedor.')
+            account_domain = [
+                ('company_id', '=', record.company_id.id), ('active', '=', True),
+            ]
+            if record.platform_filter != 'all':
+                account_domain.append(('platform', '=', record.platform_filter))
+            accounts = self.env['marketing.social.account'].search(account_domain)
+            conversation_domain = [('account_id', 'in', accounts.ids)]
+            conversation_model = self.env['marketing.social.conversation']
+            message_model = self.env['marketing.social.conversation.message']
+            conversation_count = conversation_model.search_count(conversation_domain)
+            open_conversation_count = conversation_model.search_count(
+                conversation_domain + [('state', '=', 'open')])
+            message_count = message_model.search_count([('account_id', 'in', accounts.ids)])
+            crm_lead_count = crm_opportunity_count = 0
+            crm_pipeline_amount = crm_won_amount = 0.0
+            if 'crm.lead' in self.env and 'marketing_account_id' in self.env['crm.lead']._fields:
+                lead_domain = [('marketing_account_id', 'in', accounts.ids)]
+                crm_lead_count = self.env['crm.lead'].search_count(lead_domain)
+                opportunity_domain = lead_domain + [('type', '=', 'opportunity')]
+                opportunities = self.env['crm.lead'].search(opportunity_domain)
+                crm_opportunity_count = len(opportunities)
+                crm_pipeline_amount = sum(opportunities.mapped('expected_revenue'))
+                crm_won_amount = sum(opportunities.filtered(
+                    lambda opportunity: opportunity.probability >= 100).mapped('expected_revenue'))
             record.write({
                 'last_refresh_at': fields.Datetime.now(),
-                'data_state': 'ready' if rows else 'empty',
+                'data_state': 'demo' if measured_rows and engagement_data_state == 'demo' else ('ready' if rows else 'empty'),
                 'publication_count': len(rows),
-                'account_count': self.env['marketing.social.account'].search_count([
-                    ('company_id', '=', record.company_id.id), ('active', '=', True),
-                ]),
+                'measured_publication_count': len(measured_rows),
+                'account_count': self.env['marketing.social.account'].search_count(account_domain),
                 'reach_total': reach,
                 'impressions_total': sum(metric.impressions for _publication, metric in rows),
                 'views_total': sum(metric.views for _publication, metric in rows),
                 'interactions_total': interactions,
                 'engagement_rate': engagement,
+                'verified_metric_count': verified_metrics,
+                'partial_metric_count': partial_metrics,
+                'unavailable_metric_count': unavailable_metrics,
+                'demo_metric_count': demo_metrics,
+                'engagement_data_state': engagement_data_state,
+                'metric_quality_summary': quality_summary,
                 'pending_comments': pending,
                 'leads_total': sum(metric.leads for _publication, metric in rows),
                 'sales_total': sum(metric.sales_amount for _publication, metric in rows),
+                'conversation_count': conversation_count,
+                'open_conversation_count': open_conversation_count,
+                'message_count': message_count,
+                'crm_lead_count': crm_lead_count,
+                'crm_opportunity_count': crm_opportunity_count,
+                'crm_pipeline_amount': crm_pipeline_amount,
+                'crm_won_amount': crm_won_amount,
                 'top_publication_id': top[0].id if top[0] else False,
                 'top_publication_rate': top[1].engagement_rate if top[1] else 0.0,
                 'top_platform': top[0].platform if top[0] else False,
@@ -168,10 +283,12 @@ class MarketingSocialDashboard(models.Model):
     def _refresh_alerts(self, rows, pending, engagement):
         Alert = self.env['marketing.social.alert']
         active_types = set()
-        if not rows:
+        if not rows or not self.measured_publication_count:
             active_types.add('no_data')
             self._upsert_alert(Alert, 'no_data', 'info', _('Sin datos en el período'),
-                              _('No se encontraron publicaciones con métricas para los filtros actuales.'))
+                              _(
+                                  'No hay métricas utilizables para los filtros actuales. El engagement no debe interpretarse como cero real; sincroniza Insights o revisa los permisos del proveedor.'
+                              ))
         elif self.engagement_alert_threshold and engagement < self.engagement_alert_threshold:
             active_types.add('low_engagement')
             self._upsert_alert(
@@ -219,7 +336,9 @@ class MarketingSocialDashboard(models.Model):
         Campaign = self.env['marketing.social.campaign']
         company = self.company_id
         demo_accounts = Account.search([('demo_account', '=', True), ('company_id', '=', company.id)])
-        if demo_accounts:
+        demo_publications = Publication.search([('demo_record', '=', True), ('company_id', '=', company.id)])
+        demo_metrics = Metric.search([('source', '=', 'demo'), ('company_id', '=', company.id)])
+        if len(demo_accounts) >= 4 and len(demo_publications) >= 12 and len(demo_metrics) >= 12:
             self.action_refresh()
             self.write({'data_state': 'demo'})
             return True
@@ -231,14 +350,17 @@ class MarketingSocialDashboard(models.Model):
         ]
         accounts = {}
         for name, platform in account_values:
-            accounts[platform] = Account.create({
+            account = demo_accounts.filtered(lambda item: item.platform == platform)[:1]
+            accounts[platform] = account or Account.create({
                 'name': name, 'platform': platform,
                 'external_id': 'demo-%s' % platform,
                 'connection_state': 'connected', 'demo_account': True,
                 'follower_count': {'instagram': 4200, 'facebook': 6800, 'tiktok': 9100, 'youtube': 2400}.get(platform, 0),
                 'company_id': company.id,
             })
-        campaign = Campaign.create({
+        campaign = Campaign.search([
+            ('code', '=', 'DEMO-ODOO'), ('company_id', '=', company.id)], limit=1)
+        campaign = campaign or Campaign.create({
             'name': 'DEMO Campaña: Odoo para empresas', 'code': 'DEMO-ODOO',
             'objective': 'leads', 'company_id': company.id,
         })
@@ -273,6 +395,8 @@ class MarketingSocialDashboard(models.Model):
                 'likes': likes, 'comments': comments, 'shares': shares, 'saves': saves,
                 'clicks': likes // 2, 'leads': max(comments // 4, 1),
                 'sales_amount': float(max(comments // 2, 1) * 20),
+                'source': 'demo', 'metric_status': 'demo',
+                'fetched_at': fields.Datetime.now(),
             })
             Interaction.create({
                 'publication_id': publication.id, 'interaction_type': 'comment',
@@ -304,6 +428,49 @@ class MarketingSocialDashboard(models.Model):
                 ('published_at', '<=', datetime.combine(self.date_to, datetime.max.time())),
             ] + ([('platform', '=', self.platform_filter)] if self.platform_filter != 'all' else []),
             'target': 'current',
+        }
+
+    def action_open_metrics(self):
+        """Open the metric history behind reach and engagement KPIs."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window', 'name': _('Historial de métricas'),
+            'res_model': 'marketing.social.metric.snapshot',
+            'view_mode': 'graph,list,form',
+            'domain': [
+                ('company_id', '=', self.company_id.id),
+                ('snapshot_date', '>=', self.date_from),
+                ('snapshot_date', '<=', self.date_to),
+            ] + ([('platform', '=', self.platform_filter)]
+                 if self.platform_filter != 'all' else []),
+            'target': 'current',
+        }
+
+    def action_open_conversations(self):
+        self.ensure_one()
+        accounts = self.env['marketing.social.account'].search([
+            ('company_id', '=', self.company_id.id), ('active', '=', True),
+        ] + ([('platform', '=', self.platform_filter)]
+             if self.platform_filter != 'all' else []))
+        return {
+            'type': 'ir.actions.act_window', 'name': _('Conversaciones sociales'),
+            'res_model': 'marketing.social.conversation', 'view_mode': 'list,form',
+            'domain': [('account_id', 'in', accounts.ids)],
+            'context': {'search_default_state_open': 1},
+        }
+
+    def action_open_leads(self):
+        if 'crm.lead' not in self.env or 'marketing_account_id' not in self.env['crm.lead']._fields:
+            raise ValidationError(_('Instala el módulo opcional de inteligencia comercial de leads para consultar este indicador.'))
+        self.ensure_one()
+        accounts = self.env['marketing.social.account'].search([
+            ('company_id', '=', self.company_id.id), ('active', '=', True),
+        ] + ([('platform', '=', self.platform_filter)]
+             if self.platform_filter != 'all' else []))
+        return {
+            'type': 'ir.actions.act_window', 'name': _('Leads comerciales 360'),
+            'res_model': 'crm.lead', 'view_mode': 'list,form',
+            'domain': [('marketing_account_id', 'in', accounts.ids)],
         }
 
     def action_open_alerts(self):

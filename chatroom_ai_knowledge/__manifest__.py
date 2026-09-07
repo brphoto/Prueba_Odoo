@@ -5,7 +5,7 @@
     'description': '''Módulo puente opcional que organiza el conocimiento
 interno de Chatroom dentro del Agente IA sin mezclar la lógica comercial,
 de WhatsApp o de ventas.''',
-    'version': '19.0.1.0.3',
+    'version': '19.0.1.0.4',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
     'category': 'Productivity/Discuss',

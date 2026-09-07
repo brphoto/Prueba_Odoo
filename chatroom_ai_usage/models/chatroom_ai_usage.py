@@ -69,6 +69,15 @@ class ChatroomAiUsageEvent(models.Model):
     input_tokens = fields.Integer(string='Tokens de entrada')
     output_tokens = fields.Integer(string='Tokens de salida')
     total_tokens = fields.Integer(string='Tokens totales')
+    estimated_cost = fields.Float(
+        string='Costo local estimado', digits=(16, 8), readonly=True,
+        help='Estimación local basada en la tarifa manual configurada para el modelo. '
+             'No reemplaza el costo oficial de OpenAI.')
+    cost_currency = fields.Char(string='Moneda del costo', default='usd', readonly=True)
+    cost_source = fields.Selection([
+        ('configured', 'Tarifa configurada'),
+        ('unavailable', 'Sin tarifa'),
+    ], string='Origen del costo', default='unavailable', readonly=True)
     success = fields.Boolean(string='Correcta', default=True)
 
     @api.model_create_multi
@@ -80,6 +89,23 @@ class ChatroomAiUsageEvent(models.Model):
                     values['channel_id']).exists()
                 if channel and channel.company_id:
                     values['company_id'] = channel.company_id.id
+            input_tokens = max(int(values.get('input_tokens') or 0), 0)
+            output_tokens = max(int(values.get('output_tokens') or 0), 0)
+            if not values.get('total_tokens'):
+                values['total_tokens'] = input_tokens + output_tokens
+            if 'estimated_cost' not in values and values.get('model'):
+                provider_model = self.env['chatroom.ai.provider.model']
+                input_rate, output_rate, currency = provider_model._pricing_for_model(
+                    values.get('model'))
+                if input_rate or output_rate:
+                    values['estimated_cost'] = (
+                        input_tokens * input_rate + output_tokens * output_rate
+                    ) / 1000000.0
+                    values['cost_currency'] = currency
+                    values['cost_source'] = 'configured'
+                else:
+                    values['estimated_cost'] = 0.0
+                    values['cost_source'] = 'unavailable'
         return super().create(vals_list)
 
 
@@ -124,6 +150,15 @@ class ChatroomAiUsageSnapshot(models.Model):
     ], string='Estado del presupuesto', default='no_limit')
     local_request_count = fields.Integer(string='Solicitudes locales')
     local_total_tokens = fields.Integer(string='Tokens locales')
+    estimated_cost = fields.Float(
+        string='Costo local estimado', digits=(16, 8), readonly=True,
+        help='Suma de estimaciones calculadas por Odoo con tarifas manuales por modelo.')
+    estimated_cost_currency = fields.Char(string='Moneda del costo local', default='usd', readonly=True)
+    cost_basis = fields.Selection([
+        ('official', 'Costo oficial'),
+        ('estimated', 'Estimación local'),
+        ('none', 'Sin tarifa'),
+    ], string='Base del costo', default='none', readonly=True)
     model_breakdown = fields.Text(string='Detalle por modelo', readonly=True)
     cost_breakdown = fields.Text(string='Detalle de costos oficiales', readonly=True)
     state = fields.Selection([
@@ -175,11 +210,21 @@ class ChatroomAiUsageSnapshot(models.Model):
 
     @api.model
     def _local_totals(self, start, end):
+        # Los botones de resumen pueden ejecutarse en la misma transacción que
+        # acaba de registrar una solicitud.  Forzamos el flush antes del
+        # ``sudo().search`` para que el resumen no omita eventos aún en caché.
+        self.env['chatroom.ai.usage.event'].flush_model([
+            'request_date', 'company_id', 'total_tokens', 'estimated_cost',
+        ])
         events = self.env['chatroom.ai.usage.event'].sudo().search([
             ('request_date', '>=', start), ('request_date', '<', end),
             ('company_id', '=', self.env.company.id),
         ])
-        return len(events), sum(events.mapped('total_tokens'))
+        return (
+            len(events),
+            sum(events.mapped('total_tokens')),
+            sum(events.mapped('estimated_cost')),
+        )
 
     @api.model
     def _budget_values(self, cost):
@@ -341,7 +386,11 @@ class ChatroomAiUsageSnapshot(models.Model):
         """Genera un resumen inmediato desde las solicitudes registradas en Odoo."""
         now = fields.Datetime.now()
         start = now - timedelta(days=self._days())
-        local_count, local_tokens = self._local_totals(start, now)
+        # Odoo guarda los datetimes con precisión de segundos.  Añadir un
+        # segundo al corte evita omitir una solicitud creada justo al pulsar
+        # «Actualizar resumen».
+        local_count, local_tokens, local_cost = self._local_totals(
+            start, now + timedelta(seconds=1))
         values = {
             'name': _('IA - resumen local de los últimos %s días') % self._days(),
             'company_id': self.env.company.id,
@@ -352,6 +401,9 @@ class ChatroomAiUsageSnapshot(models.Model):
             'total_tokens': local_tokens,
             'local_request_count': local_count,
             'local_total_tokens': local_tokens,
+            'estimated_cost': local_cost,
+            'estimated_cost_currency': 'usd',
+            'cost_basis': 'estimated' if local_cost else 'none',
             'currency': 'usd',
             'model_breakdown': '{}',
             'cost_breakdown': '{}',
@@ -387,7 +439,8 @@ class ChatroomAiUsageSnapshot(models.Model):
         admin_key = self._admin_api_key()
         now = fields.Datetime.now()
         start = now - timedelta(days=self._days())
-        local_count, local_tokens = self._local_totals(start, now)
+        local_count, local_tokens, local_cost = self._local_totals(
+            start, now + timedelta(seconds=1))
         values = {
             'name': _('IA - últimos %s días') % self._days(),
             'company_id': self.env.company.id,
@@ -396,6 +449,9 @@ class ChatroomAiUsageSnapshot(models.Model):
             'period_end': now,
             'local_request_count': local_count,
             'local_total_tokens': local_tokens,
+            'estimated_cost': local_cost,
+            'estimated_cost_currency': 'usd',
+            'cost_basis': 'estimated' if local_cost else 'none',
             'currency': 'usd',
             'model_breakdown': '{}',
             'cost_breakdown': '{}',
@@ -449,6 +505,7 @@ class ChatroomAiUsageSnapshot(models.Model):
                 'output_tokens': output_tokens,
                 'total_tokens': total_tokens,
                 'cost': cost,
+                'cost_basis': 'official' if cost else 'estimated' if local_cost else 'none',
                 'currency': currency,
                 'model_breakdown': json.dumps(by_model, ensure_ascii=False, indent=2),
                 'cost_breakdown': json.dumps(by_cost_line, ensure_ascii=False, indent=2),

@@ -77,7 +77,9 @@ class ChatroomChannel(models.Model):
         'chatroom.channel.stage', string='Etapa', tracking=True, index=True,
         ondelete='restrict',
         help='Etapa configurable del flujo de atención, como en CRM.')
-    stage_name = fields.Char(related='stage_id.name', string='Nombre de etapa', store=True)
+    # El nombre de la etapa es traducible; no se almacena para evitar valores
+    # incorrectos al cambiar el idioma del usuario.
+    stage_name = fields.Char(related='stage_id.name', string='Nombre de etapa')
     stage_color = fields.Integer(related='stage_id.color', string='Color de etapa', store=True)
     stage_fold = fields.Boolean(related='stage_id.fold', string='Etapa plegada', store=True)
     manual_urgent = fields.Boolean(
@@ -2892,7 +2894,7 @@ class ChatroomChannel(models.Model):
             order_vals['order_line'] = [(0, 0, {
                 'product_id': product.id,
                 'product_uom_qty': quantity,
-                **({'price_unit': unit_price} if unit_price is not False else {}),
+                **({'price_unit': unit_price} if unit_price not in (None, False) else {}),
             }) for product, quantity, unit_price in requested_lines]
         order = self.env['sale.order'].create(order_vals)
         return self._window_action(

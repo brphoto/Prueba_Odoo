@@ -21,7 +21,7 @@ class MarketingSocialCampaign(models.Model):
     notes = fields.Text(string='Notas estratégicas')
     publication_ids = fields.One2many(
         'marketing.social.publication', 'campaign_id', string='Publicaciones')
-    publication_count = fields.Integer(compute='_compute_counts', string='Publicaciones')
+    publication_count = fields.Integer(compute='_compute_counts', string='Número de publicaciones')
     interaction_count = fields.Integer(compute='_compute_counts', string='Interacciones')
     reach_total = fields.Integer(compute='_compute_counts', string='Alcance')
     engagement_rate = fields.Float(compute='_compute_counts', string='Engagement (%)')

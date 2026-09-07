@@ -21,7 +21,7 @@ class ResPartner(models.Model):
     history_manual_category_date = fields.Date(string='Fecha de categoría manual', readonly=True, copy=False)
     history_category_source = fields.Selection([
         ('automatic', 'Automática'), ('manual', 'Manual'),
-    ], string='Origen de categoría', compute='_compute_history_category_source')
+    ], string='Origen de categoría histórica', compute='_compute_history_category_source')
 
     history_manual_category_changed_by = fields.Many2one(
         'res.users', string='Categoría cambiada por', readonly=True, copy=False)

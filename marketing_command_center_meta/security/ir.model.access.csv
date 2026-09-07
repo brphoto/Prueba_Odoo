@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_marketing_meta_connection_user,marketing.meta.connection user,model_marketing_meta_connection,marketing_command_center_meta.group_meta_user,1,0,0,0
+access_marketing_meta_connection_manager,marketing.meta.connection manager,model_marketing_meta_connection,marketing_command_center_meta.group_meta_manager,1,1,1,1
+access_marketing_meta_page_user,marketing.meta.page user,model_marketing_meta_page,marketing_command_center_meta.group_meta_user,1,0,0,0
+access_marketing_meta_page_manager,marketing.meta.page manager,model_marketing_meta_page,marketing_command_center_meta.group_meta_manager,1,1,1,1

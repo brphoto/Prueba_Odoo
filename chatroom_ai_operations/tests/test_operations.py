@@ -63,7 +63,17 @@ class TestChatroomAiOperations(TransactionCase):
         ]))
         action = playbook.action_run_now()
         self.assertEqual(action['type'], 'ir.actions.client')
-        self.assertIn('1 canal(es)', playbook.last_result)
+        self.assertIn('1 procesado(s)', playbook.last_result)
+        self.assertEqual(playbook.run_count, 1)
+        run = playbook.run_ids[:1]
+        self.assertEqual(run.execution_type, 'manual')
+        self.assertEqual(run.channels_processed, 1)
+        self.assertEqual(run.notified_count, 1)
+        self.assertEqual(run.sent_count, 0)
+        self.assertEqual(run.state, 'done')
+        history_action = playbook.action_view_runs()
+        self.assertEqual(history_action['res_model'], 'chatroom.operations.playbook.run')
+        self.assertEqual(history_action['domain'], [('playbook_id', '=', playbook.id)])
 
     def test_demo_generator_is_safe_and_idempotent(self):
         demo = self.env['chatroom.operations.demo'].create({})
@@ -91,3 +101,23 @@ class TestChatroomAiOperations(TransactionCase):
         dashboard = self.env['chatroom.operations.dashboard'].create({})
         action = dashboard.action_collect_metrics()
         self.assertEqual(action['tag'], 'display_notification')
+
+    def test_readiness_checks_are_complete_and_local(self):
+        checks = self.env['chatroom.operations.check'].action_run_all()
+        self.assertEqual(len(checks), 12)
+        self.assertEqual(set(checks.mapped('company_id').ids), {self.env.company.id})
+        self.assertTrue(all(check.checked_at for check in checks))
+        self.assertTrue(all(check.detail and check.recommendation for check in checks))
+        self.assertIn('native_sales', checks.mapped('code'))
+        self.assertIn('human_approval', checks.mapped('code'))
+        self.assertNotIn('api.openai.com', '\n'.join(checks.mapped('detail')))
+
+    def test_readiness_checks_are_idempotent_and_recheckable(self):
+        checks_model = self.env['chatroom.operations.check']
+        first = checks_model.action_run_all()
+        second = checks_model.action_run_all()
+        self.assertEqual(set(first.mapped('id')), set(second.mapped('id')))
+        self.assertEqual(checks_model.search_count([('company_id', '=', self.env.company.id)]), 12)
+        one = second.filtered(lambda check: check.code == 'human_approval')
+        self.assertEqual(len(one), 1)
+        self.assertTrue(one.action_check())

@@ -24,7 +24,20 @@ class ChatroomChannel(models.Model):
             ('stop', '>', start),
         ], order='start, id')
 
-    def action_create_meeting(self, start=False, stop=False, request=False):
+    def _meeting_result(self, event, activity=False, link_sent=False):
+        """Return one stable payload for manual and idempotent creation."""
+        return {
+            'event_id': event.id,
+            'activity_id': activity.id or False,
+            'link': event.videocall_location,
+            'name': event.name,
+            'start': fields.Datetime.to_string(event.start),
+            'stop': fields.Datetime.to_string(event.stop),
+            'link_sent': link_sent,
+        }
+
+    def action_create_meeting(self, start=False, stop=False, request=False,
+                              idempotency_key=False):
         """Crea una reunión nativa y devuelve su enlace sin enviarlo.
 
         Separar la creación del envío permite que el agente IA conserve el
@@ -38,6 +51,52 @@ class ChatroomChannel(models.Model):
         now = fields.Datetime.now()
         start = fields.Datetime.to_datetime(start) if start else fields.Datetime.add(now, hours=1)
         stop = fields.Datetime.to_datetime(stop) if stop else fields.Datetime.add(start, hours=1)
+        if not start or not stop or stop <= start:
+            raise UserError(_(
+                'La hora de finalización debe ser posterior a la hora de inicio.'))
+
+        # A task can be retried after the native event was created but before
+        # the WhatsApp send completed.  Persist a harmless marker in the
+        # native event description so the retry reuses the same meeting.
+        marker = ('[Chatroom task: %s]' % idempotency_key) if idempotency_key else False
+        event = self.env['calendar.event'].browse()
+        if marker:
+            event = self.env['calendar.event'].search([
+                ('active', '=', True),
+                ('description', 'ilike', marker),
+                ('partner_ids', 'in', self.partner_id.id),
+            ], order='id desc', limit=1)
+        if event:
+            if not event.videocall_location:
+                event._set_discuss_videocall_location()
+            link = event.videocall_location
+            if not link:
+                raise UserError(_("No se pudo obtener el enlace de videollamada."))
+            activity = self.env['mail.activity'].browse()
+            activity_type = self.env.ref(
+                'mail.mail_activity_data_meeting', raise_if_not_found=False)
+            channel_model = self.env['ir.model']._get(self._name)
+            if activity_type and channel_model:
+                activity = self.env['mail.activity'].search([
+                    ('res_model_id', '=', channel_model.id),
+                    ('res_id', '=', self.id),
+                    ('activity_type_id', '=', activity_type.id),
+                    ('summary', '=', event.name),
+                ], order='id desc', limit=1)
+                if not activity:
+                    activity = self.env['mail.activity'].create({
+                        'activity_type_id': activity_type.id,
+                        'res_model_id': channel_model.id,
+                        'res_id': self.id,
+                        'user_id': event.user_id.id or self.env.user.id,
+                        'date_deadline': fields.Datetime.to_datetime(event.start).date(),
+                        'summary': event.name,
+                        'note': _(
+                            'Reunión creada en el Calendario nativo de Odoo. Enlace: %s'
+                        ) % link,
+                    })
+            return self._meeting_result(event, activity=activity)
+
         conflicts = self._calendar_conflicts(start, stop)
         if conflicts:
             details = ', '.join(
@@ -55,6 +114,7 @@ class ChatroomChannel(models.Model):
             'description': '\n\n'.join(filter(None, [
                 self.ai_summary or '',
                 request and _("Solicitud original: %s") % request or '',
+                marker or '',
             ])),
         })
         if not event.videocall_location:
@@ -82,14 +142,7 @@ class ChatroomChannel(models.Model):
                     'Reunión creada en el Calendario nativo de Odoo. Enlace: %s'
                 ) % link,
             })
-        return {
-            'event_id': event.id,
-            'activity_id': activity.id or False,
-            'link': link,
-            'name': event.name,
-            'start': fields.Datetime.to_string(event.start),
-            'stop': fields.Datetime.to_string(event.stop),
-        }
+        return self._meeting_result(event, activity=activity)
 
     def action_create_meet_and_send(self):
         """Crea el evento y envía el enlace generado al hilo.

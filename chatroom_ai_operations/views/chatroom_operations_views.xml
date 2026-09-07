@@ -59,6 +59,17 @@
                         <field name="ai_config_state" widget="badge" string="IA"/>
                         <field name="payphone_state" widget="badge"/>
                     </group>
+                    <group string="Preparación de la instalación" col="3">
+                        <button name="action_open_readiness_checks" type="object" class="oe_stat_button">
+                            <field name="readiness_total" widget="statinfo" string="Comprobaciones"/>
+                        </button>
+                        <button name="action_open_readiness_checks" type="object" class="oe_stat_button">
+                            <field name="readiness_attention" widget="statinfo" string="Pendientes"/>
+                        </button>
+                        <button name="action_refresh_readiness_checks" type="object" class="oe_stat_button">
+                            <field name="readiness_ok" widget="statinfo" string="Correctas"/>
+                        </button>
+                    </group>
                     <field name="currency_id" invisible="1"/>
                     <field name="refreshed_at"/>
                 </sheet>
@@ -75,16 +86,77 @@
         <field name="name">chatroom.operations.playbook.list</field>
         <field name="model">chatroom.operations.playbook</field>
         <field name="arch" type="xml">
-            <list string="Playbooks de comunicación"><field name="sequence" widget="handle"/><field name="name"/><field name="trigger"/><field name="execution_mode"/><field name="template_id"/><field name="approval_required"/><field name="active"/></list>
+            <list string="Playbooks de comunicación" decoration-muted="not active">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="trigger"/>
+                <field name="execution_mode"/>
+                <field name="approval_required"/>
+                <field name="last_run_at" optional="hide"/>
+                <field name="last_processed_count" string="Procesados"/>
+                <field name="last_result" string="Último resultado"/>
+                <field name="run_count" string="Ejecuciones"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
         </field>
     </record>
     <record id="view_chatroom_operations_playbook_form" model="ir.ui.view">
         <field name="name">chatroom.operations.playbook.form</field>
         <field name="model">chatroom.operations.playbook</field>
         <field name="arch" type="xml">
-            <form string="Playbook de comunicación">
-                <header><button name="action_run_now" type="object" string="Probar ahora" class="btn-primary" icon="fa-play"/><field name="active" widget="boolean_button"/></header>
-                <sheet><group><field name="name"/><field name="trigger"/><field name="test_channel_id" invisible="trigger != 'manual'"/><field name="execution_mode"/><field name="template_id" invisible="execution_mode != 'send_template'"/><field name="approval_required"/><field name="delay_hours"/><field name="max_per_run"/></group><group string="Última ejecución"><field name="last_run_at"/><field name="last_result"/></group></sheet>
+            <form string="Playbook de comunicación" class="o_chatroom_operations_playbook_form">
+                <header>
+                    <button name="action_run_now" type="object" string="Ejecutar ahora" class="btn-primary" icon="fa-play"/>
+                    <button name="action_view_runs" type="object" string="Ver historial" icon="fa-history"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" placeholder="Ej.: Recordatorio de cotización"/></h1></div>
+                    <div class="alert alert-info" role="status">
+                        Configura una regla de comunicación en lenguaje simple. Por seguridad, los ejemplos solo avisan al equipo; el envío requiere una plantilla aprobada y aprobación humana.
+                    </div>
+                    <group col="2">
+                        <group string="Cuándo actuar">
+                            <field name="trigger"/>
+                            <field name="delay_hours"/>
+                            <field name="test_channel_id" invisible="trigger != 'manual'"/>
+                        </group>
+                        <group string="Cómo actuar">
+                            <field name="execution_mode"/>
+                            <field name="template_id" invisible="execution_mode != 'send_template'"/>
+                            <field name="approval_required"/>
+                            <field name="max_per_run"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Última ejecución">
+                            <group col="2">
+                                <field name="last_run_at" readonly="1"/>
+                                <field name="last_processed_count" readonly="1"/>
+                                <field name="last_notified_count" readonly="1"/>
+                                <field name="last_sent_count" readonly="1"/>
+                                <field name="last_blocked_count" readonly="1"/>
+                                <field name="last_error_count" readonly="1"/>
+                            </group>
+                            <field name="last_result" readonly="1" nolabel="1" placeholder="Todavía no se ha ejecutado."/>
+                        </page>
+                        <page string="Historial">
+                            <field name="run_ids" readonly="1" nolabel="1" create="0" delete="0">
+                                <list create="0" delete="0">
+                                    <field name="execution_date" string="Ejecutada el"/>
+                                    <field name="execution_type" string="Origen" widget="badge"/>
+                                    <field name="state" string="Estado" widget="badge"/>
+                                    <field name="channels_processed" string="Procesados"/>
+                                    <field name="notified_count" string="Avisos"/>
+                                    <field name="sent_count" string="Enviados"/>
+                                    <field name="summary" string="Resumen"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
             </form>
         </field>
     </record>

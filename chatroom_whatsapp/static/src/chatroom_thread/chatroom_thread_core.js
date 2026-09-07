@@ -808,7 +808,7 @@ export class ChatroomThreadCore extends Component {
         if (!dateObj) {
             return "";
         }
-        return dateObj.toLocaleString(undefined, {
+        return dateObj.toLocaleString("es-EC", {
             day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
         });
     }
@@ -857,7 +857,7 @@ export class ChatroomThreadCore extends Component {
         if (!dateObj) {
             return "";
         }
-        return dateObj.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+        return dateObj.toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });
     }
 
     isImage(attachment) {

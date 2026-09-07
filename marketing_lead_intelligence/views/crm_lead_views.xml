@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_lead_marketing_360_form" model="ir.ui.view">
+        <field name="name">crm.lead.marketing.360.form</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_open_marketing_conversation" type="object"
+                        string="Abrir conversación" icon="fa-comments"
+                        class="btn-secondary"
+                        invisible="not marketing_conversation_id"/>
+                <button name="action_schedule_marketing_followup" type="object"
+                        string="Programar seguimiento" icon="fa-calendar"
+                        class="btn-secondary"/>
+            </xpath>
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Marketing y atribución" name="marketing_360">
+                    <group col="2">
+                        <group string="Origen comercial">
+                            <field name="marketing_account_id"/>
+                            <field name="marketing_platform" widget="badge"/>
+                            <field name="marketing_campaign_id"/>
+                            <field name="marketing_publication_id"/>
+                            <field name="marketing_conversation_id"/>
+                            <field name="marketing_attribution_note" readonly="1"/>
+                        </group>
+                        <group string="Calificación y seguimiento">
+                            <field name="marketing_quality_score"/>
+                            <field name="marketing_quality_status" widget="badge"/>
+                            <field name="marketing_rfm_segment" widget="badge"/>
+                            <field name="marketing_next_action"/>
+                            <field name="marketing_last_message_at"/>
+                            <field name="marketing_message_count"/>
+                            <field name="marketing_interaction_count"/>
+                        </group>
+                    </group>
+                    <group string="Notas de calificación">
+                        <field name="marketing_qualification_notes" nolabel="1"
+                               placeholder="Necesidad, presupuesto, fecha y próximo paso..." widget="text"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_marketing_social_conversation_lead_form" model="ir.ui.view">
+        <field name="name">marketing.social.conversation.lead.form</field>
+        <field name="model">marketing.social.conversation</field>
+        <field name="inherit_id" ref="marketing_command_center.view_marketing_social_conversation_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_create_crm_lead" type="object"
+                        string="Crear lead CRM" class="oe_highlight"
+                        icon="fa-user-plus"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="CRM">
+                    <group>
+                        <field name="crm_lead_ids" readonly="1">
+                            <list open_form_view="1">
+                                <field name="name"/>
+                                <field name="stage_id" widget="badge"/>
+                                <field name="marketing_quality_score"/>
+                                <field name="marketing_next_action"/>
+                                <field name="user_id"/>
+                            </list>
+                        </field>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_crm_lead_marketing_360_list" model="ir.ui.view">
+        <field name="name">crm.lead.marketing.360.list</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <list string="Leads comerciales 360" open_form_view="1">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="stage_id" widget="badge"/>
+                <field name="marketing_platform" widget="badge"/>
+                <field name="marketing_campaign_id"/>
+                <field name="marketing_quality_score"/>
+                <field name="marketing_quality_status" widget="badge"/>
+                <field name="marketing_rfm_segment" widget="badge"/>
+                <field name="marketing_next_action"/>
+                <field name="user_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_marketing_leads_360" model="ir.actions.act_window">
+        <field name="name">Leads comerciales 360</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_crm_lead_marketing_360_list"/>
+        <field name="context">{'default_type': 'opportunity'}</field>
+    </record>
+
+    <menuitem id="menu_marketing_leads_360" name="Leads comerciales 360"
+              parent="marketing_command_center.menu_marketing_command_analysis"
+              action="action_marketing_leads_360" sequence="5"
+              groups="marketing_command_center.group_marketing_user"/>
+</odoo>

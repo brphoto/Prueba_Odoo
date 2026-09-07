@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_marketing_patiotuerca" model="ir.module.category">
+        <field name="name">Catálogo Patiotuerca</field>
+        <field name="sequence">36</field>
+    </record>
+    <record id="privilege_marketing_patiotuerca" model="res.groups.privilege">
+        <field name="name">Catálogo Patiotuerca</field>
+        <field name="category_id" ref="module_category_marketing_patiotuerca"/>
+    </record>
+    <record id="group_patiotuerca_user" model="res.groups">
+        <field name="name">Usuario de catálogo Patiotuerca</field>
+        <field name="privilege_id" ref="privilege_marketing_patiotuerca"/>
+    </record>
+    <record id="group_patiotuerca_manager" model="res.groups">
+        <field name="name">Administrador de catálogo Patiotuerca</field>
+        <field name="privilege_id" ref="privilege_marketing_patiotuerca"/>
+        <field name="implied_ids" eval="[(4, ref('group_patiotuerca_user'))]"/>
+    </record>
+</odoo>

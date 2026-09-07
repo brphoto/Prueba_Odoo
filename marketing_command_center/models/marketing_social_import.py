@@ -164,7 +164,8 @@ class MarketingSocialImportWizard(models.TransientModel):
         publication = self._find_publication(row, line_number)
         values = {
             'publication_id': publication.id, 'interaction_type': (row.get('interaction_type') or 'comment').strip(),
-            'author_name': (row.get('author_name') or '').strip(), 'external_id': (row.get('external_id') or '').strip(),
+            'author_name': (row.get('author_name') or '').strip(),
+            'external_id': (row.get('external_id') or '').strip() or False,
             'text': (row.get('text') or '').strip(), 'interaction_date': self._required(row, 'interaction_date', line_number),
             'sentiment': (row.get('sentiment') or 'neutral').strip(), 'intent': (row.get('intent') or 'other').strip(),
             'response_state': (row.get('response_state') or 'pending').strip(),

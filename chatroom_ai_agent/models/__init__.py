@@ -8,5 +8,6 @@ from . import chatroom_ai_setup
 from . import chatroom_ai_dashboard
 from . import chatroom_message
 from . import chatroom_ai_automation
+from . import chatroom_ai_automation_run
 from . import chatroom_channel
 from . import res_config_settings
