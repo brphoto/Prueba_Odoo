@@ -14,6 +14,7 @@ Los conectores de cada red y los puentes con CRM o Chatroom son opcionales.''',
         'security/marketing_command_center_security.xml',
         'security/ir.model.access.csv',
         'data/marketing_command_center_data.xml',
+        'data/ir_cron_data.xml',
         'views/marketing_command_center_views.xml',
     ],
     'assets': {

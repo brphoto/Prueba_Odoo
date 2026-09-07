@@ -68,13 +68,8 @@ class MarketingSocialAgentChat(models.Model):
         if self.platform_filter != 'all':
             domain.append(('platform', '=', self.platform_filter))
         publications = self.env['marketing.social.publication'].search(domain)
-        rows = []
-        for publication in publications:
-            metrics = publication.metric_ids.filtered(
-                lambda metric: date_from <= metric.snapshot_date <= date_to).sorted('snapshot_date')
-            if metrics:
-                rows.append((publication, metrics[-1]))
-        return rows
+        return self.env['marketing.social.metric.snapshot']._latest_per_publication(
+            publications, date_from, date_to)
 
     def _number(self, value):
         return '{:,.0f}'.format(value or 0).replace(',', '.')
@@ -217,9 +212,11 @@ class MarketingSocialAgentChat(models.Model):
 
     def _answer_question(self, question):
         normalized = self._normalize(question)
-        rows = self._rows()
-        vehicles = self._vehicle_rows()
-        vehicle_answer = self._answer_vehicle_question(question, vehicles)
+        # Las tres ramas de abajo no usan ni las metricas ni el catalogo:
+        # calcularlos antes de saber si hacen falta significaba, en cada
+        # pregunta sobre la bandeja o la calidad del dato, recorrer todas
+        # las publicaciones del periodo para tirar el resultado.
+        vehicle_answer = self._answer_vehicle_question(question, self._vehicle_rows())
         if vehicle_answer:
             self.source_publication_ids = [(6, 0, [])]
             return vehicle_answer
@@ -231,6 +228,7 @@ class MarketingSocialAgentChat(models.Model):
         if quality_answer:
             self.source_publication_ids = [(6, 0, [])]
             return quality_answer
+        rows = self._rows()
         self.source_publication_ids = [(6, 0, [publication.id for publication, _metric in rows])]
         if not rows:
             self.intent = 'summary'

@@ -24,14 +24,32 @@
             <form string="Centro de mando de marketing" class="o_marketing_command_dashboard">
                 <header>
                     <button name="action_refresh" type="object" string="Actualizar indicadores" class="oe_highlight" icon="fa-refresh"/>
+                    <button name="action_open_trend" type="object" string="Ver evolución" class="btn-secondary" icon="fa-line-chart"
+                            invisible="data_state == 'empty'"/>
                     <button name="action_seed_demo_data" type="object" string="Cargar datos demo" class="btn-secondary" icon="fa-magic"/>
                     <button name="action_open_import" type="object" string="Importar CSV" class="btn-secondary" icon="fa-upload"/>
                     <button name="action_open_agent" type="object" string="Consultar al agente" class="btn-secondary" icon="fa-comments"/>
                 </header>
                 <sheet>
                     <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <field name="freshness_state" invisible="1"/>
+                    <div class="alert alert-warning o_marketing_dashboard_freshness" role="status"
+                         invisible="freshness_state not in ('stale', 'never')">
+                        <i class="fa fa-exclamation-triangle me-1" title="Datos desactualizados"/>
+                        <field name="freshness_message" nolabel="1" readonly="1" class="d-inline"/>
+                        Los números de abajo son de esa fecha, no de ahora.
+                    </div>
+                    <div class="alert alert-info o_marketing_dashboard_freshness" role="status"
+                         invisible="freshness_state != 'aging'">
+                        <i class="fa fa-clock-o me-1" title="Datos envejeciendo"/>
+                        <field name="freshness_message" nolabel="1" readonly="1" class="d-inline"/>
+                    </div>
                     <div class="o_marketing_dashboard_intro" role="status">
                         Unifica el rendimiento de tus redes sociales para saber qué contenido funciona y qué estrategia conviene replicar.
+                        <span invisible="freshness_state != 'fresh'" class="text-success">
+                            <i class="fa fa-check-circle ms-1" title="Datos al día"/>
+                            <field name="freshness_message" nolabel="1" readonly="1" class="d-inline"/>
+                        </span>
                     </div>
                     <group col="4" class="o_marketing_dashboard_filters">
                         <field name="platform_filter"/>
@@ -39,6 +57,10 @@
                         <field name="date_from" readonly="1"/>
                         <field name="date_to" readonly="1"/>
                         <field name="data_state" widget="badge" readonly="1"/>
+                        <field name="stale_after_hours"/>
+                        <div colspan="4" class="text-muted small">
+                            Al cambiar la red o el período los indicadores se recalculan solos; no hace falta pulsar «Actualizar».
+                        </div>
                     </group>
                     <group col="4" class="o_marketing_dashboard_stats">
                         <button name="action_open_publications" type="object" class="oe_stat_button" icon="fa-file-text-o">
@@ -112,12 +134,41 @@
                         <page string="Comparación y alertas" name="comparison_alerts">
                             <group col="2" class="o_marketing_dashboard_detail_group">
                                 <group string="Comparación con el período anterior">
+                                    <!-- Las variaciones van primero y con color: es lo
+                                         que se mira, los totales del período anterior
+                                         solo sirven para contrastar. -->
+                                    <label for="reach_delta_pct"/>
+                                    <div>
+                                        <field name="reach_delta_pct" nolabel="1" class="d-inline"
+                                               decoration-success="reach_delta_pct &gt; 0"
+                                               decoration-danger="reach_delta_pct &lt; 0"/>
+                                        <span class="ms-1" invisible="reach_delta_pct &lt;= 0">▲</span>
+                                        <span class="ms-1" invisible="reach_delta_pct &gt;= 0">▼</span>
+                                    </div>
+                                    <label for="interactions_delta_pct"/>
+                                    <div>
+                                        <field name="interactions_delta_pct" nolabel="1" class="d-inline"
+                                               decoration-success="interactions_delta_pct &gt; 0"
+                                               decoration-danger="interactions_delta_pct &lt; 0"/>
+                                        <span class="ms-1" invisible="interactions_delta_pct &lt;= 0">▲</span>
+                                        <span class="ms-1" invisible="interactions_delta_pct &gt;= 0">▼</span>
+                                    </div>
+                                    <label for="engagement_delta"/>
+                                    <div>
+                                        <field name="engagement_delta" nolabel="1" class="d-inline"
+                                               decoration-success="engagement_delta &gt; 0"
+                                               decoration-danger="engagement_delta &lt; 0"/>
+                                        <span class="ms-1" invisible="engagement_delta &lt;= 0">▲</span>
+                                        <span class="ms-1" invisible="engagement_delta &gt;= 0">▼</span>
+                                    </div>
                                     <field name="previous_reach_total"/>
                                     <field name="previous_interactions_total"/>
                                     <field name="previous_engagement_rate"/>
-                                    <field name="reach_delta_pct"/>
-                                    <field name="interactions_delta_pct"/>
-                                    <field name="engagement_delta"/>
+                                    <field name="comparison_summary" nolabel="1" readonly="1"
+                                           widget="text" colspan="2"/>
+                                    <button name="action_open_trend" type="object" colspan="2"
+                                            string="Ver la evolución día a día" class="btn-secondary"
+                                            icon="fa-line-chart" invisible="data_state == 'empty'"/>
                                 </group>
                                 <group string="Alertas configurables">
                                     <field name="engagement_alert_threshold"/>
@@ -130,9 +181,6 @@
                         </page>
                         <page string="Lectura estratégica">
                             <field name="strategy_summary" nolabel="1" readonly="1" widget="text"/>
-                        </page>
-                        <page string="Comparación">
-                            <field name="comparison_summary" nolabel="1" readonly="1" widget="text"/>
                         </page>
                         <page string="Cómo usarlo">
                             <div class="o_marketing_dashboard_help">

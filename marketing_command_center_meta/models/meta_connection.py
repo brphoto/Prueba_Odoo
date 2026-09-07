@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from odoo import _, api, fields, models
@@ -5,6 +6,8 @@ from odoo.exceptions import UserError, ValidationError
 
 from .meta_api import MetaGraphClient, MetaGraphError
 from .meta_constants import META_DEFAULT_API_VERSION
+
+_logger = logging.getLogger(__name__)
 
 
 class MarketingMetaConnection(models.Model):
@@ -148,8 +151,14 @@ class MarketingMetaConnection(models.Model):
             errors = []
             for page in pages:
                 try:
-                    page.action_sync_page()
-                except (MetaGraphError, UserError) as error:
+                    # Igual que arriba: se atrapa cualquier fallo y se
+                    # anota, para que una página problemática no impida
+                    # sincronizar el resto del lote.
+                    with self.env.cr.savepoint():
+                        page.action_sync_page()
+                except Exception as error:  # noqa: BLE001
+                    _logger.warning(
+                        'No se pudo sincronizar la página %s: %s', page.name, error)
                     errors.append('%s: %s' % (page.name, error))
             record.write({
                 'last_sync_at': fields.Datetime.now(),
@@ -175,10 +184,13 @@ class MarketingMetaConnection(models.Model):
             pages = pages[:record.max_pages_per_run]
             for page in pages:
                 try:
-                    page.action_sync_inbox()
+                    with self.env.cr.savepoint():
+                        page.action_sync_inbox()
                     total_conversations += page.last_conversations_count
                     total_messages += page.last_messages_count
-                except (MetaGraphError, UserError) as error:
+                except Exception as error:  # noqa: BLE001
+                    _logger.warning(
+                        'No se pudo sincronizar la bandeja de %s: %s', page.name, error)
                     errors.append('%s: %s' % (page.name, error))
             record.write({
                 'last_sync_at': fields.Datetime.now(),
@@ -202,9 +214,26 @@ class MarketingMetaConnection(models.Model):
 
     @api.model
     def _cron_sync_meta_pages(self):
-        for record in self.search([('active', '=', True), ('page_ids.active', '=', True)]):
+        """Sincroniza cada conexión por separado.
+
+        `action_sync_all_pages` solo atrapa MetaGraphError y UserError por
+        página. Cualquier otro fallo (un dato inesperado de la Graph API,
+        una restricción del ORM) se escapaba hasta aquí y tumbaba la
+        corrida entera: se perdía también lo ya sincronizado de las demás
+        conexiones, porque la transacción se revierte.
+        """
+        connections = self.search([
+            ('active', '=', True), ('page_ids.active', '=', True),
+        ])
+        for record in connections:
             try:
-                record.action_sync_all_pages()
-            except (MetaGraphError, UserError) as error:
-                record._mark_error(str(error))
+                # El savepoint aísla el fallo de una conexión y deja la
+                # transacción utilizable para registrar el error.
+                with self.env.cr.savepoint():
+                    record.action_sync_all_pages()
+            except Exception as error:  # noqa: BLE001
+                _logger.exception(
+                    'Falló la sincronización de la conexión de Meta %s',
+                    record.display_name)
+                record._mark_error(str(error)[:1000])
         return True

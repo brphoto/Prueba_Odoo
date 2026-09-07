@@ -1,9 +1,12 @@
+import logging
 from datetime import datetime, timedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
 from .marketing_social_constants import PLATFORM_LABELS
+
+_logger = logging.getLogger(__name__)
 
 
 class MarketingSocialDashboard(models.Model):
@@ -84,6 +87,145 @@ class MarketingSocialDashboard(models.Model):
         'res.company', string='Compañía', required=True,
         default=lambda self: self.env.company, index=True)
 
+    # ------------------------------------------------------------------
+    # Frescura del panel
+    # ------------------------------------------------------------------
+    # Los indicadores son campos almacenados que solo se recalculan cuando
+    # alguien pulsa "Actualizar". Sin nada que lo diga, el panel muestra
+    # numeros de hace dias con la misma cara de confianza que si fueran de
+    # hace un minuto. Estos tres campos lo hacen visible.
+
+    stale_after_hours = fields.Integer(
+        string='Considerar desactualizado tras (horas)', default=6,
+        help='Pasadas estas horas sin actualizar, el panel avisa de que los '
+             'números pueden no reflejar la realidad. 0 desactiva el aviso.')
+    data_age_minutes = fields.Integer(
+        string='Antigüedad de los datos (min)', compute='_compute_freshness')
+    freshness_state = fields.Selection([
+        ('never', 'Sin actualizar'),
+        ('fresh', 'Al día'),
+        ('aging', 'Envejeciendo'),
+        ('stale', 'Desactualizado'),
+    ], string='Frescura', compute='_compute_freshness')
+    freshness_message = fields.Char(
+        string='Estado de los datos', compute='_compute_freshness')
+
+    @api.depends('last_refresh_at', 'stale_after_hours')
+    def _compute_freshness(self):
+        now = fields.Datetime.now()
+        for record in self:
+            if not record.last_refresh_at:
+                record.data_age_minutes = 0
+                record.freshness_state = 'never'
+                record.freshness_message = _(
+                    'Este panel todavía no se actualizó nunca. Pulsá '
+                    '«Actualizar indicadores» para calcular los números.')
+                continue
+            minutes = int((now - record.last_refresh_at).total_seconds() / 60)
+            record.data_age_minutes = minutes
+            limit = (record.stale_after_hours or 0) * 60
+            if not limit or minutes < limit / 2:
+                record.freshness_state = 'fresh'
+            elif minutes < limit:
+                record.freshness_state = 'aging'
+            else:
+                record.freshness_state = 'stale'
+            record.freshness_message = record._freshness_label(minutes)
+
+    def _freshness_label(self, minutes):
+        if minutes < 60:
+            return _('Datos calculados hace %s minuto(s).') % minutes
+        if minutes < 60 * 24:
+            return _('Datos calculados hace %s hora(s).') % (minutes // 60)
+        return _('Datos calculados hace %s día(s).') % (minutes // (60 * 24))
+
+    # ------------------------------------------------------------------
+    # Recalculo automatico
+    # ------------------------------------------------------------------
+    # Campos que cambian QUE datos se miran, no como se presentan: al
+    # tocarlos hay que rehacer los numeros. Antes se cambiaba el periodo o
+    # la red y el panel seguia mostrando los totales del filtro anterior
+    # hasta que alguien se acordaba de pulsar el boton.
+    REFRESH_TRIGGER_FIELDS = ('period_days', 'platform_filter', 'company_id')
+
+    def write(self, vals):
+        result = super().write(vals)
+        if self.env.context.get('marketing_skip_auto_refresh'):
+            return result
+        if any(field in vals for field in self.REFRESH_TRIGGER_FIELDS):
+            self.with_context(marketing_skip_auto_refresh=True).action_refresh()
+        return result
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        # Un panel recien creado no deberia nacer en blanco.
+        records.with_context(marketing_skip_auto_refresh=True).action_refresh()
+        return records
+
+    @api.model
+    def _cron_refresh_dashboards(self, limit=50):
+        """Mantiene los paneles al dia sin intervencion manual.
+
+        Cada panel se aisla con un savepoint: un fallo calculando uno (una
+        cuenta mal configurada, un modelo opcional ausente) no puede tirar
+        la corrida entera ni revertir los que ya se calcularon bien.
+        """
+        dashboards = self.search([], limit=limit)
+        refreshed = 0
+        for dashboard in dashboards:
+            try:
+                with self.env.cr.savepoint():
+                    dashboard.with_context(
+                        marketing_skip_auto_refresh=True).action_refresh()
+                refreshed += 1
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    'No se pudo actualizar el centro de mando %s', dashboard.display_name)
+        return refreshed
+
+    # ------------------------------------------------------------------
+    # Evolucion en el tiempo
+    # ------------------------------------------------------------------
+
+    def _period_metric_domain(self):
+        """Instantáneas que entran en el período y la red del panel."""
+        self.ensure_one()
+        domain = [
+            ('company_id', '=', self.company_id.id),
+            ('snapshot_date', '>=', self.date_from),
+            ('snapshot_date', '<=', self.date_to),
+        ]
+        if self.platform_filter != 'all':
+            domain.append(('platform', '=', self.platform_filter))
+        return domain
+
+    def action_open_trend(self):
+        """Abre la evolucion diaria del periodo en grafico y tabla dinamica.
+
+        Es lo que le faltaba al panel para ser un centro de mando y no una
+        foto fija: los totales dicen cuanto, la serie dice si va subiendo o
+        cayendo, que es la pregunta que se hace de verdad.
+        """
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Evolución del período: %s') % self.display_name,
+            'res_model': 'marketing.social.metric.snapshot',
+            'view_mode': 'graph,pivot,list',
+            'domain': self._period_metric_domain(),
+            # La vista de grafico del modulo ya agrupa por dia y separa por
+            # red, que es exactamente la lectura que hace falta aqui.
+            'views': [
+                (self.env.ref('marketing_command_center.view_marketing_social_metric_graph').id, 'graph'),
+                (False, 'pivot'),
+                (self.env.ref('marketing_command_center.view_marketing_social_metric_list').id, 'list'),
+            ],
+            'search_view_id': self.env.ref(
+                'marketing_command_center.view_marketing_social_metric_search').id,
+            'context': {},
+        }
+
     @api.depends('period_days')
     def _compute_period(self):
         for record in self:
@@ -112,13 +254,8 @@ class MarketingSocialDashboard(models.Model):
         if self.platform_filter != 'all':
             domain.append(('platform', '=', self.platform_filter))
         publications = self.env['marketing.social.publication'].search(domain)
-        rows = []
-        for publication in publications:
-            metrics = publication.metric_ids.filtered(
-                lambda metric: date_from <= metric.snapshot_date <= date_to).sorted('snapshot_date')
-            if metrics:
-                rows.append((publication, metrics[-1]))
-        return rows
+        return self.env['marketing.social.metric.snapshot']._latest_per_publication(
+            publications, date_from, date_to)
 
     def action_refresh(self):
         for record in self:

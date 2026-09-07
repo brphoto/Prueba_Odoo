@@ -141,9 +141,37 @@ class MarketingSocialPublication(models.Model):
                  'metric_ids.comments', 'metric_ids.shares', 'metric_ids.saves', 'metric_ids.provider_engagement',
                  'interaction_ids.response_state')
     def _compute_latest_metrics(self):
+        # La ultima instantanea de cada publicacion en dos consultas para
+        # todo el lote. Antes se cargaba en memoria el historial COMPLETO de
+        # metricas de cada publicacion solo para quedarse con la mas
+        # reciente: la lista, el kanban y el grafico de publicaciones
+        # traian todas las mediciones de todas las filas de la pagina.
+        Snapshot = self.env['marketing.social.metric.snapshot']
+        publication_ids = [record.id for record in self._origin if record.id]
+        latest_by_publication = {}
+        pending_by_publication = {}
+        if publication_ids:
+            Snapshot.flush_model(['publication_id', 'snapshot_date'])
+            self.env.cr.execute("""
+                SELECT DISTINCT ON (publication_id) publication_id, id
+                  FROM marketing_social_metric_snapshot
+                 WHERE publication_id IN %s
+              ORDER BY publication_id, snapshot_date DESC, id DESC
+            """, (tuple(publication_ids),))
+            latest_by_publication = {
+                publication_id: Snapshot.browse(snapshot_id)
+                for publication_id, snapshot_id in self.env.cr.fetchall()
+            }
+            pending_by_publication = {
+                publication.id: count
+                for publication, count in self.env['marketing.social.interaction']._read_group(
+                    [('publication_id', 'in', publication_ids),
+                     ('response_state', '=', 'pending')],
+                    ['publication_id'], ['__count'])
+                if publication
+            }
         for record in self:
-            latest = record.metric_ids.sorted('snapshot_date')[-1:] or self.env['marketing.social.metric.snapshot']
-            metric = latest[0] if latest else False
+            metric = latest_by_publication.get(record._origin.id) or False
             record.latest_metric_date = metric.snapshot_date if metric else False
             record.latest_reach = metric.reach if metric else 0
             record.latest_impressions = metric.impressions if metric else 0
@@ -157,8 +185,8 @@ class MarketingSocialPublication(models.Model):
             record.latest_metric_status = metric.metric_status if metric else 'unavailable'
             record.latest_metric_note = metric.provider_error if metric else (
                 'No existe una instantánea para esta publicación.' if not metric else False)
-            record.pending_interaction_count = len(record.interaction_ids.filtered(
-                lambda item: item.response_state == 'pending'))
+            record.pending_interaction_count = pending_by_publication.get(
+                record._origin.id, 0)
 
 
 class MarketingSocialMetricSnapshot(models.Model):
@@ -203,6 +231,38 @@ class MarketingSocialMetricSnapshot(models.Model):
     fetched_at = fields.Datetime(string='Consultada el', readonly=True)
     currency_id = fields.Many2one(
         'res.currency', string='Moneda', related='publication_id.company_id.currency_id', store=True)
+    @api.model
+    def _latest_per_publication(self, publications, date_from, date_to):
+        """[(publicacion, instantanea)] con la ultima medicion del periodo.
+
+        El panel y el agente hacian esto por separado, cada uno recorriendo
+        publicacion por publicacion y cargando su historial completo de
+        metricas en memoria para quedarse con la ultima. Con un mes de
+        mediciones diarias eso es traer todo el historico para leer un
+        registro por fila. DISTINCT ON lo resuelve en una consulta.
+        """
+        if not publications:
+            return []
+        self.flush_model(['publication_id', 'snapshot_date'])
+        self.env.cr.execute("""
+            SELECT DISTINCT ON (publication_id) publication_id, id
+              FROM marketing_social_metric_snapshot
+             WHERE publication_id IN %s
+               AND snapshot_date >= %s
+               AND snapshot_date <= %s
+          ORDER BY publication_id, snapshot_date DESC, id DESC
+        """, (tuple(publications.ids), date_from, date_to))
+        latest_ids = dict(self.env.cr.fetchall())
+        if not latest_ids:
+            return []
+        # Un solo SELECT para todas las instantaneas elegidas.
+        self.browse(list(latest_ids.values())).mapped('reach')
+        return [
+            (publication, self.browse(latest_ids[publication.id]))
+            for publication in publications
+            if publication.id in latest_ids
+        ]
+
     total_interactions = fields.Integer(compute='_compute_rates', string='Interacciones')
     engagement_rate = fields.Float(compute='_compute_rates', string='Engagement (%)')
     company_id = fields.Many2one(
