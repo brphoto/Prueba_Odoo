@@ -4,7 +4,7 @@ from odoo import fields, models
 class MarketingSocialNetworkSyncLog(models.Model):
     _name = 'marketing.social.network.sync.log'
     _description = 'Ejecución de sincronización social'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'marketing.diagnostic.mixin']
     _order = 'started_at desc, id desc'
 
     name = fields.Char(string='Ejecución', required=True, tracking=True)

@@ -148,18 +148,28 @@ class ChatroomAiSandbox(models.Model):
             else:
                 record.native_engine_status = _('Requiere configurar el agente nativo')
 
-    _SCENARIOS = {
-        'welcome': (_('Responde una bienvenida profesional y pregunta cómo podemos ayudar.'), 'ayudar'),
-        'product': (_('Explica qué productos o servicios puede consultar el cliente y ofrece revisar el catálogo.'), 'producto,catálogo'),
-        'quote': (_('Prepara una respuesta para solicitar alcance, usuarios, procesos y fecha objetivo antes de cotizar.'), 'alcance,usuarios'),
-        'payment': (_('Prepara un mensaje de cobranza cordial; no envíes el mensaje ni inventes un enlace.'), 'pago,enlace'),
-        'complaint': (_('Identifica la queja, responde con empatía y avisa que debe revisarla un asesor humano.'), 'asesor,disculpa'),
-    }
+    def _get_scenarios(self):
+        """Guiones del simulador, traducidos en el momento de usarlos.
+
+        Este diccionario vivía en el cuerpo de la clase, o sea que `_()`
+        se evaluaba al importar el módulo: sin usuario y sin idioma. Odoo
+        registraba un aviso con traza en cada arranque y el texto quedaba
+        congelado en castellano para todo el mundo. Dentro de un método
+        se traduce según el idioma de quien abre el simulador.
+        """
+        return {
+            'welcome': (_('Responde una bienvenida profesional y pregunta cómo podemos ayudar.'), 'ayudar'),
+            'product': (_('Explica qué productos o servicios puede consultar el cliente y ofrece revisar el catálogo.'), 'producto,catálogo'),
+            'quote': (_('Prepara una respuesta para solicitar alcance, usuarios, procesos y fecha objetivo antes de cotizar.'), 'alcance,usuarios'),
+            'payment': (_('Prepara un mensaje de cobranza cordial; no envíes el mensaje ni inventes un enlace.'), 'pago,enlace'),
+            'complaint': (_('Identifica la queja, responde con empatía y avisa que debe revisarla un asesor humano.'), 'asesor,disculpa'),
+        }
 
     @api.onchange('scenario')
     def _onchange_scenario(self):
-        if self.scenario in self._SCENARIOS:
-            prompt, keywords = self._SCENARIOS[self.scenario]
+        scenarios = self._get_scenarios()
+        if self.scenario in scenarios:
+            prompt, keywords = scenarios[self.scenario]
             self.prompt = prompt
             self.expected_keywords = keywords
 

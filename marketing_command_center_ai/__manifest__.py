@@ -5,6 +5,7 @@
 motor de IA de Chatroom. Conserva el análisis local y habilita consultas IA
 con selector de modelo, fuentes, consumo y aprobación operativa.''',
     'version': '19.0.1.0.1',
+    'icon': '/marketing_command_center_ai/static/description/icon.svg',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
     'category': 'Marketing/Marketing',

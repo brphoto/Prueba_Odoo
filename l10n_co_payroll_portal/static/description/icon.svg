@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="titulo-l10n-co-payroll-portal desc-l10n-co-payroll-portal">
+  <title id="titulo-l10n-co-payroll-portal">Portal del colaborador</title>
+  <desc id="desc-l10n-co-payroll-portal">Persona dentro de un arco de acceso</desc>
+  <defs>
+    <linearGradient id="marco-l10n-co-payroll-portal" x1="24" y1="18" x2="232" y2="240" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F2937"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="marca-l10n-co-payroll-portal" x1="46" y1="38" x2="215" y2="218" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#14B8A6"/>
+      <stop offset="1" stop-color="#0F766E"/>
+    </linearGradient>
+    <filter id="sombra-l10n-co-payroll-portal" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+  </defs>
+
+  <!-- Marco, igual en todos los modulos del repositorio -->
+  <rect x="24" y="18" width="208" height="220" rx="25" fill="#0B1220"/>
+  <rect x="25.5" y="19.5" width="205" height="217" rx="23.5" fill="url(#marco-l10n-co-payroll-portal)" stroke="#475569" stroke-width="3"/>
+  <rect x="38" y="32" width="180" height="180" rx="9" fill="#0A1422" stroke="#334155" stroke-width="2"/>
+  <rect x="46" y="40" width="164" height="164" rx="4" fill="url(#marca-l10n-co-payroll-portal)" filter="url(#sombra-l10n-co-payroll-portal)"/>
+
+  <!-- Simbolo propio del modulo -->
+  <path d="M72 194V116a56 56 0 0 1 112 0v78" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="128" cy="112" r="20" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M96 176c0-18 14-30 32-30s32 12 32 30" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

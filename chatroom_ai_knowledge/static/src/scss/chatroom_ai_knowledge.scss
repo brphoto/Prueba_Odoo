@@ -23,12 +23,12 @@
     border: 1px solid #b9e3dc;
     border-left: 4px solid #0f9d8d;
     border-radius: 8px;
-    background: #effaf8;
-    color: #174b48;
+    background: $o-view-background-color;
+    color: $o-main-text-color;
 
     p {
         margin: 4px 0 0;
-        color: #47706c;
+        color: mix(#47706c, $o-main-text-color, 60%);
     }
 }
 
@@ -41,8 +41,8 @@
     border: 1px solid #c8ddea;
     border-left: 4px solid #477fa4;
     border-radius: 6px;
-    background: #f3f8fb;
-    color: #315a73;
+    background: $o-gray-100;
+    color: mix(#315a73, $o-main-text-color, 60%);
 }
 
 .o_chatroom_ai_knowledge_pdf_upload {
@@ -50,7 +50,7 @@
     padding: 14px;
     border: 1px dashed #9dbaca;
     border-radius: 6px;
-    background: #fafcfd;
+    background: $o-view-background-color;
 
     label {
         display: block;
@@ -77,18 +77,18 @@
         border: 1px solid #c8ddea;
         border-left: 4px solid #477fa4;
         border-radius: 6px;
-        background: #f3f8fb;
-        color: #315a73;
+        background: $o-gray-100;
+        color: mix(#315a73, $o-main-text-color, 60%);
     }
 }
 
 .o_chatroom_memory_map {
     width: 100%;
     padding: 20px;
-    border: 1px solid #d9dce8;
+    border: 1px solid $o-gray-200;
     border-radius: 12px;
-    background: linear-gradient(135deg, #fbf9fc 0%, #f4f8fb 100%);
-    color: #17233d;
+    background: linear-gradient(135deg, $o-view-background-color 0%, $o-view-background-color 100%);
+    color: $o-main-text-color;
 
     .o_chatroom_memory_header {
         display: flex;
@@ -98,11 +98,11 @@
         margin-bottom: 18px;
 
         h3 { margin: 3px 0; font-size: 1.25rem; }
-        p { margin: 0; color: #62708a; }
+        p { margin: 0; color: mix(#62708a, $o-main-text-color, 60%); }
     }
 
     .o_chatroom_memory_kicker {
-        color: #795273;
+        color: mix(#795273, $o-main-text-color, 60%);
         font-size: .72rem;
         font-weight: 700;
         letter-spacing: .08em;
@@ -130,9 +130,9 @@
 
     .o_chatroom_memory_node {
         min-width: 0;
-        border: 1px solid #d7ddeb;
+        border: 1px solid $o-gray-200;
         border-radius: 9px;
-        background: #fff;
+        background: $o-view-background-color;
         overflow: hidden;
         transition: border-color .15s ease, box-shadow .15s ease;
         &[open] { border-color: #b994b2; box-shadow: 0 3px 10px rgba(36, 47, 74, .08); }
@@ -142,11 +142,11 @@
 
     .o_chatroom_memory_node_icon {
         display: grid; place-items: center; flex: 0 0 24px; width: 24px; height: 24px;
-        border-radius: 7px; background: #f0e7ef; color: #795273; font-size: .72rem; font-weight: 700;
+        border-radius: 7px; background: $o-gray-200; color: mix(#795273, $o-main-text-color, 60%); font-size: .72rem; font-weight: 700;
     }
     .o_chatroom_memory_node_title { flex: 1 1 auto; min-width: 0; font-weight: 600; }
-    .o_chatroom_memory_node_status { color: #168a65; font-size: .78rem; text-align: right; }
-    .o_chatroom_memory_node_detail { padding: 0 12px 12px 44px; color: #62708a; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .o_chatroom_memory_node_status { color: mix(#168a65, $o-main-text-color, 60%); font-size: .78rem; text-align: right; }
+    .o_chatroom_memory_node_detail { padding: 0 12px 12px 44px; color: mix(#62708a, $o-main-text-color, 60%); line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
 }
 
 @media (max-width: 640px) {
@@ -190,7 +190,7 @@
         gap: 12px;
         width: 100%;
         padding-bottom: 8px;
-        border-bottom: 1px solid #dee2e6;
+        border-bottom: 1px solid $o-gray-300;
 
         label {
             margin: 0;
@@ -245,9 +245,9 @@
 .o_chatroom_ai_knowledge_test_form {
     .o_chatroom_ai_knowledge_test_intro {
         border-left-color: #6f4d6d;
-        border-color: #ddd0dc;
-        background: #faf7fa;
-        color: #533b51;
+        border-color: $o-gray-300;
+        background: $o-gray-100;
+        color: $o-main-text-color;
     }
 
     .o_chatroom_ai_knowledge_test_filters textarea {

@@ -143,7 +143,13 @@ class CoPayrollClientImportWizard(models.TransientModel):
             Social.create(values)
             return
         account_number = self._required(row, row_number, "cuenta", "numero_cuenta", "acc_number")
-        partner = employee.address_home_id or employee.work_contact_id or (employee.user_id.partner_id if employee.user_id else False)
+        # `address_home_id` no es un campo de Odoo 19: lo anade
+        # `website_ausencias_19e`, que este modulo no requiere. Leerlo a
+        # secas lanzaba AttributeError ANTES de llegar a los dos
+        # respaldos del `or`, asi que la cadena no servia de nada. Se
+        # mantiene el mismo orden de preferencia cuando el campo existe.
+        legacy = employee.address_home_id if "address_home_id" in employee._fields else False
+        partner = legacy or employee.work_contact_id or (employee.user_id.partner_id if employee.user_id else False)
         if not partner:
             raise UserError(_("Fila %s: el empleado no tiene un contacto para asociar la cuenta bancaria.") % row_number)
         bank_name = self._value(row, "banco", "bank")

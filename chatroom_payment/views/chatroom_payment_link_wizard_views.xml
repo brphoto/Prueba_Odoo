@@ -33,7 +33,7 @@
                             <strong>Crear presupuesto nuevo</strong>
                             <span>Selecciona el producto y la cantidad que se cobrarán.</span>
                         </div>
-                        <i class="fa fa-file-text-o" aria-hidden="true"/>
+                        <i class="fa fa-file-text-o" title="Presupuesto" aria-hidden="true"/>
                     </div>
                     <div class="o_chatroom_payment_new_order_fields">
                         <div class="o_chatroom_payment_field">
@@ -47,7 +47,7 @@
                     </div>
                 </div>
                 <div class="o_chatroom_payment_status">
-                    <i class="fa fa-info-circle" aria-hidden="true"/>
+                    <i class="fa fa-info-circle" title="Estado del envío" aria-hidden="true"/>
                     <field name="readiness_message" nolabel="1" readonly="1"/>
                 </div>
                 <div class="o_chatroom_payment_preview" invisible="not ready_to_send">

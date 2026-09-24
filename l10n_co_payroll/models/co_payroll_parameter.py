@@ -380,6 +380,7 @@ class CoPayrollWithholdingBracket(models.Model):
 
 class CoPayrollParameterImport(models.Model):
     _name = "l10n.co.payroll.parameter.import"
+    _inherit = ['l10n.co.payroll.diagnostic.mixin']
     _description = "Importación controlada de parámetros legales"
     _order = "create_date desc"
     _check_company_auto = True
@@ -463,6 +464,6 @@ class CoPayrollParameterImport(models.Model):
                     target = self.env["l10n.co.payroll.parameter"].create(vals)
                 record.write({"parameter_id": target.id, "state": "imported", "imported_count": 1, "error_message": False})
             except Exception as error:
-                record.write({"state": "error", "error_message": str(error), "imported_count": 0})
+                record._persist_diagnostic({"state": "error", "error_message": str(error), "imported_count": 0})
                 raise
         return True

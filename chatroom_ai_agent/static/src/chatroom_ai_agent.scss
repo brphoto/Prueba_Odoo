@@ -29,12 +29,12 @@
         gap: 10px;
         margin-bottom: 10px;
         padding: 10px 11px;
-        border: 1px solid #dce5f0;
+        border: 1px solid $o-gray-200;
         border-radius: 10px;
-        background: #f7faff;
+        background: $o-view-background-color;
 
-        strong { display: block; color: #243b53; font-size: .82rem; }
-        p { margin: 2px 0 0; color: #52657a; font-size: .75rem; }
+        strong { display: block; color: $o-main-text-color; font-size: .82rem; }
+        p { margin: 2px 0 0; color: mix(#52657a, $o-main-text-color, 60%); font-size: .75rem; }
     }
 
     .o_chatroom_ai_agent_intro_icon {
@@ -45,24 +45,24 @@
         place-items: center;
         border-radius: 9px;
         background: #e5efff;
-        color: #3676c8;
+        color: mix(#3676c8, $o-main-text-color, 60%);
     }
 
     .o_chatroom_ai_agent_route {
         padding: 10px 11px;
-        border: 1px solid #e2d5e1;
+        border: 1px solid $o-gray-300;
         border-left: 3px solid var(--chatroom-ui-primary, #714b67);
         border-radius: 9px;
-        background: #fff;
-        color: #344054;
+        background: $o-view-background-color;
+        color: $o-main-text-color;
 
-        strong { color: #714b67; font-size: .82rem; }
+        strong { color: mix(#714b67, $o-main-text-color, 60%); font-size: .82rem; }
     }
 
     .o_chatroom_ai_agent_eyebrow,
     .o_chatroom_ai_agent_section_title {
         margin-bottom: 4px;
-        color: #667085;
+        color: mix(#667085, $o-main-text-color, 60%);
         font-size: .68rem;
         font-weight: 700;
         letter-spacing: .04em;
@@ -82,8 +82,8 @@
         flex: 0 0 auto;
         padding: 3px 7px;
         border-radius: 999px;
-        background: #f1e8f0;
-        color: #714b67;
+        background: $o-gray-200;
+        color: mix(#714b67, $o-main-text-color, 60%);
         font-size: .66rem;
         font-weight: 700;
     }
@@ -93,7 +93,7 @@
         max-width: 100%;
         margin-top: 5px;
         overflow: hidden;
-        color: #667085;
+        color: mix(#667085, $o-main-text-color, 60%);
         text-overflow: ellipsis;
         white-space: nowrap;
     }
@@ -106,7 +106,7 @@
         padding: 8px 9px;
         border: 1px solid var(--chatroom-ui-border, #e5e7eb);
         border-radius: 8px;
-        background: #f8fafc;
+        background: $o-view-background-color;
 
         strong { color: inherit; }
         span, small { color: var(--chatroom-ui-text-muted, #667085); }
@@ -151,12 +151,12 @@
             flex-direction: column;
             gap: 1px;
             padding: 7px 8px;
-            border: 1px solid #e3e8ef;
+            border: 1px solid $o-gray-200;
             border-radius: 8px;
-            background: #fff;
+            background: $o-view-background-color;
 
-            strong { color: #243b53; font-size: .95rem; line-height: 1; }
-            span { color: #667085; font-size: .66rem; white-space: nowrap; }
+            strong { color: $o-main-text-color; font-size: .95rem; line-height: 1; }
+            span { color: mix(#667085, $o-main-text-color, 60%); font-size: .66rem; white-space: nowrap; }
         }
     }
 
@@ -168,12 +168,12 @@
         border: 1px solid #c9e0f3;
         border-left: 3px solid #3984c6;
         border-radius: 8px;
-        background: #eff7ff;
-        color: #36566f;
+        background: $o-gray-100;
+        color: $o-main-text-color;
 
-        > i { margin-top: 2px; color: #3984c6; }
+        > i { margin-top: 2px; color: mix(#3984c6, $o-main-text-color, 60%); }
         strong, span { display: block; }
-        strong { color: #244b6c; font-size: .73rem; }
+        strong { color: $o-main-text-color; font-size: .73rem; }
         span { margin-top: 2px; font-size: .71rem; }
     }
 
@@ -196,26 +196,26 @@
         .o_chatroom_ai_autonomy_status_hint {
             margin-bottom: 16px;
             padding: 12px 14px;
-            border: 1px solid #e1e6ee;
+            border: 1px solid $o-gray-200;
             border-left: 3px solid #76506f;
             border-radius: 8px;
-            background: #faf7fb;
-            color: #687386;
+            background: $o-view-background-color;
+            color: mix(#687386, $o-main-text-color, 60%);
             line-height: 1.5;
         }
 
         .o_chatroom_ai_task_autonomy {
             padding: 18px;
-            border: 1px solid #e1e6ee;
+            border: 1px solid $o-gray-200;
             border-radius: 10px;
-            background: #fbfcfe;
+            background: $o-view-background-color;
 
             .o_field_text {
                 min-height: 0;
                 padding: 10px 12px;
-                border: 1px solid #e1e6ee;
+                border: 1px solid $o-gray-200;
                 border-radius: 7px;
-                background: #fff;
+                background: $o-view-background-color;
                 white-space: pre-wrap;
                 line-height: 1.5;
             }
@@ -232,10 +232,10 @@
         padding: 18px 20px;
         border-left: 4px solid #76506f;
         border-radius: 12px;
-        background: linear-gradient(135deg, #faf7fb, #f4edf4);
+        background: linear-gradient(135deg, $o-view-background-color, $o-gray-100);
 
-        h1 { margin: 0 0 4px; color: #312530; font-size: 24px; }
-        p { margin: 0; color: #6b6070; }
+        h1 { margin: 0 0 4px; color: $o-main-text-color; font-size: 24px; }
+        p { margin: 0; color: $o-gray-600; }
     }
 
     .o_chatroom_ai_playbook_intro_icon {
@@ -254,16 +254,16 @@
     .o_chatroom_ai_playbook_example,
     .o_chatroom_ai_playbook_history {
         padding: 16px 18px;
-        border: 1px solid #e1e6ee;
+        border: 1px solid $o-gray-200;
         border-radius: 12px;
-        background: #fbfcfe;
+        background: $o-view-background-color;
     }
 
     .o_chatroom_ai_playbook_grid textarea,
     .o_chatroom_ai_playbook_example textarea { min-height: 90px; }
 
     .o_chatroom_ai_playbook_hint {
-        color: #687386;
+        color: mix(#687386, $o-main-text-color, 60%);
         font-size: 12px;
         line-height: 1.4;
     }
@@ -272,10 +272,10 @@
 .o_chatroom_ai_task_result {
     margin-top: 16px;
     padding: 14px 16px;
-    border: 1px solid #d9c9d8;
+    border: 1px solid $o-gray-300;
     border-left: 4px solid #76506f;
     border-radius: 10px;
-    background: #fbf7fb;
+    background: $o-view-background-color;
 
     .o_field_text textarea,
     .o_field_text pre {
@@ -303,9 +303,9 @@
 .o_chatroom_ai_task_prompt {
     margin-bottom: 8px;
     padding: 12px 14px;
-    border: 1px solid #dbe3ee;
+    border: 1px solid $o-gray-200;
     border-radius: 10px;
-    background: #fbfcfe;
+    background: $o-view-background-color;
 
     textarea {
         min-height: 110px;
@@ -317,14 +317,14 @@
 .o_chatroom_ai_task_payload {
     margin: 8px 0 14px;
     padding: 10px 12px;
-    border: 1px solid #dbe3ee;
+    border: 1px solid $o-gray-200;
     border-radius: 10px;
-    background: #f8fafc;
+    background: $o-view-background-color;
 
     textarea {
         min-height: 220px;
         resize: vertical;
-        color: #334155;
+        color: $o-main-text-color;
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         font-size: 12px;
         line-height: 1.5;
@@ -354,9 +354,9 @@
         > .o_inner_group {
             min-width: 0;
             padding: 16px 18px;
-            border: 1px solid #e1e6ee;
+            border: 1px solid $o-gray-200;
             border-radius: 12px;
-            background: #fbfcfe;
+            background: $o-view-background-color;
         }
     }
 
@@ -383,14 +383,14 @@
     .o_chatroom_ai_audit_payload {
         margin-top: 10px;
         padding: 12px;
-        border: 1px solid #dbe3ee;
+        border: 1px solid $o-gray-200;
         border-radius: 10px;
-        background: #f8fafc;
+        background: $o-view-background-color;
 
         textarea {
             min-height: 300px;
             resize: vertical;
-            color: #334155;
+            color: $o-main-text-color;
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             font-size: 12px;
             line-height: 1.5;
@@ -401,7 +401,7 @@
     .o_chatroom_ai_audit_hint,
     .o_chatroom_ai_audit_payload_hint {
         margin-top: 8px;
-        color: #687386;
+        color: mix(#687386, $o-main-text-color, 60%);
         font-size: 12px;
         line-height: 1.45;
     }
@@ -424,7 +424,7 @@
             min-height: 86px;
             border: 1px solid var(--border-color, #dee2e6);
             border-radius: 12px;
-            background: var(--o-view-background-color, #fff);
+            background: $o-view-background-color;
             transition: transform .16s ease, box-shadow .16s ease;
 
             &:hover, &:focus-visible {
@@ -456,26 +456,26 @@
         max-width: 1180px;
         margin: 16px auto;
         padding: 28px 32px 36px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid $o-gray-200;
         border-radius: 16px;
-        background: var(--o-view-background-color, #fff);
+        background: $o-view-background-color;
         box-shadow: 0 8px 28px rgba(15, 23, 42, .08);
     }
 
     .o_chatroom_ai_setup_summary {
         margin: 18px 0 24px;
         padding: 14px 18px;
-        border: 1px solid #eadfea;
+        border: 1px solid $o-gray-200;
         border-radius: 12px;
-        background: #faf7fa;
+        background: $o-gray-100;
     }
 
     .o_chatroom_ai_setup_checks > .o_group {
         min-height: 124px;
         padding: 14px 16px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid $o-gray-200;
         border-radius: 12px;
-        background: #f8fafc;
+        background: $o-view-background-color;
     }
 
     .o_chatroom_ai_setup_checks .o_form_label {
@@ -567,15 +567,15 @@
     max-width: none !important;
     margin: 16px 24px;
     padding: 28px 32px 36px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid $o-gray-200;
     border-radius: 16px;
-    background: #fff;
+    background: $o-view-background-color;
     box-shadow: 0 8px 28px rgba(15, 23, 42, .08);
 }
 
 .chatroom_ai_dashboard_form .chatroom_ai_dashboard_hero h1 {
     margin: 0 0 6px;
-    color: #1f2937;
+    color: $o-main-text-color;
     font-size: 28px;
     font-weight: 700;
 }
@@ -585,13 +585,13 @@
     border: 0;
     border-left: 4px solid #76506f;
     border-radius: 10px;
-    background: #f0e7ef;
-    color: #493347;
+    background: $o-gray-200;
+    color: $o-main-text-color;
 }
 
 .chatroom_ai_dashboard_form .o_form_separator {
     margin: 26px 0 12px;
-    color: #1f2937;
+    color: $o-main-text-color;
     font-size: 15px;
     font-weight: 700;
 }
@@ -606,10 +606,10 @@
 .chatroom_ai_dashboard_form .chatroom_ai_dashboard_quick_action {
     min-height: 44px;
     padding: 10px 15px;
-    border: 1px solid #dbe3ee;
+    border: 1px solid $o-gray-200;
     border-radius: 9px;
-    background: #fff;
-    color: #334155;
+    background: $o-view-background-color;
+    color: $o-main-text-color;
     font-weight: 600;
 }
 
@@ -638,10 +638,10 @@
     min-height: 104px;
     margin: 0 !important;
     padding: 17px 15px;
-    border: 1px solid #dbe3ee;
+    border: 1px solid $o-gray-200;
     border-radius: 14px;
-    background: linear-gradient(145deg, #fff 0%, #f7f9fc 100%);
-    color: #1f2937;
+    background: linear-gradient(145deg, $o-view-background-color 0%, $o-gray-100 100%);
+    color: $o-main-text-color;
     text-align: left;
     box-shadow: 0 3px 10px rgba(15, 23, 42, .04);
     transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
@@ -661,8 +661,8 @@
     width: 40px;
     height: 40px;
     border-radius: 11px;
-    background: #f0e7ef;
-    color: #76506f;
+    background: $o-gray-200;
+    color: mix(#76506f, $o-main-text-color, 60%);
     font-size: 18px;
 }
 
@@ -675,7 +675,7 @@
 }
 
 .chatroom_ai_dashboard_form .chatroom_ai_dashboard_metric_content .o_field_widget {
-    color: #172033;
+    color: $o-main-text-color;
     font-size: 27px;
     font-weight: 750;
     line-height: 1.05;
@@ -683,7 +683,7 @@
 
 .chatroom_ai_dashboard_form .chatroom_ai_dashboard_metric_content small {
     overflow: hidden;
-    color: #64748b;
+    color: mix(#64748b, $o-main-text-color, 60%);
     font-size: 12px;
     font-weight: 600;
     text-overflow: ellipsis;
@@ -691,7 +691,7 @@
 }
 
 .chatroom_ai_dashboard_form .chatroom_ai_dashboard_metric_arrow {
-    color: #94a3b8;
+    color: mix(#94a3b8, $o-main-text-color, 60%);
     font-size: 12px;
 }
 
@@ -709,19 +709,19 @@
     justify-content: space-between;
     gap: 8px;
     padding: 13px 15px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid $o-gray-200;
     border-radius: 11px;
-    background: #f8fafc;
+    background: $o-view-background-color;
 }
 
 .chatroom_ai_dashboard_form .chatroom_ai_dashboard_performance_card > span {
-    color: #64748b;
+    color: mix(#64748b, $o-main-text-color, 60%);
     font-size: 12px;
     font-weight: 600;
 }
 
 .chatroom_ai_dashboard_form .chatroom_ai_dashboard_performance_card .o_field_widget {
-    color: #172033;
+    color: $o-main-text-color;
     font-size: 21px;
     font-weight: 750;
     line-height: 1.1;
@@ -764,17 +764,17 @@
         gap: 14px;
         margin-bottom: 24px;
         padding: 18px 20px;
-        border: 1px solid #e4d8e4;
+        border: 1px solid $o-gray-200;
         border-left: 4px solid #76506f;
         border-radius: 12px;
-        background: linear-gradient(135deg, #faf7fb, #f4edf4);
+        background: linear-gradient(135deg, $o-view-background-color, $o-gray-100);
 
         > div:last-child { flex: 1 1 auto; min-width: 0; }
         h1 {
             display: block;
             width: 100%;
             margin: 0 0 4px;
-            color: #312530;
+            color: $o-main-text-color;
             font-size: 24px;
 
             .o_field_widget,
@@ -784,7 +784,7 @@
                 max-width: none !important;
             }
         }
-        p { margin: 0; color: #6b6070; }
+        p { margin: 0; color: $o-gray-600; }
     }
 
     .o_chatroom_ai_automation_intro_icon {
@@ -804,9 +804,9 @@
 
         > .o_inner_group {
             padding: 18px;
-            border: 1px solid #e1e6ee;
+            border: 1px solid $o-gray-200;
             border-radius: 12px;
-            background: #fbfcfe;
+            background: $o-view-background-color;
         }
     }
 
@@ -814,7 +814,7 @@
 
     .o_chatroom_ai_automation_hint {
         margin-top: 8px;
-        color: #687386;
+        color: mix(#687386, $o-main-text-color, 60%);
         font-size: 12px;
         line-height: 1.4;
     }
@@ -823,12 +823,12 @@
     .o_chatroom_ai_automation_result {
         margin-top: 18px;
         padding: 18px;
-        border: 1px solid #e1e6ee;
+        border: 1px solid $o-gray-200;
         border-radius: 12px;
-        background: #fff;
+        background: $o-view-background-color;
     }
 
-    .o_chatroom_ai_automation_result { background: #f8fafc; }
+    .o_chatroom_ai_automation_result { background: $o-view-background-color; }
 }
 
 /* Automatizaciones: formulario de ancho completo con configuración legible. */
@@ -854,7 +854,7 @@
         float: none;
         min-height: 54px;
         margin: 0 0 14px;
-        border-bottom: 1px solid #e1e6ee;
+        border-bottom: 1px solid $o-gray-200;
     }
 
     .o_chatroom_ai_automation_notebook {
@@ -884,9 +884,9 @@
         .o_field_text {
             min-height: 0 !important;
             padding: 12px 14px;
-            border: 1px solid #e1e6ee;
+            border: 1px solid $o-gray-200;
             border-radius: 8px;
-            background: #fbfcfe;
+            background: $o-view-background-color;
             white-space: pre-wrap;
             line-height: 1.5;
         }
@@ -901,9 +901,9 @@
 
     .o_chatroom_ai_automation_result_summary {
         padding: 18px;
-        border: 1px solid #e1e6ee;
+        border: 1px solid $o-gray-200;
         border-radius: 12px;
-        background: #f8fafc;
+        background: $o-view-background-color;
     }
 
     .o_chatroom_ai_automation_result_header {
@@ -912,10 +912,10 @@
         justify-content: space-between;
         gap: 16px;
         padding-bottom: 14px;
-        border-bottom: 1px solid #e1e6ee;
+        border-bottom: 1px solid $o-gray-200;
 
         h3 { margin: 0 0 3px; font-size: 17px; }
-        p { margin: 0; color: #687386; }
+        p { margin: 0; color: mix(#687386, $o-main-text-color, 60%); }
     }
 
     .o_chatroom_ai_automation_result_grid {
@@ -928,14 +928,14 @@
             width: auto !important;
             min-width: 0;
             padding: 12px;
-            border: 1px solid #e1e6ee;
+            border: 1px solid $o-gray-200;
             border-radius: 8px;
-            background: #fff;
+            background: $o-view-background-color;
 
             .o_chatroom_ai_automation_metric_label {
                 display: block;
                 margin-bottom: 6px;
-                color: #687386;
+                color: mix(#687386, $o-main-text-color, 60%);
                 font-size: 12px;
                 font-weight: 600;
             }
@@ -943,7 +943,7 @@
             .o_field_widget {
                 display: block;
                 min-height: 24px;
-                color: #202735;
+                color: $o-main-text-color;
                 font-size: 16px;
                 font-weight: 700;
             }
@@ -972,7 +972,7 @@
 
     .o_chatroom_ai_automation_run_error {
         padding-top: 14px;
-        border-top: 1px solid #e1e6ee;
+        border-top: 1px solid $o-gray-200;
     }
 }
 
@@ -1005,10 +1005,10 @@
         padding: 18px 20px;
         border-left: 4px solid #76506f;
         border-radius: 12px;
-        background: #f7eff6;
+        background: $o-gray-100;
 
-        h1 { margin: 0 0 4px; color: #312530; font-size: 24px; }
-        p { margin: 0; color: #6b6070; }
+        h1 { margin: 0 0 4px; color: $o-main-text-color; font-size: 24px; }
+        p { margin: 0; color: $o-gray-600; }
     }
 
     .o_chatroom_ai_autonomy_intro_icon {
@@ -1025,11 +1025,11 @@
     .o_chatroom_ai_autonomy_review {
         margin-top: 18px;
         padding: 16px;
-        border: 1px solid #e1e6ee;
+        border: 1px solid $o-gray-200;
         border-left: 4px solid #d29b43;
         border-radius: 10px;
-        background: #fffaf0;
-        color: #6a4a1a;
+        background: $o-view-background-color;
+        color: $o-main-text-color;
     }
 }
 
@@ -1047,10 +1047,10 @@
         padding: 18px 20px;
         border-left: 4px solid #76506f;
         border-radius: 12px;
-        background: linear-gradient(135deg, #faf7fb, #f4edf4);
+        background: linear-gradient(135deg, $o-view-background-color, $o-gray-100);
 
-        h1 { margin: 0 0 4px; color: #312530; font-size: 24px; }
-        p { margin: 0; color: #6b6070; }
+        h1 { margin: 0 0 4px; color: $o-main-text-color; font-size: 24px; }
+        p { margin: 0; color: $o-gray-600; }
     }
 
     .o_chatroom_ai_policy_intro_icon {
@@ -1070,10 +1070,10 @@
         gap: 10px;
         margin-bottom: 12px;
         padding: 10px 14px;
-        border: 1px solid #e1e6ee;
+        border: 1px solid $o-gray-200;
         border-radius: 10px;
-        background: #fff;
-        color: #687386;
+        background: $o-view-background-color;
+        color: mix(#687386, $o-main-text-color, 60%);
 
         .o_field_widget.o_field_badge { font-weight: 700; }
     }
@@ -1081,15 +1081,15 @@
     .o_chatroom_ai_policy_section {
         margin-top: 18px;
         padding: 16px 18px;
-        border: 1px solid #e1e6ee;
+        border: 1px solid $o-gray-200;
         border-radius: 12px;
-        background: #fbfcfe;
+        background: $o-view-background-color;
 
         textarea { min-height: 100px; }
     }
 
     .o_chatroom_ai_policy_actions {
-        background: #f8fafc;
+        background: $o-view-background-color;
     }
 }
 
@@ -1107,10 +1107,10 @@
         padding: 16px 20px;
         border-left: 4px solid #0f8f83;
         border-radius: 12px;
-        background: #edf9f7;
+        background: $o-gray-100;
 
-        h2 { margin: 0 0 4px; color: #164943; font-size: 20px; }
-        p { margin: 0; color: #4d6c68; }
+        h2 { margin: 0 0 4px; color: $o-main-text-color; font-size: 20px; }
+        p { margin: 0; color: mix(#4d6c68, $o-main-text-color, 60%); }
     }
 
     .o_chatroom_ai_knowledge_intro_icon {
@@ -1125,7 +1125,7 @@
     }
 
     .o_chatroom_ai_knowledge_profile_form .o_field_char {
-        color: #2f5f5a;
+        color: mix(#2f5f5a, $o-main-text-color, 60%);
     }
 }
 
@@ -1143,10 +1143,10 @@
         padding: 16px 20px;
         border-left: 4px solid #2c83c9;
         border-radius: 12px;
-        background: #eef7ff;
+        background: $o-gray-100;
 
-        h2 { margin: 0 0 4px; color: #1c4e76; font-size: 20px; }
-        p { margin: 0; color: #55718a; }
+        h2 { margin: 0 0 4px; color: $o-main-text-color; font-size: 20px; }
+        p { margin: 0; color: mix(#55718a, $o-main-text-color, 60%); }
     }
 
     .o_chatroom_ai_simulator_intro_icon {
@@ -1166,7 +1166,7 @@
         border: 1px solid #cfe3f2;
         border-left: 4px solid #2c83c9;
         border-radius: 10px;
-        background: #f6fbff;
-        color: #245579;
+        background: $o-view-background-color;
+        color: $o-main-text-color;
     }
 }

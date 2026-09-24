@@ -766,3 +766,71 @@ class TestChatroomWhatsapp(TransactionCase):
             self.env['chatroom.channel'].search(
                 base + [('next_activity_overdue', '=', False)]),
             clean)
+
+    # ------------------------------------------------------------------
+    # Acuses de entrega del webhook (ruta caliente)
+    # ------------------------------------------------------------------
+
+    def _outbound(self, wa_message_id, channel=None):
+        channel = channel or self._make_channel('57300950%s' % wa_message_id[-4:])
+        return self.env['chatroom.message'].create({
+            'channel_id': channel.id,
+            'direction': 'outbound',
+            'body': 'Mensaje %s' % wa_message_id,
+            'wa_message_id': wa_message_id,
+            'state': 'pending',
+        })
+
+    def test_status_batch_updates_every_message(self):
+        """Meta entrega los acuses en lote.
+
+        Antes se hacía una búsqueda y una escritura por acuse; ahora es
+        una consulta y un UPDATE por estado. El resultado tiene que ser
+        exactamente el mismo.
+        """
+        enviado = self._outbound('wamid.ESTADO0001')
+        entregado = self._outbound('wamid.ESTADO0002')
+        leido = self._outbound('wamid.ESTADO0003')
+        WhatsAppWebhookController()._process_statuses(self.env, [
+            {'id': 'wamid.ESTADO0001', 'status': 'sent'},
+            {'id': 'wamid.ESTADO0002', 'status': 'delivered'},
+            {'id': 'wamid.ESTADO0003', 'status': 'read'},
+        ])
+        (enviado | entregado | leido).invalidate_recordset()
+        self.assertEqual(enviado.state, 'sent')
+        self.assertEqual(entregado.state, 'delivered')
+        self.assertEqual(leido.state, 'read')
+
+    def test_status_batch_keeps_the_last_one_for_a_repeated_message(self):
+        """Un mismo mensaje puede traer varios acuses en el mismo lote.
+
+        El bucle original escribía uno tras otro, así que ganaba el
+        último. Agrupar no puede cambiar ese desenlace.
+        """
+        message = self._outbound('wamid.ESTADO0004')
+        WhatsAppWebhookController()._process_statuses(self.env, [
+            {'id': 'wamid.ESTADO0004', 'status': 'sent'},
+            {'id': 'wamid.ESTADO0004', 'status': 'delivered'},
+            {'id': 'wamid.ESTADO0004', 'status': 'read'},
+        ])
+        message.invalidate_recordset()
+        self.assertEqual(message.state, 'read')
+
+    def test_status_batch_ignores_unknown_ids_and_states(self):
+        """Un acuse de un mensaje que no tenemos, o con un estado que no
+        conocemos, se descarta sin tocar nada ni fallar."""
+        message = self._outbound('wamid.ESTADO0005')
+        WhatsAppWebhookController()._process_statuses(self.env, [
+            {'id': 'wamid.NO_EXISTE', 'status': 'read'},
+            {'id': 'wamid.ESTADO0005', 'status': 'inventado'},
+            {'status': 'read'},
+            {'id': 'wamid.ESTADO0005'},
+        ])
+        message.invalidate_recordset()
+        self.assertEqual(
+            message.state, 'pending',
+            'Un estado desconocido no debería modificar el mensaje.')
+
+    def test_status_batch_with_nothing_usable_does_not_query(self):
+        WhatsAppWebhookController()._process_statuses(self.env, [])
+        WhatsAppWebhookController()._process_statuses(self.env, [{'status': 'read'}])

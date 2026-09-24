@@ -21,7 +21,7 @@ def _social_datetime(value):
 class MarketingSocialNetworkProfile(models.Model):
     _name = 'marketing.social.network.profile'
     _description = 'Cuenta descubierta de red social'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'marketing.diagnostic.mixin']
     _order = 'active desc, name'
 
     name = fields.Char(string='Nombre de la cuenta', required=True, tracking=True)
@@ -104,7 +104,7 @@ class MarketingSocialNetworkProfile(models.Model):
             try:
                 values = record.connection_id._adapter().profile(record.connection_id._adapter().test())
             except SocialNetworkApiError as error:
-                record.write({'state': 'error', 'last_error': str(error)})
+                record._persist_diagnostic({'state': 'error', 'last_error': str(error)})
                 raise UserError(str(error)) from error
             record.write({
                 'name': values.get('name') or record.name,
@@ -133,43 +133,66 @@ class MarketingSocialNetworkProfile(models.Model):
     def _sync_one_profile(self):
         self.ensure_one()
         adapter = self.connection_id._adapter()
+        # Si la cuenta se crea aqui, su estado de error no se puede
+        # conservar: el rollback se lleva la cuenta entera, asi que no hay
+        # nada a lo que volver. Solo se persiste la que ya existia.
+        cuenta_preexistente = bool(self.social_account_id)
         account = self._ensure_social_account()
         started_at = fields.Datetime.now()
         timer = time.perf_counter()
         Log = self.env['marketing.social.network.sync.log']
-        log = Log.create({
+        datos_log = {
             'name': _('Sincronización de %s') % self.name,
             'connection_id': self.connection_id.id, 'profile_id': self.id,
             'started_at': started_at,
-        })
+        }
+        log = Log.create(datos_log)
         try:
             publications = adapter.publications(self)
         except SocialNetworkApiError as error:
             duration = time.perf_counter() - timer
-            self.write({'state': 'error', 'last_error': str(error), 'last_sync_duration': duration})
-            account.write({'connection_state': 'error', 'sync_message': str(error)})
-            log.write({
-                'state': 'error', 'finished_at': fields.Datetime.now(),
-                'duration_seconds': duration, 'error_message': str(error),
-            })
+            self._persist_diagnostic({'state': 'error', 'last_error': str(error), 'last_sync_duration': duration})
+            if cuenta_preexistente:
+                account._persist_diagnostic({'connection_state': 'error', 'sync_message': str(error)})
+            # `log` nacio en esta transaccion, asi que el `raise` se lo
+            # lleva entero: no basta con reescribirlo, hay que volver a
+            # crearlo ya en la transaccion aparte.
+            self._persist_diagnostic_record('marketing.social.network.sync.log', dict(
+                datos_log, state='error', finished_at=fields.Datetime.now(),
+                duration_seconds=duration, error_message=str(error)))
             raise
         except Exception as error:
             duration = time.perf_counter() - timer
             message = _('Error inesperado al sincronizar: %s') % error
-            self.write({'state': 'error', 'last_error': message, 'last_sync_duration': duration})
-            account.write({'connection_state': 'error', 'sync_message': message})
-            log.write({
-                'state': 'error', 'finished_at': fields.Datetime.now(),
-                'duration_seconds': duration, 'error_message': message,
-            })
+            self._persist_diagnostic({'state': 'error', 'last_error': message, 'last_sync_duration': duration})
+            if cuenta_preexistente:
+                account._persist_diagnostic({'connection_state': 'error', 'sync_message': message})
+            # `log` nacio en esta transaccion, asi que el `raise` se lo
+            # lleva entero: no basta con reescribirlo, hay que volver a
+            # crearlo ya en la transaccion aparte.
+            self._persist_diagnostic_record('marketing.social.network.sync.log', dict(
+                datos_log, state='error', finished_at=fields.Datetime.now(),
+                duration_seconds=duration, error_message=message))
             raise UserError(message) from error
         comments_count = 0
+        # Indices cargados una sola vez. Antes cada publicacion hacia su
+        # propia busqueda, cada metrica la suya y cada comentario la suya:
+        # sincronizar un perfil con 50 publicaciones y sus comentarios eran
+        # cientos de SELECT antes de escribir nada.
+        known_publications = self._known_publications(account, publications)
+        known_metrics = self._known_metrics(known_publications)
         for values in publications:
-            publication = self._upsert_publication(account, values)
-            self._upsert_metric(publication, values.get('metrics') or {})
-            for comment in getattr(adapter, 'comments', lambda _id: [])(values.get('external_id')):
+            publication = self._upsert_publication(
+                account, values, known=known_publications)
+            self._upsert_metric(
+                publication, values.get('metrics') or {}, known=known_metrics)
+            comments = list(
+                getattr(adapter, 'comments', lambda _id: [])(values.get('external_id')))
+            known_interactions = self._known_interactions(publication, comments)
+            for comment in comments:
                 if comment.get('external_id'):
-                    self._upsert_interaction(publication, comment)
+                    self._upsert_interaction(
+                        publication, comment, known=known_interactions)
                     comments_count += 1
         summary = _('%s publicación(es) y %s comentario(s) procesado(s).') % (len(publications), comments_count)
         now = fields.Datetime.now()
@@ -193,11 +216,61 @@ class MarketingSocialNetworkProfile(models.Model):
         })
         return len(publications)
 
-    def _upsert_publication(self, account, values):
+    def _known_publications(self, account, publications):
+        """{external_id: publicacion} de lo que ya existe para esta cuenta."""
+        external_ids = [
+            values.get('external_id') for values in publications
+            if values.get('external_id')]
+        if not external_ids:
+            return {}
+        return {
+            publication.external_id: publication
+            for publication in self.env['marketing.social.publication'].search([
+                ('account_id', '=', account.id),
+                ('external_id', 'in', external_ids),
+            ])
+        }
+
+    def _known_metrics(self, known_publications):
+        """{publication_id: instantanea de hoy} ya existente."""
+        if not known_publications:
+            return {}
+        today = fields.Date.context_today(self)
+        return {
+            metric.publication_id.id: metric
+            for metric in self.env['marketing.social.metric.snapshot'].search([
+                ('publication_id', 'in',
+                 [publication.id for publication in known_publications.values()]),
+                ('snapshot_date', '=', today),
+            ])
+        }
+
+    def _known_interactions(self, publication, comments):
+        """{external_id: interaccion} ya existente para esta publicacion."""
+        external_ids = [
+            comment.get('external_id') for comment in comments
+            if comment.get('external_id')]
+        if not publication.id or not external_ids:
+            return {}
+        return {
+            interaction.external_id: interaction
+            for interaction in self.env['marketing.social.interaction'].search([
+                ('publication_id', '=', publication.id),
+                ('external_id', 'in', external_ids),
+            ])
+        }
+
+    def _upsert_publication(self, account, values, known=None):
         Publication = self.env['marketing.social.publication']
-        publication = Publication.search([
-            ('external_id', '=', values.get('external_id')), ('account_id', '=', account.id),
-        ], limit=1)
+        # `known` es el indice de `_sync_one_profile`; sin el se busca, para
+        # que llamar a este metodo suelto siga funcionando igual.
+        if known is not None:
+            publication = known.get(values.get('external_id'), Publication)
+        else:
+            publication = Publication.search([
+                ('external_id', '=', values.get('external_id')),
+                ('account_id', '=', account.id),
+            ], limit=1)
         vals = {
             'name': values.get('name') or _('Publicación social'), 'external_id': values.get('external_id'),
             'account_id': account.id, 'published_at': _social_datetime(values.get('published_at')) or fields.Datetime.now(),
@@ -208,9 +281,14 @@ class MarketingSocialNetworkProfile(models.Model):
             publication.write(vals)
         else:
             publication = Publication.create(vals)
+            if known is not None and values.get('external_id'):
+                # El indice se alimenta con lo recien creado: si el mismo
+                # external_id viene repetido en el lote, la segunda vuelta
+                # tiene que actualizar, no crear un duplicado.
+                known[values['external_id']] = publication
         return publication
 
-    def _upsert_metric(self, publication, values):
+    def _upsert_metric(self, publication, values, known=None):
         Metric = self.env['marketing.social.metric.snapshot']
         today = fields.Date.context_today(self)
         vals = {
@@ -221,13 +299,21 @@ class MarketingSocialNetworkProfile(models.Model):
             'clicks': int(values.get('clicks') or 0), 'leads': int(values.get('leads') or 0),
             'sales_amount': float(values.get('sales_amount') or 0.0),
         }
-        metric = Metric.search([('publication_id', '=', publication.id), ('snapshot_date', '=', today)], limit=1)
+        if known is not None:
+            metric = known.get(publication.id, Metric)
+        else:
+            metric = Metric.search([
+                ('publication_id', '=', publication.id),
+                ('snapshot_date', '=', today),
+            ], limit=1)
         if metric:
             metric.write(vals)
         else:
-            Metric.create(dict(vals, publication_id=publication.id))
+            metric = Metric.create(dict(vals, publication_id=publication.id))
+            if known is not None:
+                known[publication.id] = metric
 
-    def _upsert_interaction(self, publication, values):
+    def _upsert_interaction(self, publication, values, known=None):
         Interaction = self.env['marketing.social.interaction']
         vals = {
             'publication_id': publication.id, 'interaction_type': values.get('interaction_type') or 'comment',
@@ -235,10 +321,16 @@ class MarketingSocialNetworkProfile(models.Model):
             'author_name': values.get('author_name') or False,
             'interaction_date': _social_datetime(values.get('interaction_date')) or fields.Datetime.now(),
         }
-        existing = Interaction.search([
-            ('publication_id', '=', publication.id), ('external_id', '=', values.get('external_id')),
-        ], limit=1)
+        if known is not None:
+            existing = known.get(values.get('external_id'), Interaction)
+        else:
+            existing = Interaction.search([
+                ('publication_id', '=', publication.id),
+                ('external_id', '=', values.get('external_id')),
+            ], limit=1)
         if existing:
             existing.write(vals)
         else:
-            Interaction.create(vals)
+            existing = Interaction.create(vals)
+            if known is not None and values.get('external_id'):
+                known[values['external_id']] = existing

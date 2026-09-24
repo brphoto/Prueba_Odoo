@@ -4,8 +4,12 @@ import calendar
 import json
 import re
 
+import logging
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 class CrmEngagementAutomation(models.Model):
@@ -269,7 +273,14 @@ class CrmEngagementAutomation(models.Model):
     def _cron_process_engagement_automations(self):
         total = 0
         for automation in self.search([('active', '=', True)]):
-            total += automation._process()
+            try:
+                # Un fallo en un registro no puede tirar la corrida entera
+                # ni revertir lo ya hecho con los anteriores.
+                with self.env.cr.savepoint():
+                    total += automation._process()
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "_cron_process_engagement_automations: fallo procesando %s", automation.display_name)
         return total
 
 

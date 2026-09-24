@@ -17,6 +17,7 @@ motor principal.
     """,
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
+    'icon': '/crm_engagement_automation/static/description/icon.svg',
     'category': 'Sales/CRM',
     'version': '19.0.1.0.2',
     'depends': ['crm_customer_intelligence', 'mail', 'account'],

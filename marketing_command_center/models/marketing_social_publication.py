@@ -4,18 +4,18 @@ from odoo.exceptions import UserError
 class MarketingSocialPublication(models.Model):
     _name = 'marketing.social.publication'
     _description = 'Publicación de red social'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'marketing.diagnostic.mixin']
     _order = 'published_at desc, id desc'
 
     name = fields.Char(string='Título o referencia', required=True, tracking=True)
     external_id = fields.Char(string='ID externo', index=True)
     account_id = fields.Many2one(
         'marketing.social.account', string='Cuenta', required=True,
-        ondelete='restrict', tracking=True)
+        ondelete='restrict', tracking=True, index=True)
     platform = fields.Selection(
         string='Red', related='account_id.platform', store=True, index=True)
     campaign_id = fields.Many2one('marketing.social.campaign', string='Campaña', ondelete='set null')
-    published_at = fields.Datetime(string='Fecha de publicación', required=True, tracking=True)
+    published_at = fields.Datetime(string='Fecha de publicación', required=True, tracking=True, index=True)
     content_type = fields.Selection([
         ('post', 'Publicación'), ('reel', 'Reel / video corto'),
         ('story', 'Historia'), ('video', 'Video'), ('article', 'Artículo'),

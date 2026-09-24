@@ -217,6 +217,16 @@ class ChatroomAiProviderModel(models.Model):
         now = fields.Datetime.now()
         synced = 0
         chat_models = 0
+        # Un indice de los modelos ya registrados en UNA consulta. Antes se
+        # buscaba por modelo: el catalogo de OpenAI ronda los cien, asi que
+        # pulsar "sincronizar" disparaba cien SELECT antes de escribir.
+        known = {
+            record.model_id: record
+            for record in self.sudo().search([
+                ('model_id', 'in', [
+                    entry.get('id') for entry in entries if entry.get('id')]),
+            ])
+        } if entries else {}
         for entry in entries:
             if not isinstance(entry, dict) or not entry.get('id'):
                 continue
@@ -232,11 +242,13 @@ class ChatroomAiProviderModel(models.Model):
                 'recommended': self._is_recommended(model_id),
                 'last_synced': now,
             }
-            record = self.sudo().search([('model_id', '=', model_id)], limit=1)
+            record = known.get(model_id)
             if record:
                 record.write(values)
             else:
-                self.sudo().create(values)
+                # El indice se alimenta con lo creado, por si el proveedor
+                # repite un identificador dentro de la misma respuesta.
+                known[model_id] = self.sudo().create(values)
             synced += 1
             chat_models += int(supports_chat)
         return {

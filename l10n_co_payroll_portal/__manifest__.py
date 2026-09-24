@@ -2,6 +2,7 @@
     "name": "Nómina Colombia - Portal",
     "summary": "Portal profesional y opcional para colaboradores",
     "version": "19.0.2.1.0",
+    'icon': '/l10n_co_payroll_portal/static/description/icon.svg',
     "category": "Human Resources/Payroll",
     "author": "Bryan Cando",
     "license": "OPL-1",

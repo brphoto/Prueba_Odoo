@@ -9,12 +9,12 @@
 }
 
 .o_chatroom_payment_state_paid {
-    color: #128c4a;
+    color: mix(#128c4a, $o-main-text-color, 60%);
 }
 
 .o_chatroom_payment_state_error,
 .o_chatroom_payment_state_expired {
-    color: #c0392b;
+    color: mix(#c0392b, $o-main-text-color, 60%);
 }
 
 .o_chatroom_payment_state_sent,

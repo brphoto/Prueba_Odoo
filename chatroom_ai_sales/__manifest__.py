@@ -22,7 +22,7 @@ Las ventas autónomas permanecen desactivadas hasta que el administrador las con
     'installable': True,
     'application': False,
     'auto_install': False,
-    'icon': 'static/description/icon.svg',
+    'icon': '/chatroom_ai_sales/static/description/icon.svg',
     'assets': {
         'web.assets_backend': [
             'chatroom_ai_sales/static/src/chatroom_ai_sales.scss',

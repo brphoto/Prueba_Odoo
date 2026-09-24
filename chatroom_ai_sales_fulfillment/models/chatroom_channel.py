@@ -2,7 +2,7 @@
 import logging
 from datetime import timedelta
 
-from odoo import _, api, fields, models
+from odoo import _, api, fields, models, modules
 
 
 _logger = logging.getLogger(__name__)
@@ -108,6 +108,12 @@ class ChatroomChannel(models.Model):
             test_channel_id = env.context.get('chatroom_fulfillment_channel_id')
             if test_channel_id:
                 channels = channels.filtered(lambda channel: channel.id == test_channel_id)
+            # `_sales_send_text` manda un WhatsApp de verdad: el efecto ya
+            # no se puede deshacer. Cada recordatorio se aisla y se confirma
+            # por separado para que un fallo posterior no revierta el
+            # contador de enviados y el cron siguiente vuelva a escribirle
+            # al mismo cliente.
+            auto_commit = not modules.module.current_test
             for channel in channels:
                 latest_cart_date = max(channel.cart_line_ids.mapped('create_date') or [False])
                 if not latest_cart_date or latest_cart_date > cutoff:
@@ -115,10 +121,18 @@ class ChatroomChannel(models.Model):
                 if channel.ai_sales_cart_last_reminder_at and channel.ai_sales_cart_last_reminder_at > cutoff:
                     continue
                 body = _('Veo que dejaste productos en tu carrito. Si deseas continuar, escríbeme y te ayudo a finalizar tu pedido.')
-                channel._sales_send_text(body)
-                channel.write({
-                    'ai_sales_cart_reminder_count': channel.ai_sales_cart_reminder_count + 1,
-                    'ai_sales_cart_last_reminder_at': fields.Datetime.now(),
-                })
-                channel._sales_log('cart_reminder', body, amount=channel.cart_total)
+                try:
+                    with env.cr.savepoint():
+                        channel._sales_send_text(body)
+                        channel.write({
+                            'ai_sales_cart_reminder_count': channel.ai_sales_cart_reminder_count + 1,
+                            'ai_sales_cart_last_reminder_at': fields.Datetime.now(),
+                        })
+                        channel._sales_log('cart_reminder', body, amount=channel.cart_total)
+                    if auto_commit:
+                        env.cr.commit()
+                except Exception:  # noqa: BLE001
+                    _logger.exception(
+                        'No se pudo enviar el recordatorio de carrito en el canal %s',
+                        channel.id)
         return True

@@ -101,7 +101,7 @@
 
 .o_chatroom_ui_preview_search {
     border-radius: 999px;
-    color: #8696a0;
+    color: mix(#8696a0, $o-main-text-color, 60%);
 }
 
 .o_chatroom_ui_preview_item {
@@ -113,7 +113,7 @@
 .o_chatroom_ui_preview_item small {
     display: block;
     margin-top: 3px;
-    color: #8696a0;
+    color: mix(#8696a0, $o-main-text-color, 60%);
 }
 
 .o_chatroom_ui_preview_thread {

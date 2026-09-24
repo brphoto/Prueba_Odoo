@@ -4,8 +4,8 @@
         padding: 12px 14px;
         border-left: 3px solid #76506f;
         border-radius: 8px;
-        background: #faf7fb;
-        color: #687386;
+        background: $o-view-background-color;
+        color: mix(#687386, $o-main-text-color, 60%);
         line-height: 1.5;
     }
 
@@ -13,9 +13,9 @@
         width: 100%;
         min-width: 0;
         padding: 12px 14px;
-        border: 1px solid #dbe3ee;
+        border: 1px solid $o-gray-200;
         border-radius: 10px;
-        background: #f8fafc;
+        background: $o-view-background-color;
 
         .o_field_widget,
         .o_field_text,

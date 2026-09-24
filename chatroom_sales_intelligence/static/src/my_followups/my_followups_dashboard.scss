@@ -18,11 +18,11 @@
 .o_followups_empty {
     text-align: center;
     padding: 48px 16px;
-    color: #667781;
+    color: mix(#667781, $o-main-text-color, 60%);
 
     i {
         font-size: 2.5em;
-        color: #25d366;
+        color: mix(#25d366, $o-main-text-color, 60%);
         margin-bottom: 12px;
         display: block;
     }
@@ -48,7 +48,7 @@
     padding: 10px 12px;
     margin-bottom: 6px;
     border-radius: 8px;
-    background-color: var(--o-view-background-color, #fff);
+    background-color: $o-view-background-color;
     border: 1px solid var(--border-color, #dee2e6);
     cursor: pointer;
 
@@ -71,11 +71,11 @@
 }
 
 .o_followups_row_red .o_followups_dot {
-    color: #dc3545;
+    color: mix(#dc3545, $o-main-text-color, 60%);
 }
 
 .o_followups_row_yellow .o_followups_dot {
-    color: #e6a700;
+    color: mix(#e6a700, $o-main-text-color, 60%);
 }
 
 .o_followups_row_body {
@@ -100,6 +100,6 @@
 .o_followups_row_days {
     flex: 0 0 auto;
     font-size: 0.8em;
-    color: #667781;
+    color: mix(#667781, $o-main-text-color, 60%);
     white-space: nowrap;
 }

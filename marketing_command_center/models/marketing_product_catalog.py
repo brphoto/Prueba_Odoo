@@ -90,10 +90,18 @@ class MarketingProductCatalogItem(models.Model):
             '|', ('company_id', '=', False), ('company_id', '=', company.id),
         ], order='name')
         now = fields.Datetime.now()
+        # Un indice del catalogo existente en UNA consulta. Antes se
+        # buscaba por producto: sincronizar un catalogo de 3.000
+        # articulos eran 3.000 SELECT antes de escribir nada.
+        known = {
+            item.product_tmpl_id.id: item
+            for item in self.search([
+                ('product_tmpl_id', 'in', products.ids),
+                ('company_id', '=', company.id),
+            ])
+        }
         for product in products:
-            item = self.search([
-                ('product_tmpl_id', '=', product.id), ('company_id', '=', company.id),
-            ], limit=1)
+            item = known.get(product.id, self.browse())
             values = {
                 'product_tmpl_id': product.id,
                 'company_id': company.id,

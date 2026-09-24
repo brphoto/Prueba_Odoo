@@ -52,12 +52,12 @@
                                     <field name="active"/>
                                 </group>
                             </group>
-                            <div class="alert alert-warning">
+                            <div class="alert alert-warning" role="status">
                                 El token de usuario es obligatorio para probar y descubrir páginas. El ID y secreto de aplicación son opcionales en este flujo manual y quedan preparados para una futura conexión OAuth. Los secretos solo son visibles para administradores del conector; nunca los compartas en el chat.
                             </div>
                         </page>
                         <page string="Páginas descubiertas" name="pages">
-                            <div class="alert alert-info">
+                            <div class="alert alert-info" role="status">
                                 <b>Sincronización por lotes:</b> se procesa primero la página que lleva más tiempo sin actualizar. Así puedes sincronizar varias páginas sin bloquear el servidor.
                             </div>
                             <group col="2">

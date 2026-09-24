@@ -4,15 +4,15 @@
 }
 
 .o_chatroom_channel_icon_whatsapp {
-    color: #25d366;
+    color: mix(#25d366, $o-main-text-color, 60%);
 }
 
 .o_chatroom_channel_icon_messenger {
-    color: #0084ff;
+    color: mix(#0084ff, $o-main-text-color, 60%);
 }
 
 .o_chatroom_channel_icon_instagram {
-    color: #c13584;
+    color: mix(#c13584, $o-main-text-color, 60%);
 }
 
 .o_chatroom_kanban_time {
@@ -28,7 +28,7 @@
     border: 1px solid var(--border-color, #dee2e6);
     border-radius: 8px;
     overflow: hidden;
-    background-color: var(--o-view-background-color, #fff);
+    background-color: $o-view-background-color;
 }
 
 .o_chatroom_thread_header {
@@ -90,7 +90,7 @@
         cursor: pointer;
 
         option {
-            color: #111b21;
+            color: $o-main-text-color;
         }
     }
 }
@@ -186,7 +186,7 @@
     min-width: 210px;
     padding: 6px;
     border-radius: 8px;
-    background: var(--o-view-background-color, #fff);
+    background: $o-view-background-color;
     color: var(--o-main-text-color, #212529);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
 }
@@ -199,7 +199,7 @@
 
 .o_chatroom_assignee_popover_title {
     padding: 5px 8px;
-    color: #667781;
+    color: mix(#667781, $o-main-text-color, 60%);
     font-size: 0.75em;
     text-transform: uppercase;
 }
@@ -298,7 +298,7 @@
     max-height: 220px;
     overflow-y: auto;
     border-radius: 6px;
-    background-color: #fff;
+    background-color: $o-view-background-color;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
@@ -311,7 +311,7 @@
     white-space: nowrap;
 
     &:hover {
-        background-color: #f0f2f5;
+        background-color: $o-gray-100;
     }
 }
 
@@ -348,12 +348,12 @@
 
 .o_chatroom_ai_toggle_active {
     background-color: rgba(37, 211, 102, 0.15);
-    color: #128c4a;
+    color: mix(#128c4a, $o-main-text-color, 60%);
 }
 
 .o_chatroom_ai_toggle_paused {
     background-color: rgba(208, 59, 59, 0.12);
-    color: #d03b3b;
+    color: mix(#d03b3b, $o-main-text-color, 60%);
 }
 
 .o_chatroom_line_select {
@@ -363,7 +363,7 @@
     border: 1px solid var(--border-color, #dee2e6);
     border-radius: 12px;
     padding: 2px 8px;
-    background-color: #fff;
+    background-color: $o-view-background-color;
     cursor: pointer;
 }
 
@@ -376,8 +376,8 @@
     height: 26px;
     border: 1px solid var(--border-color, #dee2e6);
     border-radius: 50%;
-    background-color: #fff;
-    color: #667781;
+    background-color: $o-view-background-color;
+    color: mix(#667781, $o-main-text-color, 60%);
     cursor: pointer;
 
     &:hover {
@@ -396,7 +396,7 @@
     padding: 4px 8px;
     margin-bottom: 4px;
     border-radius: 6px;
-    background-color: #f0f2f5;
+    background-color: $o-gray-100;
     font-size: 0.8em;
 }
 
@@ -412,7 +412,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: #667781;
+    color: mix(#667781, $o-main-text-color, 60%);
 }
 
 .o_chatroom_scheduled_item_cancel {
@@ -430,7 +430,7 @@
     gap: 6px;
     margin-bottom: 6px;
     padding: 6px 8px;
-    background-color: #f0f2f5;
+    background-color: $o-gray-100;
     border-radius: 8px;
 }
 
@@ -462,12 +462,12 @@
 
 .o_chatroom_session_banner {
     background-color: #fff3cd;
-    color: #664d03;
+    color: $o-main-text-color;
 }
 
 .o_chatroom_opt_out_banner {
     background-color: #f8d7da;
-    color: #58151c;
+    color: $o-main-text-color;
 }
 
 .o_chatroom_thread_messages {
@@ -477,7 +477,7 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    background-color: var(--chatroom-ui-chat-background-color, var(--o-view-background-color, #f8f9fa));
+    background-color: var(--chatroom-ui-chat-background-color, $o-view-background-color);
     background-image: var(--chatroom-ui-chat-background, none);
     background-size: var(--chatroom-ui-chat-background-size, auto);
     background-repeat: var(--chatroom-ui-chat-background-repeat, no-repeat);
@@ -496,7 +496,7 @@
     padding: 3px 12px;
     border-radius: 10px;
     background-color: rgba(0, 0, 0, 0.08);
-    color: #667781;
+    color: mix(#667781, $o-main-text-color, 60%);
     font-size: 0.75em;
     font-weight: 600;
 }
@@ -508,7 +508,7 @@
     padding: 6px 12px;
     border-radius: 8px;
     background-color: #fff3cd;
-    color: #664d03;
+    color: $o-main-text-color;
     font-size: 0.85em;
     display: flex;
     align-items: flex-start;
@@ -536,7 +536,7 @@
 }
 
 .o_chatroom_note_toggle.text-warning {
-    color: #b45309 !important;
+    color: mix(#b45309, $o-main-text-color, 60%) !important;
 }
 
 .o_chatroom_bubble {
@@ -551,7 +551,7 @@
 
 .o_chatroom_bubble_in {
     align-self: flex-start;
-    background-color: var(--chatroom-ui-incoming-bubble, var(--o-view-background-color, #fff));
+    background-color: var(--chatroom-ui-incoming-bubble, $o-view-background-color);
     border-top-left-radius: 2px;
 }
 
@@ -572,7 +572,7 @@
     padding: 4px 8px;
     margin-bottom: 4px;
     font-size: 0.8em;
-    color: #667781;
+    color: mix(#667781, $o-main-text-color, 60%);
     white-space: pre-wrap;
 }
 
@@ -585,7 +585,7 @@
     border-top: 1px dashed rgba(0, 0, 0, 0.15);
     font-size: 0.85em;
     font-style: italic;
-    color: #667781;
+    color: mix(#667781, $o-main-text-color, 60%);
 }
 
 .o_chatroom_bubble_meta {
@@ -595,7 +595,7 @@
     gap: 4px;
     margin-top: 2px;
     font-size: 0.7em;
-    color: #667781;
+    color: mix(#667781, $o-main-text-color, 60%);
 }
 
 .o_chatroom_bubble_translate {
@@ -615,7 +615,7 @@
 
 .o_chatroom_bubble_retry {
     cursor: pointer;
-    color: #d03b3b;
+    color: mix(#d03b3b, $o-main-text-color, 60%);
     font-weight: 600;
     white-space: nowrap;
 
@@ -642,7 +642,7 @@
     gap: 4px;
     padding: 4px 6px;
     border-radius: 16px;
-    background-color: #fff;
+    background-color: $o-view-background-color;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
@@ -667,7 +667,7 @@
     gap: 2px;
     padding: 1px 4px;
     border-radius: 10px;
-    background-color: #fff;
+    background-color: $o-view-background-color;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
     font-size: 0.85em;
     line-height: 1.4;
@@ -679,7 +679,7 @@
     gap: 8px;
     margin-bottom: 6px;
     padding: 4px 8px;
-    background-color: #f0f2f5;
+    background-color: $o-gray-100;
     border-radius: 6px;
 }
 
@@ -703,7 +703,7 @@
 
 .o_chatroom_reply_preview_text {
     font-size: 0.8em;
-    color: #667781;
+    color: mix(#667781, $o-main-text-color, 60%);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -814,7 +814,7 @@
 .o_chatroom_composer {
     flex: 0 0 auto;
     border-top: 1px solid var(--border-color, #dee2e6);
-    background-color: var(--o-view-background-color, #fff);
+    background-color: $o-view-background-color;
     padding: 8px;
 }
 
@@ -829,7 +829,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    background-color: #f0f2f5;
+    background-color: $o-gray-100;
     border-radius: 6px;
     padding: 2px 6px;
     font-size: 0.8em;
@@ -871,7 +871,7 @@
     min-height: 34px;
     padding: 2px 8px;
     border-bottom: 1px solid var(--border-color, #dee2e6);
-    background: var(--o-view-background-color, #fff);
+    background: $o-view-background-color;
 }
 
 .o_chatroom_message_search {
@@ -921,7 +921,7 @@
     gap: 6px;
     margin-bottom: 6px;
     padding: 6px 8px;
-    background-color: #f0f2f5;
+    background-color: $o-gray-100;
     border-radius: 8px;
 }
 
@@ -977,19 +977,19 @@
     }
 
     &:hover {
-        background-color: #f0f2f5;
+        background-color: $o-gray-100;
     }
 }
 
 .o_chatroom_canned_preview {
-    color: #667781;
+    color: mix(#667781, $o-main-text-color, 60%);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .o_chatroom_recording_icon {
-    color: #dc3545;
+    color: mix(#dc3545, $o-main-text-color, 60%);
     animation: o_chatroom_pulse 1.2s infinite;
 }
 
@@ -1043,7 +1043,7 @@
     border-radius: 12px;
     padding: 2px 9px;
     background: transparent;
-    color: #8696a0;
+    color: mix(#8696a0, $o-main-text-color, 60%);
     font-size: 0.85em;
     font-weight: 600;
     cursor: pointer;
@@ -1052,13 +1052,13 @@
     &:hover,
     &:focus-visible {
         border-color: #d03b3b;
-        color: #d03b3b;
+        color: mix(#d03b3b, $o-main-text-color, 60%);
         outline: none;
     }
 
     &.o_active {
         background-color: rgba(208, 59, 59, 0.16);
-        color: #d03b3b;
+        color: mix(#d03b3b, $o-main-text-color, 60%);
     }
 }
 
@@ -1072,13 +1072,13 @@
     overflow-y: auto;
     padding: 5px;
     border-radius: 8px;
-    background: var(--o-view-background-color, #fff);
+    background: $o-view-background-color;
     box-shadow: 0 3px 14px rgba(0, 0, 0, 0.22);
 }
 
 .o_chatroom_mentions_title {
     padding: 5px 8px;
-    color: #667781;
+    color: mix(#667781, $o-main-text-color, 60%);
     font-size: 0.72em;
     text-transform: uppercase;
 }
@@ -1250,7 +1250,7 @@
     white-space: nowrap;
 
     &.o_over_limit {
-        color: #dc2626;
+        color: $o-main-text-color;
         font-weight: 600;
     }
 }

@@ -47,7 +47,7 @@
         "report/co_payroll_payslip_report.xml",
     ],
     "installable": True,
-    "icon": "static/description/icon.svg",
+    "icon": "/l10n_co_payroll/static/description/icon.svg",
     "application": True,
     "post_init_hook": "post_init_hook",
 }

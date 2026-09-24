@@ -24,9 +24,17 @@ class ChatroomAiTool(models.Model):
 
     @api.model
     def enabled_for_user(self):
+        # `res.users.groups_id` ya no existe en Odoo 19: esta linea lanzaba
+        # un AttributeError, o sea que la lista de herramientas del agente
+        # no se podia cargar. El campo equivalente es `group_ids`, pero lo
+        # que hace falta aqui es `all_group_ids`, que incluye los grupos
+        # implicados: quien esta en "Responsable" tiene implicito el grupo
+        # "Usuario" y debe ver tambien las herramientas de ese grupo, que
+        # es como Odoo resuelve `has_group` en todas partes.
         tools = self.search([
             ('active', '=', True),
             '|', ('company_id', '=', False), ('company_id', '=', self.env.company.id),
-            '|', ('group_id', '=', False), ('group_id', 'in', self.env.user.groups_id.ids),
+            '|', ('group_id', '=', False),
+            ('group_id', 'in', self.env.user.all_group_ids.ids),
         ])
         return tools

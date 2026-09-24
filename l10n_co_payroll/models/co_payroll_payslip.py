@@ -146,7 +146,11 @@ class CoPayrollSalaryRuleNative(models.Model):
 
 
 class HrPayslipCoPayroll(models.Model):
-    _inherit = "hr.payslip"
+    # Con `_inherit` en lista y sin `_name`, Odoo no extiende
+    # `hr.payslip`: crea un modelo nuevo a partir del nombre de la clase
+    # y se queda sin tabla. Hay que declarar el `_name`.
+    _name = "hr.payslip"
+    _inherit = ["hr.payslip", "l10n.co.payroll.diagnostic.mixin"]
 
     visible_line_ids = fields.Many2many(
         "hr.payslip.line",
@@ -274,5 +278,5 @@ class HrPayslipCoPayroll(models.Model):
                     "employer_cost": values["employer_cost"],
                 })
             except Exception as error:
-                payslip.write({"co_formula_applied": False, "co_formula_error": str(error)[:255]})
+                payslip._persist_diagnostic({"co_formula_applied": False, "co_formula_error": str(error)[:255]})
                 raise

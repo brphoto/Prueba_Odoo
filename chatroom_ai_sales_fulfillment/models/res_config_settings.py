@@ -30,12 +30,20 @@ class ResConfigSettings(models.TransientModel):
         string='Horas para considerar abandonado un carrito',
         default=24,
         config_parameter='chatroom_ai_sales.cart_reminder_hours',
-    )
+    
+        help=(
+            "Horas que se espera antes de recordarle al cliente que dejó un "
+            "carrito sin terminar. Demasiado pronto resulta insistente; "
+            "demasiado tarde y ya compró en otro sitio."))
     chatroom_ai_sales_cart_reminder_max = fields.Integer(
         string='Máximo de recordatorios por carrito',
         default=1,
         config_parameter='chatroom_ai_sales.cart_reminder_max',
-    )
+    
+        help=(
+            "Cuántos recordatorios de carrito se envían como máximo al "
+            "mismo cliente. Pasado ese número no se insiste más, aunque el "
+            "carrito siga abierto."))
     chatroom_ai_sales_payment_retry_enabled = fields.Boolean(
         string='Reintentar enlaces de pago fallidos',
         config_parameter='chatroom_ai_sales.payment_retry_enabled',
@@ -45,9 +53,15 @@ class ResConfigSettings(models.TransientModel):
         string='Horas antes de reintentar un pago',
         default=24,
         config_parameter='chatroom_ai_sales.payment_retry_hours',
-    )
+    
+        help=(
+            "Horas entre un intento de cobro fallido y el siguiente aviso "
+            "al cliente."))
     chatroom_ai_sales_payment_retry_max = fields.Integer(
         string='Máximo de reintentos de pago',
         default=1,
         config_parameter='chatroom_ai_sales.payment_retry_max',
-    )
+    
+        help=(
+            "Cuántas veces se reintenta avisar de un pago pendiente antes "
+            "de dejarlo para revisión manual."))

@@ -7,8 +7,12 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.serialization.pkcs12 import load_key_and_certificates
 
+import logging
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class CoPayrollDianCompany(models.Model):
@@ -198,23 +202,30 @@ class CoPayrollDianCompany(models.Model):
         document_model_id = self.env["ir.model"]._get_id("l10n.co.payroll.dian.document")
         now = fields.Datetime.now()
         for company in self.search([("co_dian_notifications_enabled", "=", True)]):
-            users = company.co_dian_notify_user_ids or self.env["res.users"].search([
-                ("company_ids", "in", company.id), ("all_group_ids", "in", self.env.ref("l10n_co_payroll.group_co_payroll_manager").id),
-            ], limit=5)
-            if not users:
-                users = self.env.user
-            if company.co_dian_notify_errors:
-                documents = document_model.search([("company_id", "=", company.id), ("state", "=", "error")], limit=100)
-                for document in documents:
-                    self._create_dian_activity(document, document_model_id, users, activity_type, _("Error DIAN: %s") % (document.name or document.employee_id.display_name), document.error_message or document.status_message or _("Revisar el documento."))
-            if company.co_dian_notify_pending:
-                threshold = now - timedelta(hours=max(company.co_dian_pending_alert_hours, 1))
-                documents = document_model.search([("company_id", "=", company.id), ("state", "=", "pending"), ("sent_at", "<=", threshold)], limit=100)
-                for document in documents:
-                    self._create_dian_activity(document, document_model_id, users, activity_type, _("Pendiente DIAN: %s") % (document.name or document.employee_id.display_name), _("El documento lleva más de %s horas sin respuesta.") % company.co_dian_pending_alert_hours)
-            if company.co_dian_notify_certificate and company.co_dian_certificate_status in ("expiring", "expired"):
-                message = _("El certificado DIAN está vencido.") if company.co_dian_certificate_status == "expired" else _("El certificado DIAN está próximo a vencer el %s.") % fields.Datetime.to_string(company.co_dian_certificate_expiration)
-                self._create_dian_activity(company, company_model_id, users, activity_type, _("Revisar certificado DIAN"), message)
+            try:
+                # Un fallo en un registro no puede tirar la corrida entera
+                # ni revertir lo ya hecho con los anteriores.
+                with self.env.cr.savepoint():
+                    users = company.co_dian_notify_user_ids or self.env["res.users"].search([
+                        ("company_ids", "in", company.id), ("all_group_ids", "in", self.env.ref("l10n_co_payroll.group_co_payroll_manager").id),
+                    ], limit=5)
+                    if not users:
+                        users = self.env.user
+                    if company.co_dian_notify_errors:
+                        documents = document_model.search([("company_id", "=", company.id), ("state", "=", "error")], limit=100)
+                        for document in documents:
+                            self._create_dian_activity(document, document_model_id, users, activity_type, _("Error DIAN: %s") % (document.name or document.employee_id.display_name), document.error_message or document.status_message or _("Revisar el documento."))
+                    if company.co_dian_notify_pending:
+                        threshold = now - timedelta(hours=max(company.co_dian_pending_alert_hours, 1))
+                        documents = document_model.search([("company_id", "=", company.id), ("state", "=", "pending"), ("sent_at", "<=", threshold)], limit=100)
+                        for document in documents:
+                            self._create_dian_activity(document, document_model_id, users, activity_type, _("Pendiente DIAN: %s") % (document.name or document.employee_id.display_name), _("El documento lleva más de %s horas sin respuesta.") % company.co_dian_pending_alert_hours)
+                    if company.co_dian_notify_certificate and company.co_dian_certificate_status in ("expiring", "expired"):
+                        message = _("El certificado DIAN está vencido.") if company.co_dian_certificate_status == "expired" else _("El certificado DIAN está próximo a vencer el %s.") % fields.Datetime.to_string(company.co_dian_certificate_expiration)
+                        self._create_dian_activity(company, company_model_id, users, activity_type, _("Revisar certificado DIAN"), message)
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "_cron_create_dian_notifications: fallo procesando %s", company.display_name)
         return True
 
     @staticmethod

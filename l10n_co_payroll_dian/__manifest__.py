@@ -7,6 +7,7 @@
     """,
     "author": "Bryan Cando",
     "category": "Human Resources/Payroll",
+    'icon': '/l10n_co_payroll_dian/static/description/icon.svg',
     "version": "19.0.4.0.0",
     "license": "OPL-1",
     "depends": ["l10n_co_payroll", "certificate"],

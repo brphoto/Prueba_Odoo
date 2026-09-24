@@ -7,7 +7,8 @@ from odoo.exceptions import ValidationError
 
 class ChatroomAiAutomation(models.Model):
     _name = 'chatroom.ai.automation'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin',
+                'chatroom.diagnostic.mixin']
     _description = 'Automatización del agente IA'
     _order = 'sequence, name'
 
@@ -59,17 +60,35 @@ class ChatroomAiAutomation(models.Model):
 
     def _compute_task_count(self):
         task_model = self.env['chatroom.ai.task'].sudo()
+        # Una consulta agrupada para todo el lote en vez de un
+        # search_count por fila de la lista.
+        counts = {}
+        record_ids = [record.id for record in self._origin if record.id]
+        if record_ids:
+            counts = {
+                group.id: count
+                for group, count in task_model._read_group(
+                    [('automation_id', 'in', record_ids)], ['automation_id'], ['__count'])
+                if group
+            }
         for automation in self:
-            automation.task_count = task_model.search_count([
-                ('automation_id', '=', automation.id),
-            ])
+            automation.task_count = counts.get(automation._origin.id, 0)
 
     def _compute_run_count(self):
         run_model = self.env['chatroom.ai.automation.run'].sudo()
+        # Una consulta agrupada para todo el lote en vez de un
+        # search_count por fila de la lista.
+        counts = {}
+        record_ids = [record.id for record in self._origin if record.id]
+        if record_ids:
+            counts = {
+                group.id: count
+                for group, count in run_model._read_group(
+                    [('automation_id', 'in', record_ids)], ['automation_id'], ['__count'])
+                if group
+            }
         for automation in self:
-            automation.run_count = run_model.search_count([
-                ('automation_id', '=', automation.id),
-            ])
+            automation.run_count = counts.get(automation._origin.id, 0)
 
     def action_view_tasks(self):
         """Open every task created by this automation, including completed ones."""
@@ -321,32 +340,48 @@ class ChatroomAiAutomation(models.Model):
         reused = 0
         skipped_details = []
         errors = []
+        task_type = self.task_type or 'daily_review'
+        # Qué canales tienen ya una tarea viva, en una sola consulta para todo
+        # el lote. Antes se preguntaba canal por canal: el cron recorre cientos
+        # de conversaciones y hacía una consulta por cada una solo para
+        # descartarlas. El conjunto se va alimentando con lo que se crea aquí
+        # dentro, así que un canal repetido en el mismo lote sigue omitiéndose.
+        ocupados = set()
+        if channels:
+            ocupados = {
+                canal.id
+                for [canal] in tasks._read_group(
+                    [('channel_id', 'in', channels.ids),
+                     ('task_type', '=', task_type),
+                     ('state', 'in', ('awaiting_approval', 'planned', 'running'))],
+                    groupby=['channel_id'])
+            }
         for channel in channels:
+            # El descarte va fuera del savepoint: solo consulta, no escribe
+            # nada que haya que poder deshacer. Dentro costaba un SAVEPOINT y
+            # un RELEASE por canal omitido, que en una pasada donde casi todo
+            # está ya atendido es el grueso del trabajo.
+            if channel.id in ocupados:
+                reused += 1
+                skipped_details.append(
+                    _('Tarea ya existente: %s') % channel.display_name)
+                continue
             try:
                 with self.env.cr.savepoint():
-                    duplicate = tasks.search_count([
-                        ('channel_id', '=', channel.id),
-                        ('task_type', '=', self.task_type or 'daily_review'),
-                        ('state', 'in', ('awaiting_approval', 'planned', 'running')),
-                    ])
-                    if duplicate:
-                        reused += 1
-                        skipped_details.append(
-                            _('Tarea ya existente: %s') % channel.display_name)
-                        continue
                     instruction = self.instruction or (_('Automatización: %s') % self.name)
                     template = getattr(self, 'template_id', False)
                     if template:
                         instruction = '%s\n\nMensaje personalizado preparado:\n%s' % (
                             instruction, template.render(channel=channel))
                     task = tasks.create_from_channel(
-                        channel, self.task_type or 'daily_review', instruction,
+                        channel, task_type, instruction,
                         self.approval_required, automation=self)
                     task.action_plan()
                     if not self.approval_required and task.state == 'planned':
                         task.action_run()
                     created += 1
                     created_task_ids.append(task.id)
+                    ocupados.add(channel.id)
             except Exception as exc:
                 errors.append('%s: %s' % (channel.display_name, exc))
         skipped = max(len(channels) - created, 0)
@@ -381,11 +416,43 @@ class ChatroomAiAutomation(models.Model):
         if not enabled:
             return 0
         total = 0
-        for automation in self.sudo().search([('active', '=', True), ('trigger', 'in', ('daily_review', 'open_conversation', 'open_opportunity', 'pending_quote', 'pending_activity', 'overdue_invoice'))]):
+        automations = self.sudo().search([
+            ('active', '=', True),
+            ('trigger', 'in', ('daily_review', 'open_conversation',
+                               'open_opportunity', 'pending_quote',
+                               'pending_activity', 'overdue_invoice')),
+        ])
+        for automation in automations:
             try:
-                total += automation._run_for_channels(
-                    automation._channels_for(automation), execution_type='automatic')
+                # Un savepoint por automatización, no un rollback.
+                #
+                # `cr.rollback()` deshace la transacción ENTERA, no la
+                # automatización que ha fallado: si reventaba la tercera, se
+                # perdían también las tareas que ya habían creado la primera
+                # y la segunda. Y como `total` ya las había sumado, el cron
+                # terminaba informando de un trabajo que acababa de tirar.
+                with self.env.cr.savepoint():
+                    creadas = automation._run_for_channels(
+                        automation._channels_for(automation),
+                        execution_type='automatic')
             except Exception as exc:
-                self.env.cr.rollback()
-                automation.write({'last_run': fields.Datetime.now(), 'last_error': str(exc)[:4000]})
+                # El savepoint se lleva por delante el registro de ejecución
+                # que abre `_run_for_channels`, así que la incidencia se anota
+                # desde una transacción aparte. Si no, el fallo no queda en
+                # ningún sitio y la automatización parece no haber corrido.
+                automation._persist_diagnostic({
+                    'last_run': fields.Datetime.now(),
+                    'last_error': str(exc)[:4000],
+                })
+                automation._persist_diagnostic_record(
+                    'chatroom.ai.automation.run', {
+                        'automation_id': automation.id,
+                        'execution_type': 'automatic',
+                        'execution_date': fields.Datetime.now(),
+                        'state': 'failed',
+                        'summary': _('Ejecución interrumpida'),
+                        'error_details': str(exc)[:4000],
+                    })
+            else:
+                total += creadas
         return total

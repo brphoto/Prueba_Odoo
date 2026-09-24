@@ -4,6 +4,7 @@
     'summary': 'Envía campañas NPS segmentadas por WhatsApp mediante Chatroom.',
     'description': 'Conector opcional: agrega WhatsApp a las campañas NPS sin acoplar el módulo base a Chatroom.',
     'version': '19.0.1.0.0',
+    'icon': '/crm_customer_experience_whatsapp/static/description/icon.svg',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
     'category': 'Sales/CRM',

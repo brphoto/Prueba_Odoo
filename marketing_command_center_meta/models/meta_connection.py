@@ -13,7 +13,7 @@ _logger = logging.getLogger(__name__)
 class MarketingMetaConnection(models.Model):
     _name = 'marketing.meta.connection'
     _description = 'Conexión de Meta para marketing social'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'marketing.diagnostic.mixin']
     _order = 'active desc, name'
 
     name = fields.Char(string='Nombre de la conexión', required=True, tracking=True)
@@ -36,7 +36,7 @@ class MarketingMetaConnection(models.Model):
     permissions_summary = fields.Text(string='Permisos detectados', readonly=True)
     last_permissions_check = fields.Datetime(string='Última comprobación de permisos', readonly=True)
     page_ids = fields.One2many('marketing.meta.page', 'connection_id', string='Páginas')
-    page_count = fields.Integer(string='Páginas', compute='_compute_page_count')
+    page_count = fields.Integer(string='Número de páginas', compute='_compute_page_count')
     max_pages_per_run = fields.Integer(
         string='Páginas por lote', default=1, required=True,
         help='Cantidad máxima de páginas que se sincronizan por ejecución. Usa un número alto si realmente necesitas procesarlas todas; un lote pequeño evita tiempos de espera.')
@@ -91,7 +91,7 @@ class MarketingMetaConnection(models.Model):
             try:
                 payload = record._client().paged('me/permissions', {'limit': 100})
             except MetaGraphError as error:
-                record.write({
+                record._persist_diagnostic({
                     'permissions_state': 'unknown',
                     'permissions_summary': str(error),
                     'last_permissions_check': fields.Datetime.now(),

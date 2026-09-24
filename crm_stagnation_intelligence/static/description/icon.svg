@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="titulo-crm-stagnation-intelligence desc-crm-stagnation-intelligence">
+  <title id="titulo-crm-stagnation-intelligence">Detección de estancamiento</title>
+  <desc id="desc-crm-stagnation-intelligence">Lupa sobre una curva que se aplana</desc>
+  <defs>
+    <linearGradient id="marco-crm-stagnation-intelligence" x1="24" y1="18" x2="232" y2="240" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F2937"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="marca-crm-stagnation-intelligence" x1="46" y1="38" x2="215" y2="218" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EF4444"/>
+      <stop offset="1" stop-color="#B91C1C"/>
+    </linearGradient>
+    <filter id="sombra-crm-stagnation-intelligence" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+  </defs>
+
+  <!-- Marco, igual en todos los modulos del repositorio -->
+  <rect x="24" y="18" width="208" height="220" rx="25" fill="#0B1220"/>
+  <rect x="25.5" y="19.5" width="205" height="217" rx="23.5" fill="url(#marco-crm-stagnation-intelligence)" stroke="#475569" stroke-width="3"/>
+  <rect x="38" y="32" width="180" height="180" rx="9" fill="#0A1422" stroke="#334155" stroke-width="2"/>
+  <rect x="46" y="40" width="164" height="164" rx="4" fill="url(#marca-crm-stagnation-intelligence)" filter="url(#sombra-crm-stagnation-intelligence)"/>
+
+  <!-- Simbolo propio del modulo -->
+  <path d="M62 176c26 0 34-44 58-44s24 26 50 26" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="164" cy="96" r="30" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M186 118l22 22" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

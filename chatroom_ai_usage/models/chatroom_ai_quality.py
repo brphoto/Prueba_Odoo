@@ -90,7 +90,7 @@ class ChatroomAiQualityResult(models.Model):
     _order = 'run_date desc, id desc'
 
     test_id = fields.Many2one('chatroom.ai.quality.test', required=True, ondelete='cascade')
-    run_date = fields.Datetime(string='Fecha', required=True, default=fields.Datetime.now)
+    run_date = fields.Datetime(string='Fecha', required=True, default=fields.Datetime.now, index=True)
     score = fields.Float(string='Puntaje')
     state = fields.Selection([
         ('passed', 'Aprobada'), ('warning', 'Revisar'), ('error', 'Error'),

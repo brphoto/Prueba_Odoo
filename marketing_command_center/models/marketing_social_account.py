@@ -7,7 +7,7 @@ from .marketing_social_constants import PLATFORM_SELECTION
 class MarketingSocialAccount(models.Model):
     _name = 'marketing.social.account'
     _description = 'Cuenta de red social'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'marketing.diagnostic.mixin']
     _order = 'platform, name'
 
     name = fields.Char(string='Nombre de la cuenta', required=True, tracking=True)
@@ -33,7 +33,7 @@ class MarketingSocialAccount(models.Model):
     interaction_count = fields.Integer(compute='_compute_counts', string='Interacciones')
     conversation_ids = fields.One2many(
         'marketing.social.conversation', 'account_id', string='Conversaciones')
-    conversation_count = fields.Integer(compute='_compute_counts', string='Conversaciones')
+    conversation_count = fields.Integer(compute='_compute_counts', string='Número de conversaciones')
 
     @api.depends('publication_ids', 'publication_ids.interaction_ids', 'conversation_ids')
     def _compute_counts(self):
@@ -44,12 +44,24 @@ class MarketingSocialAccount(models.Model):
 
     @api.constrains('external_id', 'platform')
     def _check_external_id_unique(self):
-        for record in self.filtered('external_id'):
-            duplicate = self.search_count([
-                ('id', '!=', record.id),
-                ('platform', '=', record.platform),
-                ('external_id', '=', record.external_id),
-                ('company_id', '=', record.company_id.id),
-            ])
-            if duplicate:
+        records = self.filtered('external_id')
+        if not records:
+            return
+        # Una consulta para todo el lote en vez de un search_count por
+        # cuenta. La restriccion se dispara en cada alta o modificacion
+        # masiva, que es justo cuando mas cuentas hay en juego.
+        candidates = self.search([
+            ('platform', 'in', records.mapped('platform')),
+            ('external_id', 'in', records.mapped('external_id')),
+            ('company_id', 'in', records.company_id.ids),
+        ])
+        seen = {}
+        for candidate in candidates:
+            key = (candidate.platform, candidate.external_id,
+                   candidate.company_id.id)
+            seen.setdefault(key, candidate.browse())
+            seen[key] |= candidate
+        for record in records:
+            key = (record.platform, record.external_id, record.company_id.id)
+            if len(seen.get(key, record.browse())) > 1:
                 raise ValidationError(_('El identificador externo ya existe para esta red y compañía.'))

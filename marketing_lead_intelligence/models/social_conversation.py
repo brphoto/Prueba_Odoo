@@ -7,7 +7,9 @@ class MarketingSocialConversation(models.Model):
     crm_lead_ids = fields.One2many(
         'crm.lead', 'marketing_conversation_id', string='Leads CRM')
     crm_lead_count = fields.Integer(
-        compute='_compute_crm_lead_count', string='Leads CRM')
+        # Se llamaba igual que `crm_lead_ids` y en el selector de columnas
+        # salian dos entradas identicas.
+        compute='_compute_crm_lead_count', string='Número de leads CRM')
 
     @api.depends('crm_lead_ids')
     def _compute_crm_lead_count(self):

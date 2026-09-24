@@ -79,7 +79,15 @@ class ChatroomOperationsCheck(models.Model):
             lines = self.env['chatroom.whatsapp.number'].sudo().search([('active', '=', True)])
             token = icp.get_param('chatroom_whatsapp.access_token')
             ready = any(line.phone_number_id and (line.access_token or token) for line in lines)
-            return ('ok', _('Hay una línea activa con identificador y credencial.'), _('Puedes probar el webhook o generar una conversación DEMO QA.')) if ready else ('warning', _('Hay líneas activas, pero falta completar sus credenciales.'), _('Configura Phone Number ID y Token en Ajustes > Chatroom WhatsApp.'))
+            if ready:
+                return 'ok', _('Hay una línea activa con identificador y credencial.'), _('Puedes probar el webhook o generar una conversación DEMO QA.')
+            # Sin líneas, `any([])` también es falso, y el aviso salía
+            # diciendo «hay líneas activas, pero…». Quien no ha dado de alta
+            # ninguna se quedaba buscando unas credenciales incompletas que
+            # no existen.
+            if not lines:
+                return 'warning', _('No hay ninguna línea de WhatsApp activa.'), _('Da de alta una línea en Ajustes > Chatroom WhatsApp antes de configurar credenciales.')
+            return 'warning', _('Hay %s línea(s) activa(s), pero falta completar sus credenciales.') % len(lines), _('Configura Phone Number ID y Token en Ajustes > Chatroom WhatsApp.')
         if code == 'ai_provider':
             ready = bool(icp.get_param('chatroom_whatsapp.ai_provider_url') and icp.get_param('chatroom_whatsapp.ai_api_key'))
             if not ready and self._has_model('chatroom.ai.provider.model'):
@@ -105,8 +113,27 @@ class ChatroomOperationsCheck(models.Model):
             ready = self._has_model('chatroom.payment.link')
             return ('ok', _('El modelo modular de links de pago está disponible.'), _('El proveedor concreto se selecciona por configuración.')) if ready else ('not_installed', _('No hay módulo de links de pago instalado.'), _('Instala solo el conector de pagos que la empresa vaya a utilizar.'))
         if code == 'human_approval':
-            ready = self._param_enabled('chatroom_ai_agent.require_approval', True) or icp.get_param('chatroom_ai_agent.safety_profile', 'supervised') == 'supervised'
-            return ('ok', _('Las acciones sensibles mantienen aprobación humana.'), _('Es el modo recomendado para cotizaciones, pedidos, pagos y mensajes.')) if ready else ('error', _('La aprobación humana está desactivada.'), _('Actívala antes de permitir autonomía comercial.'))
+            # Quien decide esto de verdad son dos parámetros, y cada uno
+            # manda en un sitio distinto:
+            #
+            #   - `require_approval` rige las respuestas automáticas, en
+            #     `chatroom.channel._ai_requires_approval`.
+            #   - `mode` rige las tareas: con 'supervised' o 'simulation',
+            #     `chatroom.ai.task.create_from_channel` fuerza la aprobación
+            #     aunque el anterior esté desactivado.
+            #
+            # `safety_profile` no lo lee nadie a la hora de decidir: es un
+            # selector de preajustes cuyo onchange escribe esos dos. Mirarlo
+            # aquí daba VERDE a quien destildaba la casilla sin haber tocado
+            # nunca el selector, porque entonces el parámetro no existe y
+            # `get_param` devolvía el 'supervised' por defecto.
+            exige = self._param_enabled('chatroom_ai_agent.require_approval', True)
+            modo = icp.get_param('chatroom_ai_agent.mode', 'supervised')
+            if exige:
+                return 'ok', _('Las acciones sensibles mantienen aprobación humana.'), _('Es el modo recomendado para cotizaciones, pedidos, pagos y mensajes.')
+            if modo in ('supervised', 'simulation'):
+                return 'warning', _('Las tareas siguen pidiendo aprobación porque el modo es «%s», pero las respuestas automáticas salen sin revisión.') % modo, _('Si querías revisarlo todo, vuelve a activar la aprobación humana en Ajustes.')
+            return 'error', _('La aprobación humana está desactivada y el modo es «%s»: la IA actúa sin revisión.') % modo, _('Actívala antes de permitir autonomía comercial.')
         if code == 'python_dependencies':
             missing = [item for item in ('requests', 'pypdf') if importlib.util.find_spec(item) is None]
             return ('ok', _('requests y pypdf están disponibles.'), _('La indexación de PDFs con texto está preparada.')) if not missing else ('error', _('Faltan: %s.') % ', '.join(missing), _('Instala las dependencias indicadas en requirements.txt.'))
@@ -124,11 +151,27 @@ class ChatroomOperationsCheck(models.Model):
     @api.model
     def action_run_all(self):
         now = fields.Datetime.now()
+        definitions = self._definitions()
+        empresa = self.env.company.id
+        # Una búsqueda para los doce códigos, no una por cada uno. Y las
+        # que falten se crean de una vez: esto se dispara desde el panel y
+        # desde el cron, y antes eran doce consultas antes de empezar.
+        existentes = {
+            record.code: record
+            for record in self.sudo().search([
+                ('code', 'in', [item['code'] for item in definitions]),
+                ('company_id', '=', empresa),
+            ])
+        }
+        faltan = [dict(item, company_id=empresa) for item in definitions
+                  if item['code'] not in existentes]
+        if faltan:
+            for record in self.sudo().create(faltan):
+                existentes[record.code] = record
+
         result = self.browse()
-        for definition in self._definitions():
-            record = self.sudo().search([('code', '=', definition['code']), ('company_id', '=', self.env.company.id)], limit=1)
-            if not record:
-                record = self.sudo().create(dict(definition, company_id=self.env.company.id))
+        for definition in definitions:
+            record = existentes[definition['code']]
             state, detail, recommendation = self._evaluate(definition['code'])
             record.write({'state': state, 'detail': detail, 'recommendation': recommendation, 'checked_at': now})
             result |= record

@@ -2,6 +2,7 @@
     "name": "Nómina Colombia - Documentos",
     "summary": "Documentos y certificados laborales opcionales",
     "version": "19.0.2.0.0",
+    'icon': '/l10n_co_payroll_documents/static/description/icon.svg',
     "category": "Human Resources/Payroll",
     "author": "Bryan Cando",
     "license": "OPL-1",

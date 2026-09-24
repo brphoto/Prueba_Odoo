@@ -31,7 +31,22 @@ class ChatroomMessage(models.Model):
             ('active', '=', True), ('trigger', '=', 'open_conversation'),
         ], order='sequence, id') if event_enabled and 'chatroom.ai.automation' in self.env else automation_model.browse()
         tasks = self.env['chatroom.ai.task'].sudo()
-        for message in messages.filtered(lambda item: item.direction == 'inbound' and item.channel_id):
+        # Que canales tienen ya una tarea abierta, y con que automatizacion,
+        # resuelto en UNA consulta para todo el lote. Los conjuntos se van
+        # alimentando con lo que se crea mas abajo, para que dos mensajes
+        # del mismo canal en el mismo lote se comporten como antes.
+        inbound = messages.filtered(
+            lambda item: item.direction == 'inbound' and item.channel_id)
+        busy_channels = set()
+        busy_pairs = set()
+        if inbound:
+            for task in tasks.search([
+                ('channel_id', 'in', inbound.channel_id.ids),
+                ('state', 'in', ('draft', 'awaiting_approval', 'planned', 'running')),
+            ]):
+                busy_channels.add(task.channel_id.id)
+                busy_pairs.add((task.channel_id.id, task.automation_id.id))
+        for message in inbound:
             channel = message.channel_id
             if channel.ai_paused:
                 continue
@@ -41,15 +56,13 @@ class ChatroomMessage(models.Model):
             if use_router:
                 try:
                     with self.env.cr.savepoint():
-                        duplicate = tasks.search_count([
-                            ('channel_id', '=', channel.id),
-                            ('state', 'in', ('draft', 'awaiting_approval', 'planned', 'running')),
-                        ])
-                        if not duplicate:
+                        if channel.id not in busy_channels:
                             task = tasks.create_from_channel(
                                 channel, 'orchestrate', route['prompt'],
                                 approval_required=True)
                             task.action_plan()
+                            busy_channels.add(channel.id)
+                            busy_pairs.add((channel.id, task.automation_id.id))
                             channel.message_post(
                                 body=_('Agente IA: se preparó la ruta «%s» para revisión humana.') % route['label'],
                                 subtype_xmlid='mail.mt_note',
@@ -66,12 +79,7 @@ class ChatroomMessage(models.Model):
                     # un error. La tarea queda auditada cuando puede crearse y
                     # el mensaje sigue disponible para el equipo humano.
                     with self.env.cr.savepoint():
-                        duplicate = tasks.search_count([
-                            ('channel_id', '=', channel.id),
-                            ('automation_id', '=', automation.id),
-                            ('state', 'in', ('draft', 'awaiting_approval', 'planned', 'running')),
-                        ])
-                        if duplicate:
+                        if (channel.id, automation.id) in busy_pairs:
                             continue
                         task = tasks.create_from_channel(
                             channel, automation.task_type or 'followup',
@@ -79,6 +87,8 @@ class ChatroomMessage(models.Model):
                             automation.approval_required,
                             automation=automation)
                         task.action_plan()
+                        busy_channels.add(channel.id)
+                        busy_pairs.add((channel.id, automation.id))
 
                     # La ejecución automática nunca salta las barreras propias
                     # de las herramientas (envíos, cobros, cotizaciones y

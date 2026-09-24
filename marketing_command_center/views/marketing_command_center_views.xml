@@ -288,7 +288,7 @@
     </record>
     <record id="view_marketing_social_agent_chat_form" model="ir.ui.view">
         <field name="name">marketing.social.agent.chat.form</field><field name="model">marketing.social.agent.chat</field>
-        <field name="arch" type="xml"><form string="Agente de marketing social" class="o_marketing_agent_form"><header><button name="action_send_message" type="object" string="Enviar consulta" class="oe_highlight" icon="fa-paper-plane"/><field name="state" widget="statusbar" statusbar_visible="draft,answered,error"/></header><sheet><div class="oe_title"><h1><field name="name"/></h1></div><div class="o_marketing_agent_intro">Pregunta en lenguaje natural sobre publicaciones, redes, engagement, comentarios, bandeja social, vehículos o calidad de datos. Las consultas locales usan lo sincronizado y no consumen tokens.</div><div class="alert alert-info">Ejemplos: «¿por qué el engagement está en cero?», «¿cuántos mensajes entrantes sin leer hay?», «¿qué vehículos están publicados?» o «¿cuál fue la mejor publicación?».</div><group col="2"><group><field name="platform_filter"/><field name="period_days"/><field name="intent" readonly="1"/></group><group><field name="message_count" readonly="1"/><field name="company_id" groups="base.group_multi_company"/></group></group><notebook><page string="Chat analítico"><div class="o_marketing_agent_input"><field name="draft_message" nolabel="1" widget="text" placeholder="Ejemplo: ¿cuántos mensajes y conversaciones sociales tengo?"/><button name="action_send_message" type="object" string="Consultar" class="oe_highlight" icon="fa-paper-plane"/></div><field name="chat_message_ids" nolabel="1" readonly="1"><list string="Conversación"><field name="sequence" column_invisible="1"/><field name="speaker" widget="badge"/><field name="body" string="Mensaje"/><field name="message_date"/></list></field></page><page string="Última respuesta"><field name="answer" nolabel="1" readonly="1" widget="text"/><field name="source_summary" nolabel="1" readonly="1" widget="text"/><field name="source_publication_ids" readonly="1"><list><field name="name"/><field name="platform"/><field name="published_at"/><field name="latest_engagement_rate"/></list></field></page></notebook></sheet><chatter/></form></field>
+        <field name="arch" type="xml"><form string="Agente de marketing social" class="o_marketing_agent_form"><header><button name="action_send_message" type="object" string="Enviar consulta" class="oe_highlight" icon="fa-paper-plane"/><field name="state" widget="statusbar" statusbar_visible="draft,answered,error"/></header><sheet><div class="oe_title"><h1><field name="name"/></h1></div><div class="o_marketing_agent_intro">Pregunta en lenguaje natural sobre publicaciones, redes, engagement, comentarios, bandeja social, vehículos o calidad de datos. Las consultas locales usan lo sincronizado y no consumen tokens.</div><div class="alert alert-info" role="status">Ejemplos: «¿por qué el engagement está en cero?», «¿cuántos mensajes entrantes sin leer hay?», «¿qué vehículos están publicados?» o «¿cuál fue la mejor publicación?».</div><group col="2"><group><field name="platform_filter"/><field name="period_days"/><field name="intent" readonly="1"/></group><group><field name="message_count" readonly="1"/><field name="company_id" groups="base.group_multi_company"/></group></group><notebook><page string="Chat analítico"><div class="o_marketing_agent_input"><field name="draft_message" nolabel="1" widget="text" placeholder="Ejemplo: ¿cuántos mensajes y conversaciones sociales tengo?"/><button name="action_send_message" type="object" string="Consultar" class="oe_highlight" icon="fa-paper-plane"/></div><field name="chat_message_ids" nolabel="1" readonly="1"><list string="Conversación"><field name="sequence" column_invisible="1"/><field name="speaker" widget="badge"/><field name="body" string="Mensaje"/><field name="message_date"/></list></field></page><page string="Última respuesta"><field name="answer" nolabel="1" readonly="1" widget="text"/><field name="source_summary" nolabel="1" readonly="1" widget="text"/><field name="source_publication_ids" readonly="1"><list><field name="name"/><field name="platform"/><field name="published_at"/><field name="latest_engagement_rate"/></list></field></page></notebook></sheet><chatter/></form></field>
     </record>
 
     <!-- Búsquedas y filtros comunes: permiten encontrar información sin abrir
@@ -482,7 +482,7 @@
             <xpath expr="//field[@name='caption']" position="after">
                 <notebook>
                     <page string="Edicion controlada">
-                        <div class="alert alert-info">Edita una copia local. El conector de la red decidira si puede sincronizarla.</div>
+                        <div class="alert alert-info" role="status">Edita una copia local. El conector de la red decidira si puede sincronizarla.</div>
                         <group col="2">
                             <group>
                                 <field name="edit_state" widget="badge"/>
@@ -545,7 +545,7 @@
                                 <strong class="o_marketing_product_title"><field name="name"/></strong>
                                 <div class="o_marketing_product_sku" t-if="record.default_code.raw_value"><field name="default_code"/></div>
                                 <div class="o_marketing_product_price"><field name="list_price"/> <field name="currency_id"/></div>
-                                <div class="o_marketing_product_stock"><i class="fa fa-cubes me-1"/><field name="available_qty"/> disponibles</div>
+                                <div class="o_marketing_product_stock"><i class="fa fa-cubes me-1" title="Existencias disponibles" aria-hidden="true"/><field name="available_qty"/> disponibles</div>
                                 <div class="o_marketing_product_actions"><button name="action_open_product" type="object" class="btn btn-primary btn-sm"><i class="fa fa-pencil me-1"/> Producto Odoo</button><button name="action_open_public_url" type="object" class="btn btn-light btn-sm" invisible="not public_url"><i class="fa fa-external-link me-1"/> Ver enlace</button></div>
                             </div>
                         </article>
@@ -567,7 +567,7 @@
                 </header>
                 <sheet>
                     <div class="oe_title"><h1><field name="name"/></h1></div>
-                    <div class="alert alert-info">Este catálogo consulta productos nativos de Odoo. Los precios, imágenes y existencias no se copian manualmente.</div>
+                    <div class="alert alert-info" role="status">Este catálogo consulta productos nativos de Odoo. Los precios, imágenes y existencias no se copian manualmente.</div>
                     <group col="2">
                         <group string="Producto de Odoo">
                             <field name="product_tmpl_id"/>

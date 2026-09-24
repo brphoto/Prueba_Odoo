@@ -21,8 +21,16 @@ Los conectores de cada red y los puentes con CRM o Chatroom son opcionales.''',
         'web.assets_backend': [
             'marketing_command_center/static/src/scss/marketing_command_center.scss',
         ],
+        # Solo redefine colores; la maquetacion vive en el SCSS claro.
+        'web.assets_web_dark': [
+            'marketing_command_center/static/src/scss/marketing_command_center.dark.scss',
+        ],
+        # Bundle que Odoo carga solo durante los tests de navegador.
+        'web.assets_tests': [
+            'marketing_command_center/static/tests/tours/marketing_command_center_tour.js',
+        ],
     },
-    'icon': 'static/description/icon.svg',
+    'icon': '/marketing_command_center/static/description/icon.svg',
     'installable': True,
     'application': True,
     'auto_install': False,

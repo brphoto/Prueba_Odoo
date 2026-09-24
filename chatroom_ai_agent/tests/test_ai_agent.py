@@ -879,3 +879,49 @@ class TestChatroomAiAgent(TransactionCase):
         self.assertTrue(checklist.python_dependencies_ready)
         self.assertTrue(checklist.python_dependencies_detail)
         self.assertIn('OCR Python', checklist.ocr_detail)
+
+    # ------------------------------------------------------------------
+    # Herramientas disponibles para el usuario
+    # ------------------------------------------------------------------
+
+    def _tool(self, key, group=None):
+        return self.env['chatroom.ai.tool'].create({
+            'name': 'Herramienta %s' % key,
+            'key': key,
+            'active': True,
+            'group_id': group.id if group else False,
+        })
+
+    def test_tools_without_a_group_are_available_to_everyone(self):
+        """`enabled_for_user` usaba `res.users.groups_id`, campo que Odoo 19
+        ya no tiene: la llamada moría con `AttributeError` y el agente se
+        quedaba sin lista de herramientas."""
+        herramienta = self._tool('qa_sin_grupo')
+        self.assertIn(herramienta, self.env['chatroom.ai.tool'].enabled_for_user())
+
+    def test_a_tool_of_a_group_the_user_lacks_is_hidden(self):
+        ajeno = self.env['res.groups'].create({'name': 'QA grupo ajeno'})
+        herramienta = self._tool('qa_grupo_ajeno', group=ajeno)
+        self.assertNotIn(herramienta, self.env['chatroom.ai.tool'].enabled_for_user())
+
+    def test_a_tool_of_the_users_own_group_is_available(self):
+        propio = self.env['res.groups'].create({'name': 'QA grupo propio'})
+        self.env.user.group_ids = [(4, propio.id)]
+        herramienta = self._tool('qa_grupo_propio', group=propio)
+        self.assertIn(herramienta, self.env['chatroom.ai.tool'].enabled_for_user())
+
+    def test_an_implied_group_also_grants_the_tool(self):
+        """Quien está en «Responsable» tiene implícito «Usuario», y debe ver
+        también las herramientas de ese grupo. Con el campo de grupos
+        directos (`group_ids`) esta herramienta se perdería."""
+        base = self.env['res.groups'].create({'name': 'QA base'})
+        jefe = self.env['res.groups'].create({
+            'name': 'QA responsable', 'implied_ids': [(4, base.id)]})
+        self.env.user.group_ids = [(4, jefe.id)]
+        herramienta = self._tool('qa_grupo_implicado', group=base)
+        self.assertIn(herramienta, self.env['chatroom.ai.tool'].enabled_for_user())
+
+    def test_an_archived_tool_is_never_offered(self):
+        herramienta = self._tool('qa_archivada')
+        herramienta.active = False
+        self.assertNotIn(herramienta, self.env['chatroom.ai.tool'].enabled_for_user())

@@ -76,16 +76,21 @@ class HrManagerLeave(models.Model):
             rec.duration_display = "%s día%s" % (n, "" if n == 1 else "s")
 
     def aprobar(self):
+        # Ni los administradores de RRHH ni la URL base cambian entre
+        # solicitudes: se resuelven una vez, no una por vuelta.
+        admin_rhh = self.env['res.users'].sudo().search([('is_configured', '=', True)])
+        base_root = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
         for a in self:
             a.leave_id.sudo().write({'state': 'validate1', 'validate_ares': True})
             a.sudo().write({'state': 'approved'})
 
-            admin_rhh = self.env['res.users'].sudo().search([('is_configured', '=', True)])
+            # `admin_rhh` y `base_url` no dependen de la solicitud: se
+            # resuelven una vez antes del bucle (ver arriba).
             if not admin_rhh:
                 continue
             admin = self.env['hr.leave'].sudo()
-            base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
-            base_url += '/web#id=%d&view_type=form&model=%s' % (a.leave_id.id, admin._name)
+            base_url = base_root + '/web#id=%d&view_type=form&model=%s' % (
+                a.leave_id.id, admin._name)
             mail_content = (
                 " <h1><center>SOLICITUD DE AUSENCIAS</center></h1><br/> "
                 "La solicitud ha sido APROBADA por " + _esc(self.env.user.name or self.env.user.login) + "<br/>"
@@ -111,6 +116,10 @@ class HrManagerLeave(models.Model):
                 raise ValidationError(_('Error al enviar correo'))
 
     def rechazar(self):
+        # Ni los administradores de RRHH ni la URL base cambian entre
+        # solicitudes: se resuelven una vez, no una por vuelta.
+        admin_rhh = self.env['res.users'].sudo().search([('is_configured', '=', True)])
+        base_root = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
         for a in self:
             # 'leave_id.state' no es un campo válido de hr.manager.leave: ese
             # write() lanzaba ValueError y el botón "Rechazar" del jefe de
@@ -118,12 +127,13 @@ class HrManagerLeave(models.Model):
             a.leave_id.sudo().write({'state': 'refuse', 'validate_ares': False})
             a.sudo().write({'state': 'reject'})
 
-            admin_rhh = self.env['res.users'].sudo().search([('is_configured', '=', True)])
+            # `admin_rhh` y `base_url` no dependen de la solicitud: se
+            # resuelven una vez antes del bucle (ver arriba).
             if not admin_rhh:
                 continue
             admin = self.env['hr.leave'].sudo()
-            base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
-            base_url += '/web#id=%d&view_type=form&model=%s' % (a.leave_id.id, admin._name)
+            base_url = base_root + '/web#id=%d&view_type=form&model=%s' % (
+                a.leave_id.id, admin._name)
             mail_content = (
                 " <h1><center>SOLICITUD DE AUSENCIAS</center></h1> <br/> <br/> "
                 "La solicitud ha sido Rechazada  por " + _esc(self.env.user.name or self.env.user.login) + "<br/> "
@@ -150,8 +160,8 @@ class HrHolidays(models.Model):
     _inherit = "hr.leave"
 
     validate_ares = fields.Boolean(string="Validar", default=False)
-    file = fields.Binary(string="Adjunto")
-    attachment = fields.Many2one("ir.attachment", string="Adjunto")
+    file = fields.Binary(string="Adjunto a subir")
+    attachment = fields.Many2one("ir.attachment", string="Adjunto guardado")
 
     def _notify_rrhh_no_manager(self):
         """Política: cuando el empleado no tiene jefe inmediato (Manager Web)
@@ -484,15 +494,18 @@ class HrHolidays(models.Model):
         employees = self.env['hr.employee'].search([]).filtered(
             lambda x: x.status == 'active' and x.name != 'Administrator'
         )
+        # Una sola consulta para toda la plantilla. Antes se buscaba por
+        # empleado: con 300 personas eran 300 SELECT identicos salvo el id.
+        leave_type = self.env.ref('hr_leave_type.leave_type_self')
+        already_covered = set(self.env['hr.leave'].search([
+            ('employee_id', 'in', employees.ids),
+            ('date_from', '>=', start_date),
+            ('date_to', '<=', end_date),
+            ('state', '=', 'validate'),
+            ('holiday_status_id', '=', leave_type.id),
+        ]).mapped('employee_id').ids)
         for employee in employees:
-            absence = self.env['hr.leave'].search([
-                ('employee_id', '=', employee.id),
-                ('date_from', '>=', start_date),
-                ('date_to', '<=', end_date),
-                ('state', '=', 'validate'),
-                ('holiday_status_id', '=', self.env.ref('hr_leave_type.leave_type_self').id)
-            ])
-            if absence:
+            if employee.id in already_covered:
                 continue
             else:
                 self.env['hr.leave'].with_context(

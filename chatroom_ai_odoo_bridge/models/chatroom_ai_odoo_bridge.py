@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from odoo import _, api, fields, models
+from odoo import _, api, fields, models, modules
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
@@ -99,9 +99,16 @@ class ChatroomAiOdooBridge(models.Model):
         self.ensure_one()
         if 'ai.knowledge.base' not in self.env:
             return ''
+        # El `except` de abajo atrapa cualquier cosa para que la prueba no
+        # muera porque el contexto no se pudo reunir. Pero si lo que fallo
+        # fue una consulta, PostgreSQL deja la transaccion abortada y todo
+        # lo que venga despues revienta con `InFailedSqlTransaction`,
+        # incluido el `write` final de esta misma accion. El savepoint
+        # acota el dano a la consulta que fallo.
         try:
-            details = self.env['ai.knowledge.base'].sudo().get_sales_context_details(
-                query=question or '', company=self.company_id)
+            with self.env.cr.savepoint():
+                details = self.env['ai.knowledge.base'].sudo().get_sales_context_details(
+                    query=question or '', company=self.company_id)
         except Exception as error:
             _logger.warning('No se pudo cargar el contexto de Chatroom: %s', error)
             return ''
@@ -184,15 +191,12 @@ class ChatroomAiOdooBridge(models.Model):
                 'Usa estos datos como complemento y no inventes información fuera de ellos.'
             ) % knowledge_context
         try:
-            response = self.native_agent_id.get_direct_response(
-                question, context_message=context_message, enable_html_response=False)
+            with self.env.cr.savepoint():
+                response = self.native_agent_id.get_direct_response(
+                    question, context_message=context_message, enable_html_response=False)
             answer = '\n\n'.join(str(item) for item in (response or []))
         except Exception as error:
-            self.write({
-                'last_test_question': question,
-                'last_error': str(error),
-                'last_tested_at': fields.Datetime.now(),
-            })
+            self._record_failed_test(question, error)
             raise UserError(_('La prueba de IA nativa falló: %s') % error) from error
         self.write({
             'last_test_question': question,
@@ -212,6 +216,27 @@ class ChatroomAiOdooBridge(models.Model):
                 'sticky': False,
             },
         }
+
+    def _record_failed_test(self, question, error):
+        """Guarda por que fallo la prueba, pese al UserError que viene detras.
+
+        Un `UserError` deshace la transaccion entera, asi que el `write`
+        que habia aqui se perdia siempre. Para que el diagnostico
+        sobreviva hay que escribirlo en una transaccion aparte.
+        """
+        self.ensure_one()
+        valores = {
+            'last_test_question': question,
+            'last_error': str(error),
+            'last_tested_at': fields.Datetime.now(),
+        }
+        if modules.module.current_test:
+            # En pruebas no se abre otra transaccion: dejaria datos
+            # escritos de verdad y el caso siguiente los heredaria.
+            self.write(valores)
+            return
+        with self.env.registry.cursor() as cr:
+            self.with_env(self.env(cr=cr)).write(valores)
 
     def action_prepare_optional_backend(self):
         self.ensure_one()

@@ -5,6 +5,7 @@
 fallos operativos y seguimientos. Las notificaciones son registros propios,
 con destinatario, prioridad, deduplicación, lectura, pausa y resolución.''',
     'version': '19.0.1.0.2',
+    'icon': '/chatroom_notifications/static/description/icon.svg',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
     'category': 'Discuss',

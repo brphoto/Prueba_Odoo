@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 from datetime import timedelta
 
+import logging
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 class CrmLead(models.Model):
@@ -234,32 +238,39 @@ class CrmLead(models.Model):
         configs = self.env['crm.stagnation.config'].get_for_companies(
             leads.company_id | self.env.company)
         for lead in leads:
-            config = configs[(lead.company_id or self.env.company).id]
-            if lead._should_notify(config):
-                lead.message_post(
-                    body=_('[CRM-SYSTEM] Oportunidad estancada: %(name)s. Nivel: %(level)s. Días en etapa: %(days)s. Capital atrapado: %(capital).2f. Próxima acción: %(action)s') % {
-                        'name': lead.display_name, 'level': dict(lead._fields['stagnation_score'].selection).get(lead.stagnation_score),
-                        'days': lead.days_in_stage, 'capital': lead.estimated_capital_trapped, 'action': lead.next_action_required,
-                    }, partner_ids=[lead.user_id.partner_id.id], message_type='notification', subtype_xmlid='mail.mt_note')
-                lead.activity_schedule(
-                    'mail.mail_activity_data_todo', user_id=lead.user_id.id,
-                    summary='CRM: atender oportunidad estancada', note=lead.next_action_required)
-                lead.with_context(skip_stagnation_recompute=True).write({'stagnation_notified_at': fields.Datetime.now()})
-                notified += 1
-            if config.escalation_enabled and lead.days_over_limit >= config.escalation_after_days and not lead.stagnation_escalated_at:
-                leader = lead.user_id.parent_id or lead.team_id.user_id
-                if leader and leader != lead.user_id:
-                    lead.activity_schedule(
-                        'mail.mail_activity_data_todo', user_id=leader.id,
-                        summary='CRM: escalamiento de oportunidad estancada',
-                        note=_('Revisar %(lead)s. Nivel %(level)s, score real/ficticia %(score).1f%% y capital atrapado %(capital).2f.') % {
-                            'lead': lead.display_name, 'level': lead.stagnation_score,
-                            'score': lead.real_vs_fake_score, 'capital': lead.estimated_capital_trapped,
-                        })
-                    lead.with_context(skip_stagnation_recompute=True).write({'stagnation_escalated_at': fields.Datetime.now()})
-                    escalated += 1
-            if lead._create_optional_ai_task(config):
-                ai_tasks += 1
+            try:
+                # Un fallo en un registro no puede tirar la corrida entera
+                # ni revertir lo ya hecho con los anteriores.
+                with self.env.cr.savepoint():
+                    config = configs[(lead.company_id or self.env.company).id]
+                    if lead._should_notify(config):
+                        lead.message_post(
+                            body=_('[CRM-SYSTEM] Oportunidad estancada: %(name)s. Nivel: %(level)s. Días en etapa: %(days)s. Capital atrapado: %(capital).2f. Próxima acción: %(action)s') % {
+                                'name': lead.display_name, 'level': dict(lead._fields['stagnation_score'].selection).get(lead.stagnation_score),
+                                'days': lead.days_in_stage, 'capital': lead.estimated_capital_trapped, 'action': lead.next_action_required,
+                            }, partner_ids=[lead.user_id.partner_id.id], message_type='notification', subtype_xmlid='mail.mt_note')
+                        lead.activity_schedule(
+                            'mail.mail_activity_data_todo', user_id=lead.user_id.id,
+                            summary='CRM: atender oportunidad estancada', note=lead.next_action_required)
+                        lead.with_context(skip_stagnation_recompute=True).write({'stagnation_notified_at': fields.Datetime.now()})
+                        notified += 1
+                    if config.escalation_enabled and lead.days_over_limit >= config.escalation_after_days and not lead.stagnation_escalated_at:
+                        leader = lead.user_id.parent_id or lead.team_id.user_id
+                        if leader and leader != lead.user_id:
+                            lead.activity_schedule(
+                                'mail.mail_activity_data_todo', user_id=leader.id,
+                                summary='CRM: escalamiento de oportunidad estancada',
+                                note=_('Revisar %(lead)s. Nivel %(level)s, score real/ficticia %(score).1f%% y capital atrapado %(capital).2f.') % {
+                                    'lead': lead.display_name, 'level': lead.stagnation_score,
+                                    'score': lead.real_vs_fake_score, 'capital': lead.estimated_capital_trapped,
+                                })
+                            lead.with_context(skip_stagnation_recompute=True).write({'stagnation_escalated_at': fields.Datetime.now()})
+                            escalated += 1
+                    if lead._create_optional_ai_task(config):
+                        ai_tasks += 1
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "_cron_notify_stagnation: fallo procesando %s", lead.display_name)
         return {'notified': notified, 'escalated': escalated, 'ai_tasks': ai_tasks}
 
     @api.constrains('stagnation_score', 'stagnation_reason')

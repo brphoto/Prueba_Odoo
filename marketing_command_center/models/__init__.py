@@ -1,3 +1,4 @@
+from . import marketing_diagnostic_mixin
 from . import marketing_social_constants
 from . import marketing_social_account
 from . import marketing_social_campaign

@@ -22,7 +22,7 @@ class MarketingSocialInteraction(models.Model):
     author_name = fields.Char(string='Autor')
     external_id = fields.Char(string='ID externo', index=True)
     text = fields.Text(string='Contenido')
-    interaction_date = fields.Datetime(string='Fecha', required=True)
+    interaction_date = fields.Datetime(string='Fecha', required=True, index=True)
     sentiment = fields.Selection([
         ('positive', 'Positivo'), ('neutral', 'Neutral'), ('negative', 'Negativo'),
     ], string='Sentimiento', default='neutral')

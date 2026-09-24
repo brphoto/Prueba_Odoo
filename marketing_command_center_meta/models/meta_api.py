@@ -1,4 +1,5 @@
 import json
+from http.client import HTTPException
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -45,7 +46,14 @@ class MetaGraphClient:
             except (ValueError, UnicodeDecodeError):
                 payload = {}
             raise MetaGraphError(self._error_message(payload, error.code)) from error
-        except (URLError, TimeoutError, ValueError) as error:
+        # `URLError` solo cubre lo que falla al ABRIR la conexion. Un corte
+        # mientras se lee el cuerpo sale como `HTTPException` (IncompleteRead,
+        # RemoteDisconnected) o como `OSError` (ConnectionReset, SSLError), y
+        # esos se escapaban de aqui sin convertirse en MetaGraphError.
+        # Los 23 sitios que esperan ese error se lo perdian y el fallo subia
+        # hasta tumbar la sincronizacion entera.
+        except (URLError, TimeoutError, ValueError,
+                HTTPException, OSError) as error:
             raise MetaGraphError('No se pudo conectar con Meta: %s' % error) from error
         if payload.get('error'):
             raise MetaGraphError(self._error_message(payload, None))
@@ -74,7 +82,14 @@ class MetaGraphClient:
             except (ValueError, UnicodeDecodeError):
                 payload = {}
             raise MetaGraphError(self._error_message(payload, error.code)) from error
-        except (URLError, TimeoutError, ValueError) as error:
+        # `URLError` solo cubre lo que falla al ABRIR la conexion. Un corte
+        # mientras se lee el cuerpo sale como `HTTPException` (IncompleteRead,
+        # RemoteDisconnected) o como `OSError` (ConnectionReset, SSLError), y
+        # esos se escapaban de aqui sin convertirse en MetaGraphError.
+        # Los 23 sitios que esperan ese error se lo perdian y el fallo subia
+        # hasta tumbar la sincronizacion entera.
+        except (URLError, TimeoutError, ValueError,
+                HTTPException, OSError) as error:
             raise MetaGraphError('No se pudo conectar con Meta: %s' % error) from error
         if payload.get('error'):
             raise MetaGraphError(self._error_message(payload, None))

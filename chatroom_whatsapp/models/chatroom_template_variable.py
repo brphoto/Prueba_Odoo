@@ -123,5 +123,7 @@ class ChatroomTemplateVariable(models.Model):
         self.ensure_one()
         return self._format_value(self._raw_value(channel), channel)
 
-    def name_get(self):
-        return [(record.id, f'{record.placeholder} - {record.label}') for record in self]
+    @api.depends('placeholder', 'label')
+    def _compute_display_name(self):
+        for record in self:
+            record.display_name = f'{record.placeholder} - {record.label}'

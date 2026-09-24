@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 from datetime import timedelta
 
+import logging
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class ChatroomNotification(models.Model):
@@ -185,21 +189,28 @@ class ChatroomNotification(models.Model):
         ])
         created = 0
         for channel in channels:
-            level = 2 if channel.first_response_sla_state == 'red' else 1
-            key = 'sla:%s:%s' % (channel.id, channel.first_response_sla_state)
-            notification = self.sudo().create_deduplicated({
-                'name': _('SLA vencido' if level == 2 else 'SLA próximo a vencer'),
-                'message': _('La conversación %s requiere atención del agente.') % channel.display_name,
-                'notification_type': 'sla',
-                'priority': str(level),
-                'user_id': channel.assigned_user_id.id,
-                'channel_id': channel.id,
-                'partner_id': channel.partner_id.id,
-                'res_model': 'chatroom.channel', 'res_id': channel.id,
-                'dedupe_key': key, 'escalation_level': level,
-                'company_id': channel.company_id.id,
-            })
-            created += bool(notification)
+            try:
+                # Un fallo en un registro no puede tirar la corrida entera
+                # ni revertir lo ya hecho con los anteriores.
+                with self.env.cr.savepoint():
+                    level = 2 if channel.first_response_sla_state == 'red' else 1
+                    key = 'sla:%s:%s' % (channel.id, channel.first_response_sla_state)
+                    notification = self.sudo().create_deduplicated({
+                        'name': _('SLA vencido' if level == 2 else 'SLA próximo a vencer'),
+                        'message': _('La conversación %s requiere atención del agente.') % channel.display_name,
+                        'notification_type': 'sla',
+                        'priority': str(level),
+                        'user_id': channel.assigned_user_id.id,
+                        'channel_id': channel.id,
+                        'partner_id': channel.partner_id.id,
+                        'res_model': 'chatroom.channel', 'res_id': channel.id,
+                        'dedupe_key': key, 'escalation_level': level,
+                        'company_id': channel.company_id.id,
+                    })
+                    created += bool(notification)
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "_cron_create_sla_notifications: fallo procesando %s", channel.display_name)
         return created
 
     @api.model

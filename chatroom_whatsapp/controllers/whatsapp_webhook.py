@@ -392,12 +392,31 @@ class WhatsAppWebhookController(http.Controller):
             'sent': 'sent', 'delivered': 'delivered',
             'read': 'read', 'failed': 'failed',
         }
+        # Meta entrega los acuses en lote: una sola consulta para todos los
+        # identificadores y un UPDATE por estado, en vez de una busqueda y
+        # una escritura por acuse. Es la ruta que mas se ejecuta del
+        # modulo, y la que Meta reintenta si tarda demasiado.
+        wanted = {}
         for status in statuses:
-            message = env['chatroom.message'].search(
-                [('wa_message_id', '=', status.get('id'))], limit=1)
+            wa_message_id = status.get('id')
             new_state = state_map.get(status.get('status'))
-            if message and new_state:
-                message.write({'state': new_state})
+            if wa_message_id and new_state:
+                # Si Meta manda varios acuses del mismo mensaje en el mismo
+                # lote, gana el ultimo, igual que con el bucle anterior.
+                wanted[wa_message_id] = new_state
+        if not wanted:
+            return
+        messages = env['chatroom.message'].search(
+            [('wa_message_id', 'in', list(wanted))])
+        by_state = {}
+        for message in messages:
+            state = wanted.get(message.wa_message_id)
+            if not state:
+                continue
+            by_state.setdefault(state, env['chatroom.message'])
+            by_state[state] |= message
+        for state, records in by_state.items():
+            records.write({'state': state})
 
     @staticmethod
     def _extract_body(msg, msg_type):

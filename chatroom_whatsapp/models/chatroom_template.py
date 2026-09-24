@@ -149,6 +149,15 @@ class ChatroomTemplate(models.Model):
 
         created, updated = 0, 0
         synced_at = fields.Datetime.now()
+        # Un indice de lo que ya existe en UNA consulta. Antes se buscaba
+        # por plantilla: una cuenta con 200 plantillas aprobadas eran 200
+        # SELECT antes de escribir nada.
+        known = {
+            (record.name, record.language): record
+            for record in self.search([
+                ('name', 'in', [t.get('name') for t in templates_data if t.get('name')]),
+            ])
+        } if templates_data else {}
         for tmpl in templates_data:
             components = tmpl.get('components', [])
             body_component = next((c for c in components if c.get('type') == 'BODY'), {})
@@ -173,16 +182,18 @@ class ChatroomTemplate(models.Model):
                 'footer_text': footer_component.get('text'),
                 'last_synced_at': synced_at,
             }
-            existing = self.search([
-                ('name', '=', tmpl.get('name')),
-                ('language', '=', tmpl.get('language')),
-            ], limit=1)
+            key = (tmpl.get('name'), tmpl.get('language'))
+            existing = known.get(key, self.browse())
             if existing:
                 existing.write(vals)
                 updated += 1
             else:
                 vals.update({'name': tmpl.get('name'), 'language': tmpl.get('language')})
-                self.create(vals)
+                # Se alimenta el indice: si Meta repite el mismo par
+                # nombre/idioma en la respuesta, la segunda vuelta
+                # actualiza en vez de crear un duplicado, que es lo que
+                # hacia la busqueda original.
+                known[key] = self.create(vals)
                 created += 1
 
         return {

@@ -121,6 +121,21 @@ class MarketingSocialAgentChat(models.Model):
         })
         return self.action_send_message()
 
+    def _record_failed_query(self, error):
+        """Deja constancia del fallo pese al UserError que viene detras.
+
+        La escritura va por `_persist_diagnostic`, el ayudante compartido
+        de `marketing_command_center`: un `raise` deshace la transaccion
+        entera, asi que un `write` normal aqui se perderia siempre.
+        """
+        self.ensure_one()
+        self._persist_diagnostic({
+            'state': 'error',
+            'answer': False,
+            'ai_error': str(error),
+            'ai_run_at': fields.Datetime.now(),
+        })
+
     def action_send_message(self):
         self.ensure_one()
         if self.analysis_mode != 'provider':
@@ -134,7 +149,11 @@ class MarketingSocialAgentChat(models.Model):
             'speaker': 'user', 'body': question,
         })
         try:
-            provider_result = self._provider_answer(question)
+            # Si la llamada al proveedor falla por una consulta, PostgreSQL
+            # deja la transaccion abortada y el `write` del `except` no
+            # llegaria a ejecutarse. El savepoint acota el dano.
+            with self.env.cr.savepoint():
+                provider_result = self._provider_answer(question)
             answer, rows = provider_result[:2]
             vehicle_count = provider_result[2] if len(provider_result) > 2 else 0
             source_summary = _('Respuesta IA calculada con %s publicación(es).') % len(rows)
@@ -154,10 +173,7 @@ class MarketingSocialAgentChat(models.Model):
                 'ai_vehicle_count': vehicle_count,
             })
         except Exception as exc:
-            self.write({
-                'state': 'error', 'answer': False, 'ai_error': str(exc),
-                'ai_run_at': fields.Datetime.now(),
-            })
+            self._record_failed_query(exc)
             raise UserError(_('No se pudo consultar la IA: %s') % exc) from exc
         return {
             'type': 'ir.actions.act_window', 'name': _('Agente de marketing'),

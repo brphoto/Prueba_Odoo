@@ -46,10 +46,16 @@ class ChatroomMetaMixin(models.AbstractModel):
             time.sleep(wait)
             attempt += 1
 
-    @staticmethod
-    def _format_relative_time(dt):
+    def _format_relative_time(self, dt):
         """'Hace 5 min' / 'Hace 3 h' / 'Nunca', para indicadores de salud
-        (último webhook recibido, etc.) sin tirar de una librería aparte."""
+        (último webhook recibido, etc.) sin tirar de una librería aparte.
+
+        No puede ser `@staticmethod`: `_()` averigua el idioma mirando el
+        `self.env` de quien llama, y en un método estático no hay `self`.
+        Odoo escribía un aviso con traza en cada llamada y devolvía el
+        texto sin traducir. Las dos llamadas ya eran `self._format_...`,
+        así que pasarlo a método de instancia no cambia nada más.
+        """
         if not dt:
             return _("Nunca")
         minutes = int((fields.Datetime.now() - dt).total_seconds() / 60)

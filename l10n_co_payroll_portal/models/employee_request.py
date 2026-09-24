@@ -57,6 +57,13 @@ class CoPayrollPortalRequest(models.Model):
                 raise ValidationError(_("Un préstamo debe indicar al menos una cuota."))
 
     def action_submit(self):
+        # Sin esta comprobacion una solicitud ya aprobada podia volver a
+        # "enviada" y aprobarse de nuevo, y cada aprobacion crea una
+        # ausencia o una cuenta bancaria nueva. Aprobar y rechazar si
+        # miraban el estado; enviar era el unico que no.
+        for record in self:
+            if record.state not in ("draft", "rejected"):
+                raise UserError(_("Solo se pueden enviar solicitudes en borrador o rechazadas."))
         self.write({"state": "submitted"})
 
     def action_approve(self):
@@ -67,15 +74,15 @@ class CoPayrollPortalRequest(models.Model):
                 raise UserError(_("Solo se pueden aprobar solicitudes enviadas."))
             vals = {"state": "approved", "reviewed_by": self.env.user.id, "reviewed_at": fields.Datetime.now()}
             if record.request_type == "vacation" and "hr.leave" in self.env.registry.models and record.date_from and record.date_to:
-                leave_type = record.leave_type_id or self.env["hr.leave.type"].search([("company_id", "in", [False, record.company_id.id]), "|", ("name", "ilike", "vacaciones"), ("code", "ilike", "VAC")], limit=1)
+                leave_type = record.leave_type_id or self.env["hr.leave.type"].search([("company_id", "in", [False, record.company_id.id]), ("name", "ilike", "vacacion")], limit=1)
                 if leave_type:
                     leave = self.env["hr.leave"].sudo().create({"name": record.description, "employee_id": record.employee_id.id, "holiday_status_id": leave_type.id, "request_date_from": record.date_from, "request_date_to": record.date_to})
                     vals["applied_record"] = "hr.leave,%s" % leave.id
             elif record.request_type == "bank_change" and record.bank_account_number and "res.partner.bank" in self.env.registry.models:
-                if not record.employee_id.address_home_id:
-                    raise UserError(_("El colaborador debe tener una dirección privada antes de aplicar el cambio bancario."))
+                if not record.employee_id.work_contact_id:
+                    raise UserError(_("El colaborador debe tener un contacto asociado antes de aplicar el cambio bancario."))
                 bank = self.env["res.bank"].sudo().search([("name", "ilike", record.bank_name)], limit=1) if record.bank_name else self.env["res.bank"]
-                account = self.env["res.partner.bank"].sudo().create({"acc_number": "".join(record.bank_account_number.split()), "bank_id": bank.id if bank else False, "partner_id": record.employee_id.address_home_id.id, "allow_out_payment": True})
+                account = self.env["res.partner.bank"].sudo().create({"acc_number": "".join(record.bank_account_number.split()), "bank_id": bank.id if bank else False, "partner_id": record.employee_id.work_contact_id.id, "allow_out_payment": True})
                 if "bank_account_ids" in record.employee_id._fields:
                     record.employee_id.sudo().write({"bank_account_ids": [(4, account.id)]})
                 vals["applied_record"] = "res.partner.bank,%s" % account.id

@@ -19,6 +19,8 @@
         <field name="name">Administrador de pagos</field>
         <field name="privilege_id" ref="privilege_chatroom_payment"/>
         <field name="implied_ids" eval="[(4, ref('group_chatroom_payment_agent')), (4, ref('chatroom_whatsapp.group_chatroom_manager'))]"/>
+        <!-- Sin esto el administrador no ve el modulo recien instalado. -->
+        <field name="user_ids" eval="[(4, ref('base.user_admin'))]"/>
     </record>
 
     <record id="chatroom_whatsapp.group_chatroom_user" model="res.groups">

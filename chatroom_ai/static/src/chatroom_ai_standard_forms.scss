@@ -192,14 +192,14 @@
     gap: 8px;
     margin: 12px 0 4px;
     padding: 12px 14px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid $o-gray-200;
     border-left: 3px solid #76506f;
     border-radius: 10px;
-    background: #fbfcfe;
+    background: $o-view-background-color;
 
     .o_chatroom_ai_result_actions_title {
         flex: 1 1 100%;
-        color: #475569;
+        color: mix(#475569, $o-main-text-color, 60%);
         font-size: 12px;
         font-weight: 600;
     }

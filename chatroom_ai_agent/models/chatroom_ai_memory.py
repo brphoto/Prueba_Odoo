@@ -29,7 +29,7 @@ class ChatroomAiMemory(models.Model):
     expires_at = fields.Datetime(string='Vigente hasta')
     source_ref = fields.Char(string='Referencia de origen', copy=False)
     active = fields.Boolean(default=True)
-    last_used = fields.Datetime(string='Último uso', default=fields.Datetime.now)
+    last_used = fields.Datetime(string='Último uso', default=fields.Datetime.now, index=True)
     company_id = fields.Many2one('res.company', string='Empresa', default=lambda self: self.env.company, index=True)
 
     @api.model

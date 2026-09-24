@@ -1,4 +1,5 @@
 import json
+from http.client import HTTPException
 import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -43,7 +44,14 @@ class SocialNetworkHttpClient:
             except (ValueError, UnicodeDecodeError):
                 payload = {}
             raise SocialNetworkApiError(self._error(payload, error.code)) from error
-        except (URLError, TimeoutError, ValueError) as error:
+        # `URLError` solo cubre lo que falla al ABRIR la conexion. Un corte
+        # mientras se lee el cuerpo sale como `HTTPException` (IncompleteRead,
+        # RemoteDisconnected) o como `OSError` (ConnectionReset, SSLError), y
+        # esos se escapaban de aqui sin convertirse en SocialNetworkApiError.
+        # Los 23 sitios que esperan ese error se lo perdian y el fallo subia
+        # hasta tumbar la sincronizacion entera.
+        except (URLError, TimeoutError, ValueError,
+                HTTPException, OSError) as error:
             raise SocialNetworkApiError('No se pudo conectar con la red social: %s' % error) from error
 
     @staticmethod

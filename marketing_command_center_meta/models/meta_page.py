@@ -18,7 +18,7 @@ def _meta_datetime(value):
 class MarketingMetaPage(models.Model):
     _name = 'marketing.meta.page'
     _description = 'Página de Facebook conectada'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'marketing.diagnostic.mixin']
     _order = 'active desc, name'
 
     name = fields.Char(string='Nombre de la página', required=True, tracking=True)
@@ -138,7 +138,7 @@ class MarketingMetaPage(models.Model):
             try:
                 data = record._request_page_data(record._client(), record.page_id)
             except MetaGraphError as error:
-                record.write({'state': 'error', 'last_error': str(error)})
+                record._persist_diagnostic({'state': 'error', 'last_error': str(error)})
                 raise UserError(str(error)) from error
             values = {
                 'name': data.get('name') or record.name,
@@ -245,8 +245,8 @@ class MarketingMetaPage(models.Model):
                     'since': since, 'until': until, 'limit': 100,
                 })
         except MetaGraphError as error:
-            self.write({'state': 'error', 'last_error': str(error)})
-            account.write({'connection_state': 'error', 'sync_message': str(error)})
+            self._persist_diagnostic({'state': 'error', 'last_error': str(error)})
+            account._persist_diagnostic({'connection_state': 'error', 'sync_message': str(error)})
             raise
         page_values = {
             'name': page_data.get('name') or self.name,
@@ -450,7 +450,11 @@ class MarketingMetaPage(models.Model):
         try:
             payload = client.request('%s/insights' % media_id, {'metric': ','.join(metrics)})
             rows = payload.get('data') or []
-        except MetaGraphError:
+        except MetaGraphError as error:
+            # El motivo se guardaba en ninguna parte. Si luego fallan
+            # tambien las llamadas de una en una, el usuario se queda sin
+            # saber por que no hay metricas.
+            errors.append('insights: %s' % error)
             rows = []
         for row in rows:
             metric_name = row.get('name')
@@ -476,31 +480,37 @@ class MarketingMetaPage(models.Model):
             except (TypeError, ValueError):
                 continue
             values[metric_name] = value
-        if values:
-            Metric = self.env['marketing.social.metric.snapshot']
-            today = fields.Date.context_today(self)
-            metric = Metric.search([
-                ('publication_id', '=', publication.id), ('snapshot_date', '=', today),
-            ], limit=1)
-            mapped = {
-                'source': 'meta', 'fetched_at': fields.Datetime.now(),
-                'metric_status': 'verified' if not errors else 'partial',
-                'provider_error': '; '.join(errors[:3]) or False,
-            }
-            if 'impressions' in values:
-                mapped['impressions'] = values['impressions']
-            if 'reach' in values:
-                mapped['reach'] = values['reach']
-            if 'saved' in values:
-                mapped['saves'] = values['saved']
-            if 'total_interactions' in values:
-                mapped['provider_engagement'] = values['total_interactions']
-            if 'views' in values:
-                mapped['views'] = values['views']
-            if metric:
-                metric.write(mapped)
-            else:
-                Metric.create(dict(mapped, snapshot_date=today, publication_id=publication.id))
+        # Se escribe SIEMPRE, aunque Meta no haya devuelto nada. Sin
+        # registro, la publicacion aparece como si no tuviera datos, y eso
+        # no es lo mismo que tenerlos no disponibles: el panel cuenta las
+        # dos cosas por separado y la IA tiene instrucciones de no
+        # confundir "no disponible" con cero. La ruta de Facebook ya lo
+        # hacia asi; esta no.
+        Metric = self.env['marketing.social.metric.snapshot']
+        today = fields.Date.context_today(self)
+        metric = Metric.search([
+            ('publication_id', '=', publication.id), ('snapshot_date', '=', today),
+        ], limit=1)
+        mapped = {
+            'source': 'meta', 'fetched_at': fields.Datetime.now(),
+            'metric_status': ('verified' if not errors
+                              else 'partial' if values else 'unavailable'),
+            'provider_error': '; '.join(errors[:3]) or False,
+        }
+        if 'impressions' in values:
+            mapped['impressions'] = values['impressions']
+        if 'reach' in values:
+            mapped['reach'] = values['reach']
+        if 'saved' in values:
+            mapped['saves'] = values['saved']
+        if 'total_interactions' in values:
+            mapped['provider_engagement'] = values['total_interactions']
+        if 'views' in values:
+            mapped['views'] = values['views']
+        if metric:
+            metric.write(mapped)
+        else:
+            Metric.create(dict(mapped, snapshot_date=today, publication_id=publication.id))
         return '; '.join(errors[:3]) if errors else False
 
     @staticmethod
@@ -537,6 +547,28 @@ class MarketingMetaPage(models.Model):
             conversation = Conversation.create(values)
         return conversation
 
+    @staticmethod
+    def _meta_external_ids(rows):
+        """Los `id` no vacios de un lote de la Graph API."""
+        return [str(row.get('id')) for row in rows if row.get('id')]
+
+    def _meta_known_by_external_id(self, model_name, external_ids, extra_domain=()):
+        """{external_id: registro} de lo que ya existe, en UNA consulta.
+
+        Sustituye a buscar uno por uno dentro del bucle de sincronizacion:
+        una pagina con 500 comentarios eran 500 SELECT antes de escribir
+        nada. El llamador alimenta el indice con lo que va creando, para
+        que un `external_id` repetido en el mismo lote actualice en vez de
+        duplicar, igual que hacia la busqueda original en cada vuelta.
+        """
+        if not external_ids:
+            return {}
+        domain = [('external_id', 'in', external_ids)] + list(extra_domain)
+        return {
+            record.external_id: record
+            for record in self.env[model_name].search(domain)
+        }
+
     def _sync_social_conversation_messages(self, client, conversation):
         try:
             payload = client.paged_safe('%s/messages' % conversation.external_id, {
@@ -545,6 +577,10 @@ class MarketingMetaPage(models.Model):
         except MetaGraphError as error:
             return 0, str(error)
         Message = self.env['marketing.social.conversation.message']
+        known = self._meta_known_by_external_id(
+            'marketing.social.conversation.message',
+            self._meta_external_ids(payload.get('data', [])),
+            [('conversation_id', '=', conversation.id)])
         processed = 0
         for item in payload.get('data', []):
             external_id = item.get('id')
@@ -565,14 +601,13 @@ class MarketingMetaPage(models.Model):
                 'message_at': _meta_datetime(item.get('created_time')) or fields.Datetime.now(),
                 'message_type': 'text' if item.get('message') else 'other',
             }
-            message = Message.search([
-                ('conversation_id', '=', conversation.id), ('external_id', '=', external_id),
-            ], limit=1)
+            message = known.get(external_id, Message)
             if message:
                 values.pop('read_state', None)
                 message.write(values)
             else:
-                Message.create(values)
+                message = Message.create(values)
+                known[external_id] = message
             processed += 1
         return processed, payload.get('_paging_error') or False
 
@@ -620,6 +655,9 @@ class MarketingMetaPage(models.Model):
         except MetaGraphError:
             return 0
         Interaction = self.env['marketing.social.interaction']
+        known = self._meta_known_by_external_id(
+            'marketing.social.interaction',
+            self._meta_external_ids(payload.get('data', [])))
         processed = 0
         for comment in payload.get('data', []):
             external_id = comment.get('id')
@@ -631,11 +669,12 @@ class MarketingMetaPage(models.Model):
                 'author_name': comment.get('username') or False,
                 'interaction_date': _meta_datetime(comment.get('timestamp')) or fields.Datetime.now(),
             }
-            existing = Interaction.search([('external_id', '=', external_id)], limit=1)
+            existing = known.get(external_id, Interaction)
             if existing:
                 existing.write(vals)
             else:
-                Interaction.create(vals)
+                existing = Interaction.create(vals)
+                known[external_id] = existing
             processed += 1
         return processed
 
@@ -760,6 +799,9 @@ class MarketingMetaPage(models.Model):
         except MetaGraphError:
             return 0
         Interaction = self.env['marketing.social.interaction']
+        known = self._meta_known_by_external_id(
+            'marketing.social.interaction',
+            self._meta_external_ids(payload.get('data', [])))
         processed = 0
         for comment in payload.get('data', []):
             external_id = comment.get('id')
@@ -771,10 +813,11 @@ class MarketingMetaPage(models.Model):
                 'author_name': (comment.get('from') or {}).get('name') or False,
                 'interaction_date': _meta_datetime(comment.get('created_time')) or fields.Datetime.now(),
             }
-            existing = Interaction.search([('external_id', '=', external_id)], limit=1)
+            existing = known.get(external_id, Interaction)
             if existing:
                 existing.write(vals)
             else:
-                Interaction.create(vals)
+                existing = Interaction.create(vals)
+                known[external_id] = existing
             processed += 1
         return processed

@@ -1,10 +1,14 @@
+import logging
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class ChatroomPaymentLink(models.Model):
     _name = 'chatroom.payment.link'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'chatroom.diagnostic.mixin']
     _description = 'Enlace de pago enviado desde Chatroom'
     _order = 'create_date desc, id desc'
 
@@ -61,17 +65,24 @@ class ChatroomPaymentLink(models.Model):
         ])
         now = fields.Datetime.now()
         for link in links:
-            transaction = link.transaction_id
-            values = {'synced_at': now}
-            if transaction.state == 'done':
-                values['state'] = 'paid'
-            elif transaction.state in ('cancel', 'error'):
-                values.update({
-                    'state': 'error',
-                    'error_message': transaction.state_message or _(
-                        'La transacción de pago terminó en estado %s.') % transaction.state,
-                })
-            link.sudo().write(values)
+            try:
+                # Un fallo en un registro no puede tirar la corrida entera
+                # ni revertir lo ya hecho con los anteriores.
+                with self.env.cr.savepoint():
+                    transaction = link.transaction_id
+                    values = {'synced_at': now}
+                    if transaction.state == 'done':
+                        values['state'] = 'paid'
+                    elif transaction.state in ('cancel', 'error'):
+                        values.update({
+                            'state': 'error',
+                            'error_message': transaction.state_message or _(
+                                'La transacción de pago terminó en estado %s.') % transaction.state,
+                        })
+                    link.sudo().write(values)
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "_cron_sync_transaction_states: fallo procesando %s", link.display_name)
         return True
 
     def action_resend(self):
@@ -83,7 +94,7 @@ class ChatroomPaymentLink(models.Model):
         try:
             self.channel_id.action_send_text(_('Puedes pagar aquí: %s') % self.link)
         except Exception as error:
-            self.write({'state': 'error', 'error_message': str(error)})
+            self._persist_diagnostic({'state': 'error', 'error_message': str(error)})
             raise
         self.write({
             'state': 'sent',

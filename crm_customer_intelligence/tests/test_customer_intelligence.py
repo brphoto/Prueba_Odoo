@@ -31,32 +31,61 @@ class TestCrmCustomerIntelligence(TransactionCase):
             ('phone', '=', '+593 999 000 111'),
         ])
 
-    def _create_posted_invoice(self, partner, product, price, invoice_date):
-        country = self.env['res.country'].search([('code', '=', 'EC')], limit=1)
-        document_type = self.env['l10n_latam.document.type'].search([
-            ('country_id', '=', country.id), ('code', '=', '01')], limit=1)
-        # La base de pruebas usa la localización ecuatoriana: una factura
-        # publicada debe tener identificación, país y tipo de documento.
-        partner.write({
-            'vat': partner.vat or '9999999999999',
-            'country_id': partner.country_id.id or country.id,
-        })
-        invoice = self.env['account.move'].create({
+    def _invoice_values(self, partner, product, price, invoice_date):
+        """Valores de una factura de cliente, con o sin localización.
+
+        Este módulo depende de `crm`, `sale` y `account`, nada más. Los
+        tests daban por hecha la localización ecuatoriana y pedían
+        `l10n_latam.document.type` sin comprobar que existiera, así que
+        en una base normal los tres tests de RFM y de métricas no
+        fallaban: reventaban con `KeyError` antes de empezar, que es
+        peor, porque un error se lee como problema del entorno y se
+        acaba ignorando.
+        """
+        valores = {
             'move_type': 'out_invoice',
             'partner_id': partner.id,
             'invoice_date': invoice_date,
-            'l10n_latam_document_type_id': document_type.id,
-            'l10n_latam_document_number': '001-001-%09d' % (
-                partner.id * 100 + len(partner.invoice_ids) + 1),
             'invoice_line_ids': [(0, 0, {
                 'product_id': product.id,
                 'quantity': 1,
                 'price_unit': price,
                 'tax_ids': [(6, 0, [])],
             })],
-        })
+        }
+        Factura = self.env['account.move']
+        if 'l10n_latam_document_type_id' in Factura._fields:
+            # Con la localización puesta, una factura publicada necesita
+            # identificación, país y tipo de documento.
+            country = self.env['res.country'].search(
+                [('code', '=', 'EC')], limit=1)
+            partner.write({
+                'vat': partner.vat or '9999999999999',
+                'country_id': partner.country_id.id or country.id,
+            })
+            document_type = self.env['l10n_latam.document.type'].search(
+                [('country_id', '=', country.id), ('code', '=', '01')], limit=1)
+            if document_type:
+                valores['l10n_latam_document_type_id'] = document_type.id
+                valores['l10n_latam_document_number'] = '001-001-%09d' % (
+                    partner.id * 100 + len(partner.invoice_ids) + 1)
+        return valores
+
+    def _create_posted_invoice(self, partner, product, price, invoice_date):
+        invoice = self.env['account.move'].create(
+            self._invoice_values(partner, product, price, invoice_date))
         invoice.action_post()
         return invoice
+
+    def _create_draft_invoice(self, partner, product, price, invoice_date):
+        """Igual que la anterior, pero sin publicar.
+
+        Sirve para comprobar que los borradores NO entran en las métricas
+        comerciales. Comparte el mismo constructor para que la
+        localización se resuelva en un solo sitio.
+        """
+        valores = self._invoice_values(partner, product, price, invoice_date)
+        return self.env['account.move'].create(valores)
 
     def test_management_alert_state_red_for_stale_lead(self):
         """Una oportunidad sin gestión hace más de 15 días debe quedar en rojo."""
@@ -89,17 +118,8 @@ class TestCrmCustomerIntelligence(TransactionCase):
     def test_commercial_metrics_only_counts_posted_invoices(self):
         partner = self.env['res.partner'].create({'name': "Cliente Métricas"})
         product = self.env['product.product'].create({'name': "Producto Métrica", 'type': 'consu'})
-        country = self.env['res.country'].search([('code', '=', 'EC')], limit=1)
-        document_type = self.env['l10n_latam.document.type'].search([
-            ('country_id', '=', country.id), ('code', '=', '01')], limit=1)
-        draft_invoice = self.env['account.move'].create({
-            'move_type': 'out_invoice',
-            'partner_id': partner.id,
-            'invoice_date': '2024-01-01',
-            'l10n_latam_document_type_id': document_type.id,
-            'l10n_latam_document_number': '001-001-000000999',
-            'invoice_line_ids': [(0, 0, {'product_id': product.id, 'quantity': 1, 'price_unit': 50.0})],
-        })
+        draft_invoice = self._create_draft_invoice(
+            partner, product, 50.0, '2024-01-01')
         self._create_posted_invoice(partner, product, 200.0, '2024-02-01')
 
         self.assertEqual(partner.commercial_invoice_count, 1)

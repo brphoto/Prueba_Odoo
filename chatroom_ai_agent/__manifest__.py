@@ -9,7 +9,7 @@ pagos o WhatsApp a un único módulo.''',
     'version': '19.0.1.0.54',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
-    'icon': 'static/description/icon.png',
+    'icon': '/chatroom_ai_agent/static/description/icon.svg',
     'category': 'Productivity/Discuss',
     'depends': ['chatroom_ai', 'mail'],
     'data': [

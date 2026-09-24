@@ -3,7 +3,7 @@
     min-width: 300px;
     max-width: 38%;
     border-left: 1px solid var(--border-color, #dee2e6);
-    background-color: var(--o-view-background-color, #fff);
+    background-color: $o-view-background-color;
     overflow-y: auto;
     flex: 0 0 auto;
 }
@@ -18,7 +18,7 @@
     min-height: 44px;
     padding: 6px 10px 6px 14px;
     border-bottom: 1px solid var(--border-color, #dee2e6);
-    background-color: var(--o-view-background-color, #fff);
+    background-color: $o-view-background-color;
 }
 
 .o_chatroom_contact_panel_close {
@@ -43,7 +43,7 @@
     border-bottom: 1px solid var(--border-color, #dee2e6);
 
     &:hover {
-        background-color: #f5f6f6;
+        background-color: $o-gray-100;
     }
 }
 
@@ -65,7 +65,7 @@
     align-items: center;
     gap: 5px;
     margin-top: 6px;
-    color: #667781;
+    color: mix(#667781, $o-main-text-color, 60%);
     font-size: 0.75em;
 }
 
@@ -84,7 +84,7 @@
     gap: 8px;
     font-size: 0.85em;
     margin-bottom: 4px;
-    color: #667781;
+    color: mix(#667781, $o-main-text-color, 60%);
 
     i {
         width: 16px;
@@ -113,7 +113,7 @@
 
     &:hover,
     &:focus-visible {
-        background-color: #f5f6f6;
+        background-color: $o-gray-100;
         outline: none;
         box-shadow: 0 0 0 2px rgba(113, 75, 103, 0.25);
     }
@@ -129,7 +129,7 @@
 
 .o_chatroom_contact_stat_label {
     font-size: 0.7em;
-    color: #667781;
+    color: mix(#667781, $o-main-text-color, 60%);
 }
 
 .o_chatroom_contact_actions {
@@ -181,7 +181,7 @@
         h6 {
             font-size: 0.8em;
             text-transform: uppercase;
-            color: #667781;
+            color: mix(#667781, $o-main-text-color, 60%);
         }
     }
 
@@ -198,7 +198,7 @@
     h6 {
         font-size: 0.8em;
         text-transform: uppercase;
-        color: #667781;
+        color: mix(#667781, $o-main-text-color, 60%);
         margin-bottom: 0;
     }
 }
@@ -219,7 +219,7 @@
 
     i.fa-chevron-right, i.fa-chevron-down {
         font-size: 0.75em;
-        color: #8696a0;
+        color: mix(#8696a0, $o-main-text-color, 60%);
         flex: 0 0 auto;
     }
 }
@@ -265,7 +265,7 @@
     h6 {
         text-transform: none;
         font-size: 0.85em;
-        color: #128c4a;
+        color: mix(#128c4a, $o-main-text-color, 60%);
     }
 }
 
@@ -284,7 +284,7 @@
 
 .o_chatroom_contact_product_stock {
     display: block;
-    color: #128c4a;
+    color: mix(#128c4a, $o-main-text-color, 60%);
     font-size: 0.78em;
 }
 
@@ -321,7 +321,7 @@
 
     &:hover,
     &:focus-visible {
-        color: #128c4a;
+        color: mix(#128c4a, $o-main-text-color, 60%);
         background-color: rgba(37, 211, 102, 0.12);
     }
 }
@@ -342,7 +342,7 @@
 
 .o_chatroom_contact_doc_amount {
     flex: 0 0 auto;
-    color: #667781;
+    color: mix(#667781, $o-main-text-color, 60%);
     font-variant-numeric: tabular-nums;
 }
 
@@ -374,8 +374,8 @@
     align-items: center;
     justify-content: center;
     border-radius: 4px;
-    background-color: #f0f2f5;
-    color: #8696a0;
+    background-color: $o-gray-100;
+    color: mix(#8696a0, $o-main-text-color, 60%);
     flex: 0 0 auto;
 }
 

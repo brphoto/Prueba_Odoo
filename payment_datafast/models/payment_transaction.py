@@ -192,8 +192,11 @@ class PaymentTransaction(models.Model):
             tax_amount = self.sale_order_ids[:1].amount_tax if (
                 'sale_order_ids' in self._fields and self.sale_order_ids
             ) else 0.0
-        else:
+        elif 'invoice_ids' in self._fields:
+            # invoice_ids viene de account_payment, opcional para este módulo.
             tax_amount = sum(invoice.amount_tax for invoice in self.invoice_ids)
+        else:
+            tax_amount = 0.0
         base_zero += self.amount - (base_zero + taxable_base + tax_amount)
         return max(base_zero, 0.0), max(taxable_base, 0.0), max(tax_amount, 0.0)
 

@@ -22,7 +22,7 @@
                         <div class="ea-subtitle">Tu solicitud se enviará a RRHH para revisión y aprobación.</div>
 
                         <t t-if="error">
-                            <div class="alert alert-danger d-flex align-items-center gap-2">
+                            <div role="alert" class="alert alert-danger d-flex align-items-center gap-2">
                                 <i class="fa fa-exclamation-triangle"/>
                                 <strong t-esc="error"/>
                             </div>

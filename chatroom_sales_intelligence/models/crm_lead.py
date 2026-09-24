@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 from datetime import timedelta
 
+import logging
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class CrmLead(models.Model):
@@ -101,22 +105,35 @@ class CrmLead(models.Model):
         Activity = self.env['mail.activity']
         PoolTag = self.env['crm.tag'] if 'crm.tag' in self.env else False
         pool_tag = PoolTag.search([('name', '=', 'Sin asignar / Pool')], limit=1) if PoolTag else False
+        # Que oportunidades tienen actividades pendientes, en UNA consulta.
+        # Antes era un search_count por lead: el cron recorre todas las
+        # oportunidades con el SLA vencido, que en una cartera grande son
+        # cientos, y cada una pagaba su propia consulta.
+        with_activity = set()
+        if leads:
+            with_activity = set(Activity.search([
+                ('res_model', '=', 'crm.lead'), ('res_id', 'in', leads.ids),
+            ]).mapped('res_id'))
         for lead in leads:
-            pending = Activity.search_count([
-                ('res_model', '=', 'crm.lead'), ('res_id', '=', lead.id),
-            ])
-            if pending:
-                continue
-            vals = {
-                'user_id': False,
-                'assignment_pool_status': 'pool',
-                'sla_timer': False,
-            }
-            if pool_tag and pool_tag not in lead.tag_ids:
-                vals['tag_ids'] = [(4, pool_tag.id)]
-            lead.write(vals)
-            lead.message_post(body=_(
-                "La oportunidad fue liberada al pool por vencimiento del SLA sin actividad hecha."))
+            try:
+                # Un fallo en un registro no puede tirar la corrida entera
+                # ni revertir lo ya hecho con los anteriores.
+                with self.env.cr.savepoint():
+                    if lead.id in with_activity:
+                        continue
+                    vals = {
+                        'user_id': False,
+                        'assignment_pool_status': 'pool',
+                        'sla_timer': False,
+                    }
+                    if pool_tag and pool_tag not in lead.tag_ids:
+                        vals['tag_ids'] = [(4, pool_tag.id)]
+                    lead.write(vals)
+                    lead.message_post(body=_(
+                        "La oportunidad fue liberada al pool por vencimiento del SLA sin actividad hecha."))
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "_cron_process_lead_sla: fallo procesando %s", lead.display_name)
         return len(leads)
 
     def _get_chatroom_channels(self):

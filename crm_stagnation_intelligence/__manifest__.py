@@ -12,6 +12,7 @@ la ficha del contacto.
     """,
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
+    'icon': '/crm_stagnation_intelligence/static/description/icon.svg',
     'category': 'Sales/CRM',
     'version': '19.0.1.0.0',
     'depends': ['crm_customer_intelligence', 'crm_stagnation_management'],

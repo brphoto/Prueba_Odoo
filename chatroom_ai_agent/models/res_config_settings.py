@@ -58,11 +58,19 @@ class ResConfigSettings(models.TransientModel):
     chatroom_ai_agent_max_tasks = fields.Integer(
         string='Máximo de tareas por ciclo', default=20,
         config_parameter='chatroom_ai_agent.max_tasks',
-    )
+    
+        help=(
+            "Cuántas tareas puede tener el agente en marcha a la vez. Es un "
+            "freno de mano: si algo se descontrola, limita el daño. Subirlo "
+            "mucho multiplica el consumo de tokens."))
     chatroom_ai_agent_max_actions = fields.Integer(
         string='Maximo de acciones por tarea', default=8,
         config_parameter='chatroom_ai_agent.max_actions',
-    )
+    
+        help=(
+            "Cuántas acciones puede encadenar el agente dentro de una misma "
+            "tarea antes de detenerse. Evita que se quede dando vueltas "
+            "gastando tokens sin llegar a nada."))
     chatroom_ai_agent_max_payment_amount = fields.Float(
         string='Límite de cobro automático', default=0.0,
         config_parameter='chatroom_ai_agent.max_payment_amount',

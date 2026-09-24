@@ -24,7 +24,7 @@ class MarketingSocialAlert(models.Model):
     state = fields.Selection([
         ('open', 'Abierta'), ('resolved', 'Resuelta'),
     ], string='Estado', default='open', required=True, tracking=True)
-    detected_at = fields.Datetime(string='Detectada', default=fields.Datetime.now, required=True)
+    detected_at = fields.Datetime(string='Detectada', default=fields.Datetime.now, required=True, index=True)
     resolved_at = fields.Datetime(string='Resuelta el', readonly=True)
 
     def action_resolve(self):

@@ -1,7 +1,7 @@
 .o_chatroom_payment_wizard {
     max-width: 820px;
     padding: 4px 4px 0;
-    color: #243b53;
+    color: $o-main-text-color;
 
     .o_chatroom_payment_intro {
         display: flex;
@@ -12,8 +12,8 @@
         border: 1px solid #bfe7e2;
         border-left: 4px solid #0b9e94;
         border-radius: 12px;
-        background: linear-gradient(135deg, #f0fcfa, #e8f7f5);
-        color: #174c49;
+        background: linear-gradient(135deg, $o-view-background-color, $o-gray-100);
+        color: $o-main-text-color;
 
         .o_chatroom_payment_intro_icon {
             display: inline-flex;
@@ -30,7 +30,7 @@
 
         .o_chatroom_payment_intro_copy { min-width: 0; }
         strong { display: block; margin-bottom: 3px; font-size: 16px; }
-        p { margin: 0; color: #4f6f6d; font-size: 13px; line-height: 1.45; }
+        p { margin: 0; color: mix(#4f6f6d, $o-main-text-color, 60%); font-size: 13px; line-height: 1.45; }
     }
 
     .o_chatroom_payment_fields,
@@ -46,7 +46,7 @@
         > label {
             display: block;
             margin: 0 0 6px;
-            color: #344054;
+            color: $o-main-text-color;
             font-size: 13px;
             font-weight: 700;
         }
@@ -54,7 +54,7 @@
         > small {
             display: block;
             margin-top: 5px;
-            color: #667085;
+            color: mix(#667085, $o-main-text-color, 60%);
             font-size: 11px;
             line-height: 1.35;
         }
@@ -69,10 +69,10 @@
         input,
         select {
             min-height: 36px;
-            border: 1px solid #cbd5e1;
+            border: 1px solid $o-gray-300;
             border-radius: 7px;
-            background: #fff;
-            color: #243b53;
+            background: $o-view-background-color;
+            color: $o-main-text-color;
         }
 
         .o_input:focus,
@@ -86,9 +86,9 @@
     .o_chatroom_payment_section {
         margin: 18px 0 0;
         padding: 14px 16px 16px;
-        border: 1px solid #dce3ec;
+        border: 1px solid $o-gray-200;
         border-radius: 12px;
-        background: #f8fafc;
+        background: $o-view-background-color;
 
         .o_chatroom_payment_section_header {
             display: flex;
@@ -98,9 +98,9 @@
             margin-bottom: 13px;
 
             strong, span { display: block; }
-            strong { color: #344054; font-size: 13px; }
-            span { margin-top: 3px; color: #667085; font-size: 11px; }
-            > i { color: #704c6c; font-size: 16px; }
+            strong { color: $o-main-text-color; font-size: 13px; }
+            span { margin-top: 3px; color: mix(#667085, $o-main-text-color, 60%); font-size: 11px; }
+            > i { color: mix(#704c6c, $o-main-text-color, 60%); font-size: 16px; }
         }
 
         .o_chatroom_payment_new_order_fields { grid-template-columns: minmax(0, 1fr) 130px; }
@@ -112,29 +112,29 @@
         gap: 8px;
         margin-top: 16px;
         padding: 10px 12px;
-        border: 1px solid #dbe5ef;
+        border: 1px solid $o-gray-200;
         border-left: 3px solid #3984c6;
         border-radius: 9px;
-        background: #f4f8fc;
-        color: #36566f;
+        background: $o-view-background-color;
+        color: $o-main-text-color;
 
-        > i { margin-top: 2px; color: #3984c6; }
-        .o_field_widget { color: #36566f; font-size: 12px; font-weight: 600; line-height: 1.45; }
+        > i { margin-top: 2px; color: mix(#3984c6, $o-main-text-color, 60%); }
+        .o_field_widget { color: $o-main-text-color; font-size: 12px; font-weight: 600; line-height: 1.45; }
     }
 
     .o_chatroom_payment_preview {
         margin: 12px 0 18px;
         padding: 12px 14px;
-        border: 1px solid #e4d8e4;
+        border: 1px solid $o-gray-200;
         border-left: 4px solid #704c6c;
         border-radius: 10px;
-        background: #fcf9fc;
-        color: #344054;
+        background: $o-view-background-color;
+        color: $o-main-text-color;
         line-height: 1.55;
 
         .o_chatroom_payment_preview_title {
             margin-bottom: 5px;
-            color: #704c6c;
+            color: mix(#704c6c, $o-main-text-color, 60%);
             font-size: 12px;
             font-weight: 700;
         }

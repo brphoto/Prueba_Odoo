@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from odoo import _, api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 RED_THRESHOLD_DAYS = 15
 YELLOW_THRESHOLD_DAYS = 7
@@ -86,19 +90,27 @@ class CrmLead(models.Model):
         _get_last_management_date y se reinicie el semáforo sola."""
         leads = self.search([('active', '=', True), ('stage_id.is_won', '=', False)])
         for lead in leads:
-            if lead.management_alert_state == 'red':
-                if not lead.stagnation_alert_notified and lead.user_id:
-                    lead.message_post(
-                        body=_(
-                            "⚠️ Esta oportunidad lleva %(days)s días sin gestión. "
-                            "Contactá a %(contact)s para retomarla."
-                        ) % {
-                            'days': lead.days_since_last_management,
-                            'contact': lead.partner_id.name or lead.name,
-                        },
-                        partner_ids=[lead.user_id.partner_id.id],
-                        subtype_xmlid='mail.mt_comment',
-                    )
-                    lead.stagnation_alert_notified = True
-            elif lead.stagnation_alert_notified:
-                lead.stagnation_alert_notified = False
+            try:
+                # Un fallo en un registro no puede tirar la corrida entera
+                # ni revertir lo ya hecho con los anteriores.
+                with self.env.cr.savepoint():
+                    if lead.management_alert_state == 'red':
+                        if not lead.stagnation_alert_notified and lead.user_id:
+                            lead.message_post(
+                                body=_(
+                                    "⚠️ Esta oportunidad lleva %(days)s días sin gestión. "
+                                    "Contactá a %(contact)s para retomarla."
+                                ) % {
+                                    'days': lead.days_since_last_management,
+                                    'contact': lead.partner_id.name or lead.name,
+                                },
+                                partner_ids=[lead.user_id.partner_id.id],
+                                subtype_xmlid='mail.mt_comment',
+                            )
+                            lead.stagnation_alert_notified = True
+                    elif lead.stagnation_alert_notified:
+                        lead.stagnation_alert_notified = False
+
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "_cron_notify_stagnant_leads: fallo procesando %s", lead.display_name)

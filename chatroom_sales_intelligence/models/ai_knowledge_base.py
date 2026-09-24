@@ -613,12 +613,16 @@ class AiKnowledgeBase(models.Model):
                 (currency.symbol or currency.name) if currency else '',
             )
             if include_stock:
-                available = (
-                    product_company.free_qty if 'free_qty' in product_company._fields
-                    else product_company.qty_available
-                ) if product_company.type != 'service' else False
-                row += ' | disponible: %s' % (
-                    'servicio' if product_company.type == 'service' else f'{available:g}'
-                )
+                # free_qty / qty_available vienen de Inventario (stock), que es
+                # opcional: sin él no hay existencias que informar.
+                if product_company.type == 'service':
+                    stock_text = 'servicio'
+                elif 'free_qty' in product_company._fields:
+                    stock_text = f'{product_company.free_qty:g}'
+                elif 'qty_available' in product_company._fields:
+                    stock_text = f'{product_company.qty_available:g}'
+                else:
+                    stock_text = 'consultar'
+                row += ' | disponible: %s' % stock_text
             rows.append(row)
         return 'Datos vivos de productos en Odoo (consultados ahora):\n%s' % '\n'.join(rows)

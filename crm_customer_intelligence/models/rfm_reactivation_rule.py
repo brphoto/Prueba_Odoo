@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 from datetime import timedelta
 
+import logging
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 class RfmReactivationRule(models.Model):
@@ -43,40 +47,47 @@ class RfmReactivationRule(models.Model):
         Lead = self.env['crm.lead']
         created = 0
         for rule in self.search([('active', '=', True)]):
-            cutoff = today - timedelta(days=max(1, rule.days_allowed))
-            # RFM ya consolida facturas, POS/pedidos y los historicos
-            # importados. Usar sus campos indexados evita cargar todos los
-            # contactos y hacer un search_count por cada uno.
-            partners = Partner.search([
-                ('rfm_category', '=', rule.category_code),
-                ('rfm_last_purchase_date', '<', cutoff),
-            ])
-            open_lead_partner_ids = set(Lead.search([
-                ('partner_id', 'in', partners.ids), ('active', '=', True),
-                ('probability', '<', 100),
-            ]).mapped('partner_id').ids)
-            lead_values = []
-            for partner in partners:
-                if partner.id in open_lead_partner_ids:
-                    continue
-                assigned = rule.user_id
-                if not assigned and 'user_id' in partner._fields:
-                    assigned = partner.user_id
-                lead_values.append({
-                    'name': _('Reactivación RFM - %s') % partner.name,
-                    'partner_id': partner.id,
-                    'user_id': assigned.id if assigned else False,
-                    'team_id': rule.team_id.id if rule.team_id else False,
-                    'description': _(
-                        'Cliente categoría %(category)s sin comprar hace %(days)s días. %(description)s'
-                    ) % {
-                        'category': rule.category_code.upper(),
-                        'days': rule.days_allowed,
-                        'description': rule.lead_description or '',
-                    },
-                })
-            if lead_values:
-                Lead.create(lead_values)
-                created += len(lead_values)
-            rule.last_run = fields.Datetime.now()
+            try:
+                # Un fallo en un registro no puede tirar la corrida entera
+                # ni revertir lo ya hecho con los anteriores.
+                with self.env.cr.savepoint():
+                    cutoff = today - timedelta(days=max(1, rule.days_allowed))
+                    # RFM ya consolida facturas, POS/pedidos y los historicos
+                    # importados. Usar sus campos indexados evita cargar todos los
+                    # contactos y hacer un search_count por cada uno.
+                    partners = Partner.search([
+                        ('rfm_category', '=', rule.category_code),
+                        ('rfm_last_purchase_date', '<', cutoff),
+                    ])
+                    open_lead_partner_ids = set(Lead.search([
+                        ('partner_id', 'in', partners.ids), ('active', '=', True),
+                        ('probability', '<', 100),
+                    ]).mapped('partner_id').ids)
+                    lead_values = []
+                    for partner in partners:
+                        if partner.id in open_lead_partner_ids:
+                            continue
+                        assigned = rule.user_id
+                        if not assigned and 'user_id' in partner._fields:
+                            assigned = partner.user_id
+                        lead_values.append({
+                            'name': _('Reactivación RFM - %s') % partner.name,
+                            'partner_id': partner.id,
+                            'user_id': assigned.id if assigned else False,
+                            'team_id': rule.team_id.id if rule.team_id else False,
+                            'description': _(
+                                'Cliente categoría %(category)s sin comprar hace %(days)s días. %(description)s'
+                            ) % {
+                                'category': rule.category_code.upper(),
+                                'days': rule.days_allowed,
+                                'description': rule.lead_description or '',
+                            },
+                        })
+                    if lead_values:
+                        Lead.create(lead_values)
+                        created += len(lead_values)
+                    rule.last_run = fields.Datetime.now()
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "_cron_process_reactivation: fallo procesando %s", rule.display_name)
         return created

@@ -32,5 +32,5 @@ requiere una plantilla WhatsApp aprobada, permisos y activación explícita.''',
     'installable': True,
     'application': False,
     'auto_install': False,
-    'icon': 'static/description/icon.svg',
+    'icon': '/chatroom_ai_operations/static/description/icon.svg',
 }

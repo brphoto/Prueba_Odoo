@@ -12,6 +12,8 @@
     <record id="group_chatroom_notifications_manager" model="res.groups">
         <field name="name">Administrador de notificaciones</field><field name="privilege_id" ref="privilege_chatroom_notifications"/>
         <field name="implied_ids" eval="[(4, ref('group_chatroom_notifications_user'))]"/>
+        <!-- Sin esto el administrador no ve el modulo recien instalado. -->
+        <field name="user_ids" eval="[(4, ref('base.user_admin'))]"/>
     </record>
     <record id="chatroom_notification_rule_user" model="ir.rule">
         <field name="name">Notificaciones propias o generales</field>
@@ -24,5 +26,21 @@
         <field name="model_id" ref="model_chatroom_notification"/>
         <field name="domain_force">[(1, '=', 1)]</field>
         <field name="groups" eval="[(4, ref('chatroom_notifications.group_chatroom_notifications_manager'))]"/>
+    </record>
+
+    <!-- Aislamiento por empresa.
+
+         Son reglas GLOBALES (sin `groups`) a proposito: Odoo une con OR
+         las reglas de los grupos del usuario y aplica las globales con
+         AND sobre el resultado. Puesta en un grupo, una regla por empresa
+         se uniria con OR a las que ya existen -alguna con dominio
+         `[('id', '!=', False)]`- y no aislaria nada.
+
+         `company_id = False` significa "de todas las empresas" y por eso
+         se deja pasar. -->
+    <record id="chatroom_notification_rule_company" model="ir.rule">
+        <field name="name">Notificaciones: solo las de la empresa activa</field>
+        <field name="model_id" ref="model_chatroom_notification"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
 </odoo>

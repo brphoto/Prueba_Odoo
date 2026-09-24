@@ -6,6 +6,8 @@
     <record id="group_co_payroll_manager" model="res.groups">
         <field name="name">Nómina Colombia / Supervisor</field>
         <field name="implied_ids" eval="[(4, ref('l10n_co_payroll.group_co_payroll_user'))]"/>
+        <!-- Sin esto el administrador no ve el modulo recien instalado. -->
+        <field name="user_ids" eval="[(4, ref('base.user_admin'))]"/>
     </record>
     <record id="group_co_payroll_auditor" model="res.groups">
         <field name="name">Nómina Colombia / Auditor</field>

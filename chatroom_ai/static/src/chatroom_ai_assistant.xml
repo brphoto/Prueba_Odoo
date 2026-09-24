@@ -15,13 +15,13 @@
                     <i t-attf-class="fa {{ aiAssistant.open ? 'fa-chevron-down' : 'fa-chevron-right' }}"/>
                 </div>
                 <div class="o_chatroom_ai_assistant_body" t-if="aiAssistant.open">
-                    <div class="alert alert-danger py-1 px-2 mb-2" t-if="aiAssistant.aiPaused">
+                    <div role="status" class="alert alert-danger py-1 px-2 mb-2" t-if="aiAssistant.aiPaused">
                         <i class="fa fa-pause"/> IA pausada por seguridad o por atencion humana. Reactivala desde el control de la conversacion despues de revisar el caso.
                     </div>
-                    <div class="alert alert-warning py-2 px-2 mb-2" t-if="!aiAssistant.providerReady and !aiAssistant.loading">
+                    <div role="status" class="alert alert-warning py-2 px-2 mb-2" t-if="!aiAssistant.providerReady and !aiAssistant.loading">
                         Configura el proveedor en Ajustes de Chatroom WhatsApp para consultar IA.
                     </div>
-                    <div class="alert alert-danger py-2 px-2 mb-2" t-if="aiAssistant.error">
+                    <div role="alert" class="alert alert-danger py-2 px-2 mb-2" t-if="aiAssistant.error">
                         <t t-esc="aiAssistant.error"/>
                     </div>
                     <div class="o_chatroom_ai_assistant_compact_bar">
@@ -57,7 +57,7 @@
                             <strong>Respuesta preparada</strong>
                             <span class="badge" t-esc="suggestionStateLabel()"/>
                         </div>
-                        <div class="alert alert-warning py-1 px-2 mb-2" t-if="aiAssistant.suggestion.safety_reason">
+                        <div role="status" class="alert alert-warning py-1 px-2 mb-2" t-if="aiAssistant.suggestion.safety_reason">
                             <i class="fa fa-shield"/> <t t-esc="aiAssistant.suggestion.safety_reason"/>
                         </div>
                         <div class="o_chatroom_ai_assistant_trace" role="status">

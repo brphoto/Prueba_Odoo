@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 from datetime import timedelta
 
+import logging
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 class ChatroomOperationsPlaybook(models.Model):
@@ -48,8 +52,19 @@ class ChatroomOperationsPlaybook(models.Model):
 
     def _compute_run_count(self):
         Run = self.env['chatroom.operations.playbook.run'].sudo()
+        # Una consulta agrupada para todo el lote en vez de un
+        # search_count por fila de la lista.
+        counts = {}
+        record_ids = [record.id for record in self._origin if record.id]
+        if record_ids:
+            counts = {
+                group.id: count
+                for group, count in Run._read_group(
+                    [('playbook_id', 'in', record_ids)], ['playbook_id'], ['__count'])
+                if group
+            }
         for record in self:
-            record.run_count = Run.search_count([('playbook_id', '=', record.id)])
+            record.run_count = counts.get(record._origin.id, 0)
 
     @api.constrains('execution_mode', 'template_id')
     def _check_template(self):
@@ -182,8 +197,15 @@ class ChatroomOperationsPlaybook(models.Model):
     def _cron_run_playbooks(self):
         total = 0
         for playbook in self.sudo().search([('active', '=', True)]):
-            channels = playbook._candidate_channels()
-            results = [playbook._execute_channel(channel) for channel in channels]
-            playbook._record_run('cron', channels, results)
-            total += len(channels)
+            try:
+                # Un fallo en un registro no puede tirar la corrida entera
+                # ni revertir lo ya hecho con los anteriores.
+                with self.env.cr.savepoint():
+                    channels = playbook._candidate_channels()
+                    results = [playbook._execute_channel(channel) for channel in channels]
+                    playbook._record_run('cron', channels, results)
+                    total += len(channels)
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "_cron_run_playbooks: fallo procesando %s", playbook.display_name)
         return total

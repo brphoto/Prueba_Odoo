@@ -19,5 +19,5 @@ con límites configurables. No reemplaza WhatsApp, pagos ni el agente IA.''',
     'installable': True,
     'application': False,
     'auto_install': False,
-    'icon': 'static/description/icon.svg',
+    'icon': '/chatroom_ai_sales_fulfillment/static/description/icon.svg',
 }

@@ -11,17 +11,17 @@
 
 .o_chatroom_rfm_badge_a {
     background-color: #d1f7dd;
-    color: #0a5c2e;
+    color: $o-main-text-color;
 }
 
 .o_chatroom_rfm_badge_b {
     background-color: #fff3cd;
-    color: #7a5b00;
+    color: mix(#7a5b00, $o-main-text-color, 60%);
 }
 
 .o_chatroom_rfm_badge_c {
-    background-color: #e9ecef;
-    color: #495057;
+    background-color: $o-gray-200;
+    color: $o-main-text-color;
 }
 
 .o_chatroom_contact_commercial_snapshot {
@@ -49,11 +49,11 @@
 }
 
 .o_chatroom_alert_dot_red {
-    color: #dc3545;
+    color: mix(#dc3545, $o-main-text-color, 60%);
 }
 
 .o_chatroom_alert_dot_yellow {
-    color: #e6a700;
+    color: mix(#e6a700, $o-main-text-color, 60%);
 }
 
 // ------------------------------------------------------------------
@@ -67,7 +67,7 @@
     font-size: 0.85em;
     flex: 0 0 auto;
     background-color: #fff3cd;
-    color: #664d03;
+    color: $o-main-text-color;
 
     button {
         margin-left: auto;
@@ -115,7 +115,7 @@
     bottom: 0;
     width: 280px;
     max-width: 85%;
-    background-color: var(--o-view-background-color, #fff);
+    background-color: $o-view-background-color;
     border-left: 1px solid var(--border-color, #dee2e6);
     box-shadow: -4px 0 12px rgba(0, 0, 0, 0.12);
     transform: translateX(100%);
@@ -196,7 +196,7 @@
         border: 0;
         border-bottom: 2px solid transparent;
         background: transparent;
-        color: #667781;
+        color: mix(#667781, $o-main-text-color, 60%);
         padding: 7px 8px 8px;
         font-size: 0.78em;
         white-space: nowrap;
@@ -236,8 +236,8 @@
 }
 
 .o_chatroom_intel_chip.o_chatroom_intel_record_link {
-    background-color: #f0f2f5;
-    color: #212529;
+    background-color: $o-gray-100;
+    color: $o-main-text-color;
     border-radius: 6px;
     padding: 6px 8px;
     margin-bottom: 5px;
@@ -272,8 +272,8 @@
 }
 
 .o_chatroom_intel_chip {
-    background-color: #f0f2f5;
-    color: #212529;
+    background-color: $o-gray-100;
+    color: $o-main-text-color;
     border-radius: 6px;
     padding: 4px 8px;
     margin-bottom: 4px;
@@ -294,15 +294,15 @@
 
 .o_chatroom_alert_badge_red {
     background-color: #f8d7da;
-    color: #58151c;
+    color: $o-main-text-color;
 }
 
 .o_chatroom_alert_badge_yellow {
     background-color: #fff3cd;
-    color: #664d03;
+    color: $o-main-text-color;
 }
 
 .o_chatroom_alert_badge_green {
     background-color: #d1f7dd;
-    color: #0a5c2e;
+    color: $o-main-text-color;
 }

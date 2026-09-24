@@ -2,14 +2,14 @@
     --chatroom-template-primary: #704c6c;
     --chatroom-template-ink: #172033;
     --chatroom-template-muted: #667085;
-    --chatroom-template-border: #d9e0ea;
+    --chatroom-template-border: $o-gray-200;
     --chatroom-template-soft: #f7f9fc;
 
     .o_chatroom_template_sheet {
         max-width: 1480px !important;
         margin: 0 auto;
         padding: 28px 40px 48px !important;
-        background: #fff;
+        background: $o-view-background-color;
     }
 
     .o_chatroom_template_banner {
@@ -18,8 +18,8 @@
         border-left: 4px solid #1aa6b7 !important;
         border-radius: 8px !important;
         padding: 12px 16px !important;
-        color: #17465a;
-        background: #e8f7fa !important;
+        color: $o-main-text-color;
+        background: $o-gray-100 !important;
     }
 
     .o_chatroom_template_hero {
@@ -81,7 +81,7 @@
         padding: 20px 22px 22px !important;
         border: 1px solid var(--chatroom-template-border);
         border-radius: 12px;
-        background: #fff;
+        background: $o-view-background-color;
 
         > .o_field_widget,
         > .o_chatroom_template_full_width_field,
@@ -97,7 +97,7 @@
         .o_field_text textarea {
             min-height: 118px;
             padding: 15px 17px;
-            border: 1px solid #ccd5e2;
+            border: 1px solid $o-gray-300;
             border-radius: 9px;
             background: var(--chatroom-template-soft);
             color: var(--chatroom-template-ink);
@@ -125,7 +125,7 @@
 
         .o_list_table {
             min-width: 760px;
-            background: #fff;
+            background: $o-view-background-color;
         }
 
         .o_list_table thead th {
@@ -143,7 +143,7 @@
         padding: 13px 16px;
         border-radius: 8px;
         color: var(--chatroom-template-muted) !important;
-        background: #fff;
+        background: $o-view-background-color;
         line-height: 1.55;
     }
 
@@ -167,7 +167,7 @@
             margin: 0 !important;
             padding: 16px !important;
             border-radius: 10px;
-            background: #fff;
+            background: $o-view-background-color;
         }
     }
 

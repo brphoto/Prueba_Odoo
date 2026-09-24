@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="titulo-crm-stagnation-management desc-crm-stagnation-management">
+  <title id="titulo-crm-stagnation-management">Gestión de estancamiento</title>
+  <desc id="desc-crm-stagnation-management">Reloj de arena</desc>
+  <defs>
+    <linearGradient id="marco-crm-stagnation-management" x1="24" y1="18" x2="232" y2="240" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F2937"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="marca-crm-stagnation-management" x1="46" y1="38" x2="215" y2="218" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F43F5E"/>
+      <stop offset="1" stop-color="#9F1239"/>
+    </linearGradient>
+    <filter id="sombra-crm-stagnation-management" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+  </defs>
+
+  <!-- Marco, igual en todos los modulos del repositorio -->
+  <rect x="24" y="18" width="208" height="220" rx="25" fill="#0B1220"/>
+  <rect x="25.5" y="19.5" width="205" height="217" rx="23.5" fill="url(#marco-crm-stagnation-management)" stroke="#475569" stroke-width="3"/>
+  <rect x="38" y="32" width="180" height="180" rx="9" fill="#0A1422" stroke="#334155" stroke-width="2"/>
+  <rect x="46" y="40" width="164" height="164" rx="4" fill="url(#marca-crm-stagnation-management)" filter="url(#sombra-crm-stagnation-management)"/>
+
+  <!-- Simbolo propio del modulo -->
+  <path d="M84 62h88M84 194h88" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M96 62v22l32 44 32-44V62" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M96 194v-22l32-44 32 44v22" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

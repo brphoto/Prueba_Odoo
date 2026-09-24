@@ -36,4 +36,8 @@ class ChatroomChannel(models.Model):
             'bubble_radius': company.chatroom_ui_bubble_radius,
             'message_gap': density['gap'],
             'bubble_padding': density['padding'],
+            # El cliente fija `data-chatroom-density` con este valor y el
+            # SCSS tiene reglas propias para "compact" y "spacious". Sin
+            # devolverlo, esas dos densidades no se aplicaban nunca.
+            'message_density': company.chatroom_ui_message_density,
         }

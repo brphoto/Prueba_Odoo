@@ -41,7 +41,7 @@ class MarketingMetaPublication(models.Model):
             try:
                 page._client().mutate(record.external_id, {'message': record.draft_caption})
             except MetaGraphError as error:
-                record.write({
+                record._persist_diagnostic({
                     'edit_state': 'error', 'meta_edit_capability': 'available',
                     'edit_last_error': str(error),
                 })

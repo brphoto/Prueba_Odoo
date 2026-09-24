@@ -1,3 +1,4 @@
+from . import co_payroll_diagnostic_mixin
 from . import co_payroll_period
 from . import co_payroll_parameter
 from . import co_payroll_novelty

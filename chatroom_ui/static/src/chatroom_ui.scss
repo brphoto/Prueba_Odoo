@@ -4,15 +4,15 @@
     --chatroom-ui-accent: #00a884;
     --chatroom-ui-surface: #ffffff;
     --chatroom-ui-surface-muted: #f7f8fa;
-    --chatroom-ui-border: #e5e7eb;
+    --chatroom-ui-border: $o-gray-200;
     --chatroom-ui-text-muted: #667085;
     --chatroom-ui-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
     --chatroom-ui-focus-ring: 0 0 0 3px color-mix(in srgb, var(--chatroom-ui-primary) 18%, transparent);
 }
 
 .o_chatroom_app {
-    background: #f2f4f7;
-    color: #1f2937;
+    background: $o-gray-100;
+    color: $o-main-text-color;
     font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: var(--chatroom-ui-font-scale, 1);
 
@@ -51,7 +51,7 @@
             color: #fff;
 
             option {
-                color: #1f2937;
+                color: $o-main-text-color;
             }
         }
     }
@@ -143,7 +143,7 @@
 
             &:focus {
                 border-color: var(--chatroom-ui-primary);
-                background: #fff;
+                background: $o-view-background-color;
                 box-shadow: var(--chatroom-ui-focus-ring);
             }
         }
@@ -216,7 +216,7 @@
         transition: background 160ms ease, transform 160ms ease;
 
         &:hover {
-            background: #fafbfc;
+            background: $o-view-background-color;
         }
 
         &.o_active {
@@ -233,7 +233,7 @@
         }
 
         &.o_unread .o_chatroom_app_list_name {
-            color: #111827;
+            color: $o-main-text-color;
             font-weight: 700;
         }
     }
@@ -245,7 +245,7 @@
     }
 
     .o_chatroom_app_list_name {
-        color: #344054;
+        color: $o-main-text-color;
         font-size: 0.9rem;
     }
 
@@ -261,7 +261,7 @@
     }
 
     .o_chatroom_app_main {
-        background: #e9edf2;
+        background: $o-gray-200;
     }
 
     .o_chatroom_thread {
@@ -296,14 +296,14 @@
     .o_chatroom_thread_subheader {
         min-height: 42px;
         padding: 7px 18px;
-        background: #fff;
+        background: $o-view-background-color;
         border-bottom-color: var(--chatroom-ui-border);
     }
 
     .o_chatroom_thread_messages {
         padding: 20px clamp(14px, 3vw, 34px);
         gap: var(--chatroom-ui-message-gap, 8px);
-        background-color: #eef2f5;
+        background-color: $o-gray-100;
         background-image: var(
             --chatroom-ui-chat-background,
             radial-gradient(rgba(71, 85, 105, 0.08) 1px, transparent 1px)
@@ -329,7 +329,7 @@
 
     .o_chatroom_bubble_in {
         border-top-left-radius: 5px;
-        background: #fff;
+        background: $o-view-background-color;
     }
 
     .o_chatroom_bubble_out {
@@ -339,23 +339,23 @@
 
     .o_chatroom_bubble_meta {
         margin-top: 5px;
-        color: #82909e;
+        color: mix(#82909e, $o-main-text-color, 60%);
     }
 
     .o_chatroom_composer {
         padding: 10px 14px 12px;
         border-top-color: var(--chatroom-ui-border);
-        background: #fff;
+        background: $o-view-background-color;
     }
 
     .o_chatroom_composer_textarea {
         min-height: 40px;
         border-color: var(--chatroom-ui-border);
-        background: #f8fafc;
+        background: $o-view-background-color;
 
         &:focus {
             border-color: var(--chatroom-ui-primary);
-            background: #fff;
+            background: $o-view-background-color;
             box-shadow: 0 0 0 3px color-mix(in srgb, var(--chatroom-ui-primary) 10%, transparent);
         }
     }
@@ -365,7 +365,7 @@
         height: calc(34px * var(--chatroom-ui-icon-scale, 1));
         padding: 0;
         border-radius: 10px;
-        color: #667085;
+        color: mix(#667085, $o-main-text-color, 60%);
         transition: color 160ms ease, background 160ms ease, transform 160ms ease;
 
         &:hover,
@@ -392,7 +392,7 @@
     .o_chatroom_contact_panel {
         width: 360px;
         border-left-color: var(--chatroom-ui-border);
-        background: #fff;
+        background: $o-view-background-color;
         box-shadow: -8px 0 24px rgba(15, 23, 42, 0.035);
     }
 
@@ -404,7 +404,7 @@
 
     .o_chatroom_contact_header {
         padding: 24px 16px 20px;
-        background: linear-gradient(180deg, #faf7fa 0%, #fff 100%);
+        background: linear-gradient(180deg, $o-gray-100 0%, $o-view-background-color 100%);
         border-bottom-color: var(--chatroom-ui-border);
     }
 
@@ -445,7 +445,7 @@
         transition: background 160ms ease;
 
         &:hover {
-            background: #f8fafc;
+            background: $o-view-background-color;
         }
     }
 }
@@ -460,8 +460,8 @@
         border: 1px solid #bfe7e2;
         border-left: 4px solid #0b9e94;
         border-radius: 12px;
-        background: linear-gradient(135deg, #f0fcfa, #e8f7f5);
-        color: #174c49;
+        background: linear-gradient(135deg, $o-view-background-color, $o-gray-100);
+        color: $o-main-text-color;
 
         i { color: #fff; font-size: 16px; }
 

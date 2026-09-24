@@ -9,9 +9,9 @@
     .o_marketing_network_kpis {
         margin: 16px 0;
         padding: 12px 14px;
-        border: 1px solid #dce5ee;
+        border: 1px solid $o-gray-200;
         border-radius: 10px;
-        background: #f8fafc;
+        background: $o-view-background-color;
 
         .o_field_widget,
         .o_form_label {

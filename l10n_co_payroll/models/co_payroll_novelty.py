@@ -20,7 +20,7 @@ class CoPayrollNovelty(models.Model):
         ("vac", "VAC-LR - Vacaciones/licencia remunerada"), ("irl", "IRL - Accidente/enfermedad laboral"),
         ("vct", "VCT - Variación centro de trabajo"),
     ], string="Tipo de novedad", required=True, tracking=True)
-    date_from = fields.Date(string="Desde", required=True, tracking=True)
+    date_from = fields.Date(string="Desde", required=True, tracking=True, index=True)
     date_to = fields.Date(string="Hasta", required=True, tracking=True)
     days = fields.Float(string="Días", required=True, default=0.0)
     amount = fields.Monetary(string="Valor asociado", currency_field="currency_id")

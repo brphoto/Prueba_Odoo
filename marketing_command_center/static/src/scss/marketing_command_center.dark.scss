@@ -1,0 +1,110 @@
+// Variante oscura del centro de mando de marketing.
+//
+// El SCSS claro trae 46 colores fijos y ninguna variable, así que en tema
+// oscuro las tarjetas seguían pintándose con fondos claros y texto gris
+// sobre el lienzo oscuro de Odoo: se leía mal y desentonaba con el resto
+// de la interfaz. Aquí solo se redefinen los colores, nunca la
+// maquetación, para que ambos temas no puedan divergir en estructura.
+//
+// La paleta sigue la de `chatroom_*.dark.scss` para que las dos
+// aplicaciones se vean de la misma familia.
+
+$mkt-dark-surface: #1c2529;
+$mkt-dark-surface-alt: #202b30;
+$mkt-dark-border: #2a3942;
+$mkt-dark-text: #e6edf0;
+$mkt-dark-muted: #8fa3ad;
+$mkt-dark-accent: #2dd4bf;
+
+.o_marketing_command_dashboard {
+    .o_marketing_dashboard_intro {
+        border-left-color: $mkt-dark-accent;
+        background: rgba(45, 212, 191, .08);
+        color: $mkt-dark-muted;
+    }
+
+    .o_marketing_dashboard_freshness {
+        border-color: $mkt-dark-border;
+    }
+
+    .o_marketing_dashboard_filters,
+    .o_marketing_dashboard_quality,
+    .o_marketing_dashboard_detail_group {
+        border-color: $mkt-dark-border;
+        background: $mkt-dark-surface-alt;
+    }
+
+    .o_marketing_dashboard_stats {
+        .oe_stat_button {
+            border-color: $mkt-dark-border;
+            background: $mkt-dark-surface;
+            box-shadow: none;
+
+            &:hover {
+                border-color: $mkt-dark-accent;
+                box-shadow: 0 5px 14px rgba(0, 0, 0, .35);
+            }
+        }
+
+        .o_stat_text {
+            color: $mkt-dark-muted;
+        }
+    }
+
+    .o_marketing_dashboard_help {
+        border-color: $mkt-dark-border;
+        background: $mkt-dark-surface-alt;
+        color: $mkt-dark-muted;
+
+        strong {
+            color: $mkt-dark-text;
+        }
+    }
+}
+
+.o_marketing_publication_kanban {
+    .o_kanban_record {
+        border-color: $mkt-dark-border;
+        background: $mkt-dark-surface;
+        box-shadow: none;
+    }
+
+    .o_marketing_kanban_media {
+        background: $mkt-dark-surface-alt;
+        border-color: $mkt-dark-border;
+    }
+
+    // El marcador de "sin multimedia" era un degradado claro: sobre fondo
+    // oscuro parecía una tarjeta rota más que un hueco intencionado.
+    .o_marketing_kanban_media_empty {
+        background: linear-gradient(135deg, #263238, #1c2529);
+        color: $mkt-dark-muted;
+    }
+
+    .o_marketing_kanban_metric {
+        color: $mkt-dark-muted;
+    }
+}
+
+.o_marketing_publication_catalog,
+.o_marketing_product_catalog {
+    .o_kanban_record {
+        border-color: $mkt-dark-border;
+        background: $mkt-dark-surface;
+    }
+}
+
+.o_marketing_account_form,
+.o_marketing_campaign_form,
+.o_marketing_publication_form,
+.o_marketing_metric_form,
+.o_marketing_interaction_form,
+.o_marketing_alert_form,
+.o_marketing_agent_form,
+.o_marketing_product_catalog_form {
+    .o_marketing_publication_stats,
+    .o_marketing_publication_form_media {
+        border-color: $mkt-dark-border;
+        background: $mkt-dark-surface-alt;
+    }
+}

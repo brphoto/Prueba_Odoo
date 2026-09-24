@@ -21,7 +21,8 @@ from .xml_validator import validate_xml
 class CoPayrollDianDocument(models.Model):
     _name = "l10n.co.payroll.dian.document"
     _description = "Documento soporte de nómina electrónica DIAN"
-    _inherit = ["mail.thread", "mail.activity.mixin"]
+    _inherit = ["mail.thread", "mail.activity.mixin",
+                "l10n.co.payroll.diagnostic.mixin"]
     _order = "id desc"
     _check_company_auto = True
 
@@ -742,8 +743,11 @@ class CoPayrollDianDocument(models.Model):
                 })
                 document._log_attempt("generate", "success", _("XML firmado y validado localmente."))
             except Exception as exc:
-                document.write({"state": "error", "error_message": str(exc), "error_category": document._classify_error(exc), "xml_validation_errors": str(exc)})
-                document._log_attempt("generate", "error", str(exc))
+                document._persist_diagnostic(
+                    {"state": "error", "error_message": str(exc), "error_category": document._classify_error(exc), "xml_validation_errors": str(exc)},
+                    # La bitacora de intentos se perdia por el mismo motivo que
+                    # el write: entra en la misma transaccion aparte.
+                    lambda doc: doc._log_attempt("generate", "error", str(exc)))
                 if isinstance(exc, (UserError, ValidationError)):
                     raise
                 raise UserError(_("No fue posible generar el documento DIAN: %s") % exc) from exc
@@ -860,8 +864,11 @@ class CoPayrollDianDocument(models.Model):
                 retry_count = document.retry_count + 1 if category in ("network", "soap") else document.retry_count
                 can_retry = category in ("network", "soap") and document.company_id.co_dian_retry_enabled and retry_count <= document.company_id.co_dian_max_retries and not document.zip_key and not document.xml_document_key
                 next_retry = fields.Datetime.now() + timedelta(minutes=document.company_id.co_dian_retry_delay_minutes) if can_retry else False
-                document.write({"state": "error", "error_message": str(exc), "error_category": category, "attempt_count": document.attempt_count + 1, "retry_count": retry_count, "next_retry_at": next_retry})
-                document._log_attempt("send", "error", str(exc))
+                document._persist_diagnostic(
+                    {"state": "error", "error_message": str(exc), "error_category": category, "attempt_count": document.attempt_count + 1, "retry_count": retry_count, "next_retry_at": next_retry},
+                    # La bitacora de intentos se perdia por el mismo motivo que
+                    # el write: entra en la misma transaccion aparte.
+                    lambda doc: doc._log_attempt("send", "error", str(exc)))
                 raise UserError(_("No fue posible transmitir a la DIAN: %s") % exc) from exc
         return {"type": "ir.actions.client", "tag": "soft_reload"}
 
@@ -917,8 +924,11 @@ class CoPayrollDianDocument(models.Model):
                 document.write({"last_checked_at": fields.Datetime.now(), "attempt_count": document.attempt_count + 1, "last_query_operation": operation})
                 document._apply_response(response, "check_status")
             except (DianSoapError, UserError) as exc:
-                document.write({"state": "error", "error_message": str(exc), "error_category": document._classify_error(exc), "attempt_count": document.attempt_count + 1})
-                document._log_attempt("check_status", "error", str(exc))
+                document._persist_diagnostic(
+                    {"state": "error", "error_message": str(exc), "error_category": document._classify_error(exc), "attempt_count": document.attempt_count + 1},
+                    # La bitacora de intentos se perdia por el mismo motivo que
+                    # el write: entra en la misma transaccion aparte.
+                    lambda doc: doc._log_attempt("check_status", "error", str(exc)))
                 if document.env.context.get("co_dian_cron"):
                     continue
                 raise UserError(_("No fue posible consultar el estado DIAN: %s") % exc) from exc

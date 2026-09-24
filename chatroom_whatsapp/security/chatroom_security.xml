@@ -57,4 +57,25 @@
         <field name="groups" eval="[(4, ref('group_chatroom_user'))]"/>
     </record>
 
+
+    <!-- Aislamiento por empresa.
+
+         Son reglas GLOBALES (sin `groups`) a proposito: Odoo une con OR
+         las reglas de los grupos del usuario y aplica las globales con
+         AND sobre el resultado. Puesta en un grupo, una regla por empresa
+         se uniria con OR a las que ya existen -alguna con dominio
+         `[('id', '!=', False)]`- y no aislaria nada.
+
+         `company_id = False` significa "de todas las empresas" y por eso
+         se deja pasar. -->
+    <record id="chatroom_kpi_snapshot_rule_company" model="ir.rule">
+        <field name="name">Indicadores de Chatroom: solo las de la empresa activa</field>
+        <field name="model_id" ref="model_chatroom_kpi_snapshot"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="chatroom_whatsapp_webhook_event_rule_company" model="ir.rule">
+        <field name="name">Eventos de webhook: solo las de la empresa activa</field>
+        <field name="model_id" ref="model_chatroom_whatsapp_webhook_event"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
 </odoo>

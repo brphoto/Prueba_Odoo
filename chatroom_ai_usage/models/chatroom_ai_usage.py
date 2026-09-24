@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
 import json
+import logging
 from datetime import datetime, timedelta
 
 import requests
 
-from odoo import _, api, fields, models
+from odoo import _, api, fields, models, modules
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class ChatroomAiFunding(models.Model):
     _name = 'chatroom.ai.funding'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'chatroom.diagnostic.mixin']
     _description = 'Fondos y conciliacion de IA'
     _order = 'movement_date desc, id desc'
 
@@ -111,6 +114,12 @@ class ChatroomAiUsageEvent(models.Model):
 
 class ChatroomAiUsageSnapshot(models.Model):
     _name = 'chatroom.ai.usage.snapshot'
+    # El mixin estaba puesto en `chatroom.ai.funding`, no aquí, pero quien
+    # llama a `_persist_diagnostic_record` es este modelo: el camino de
+    # error de `action_refresh` salía con un AttributeError en lugar del
+    # UserError previsto, y `_cron_refresh_usage` —que solo atrapa
+    # UserError— reventaba entero en vez de devolver 0.
+    _inherit = ['chatroom.diagnostic.mixin']
     _description = 'Resumen de consumo de IA'
     _order = 'fetched_at desc, id desc'
 
@@ -119,7 +128,7 @@ class ChatroomAiUsageSnapshot(models.Model):
         'res.company', string='Empresa', required=True, index=True,
         default=lambda self: self.env.company,
     )
-    fetched_at = fields.Datetime(string='Actualizado', required=True, default=fields.Datetime.now, readonly=True)
+    fetched_at = fields.Datetime(string='Actualizado', required=True, default=fields.Datetime.now, readonly=True, index=True)
     period_start = fields.Datetime(string='Desde', required=True, readonly=True)
     period_end = fields.Datetime(string='Hasta', required=True, readonly=True)
     request_count = fields.Integer(string='Solicitudes')
@@ -321,11 +330,35 @@ class ChatroomAiUsageSnapshot(models.Model):
             'chatroom_whatsapp.ai_admin_api_key') or '').strip()
 
     @api.model
-    def _set_sync_status(self, status, error=False):
-        icp = self.env['ir.config_parameter'].sudo()
-        icp.set_param('chatroom_whatsapp.ai_usage_last_status', status)
-        icp.set_param('chatroom_whatsapp.ai_usage_last_sync', fields.Datetime.now())
-        icp.set_param('chatroom_whatsapp.ai_usage_last_error', error or '')
+    def _set_sync_status(self, status, error=False, durable=False):
+        """Deja constancia del resultado de la última consulta.
+
+        Con `durable` se escribe en una transacción propia. Hace falta
+        porque todos los caminos de fallo terminan en un `raise`, que
+        deshace la transacción y con ella esta anotación: el indicador de
+        Ajustes solo llegaba a registrar los éxitos. Mostraba la fecha de
+        la última sincronización correcta y ningún error en rojo mientras
+        el refresco automático llevaba días sin funcionar.
+
+        En el camino correcto NO se usa: ahí interesa que el estado y el
+        resumen que lo respalda se guarden o se pierdan juntos.
+        """
+        valores = {
+            'chatroom_whatsapp.ai_usage_last_status': status,
+            'chatroom_whatsapp.ai_usage_last_sync': fields.Datetime.now(),
+            'chatroom_whatsapp.ai_usage_last_error': error or '',
+        }
+        if not durable or modules.module.current_test:
+            # En pruebas no se abre otra transacción: dejaría parámetros
+            # escritos de verdad y el caso siguiente los heredaría.
+            icp = self.env['ir.config_parameter'].sudo()
+            for clave, valor in valores.items():
+                icp.set_param(clave, valor)
+            return
+        with self.env.registry.cursor() as cr:
+            icp = self.env(cr=cr)['ir.config_parameter'].sudo()
+            for clave, valor in valores.items():
+                icp.set_param(clave, valor)
 
     def action_test_platform_connection(self):
         """Comprueba uso y costos oficiales sin generar una solicitud de IA."""
@@ -333,7 +366,7 @@ class ChatroomAiUsageSnapshot(models.Model):
         if not admin_key:
             self._set_sync_status('missing_admin_key', _(
                 'No se ha configurado la Admin API Key de OpenAI.'
-            ))
+            ), durable=True)
             raise UserError(_(
                 'Falta la Admin API Key de OpenAI. La API Key normal de Chatroom sirve '
                 'para responder mensajes, pero no tiene el permiso api.usage.read para '
@@ -361,7 +394,7 @@ class ChatroomAiUsageSnapshot(models.Model):
                 for result in bucket.get('results', [])
             )
         except (requests.RequestException, ValueError, TypeError, KeyError) as exc:
-            self._set_sync_status('error', str(exc))
+            self._set_sync_status('error', str(exc), durable=True)
             raise UserError(_(
                 'La Admin API Key no pudo consultar OpenAI Platform: %s. '
                 'Verifica que sea una clave administrativa de la organización y que '
@@ -519,9 +552,11 @@ class ChatroomAiUsageSnapshot(models.Model):
             snapshot._notify_budget_alert()
             return snapshot._open_form_action()
         except (requests.RequestException, ValueError, TypeError, KeyError) as exc:
-            self._set_sync_status('error', str(exc))
+            self._set_sync_status('error', str(exc), durable=True)
             values.update({'state': 'error', 'source': 'unavailable', 'error_message': str(exc)})
-            self.sudo().create(values)
+            # El `raise` de abajo deshace la transaccion, asi que este
+            # registro -que ES el diagnostico- desaparecia con ella.
+            self._persist_diagnostic_record(self._name, values)
             raise UserError(_('No se pudo consultar el consumo de OpenAI Platform: %s') % exc) from exc
 
     @api.model
@@ -531,10 +566,32 @@ class ChatroomAiUsageSnapshot(models.Model):
         if not enabled:
             return 0
         try:
-            self.action_refresh()
+            # Un savepoint, no `cr.rollback()`. El rollback deshace la
+            # transacción entera, no solo el refresco que ha fallado, y
+            # además está prohibido dentro de las pruebas: con él, este
+            # camino no se podía comprobar en ningún test.
+            #
+            # El rastro del fallo no depende de esta transacción: el
+            # estado va por `_set_sync_status(durable=True)` y el resumen
+            # por `_persist_diagnostic_record`, los dos aparte.
+            with self.env.cr.savepoint():
+                self.action_refresh()
             return 1
         except UserError:
-            self.env.cr.rollback()
+            # El fallo previsto: la API no responde o falta la clave. Ya
+            # quedó anotado con `durable=True`, no hace falta más ruido.
+            return 0
+        except Exception:  # noqa: BLE001
+            # Lo imprevisto no puede tumbar el trabajo programado: eso fue
+            # justo lo que pasó cuando un AttributeError -que no es
+            # UserError- subió hasta el planificador. Se registra entero
+            # en el log, porque un error así hay que arreglarlo, pero el
+            # cron sigue vivo para el próximo intento.
+            _logger.exception(
+                'Fallo inesperado al refrescar el consumo de IA')
+            self._set_sync_status(
+                'error', _('Fallo interno al refrescar; revisa el registro del servidor.'),
+                durable=True)
             return 0
 
     def action_open_platform_usage(self):

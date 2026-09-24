@@ -76,8 +76,13 @@ class ChatroomAiSetup(models.TransientModel):
         sales = 'sale.order' in self.env
         payment = 'chatroom.payment.link' in self.env
         require_approval = icp.get_param('chatroom_ai_agent.require_approval', 'True') == 'True'
-        safety_profile = icp.get_param('chatroom_ai_agent.safety_profile', 'supervised')
-        security = require_approval or safety_profile == 'supervised'
+        # `safety_profile` no interviene: es un selector de preajustes cuyo
+        # onchange escribe `require_approval` y `mode`, y son esos dos los
+        # que se consultan al decidir si algo necesita revisión humana. Con
+        # el perfil aquí, destildar la casilla sin tocar el selector dejaba
+        # el indicador en verde. Ver `chatroom.operations.check._evaluate`.
+        mode = icp.get_param('chatroom_ai_agent.mode', 'supervised')
+        security = require_approval or mode in ('supervised', 'simulation')
 
         required_python = ('requests', 'pypdf')
         missing_python = [name for name in required_python
@@ -102,7 +107,13 @@ class ChatroomAiSetup(models.TransientModel):
             'payment_ready': payment,
             'payment_detail': _('Conector de links disponible') if payment else _('Instala el módulo de links de pago.'),
             'security_ready': security,
-            'security_detail': _('Aprobación humana protegida') if security else _('Activa la aprobación humana.'),
+            # El caso intermedio merece decirse: las tareas siguen
+            # protegidas por el modo, pero las respuestas automáticas ya
+            # no pasan por nadie. Un «protegido» a secas lo ocultaba.
+            'security_detail': (
+                _('Aprobación humana protegida') if require_approval
+                else _('Solo las tareas: las respuestas automáticas salen sin revisión.') if security
+                else _('Activa la aprobación humana.')),
             'python_dependencies_ready': python_ready,
             'python_dependencies_detail': _('requests y pypdf disponibles') if python_ready else _('Faltan: %s') % ', '.join(missing_python),
             'ocr_ready': ocr_ready,

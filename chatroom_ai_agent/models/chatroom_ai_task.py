@@ -214,7 +214,8 @@ class ChatroomAiTask(models.Model):
     approved_by = fields.Many2one('res.users', string='Aprobado por', readonly=True)
     approved_at = fields.Datetime(string='Aprobado el', readonly=True)
     started_at = fields.Datetime(string='Iniciada el', readonly=True)
-    completed_at = fields.Datetime(string='Completada el', readonly=True)
+    completed_at = fields.Datetime(string='Completada el', readonly=True,
+                                   index='btree_not_null')
     next_run_at = fields.Datetime(string='Próxima ejecución', default=fields.Datetime.now, index=True)
     attempts = fields.Integer(string='Intentos realizados', default=0, readonly=True)
     max_attempts = fields.Integer(string='Intentos máximos', default=3)

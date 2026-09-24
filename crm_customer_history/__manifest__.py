@@ -12,6 +12,7 @@ errores, duplicados, clientes identificados y categoría manual.
     'author': 'Bryan Cando',
     'website': 'https://github.com/brphoto/Prueba_Odoo',
     'license': 'LGPL-3',
+    'icon': '/crm_customer_history/static/description/icon.svg',
     'category': 'Sales/CRM',
     'version': '19.0.1.0.6',
     'depends': ['crm_customer_intelligence'],

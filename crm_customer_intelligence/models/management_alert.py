@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from odoo import _, api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 
 class CrmManagementAlert(models.Model):
@@ -19,7 +23,7 @@ class CrmManagementAlert(models.Model):
     state = fields.Selection([
         ('unread', 'Sin revisar'), ('read', 'Revisada'), ('closed', 'Cerrada'),
     ], string='Estado', required=True, default='unread')
-    alert_date = fields.Datetime(default=fields.Datetime.now, required=True)
+    alert_date = fields.Datetime(default=fields.Datetime.now, required=True, index=True)
     user_id = fields.Many2one('res.users', string='Responsable', default=lambda self: self.env.user)
     partner_id = fields.Many2one('res.partner', string='Contacto')
     lead_id = fields.Many2one('crm.lead', string='Oportunidad')
@@ -73,15 +77,22 @@ class CrmManagementAlert(models.Model):
     def _cron_generate_alerts(self):
         Lead = self.env['crm.lead']
         for lead in Lead.search([('active', '=', True), ('stage_id.is_won', '=', False)]):
-            if lead.management_alert_state == 'red':
-                self._upsert({
-                    'name': _('Oportunidad estancada: %s') % lead.name,
-                    'alert_type': 'lead_stagnant', 'severity': 'danger',
-                    'partner_id': lead.partner_id.id, 'lead_id': lead.id,
-                    'source_model': 'crm.lead', 'source_res_id': lead.id,
-                    'detail': _('Lleva %s días sin gestión.') % lead.days_since_last_management,
-                    'user_id': lead.user_id.id or self.env.user.id,
-                })
+            try:
+                # Un fallo en un registro no puede tirar la corrida entera
+                # ni revertir lo ya hecho con los anteriores.
+                with self.env.cr.savepoint():
+                    if lead.management_alert_state == 'red':
+                        self._upsert({
+                            'name': _('Oportunidad estancada: %s') % lead.name,
+                            'alert_type': 'lead_stagnant', 'severity': 'danger',
+                            'partner_id': lead.partner_id.id, 'lead_id': lead.id,
+                            'source_model': 'crm.lead', 'source_res_id': lead.id,
+                            'detail': _('Lleva %s días sin gestión.') % lead.days_since_last_management,
+                            'user_id': lead.user_id.id or self.env.user.id,
+                        })
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "_cron_generate_alerts: fallo procesando %s", lead.display_name)
         Category = self.env['crm.rfm.segment']
         risk_codes = Category.search([
             ('definition_type', '=', 'category'), ('active', '=', True),

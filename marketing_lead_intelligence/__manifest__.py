@@ -5,6 +5,7 @@
 de redes sociales, conversaciones, publicaciones y calidad del lead. El módulo
 es opcional y no instala Chatroom, IA ni conectores de redes.''',
     'version': '19.0.1.0.2',
+    'icon': '/marketing_lead_intelligence/static/description/icon.svg',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
     'category': 'Marketing/CRM',

@@ -18,7 +18,7 @@ class ChatroomChannel(models.Model):
                 'amount': transaction.amount,
                 'currency_id': transaction.currency_id.id,
             }
-        history = self.env['chatroom.payment.link'].sudo().create({
+        datos_historial = {
             'name': _('Enlace - %s') % document.display_name,
             'channel_id': self.id,
             'res_model': res_model,
@@ -28,11 +28,18 @@ class ChatroomChannel(models.Model):
             'transaction_id': transaction.id if transaction else False,
             'link': payment_link,
             **values,
-        })
+        }
+        history = self.env['chatroom.payment.link'].sudo().create(datos_historial)
         try:
             result = self.action_send_text(_('Podes pagar aca: %s') % payment_link)
         except Exception as error:
-            history.write({'state': 'error', 'error_message': str(error)})
+            # `history` se creo unas lineas mas arriba, en esta misma
+            # transaccion. El `raise` no solo perderia el mensaje: se
+            # lleva el registro entero y no queda rastro del intento.
+            # Por eso se vuelve a crear en una transaccion aparte, ya
+            # con el estado de error.
+            self._persist_diagnostic_record('chatroom.payment.link', dict(
+                datos_historial, state='error', error_message=str(error)))
             raise
         history.write({'state': 'sent', 'sent_at': fields.Datetime.now()})
         return result

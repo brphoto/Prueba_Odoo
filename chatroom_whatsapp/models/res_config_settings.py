@@ -26,7 +26,11 @@ class ResConfigSettings(models.TransientModel):
              "(Meta Business Suite > WhatsApp > Configuración de la API)")
     whatsapp_business_account_id = fields.Char(
         string="WhatsApp Business Account ID (WABA)",
-        config_parameter='chatroom_whatsapp.business_account_id')
+        config_parameter='chatroom_whatsapp.business_account_id',
+        help=(
+            "Identificador de la cuenta de WhatsApp Business (WABA). Está "
+            "en Meta Business Suite, en Configuración de la cuenta de "
+            "WhatsApp. Hace falta para sincronizar plantillas y números."))
     whatsapp_access_token = fields.Char(
         string="Token de acceso permanente",
         config_parameter='chatroom_whatsapp.access_token',
@@ -46,7 +50,12 @@ class ResConfigSettings(models.TransientModel):
              "firma X-Hub-Signature-256 de cada webhook y así confirmar "
              "que la petición viene realmente de Meta.")
     whatsapp_webhook_url = fields.Char(
-        string="Webhook URL", compute='_compute_whatsapp_webhook_url')
+        string="Webhook URL", compute='_compute_whatsapp_webhook_url',
+        help=(
+            "Esta es la dirección que hay que pegar en Meta, en la "
+            "configuración del webhook de la App. Se calcula sola a partir "
+            "de la URL base de Odoo: si esa URL es incorrecta, Meta no "
+            "podrá entregar los mensajes."))
     whatsapp_last_webhook_display = fields.Char(
         string="Último webhook recibido", compute='_compute_whatsapp_last_webhook_display',
         help="Última vez que Meta nos mandó un evento (mensaje o cambio de "
@@ -60,13 +69,26 @@ class ResConfigSettings(models.TransientModel):
              "conversaciones abiertas tenga.")
     chatroom_sla_enabled = fields.Boolean(
         string="Activar SLA de primera respuesta",
-        config_parameter='chatroom_whatsapp.sla_enabled', default=True)
+        config_parameter='chatroom_whatsapp.sla_enabled', default=True,
+        help=(
+            "Marca en la bandeja las conversaciones que llevan demasiado "
+            "tiempo sin primera respuesta. No envía nada al cliente ni "
+            "cierra conversaciones: solo cambia el color para que se vean."))
     chatroom_sla_yellow_minutes = fields.Integer(
         string="Aviso amarillo después de (minutos)",
-        config_parameter='chatroom_whatsapp.sla_yellow_minutes', default=10)
+        config_parameter='chatroom_whatsapp.sla_yellow_minutes', default=10,
+        help=(
+            "Minutos sin primera respuesta tras los cuales la conversación "
+            "se marca en ámbar. Es un aviso temprano: conviene que sea "
+            "bastante menor que el vencimiento rojo."))
     chatroom_sla_red_minutes = fields.Integer(
         string="Vencimiento rojo después de (minutos)",
-        config_parameter='chatroom_whatsapp.sla_red_minutes', default=15)
+        config_parameter='chatroom_whatsapp.sla_red_minutes', default=15,
+        help=(
+            "Minutos sin primera respuesta tras los cuales la conversación "
+            "se da por vencida y se marca en rojo. Si está activada la "
+            "reasignación automática, es el momento en que se busca otro "
+            "agente."))
     chatroom_sla_auto_reassign = fields.Boolean(
         string="Liberar y reasignar automáticamente al vencer",
         config_parameter='chatroom_whatsapp.sla_auto_reassign', default=True,
@@ -118,10 +140,18 @@ class ResConfigSettings(models.TransientModel):
              "a contestar hasta la mañana siguiente.")
     chatroom_business_hours_start = fields.Float(
         string="Hora de inicio", config_parameter='chatroom_whatsapp.business_hours_start',
-        default=9.0)
+        default=9.0,
+        help=(
+            "Hora a la que empieza la atención, en formato decimal: 9.5 son "
+            "las 9:30. Se interpreta en la zona horaria configurada más "
+            "abajo, no en la del servidor."))
     chatroom_business_hours_end = fields.Float(
         string="Hora de fin", config_parameter='chatroom_whatsapp.business_hours_end',
-        default=18.0)
+        default=18.0,
+        help=(
+            "Hora a la que termina la atención, en formato decimal: 18.5 "
+            "son las 18:30. Fuera de esta franja se responde con el mensaje "
+            "de ausencia."))
     chatroom_business_hours_weekdays = fields.Char(
         string="Días (0=lunes ... 6=domingo)",
         config_parameter='chatroom_whatsapp.business_hours_weekdays',
@@ -142,12 +172,20 @@ class ResConfigSettings(models.TransientModel):
         # caracteres real en Odoo, así que no pierde nada.
         default="Gracias por escribirnos. En este momento estamos fuera "
                 "de nuestro horario de atención; te respondemos apenas "
-                "volvamos.")
+                "volvamos.",
+        help=(
+            "Respuesta automática que recibe quien escribe fuera del "
+            "horario. Déjalo vacío para no contestar nada: el mensaje del "
+            "cliente se recibe igual y queda esperando al agente."))
 
     # -- Sugerencias de respuesta con IA (cualquier proveedor LLM) --
     chatroom_ai_enabled = fields.Boolean(
         string="Activar sugerencias con IA",
-        config_parameter='chatroom_whatsapp.ai_enabled')
+        config_parameter='chatroom_whatsapp.ai_enabled',
+        help=(
+            "Permite que la IA redacte borradores de respuesta para el "
+            "agente. Los borradores NUNCA se envían solos: siempre hay que "
+            "revisarlos y pulsar enviar."))
     chatroom_ai_provider_url = fields.Char(
         string="Endpoint API IA (chat/completions)",
         config_parameter='chatroom_whatsapp.ai_provider_url',
@@ -156,11 +194,20 @@ class ResConfigSettings(models.TransientModel):
              "modelo propio, etc.)")
     chatroom_ai_api_key = fields.Char(
         string="API Key del proveedor de IA",
-        config_parameter='chatroom_whatsapp.ai_api_key')
+        config_parameter='chatroom_whatsapp.ai_api_key',
+        help=(
+            "Clave del proveedor de IA. Se guarda cifrada y solo la ven los "
+            "administradores. Sin ella, las funciones de IA quedan "
+            "desactivadas aunque la casilla de arriba esté marcada."))
     chatroom_ai_model = fields.Char(
         string="Modelo IA",
         config_parameter='chatroom_whatsapp.ai_model',
-        default='gpt-4o-mini')
+        default='gpt-4o-mini',
+        help=(
+            "Identificador del modelo en el proveedor, por ejemplo "
+            "'gpt-4o-mini'. Los modelos pequeños cuestan bastante menos y "
+            "suelen bastar para sugerir respuestas; deja el que viene si no "
+            "tienes un motivo concreto para cambiarlo."))
     chatroom_ai_auto_classify = fields.Boolean(
         string="Clasificar intención automáticamente",
         config_parameter='chatroom_whatsapp.ai_auto_classify',
@@ -228,12 +275,22 @@ class ResConfigSettings(models.TransientModel):
 
     # -- Ubicación del negocio (para mandarla por WhatsApp desde el chat) --
     chatroom_business_location_name = fields.Char(
-        string="Nombre del local", config_parameter='chatroom_whatsapp.business_location_name')
+        string="Nombre del local", config_parameter='chatroom_whatsapp.business_location_name',
+        help=(
+            "Nombre del local tal y como quieres que lo vea el cliente "
+            "cuando un agente le envía la ubicación por WhatsApp."))
     chatroom_business_location_address = fields.Char(
-        string="Dirección", config_parameter='chatroom_whatsapp.business_location_address')
+        string="Dirección", config_parameter='chatroom_whatsapp.business_location_address',
+        help=(
+            "Dirección que acompaña a la ubicación enviada. WhatsApp la "
+            "muestra bajo el nombre del local."))
     chatroom_business_location_lat = fields.Float(
         string="Latitud", config_parameter='chatroom_whatsapp.business_location_lat',
-        digits=(10, 7))
+        digits=(10, 7),
+        help=(
+            "Latitud del local, en grados decimales. Se saca de Google "
+            "Maps: botón derecho sobre el punto y copiar las coordenadas. "
+            "Es el primero de los dos números."))
     chatroom_business_location_lng = fields.Float(
         string="Longitud", config_parameter='chatroom_whatsapp.business_location_lng',
         digits=(10, 7),

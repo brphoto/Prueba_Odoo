@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_company_form" model="ir.ui.view">
+        <field name="name">res.company.form.inherit.parallel.currency</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='general_info']" position="after">
+                <page string="Otra Moneda" name="parallel_currency"
+                      groups="account.group_account_manager">
+                    <group>
+                        <group name="parallel_currency_valuation" string="Valoración">
+                            <field name="other_currency_id"
+                                   options="{'no_create': True, 'no_open': True}"
+                                   context="{'active_test': False}"/>
+                            <field name="other_currency_rounding_tolerance"
+                                   invisible="not other_currency_id"/>
+                        </group>
+                        <group name="parallel_currency_accounts" string="Cuentas de redondeo"
+                               invisible="not other_currency_id">
+                            <field name="other_currency_loss_account_id"
+                                   options="{'no_create': True}"/>
+                            <field name="other_currency_gain_account_id"
+                                   options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    <p class="text-muted" invisible="other_currency_id">
+                        Elija una moneda para valorar los apuntes en paralelo.
+                    </p>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

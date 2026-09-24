@@ -16,7 +16,7 @@
                         <t t-set="active" t-value="'inicio'"/>
                     </t>
 
-                    <div class="alert alert-warning d-flex align-items-center gap-2 mb-3" t-if="vac_acumulacion_alta">
+                    <div role="status" class="alert alert-warning d-flex align-items-center gap-2 mb-3" t-if="vac_acumulacion_alta">
                         <i class="fa fa-umbrella-beach"/>
                         <div>
                             Tienes <strong><t t-esc="vac_restantes"/> días</strong> de vacaciones acumulados.

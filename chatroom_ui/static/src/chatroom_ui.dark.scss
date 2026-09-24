@@ -1,3 +1,19 @@
+// La hoja clara define estas variables en `:root`. Aqui se REDEFINEN,
+// en vez de inventar nombres paralelos con sufijo `-dark`: de lo
+// contrario, todo lo que use `var(--chatroom-ui-surface)` -y hay codigo
+// en chatroom_ai_agent y en la propia bandeja- se queda blanco sobre el
+// fondo negro, que es el fallo que se veia.
+//
+// Este fichero solo entra en el paquete `web.assets_web_dark`, asi que
+// tocar `:root` aqui no afecta al tema claro.
+:root {
+    --chatroom-ui-surface: #111b21;
+    --chatroom-ui-surface-muted: #202c33;
+    --chatroom-ui-border: #2a3942;
+    --chatroom-ui-text-muted: #8696a0;
+    --chatroom-ui-shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
+}
+
 .o_chatroom_app {
     --chatroom-ui-surface-dark: #111b21;
     --chatroom-ui-surface-dark-2: #202c33;

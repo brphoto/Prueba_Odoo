@@ -117,8 +117,17 @@ class ResPartner(models.Model):
     def _cron_compute_rfm_scores(self, date_from=None, date_to=None):
         result = super()._cron_compute_rfm_scores(date_from=date_from, date_to=date_to)
         manual = self.search([('history_manual_category_id', '!=', False)])
+        # Se agrupa por categoria para escribir una vez por grupo. Antes era
+        # un UPDATE por contacto: en una cartera con miles de clientes
+        # clasificados a mano, eso son miles de escrituras (y su tracking)
+        # en cada corrida diaria del cron.
+        by_category = {}
         for partner in manual:
-            partner.rfm_category = partner.history_manual_category_id.code
+            by_category.setdefault(
+                partner.history_manual_category_id.code, self.browse())
+            by_category[partner.history_manual_category_id.code] |= partner
+        for code, partners in by_category.items():
+            partners.rfm_category = code
         return result
 
     def action_open_history_lines(self):

@@ -1,6 +1,7 @@
 {
     "name": "Warranty Fixture",
     "version": "19.0.1.0.0",
+    'icon': '/activator_main/static/description/icon.svg',
     "category": "Technical",
     "summary": "Fix Odoo19 test",
     "author": "unknown",

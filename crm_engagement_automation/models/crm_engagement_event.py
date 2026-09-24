@@ -27,5 +27,7 @@ class CrmEngagementEvent(models.Model):
         'res.company', string='Compañía', related='partner_id.company_id',
         store=True, readonly=True)
 
-    def name_get(self):
-        return [(event.id, '%s - %s' % (event.name, event.event_date)) for event in self]
+    @api.depends('name', 'event_date')
+    def _compute_display_name(self):
+        for event in self:
+            event.display_name = '%s - %s' % (event.name, event.event_date)

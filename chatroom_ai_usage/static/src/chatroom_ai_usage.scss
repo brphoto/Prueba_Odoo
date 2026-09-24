@@ -4,8 +4,8 @@
         padding: 12px 14px;
         border-left: 3px solid #76506f;
         border-radius: 8px;
-        background: #faf7fb;
-        color: #687386;
+        background: $o-view-background-color;
+        color: mix(#687386, $o-main-text-color, 60%);
         line-height: 1.5;
     }
 
@@ -14,9 +14,9 @@
         width: 100%;
         min-width: 0;
         padding: 12px 14px;
-        border: 1px solid #dbe3ee;
+        border: 1px solid $o-gray-200;
         border-radius: 10px;
-        background: #f8fafc;
+        background: $o-view-background-color;
 
         .o_field_widget,
         .o_field_text,
@@ -43,8 +43,8 @@
         padding: 12px 14px;
         border-left: 3px solid #2c83c9;
         border-radius: 8px;
-        background: #eef7ff;
-        color: #55718a;
+        background: $o-gray-100;
+        color: mix(#55718a, $o-main-text-color, 60%);
         line-height: 1.5;
     }
 
@@ -54,9 +54,9 @@
         width: 100%;
         min-width: 0;
         padding: 12px 14px;
-        border: 1px solid #dbe3ee;
+        border: 1px solid $o-gray-200;
         border-radius: 10px;
-        background: #f8fafc;
+        background: $o-view-background-color;
 
         .o_field_widget,
         .o_field_text,
@@ -82,8 +82,8 @@
         padding: 10px 12px;
         border-left: 3px solid #76506f;
         border-radius: 8px;
-        background: #faf7fb;
-        color: #5e6878;
+        background: $o-view-background-color;
+        color: mix(#5e6878, $o-main-text-color, 60%);
         line-height: 1.5;
     }
 
@@ -93,9 +93,9 @@
         gap: 10px;
         margin-bottom: 16px;
         padding: 12px;
-        border: 1px solid #dbe3ee;
+        border: 1px solid $o-gray-200;
         border-radius: 10px;
-        background: #f8fafc;
+        background: $o-view-background-color;
 
         .o_field_widget,
         textarea {
@@ -127,9 +127,9 @@
         padding: 24px 28px 36px;
     }
     .o_chatroom_ai_setup_steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 18px; }
-    .o_chatroom_ai_setup_steps > div { display: flex; flex-direction: column; gap: 5px; min-height: 120px; padding: 16px; border: 1px solid #d9dce8; border-radius: 10px; background: #fafbfe; }
+    .o_chatroom_ai_setup_steps > div { display: flex; flex-direction: column; gap: 5px; min-height: 120px; padding: 16px; border: 1px solid $o-gray-200; border-radius: 10px; background: $o-view-background-color; }
     .o_chatroom_ai_setup_steps b { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #795273; color: #fff; }
-    .o_chatroom_ai_setup_steps span { color: #667085; line-height: 1.45; }
+    .o_chatroom_ai_setup_steps span { color: mix(#667085, $o-main-text-color, 60%); line-height: 1.45; }
     .o_chatroom_ai_setup_knowledge { display: block; width: 100%; }
     .o_chatroom_ai_setup_upload { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
     .o_chatroom_ai_setup_upload > label,

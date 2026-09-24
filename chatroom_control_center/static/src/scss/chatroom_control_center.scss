@@ -8,7 +8,7 @@
 }
 
 .o_chatroom_control_center .o_form_sheet_bg {
-    background: #f4f6fa;
+    background: $o-gray-100;
 }
 
 /* La vista de control es una pantalla completa, no un formulario con
@@ -72,7 +72,7 @@
     border: 1px solid var(--chatroom-line);
     border-radius: 16px;
     box-shadow: 0 8px 28px rgba(15, 23, 42, .08);
-    background: #fff;
+    background: $o-view-background-color;
 }
 
 .o_form_view:has(.o_chatroom_control_center) .o_form_sheet {
@@ -140,7 +140,7 @@
     padding: 10px 12px;
     border: 1px solid var(--chatroom-line);
     border-radius: 10px;
-    background: #fff;
+    background: $o-view-background-color;
     color: var(--chatroom-ink);
     font-weight: 600;
     white-space: normal;
@@ -318,10 +318,10 @@
     min-height: 106px;
     margin: 0 !important;
     padding: 18px 16px;
-    border: 1px solid #dbe3ee;
+    border: 1px solid $o-gray-200;
     border-radius: 14px;
-    background: linear-gradient(145deg, #ffffff 0%, #f7f9fc 100%);
-    color: #1f2937;
+    background: linear-gradient(145deg, $o-view-background-color 0%, $o-gray-100 100%);
+    color: $o-main-text-color;
     text-align: left;
     box-shadow: 0 3px 10px rgba(15, 23, 42, .04);
     transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
@@ -341,8 +341,8 @@
     width: 42px;
     height: 42px;
     border-radius: 12px;
-    background: #f0e7ef;
-    color: #76506f;
+    background: $o-gray-200;
+    color: mix(#76506f, $o-main-text-color, 60%);
     font-size: 19px;
 }
 
@@ -355,7 +355,7 @@
 }
 
 .o_chatroom_control_center .o_chatroom_metric_content .o_field_widget {
-    color: #172033;
+    color: $o-main-text-color;
     font-size: 28px;
     font-weight: 750;
     line-height: 1.05;
@@ -363,7 +363,7 @@
 
 .o_chatroom_control_center .o_chatroom_metric_content small {
     overflow: hidden;
-    color: #64748b;
+    color: mix(#64748b, $o-main-text-color, 60%);
     font-size: 12px;
     font-weight: 600;
     text-overflow: ellipsis;
@@ -371,7 +371,7 @@
 }
 
 .o_chatroom_control_center .o_chatroom_metric_arrow {
-    color: #94a3b8;
+    color: mix(#94a3b8, $o-main-text-color, 60%);
     font-size: 12px;
 }
 
@@ -390,26 +390,26 @@
     column-gap: 10px;
     min-height: 76px;
     padding: 14px 16px;
-    border: 1px solid #dbe3ee;
+    border: 1px solid $o-gray-200;
     border-radius: 12px;
-    background: #f8fafc;
+    background: $o-view-background-color;
 }
 
 .o_chatroom_control_center .o_chatroom_team_card > .fa {
     grid-row: span 2;
-    color: #76506f;
+    color: mix(#76506f, $o-main-text-color, 60%);
     font-size: 19px;
     text-align: center;
 }
 
 .o_chatroom_control_center .o_chatroom_team_card > span {
-    color: #64748b;
+    color: mix(#64748b, $o-main-text-color, 60%);
     font-size: 12px;
     font-weight: 600;
 }
 
 .o_chatroom_control_center .o_chatroom_team_card .o_field_widget {
-    color: #172033;
+    color: $o-main-text-color;
     font-size: 22px;
     font-weight: 750;
     line-height: 1.1;

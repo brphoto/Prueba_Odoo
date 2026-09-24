@@ -11,27 +11,50 @@ class ResConfigSettings(models.TransientModel):
     chatroom_ai_model_id = fields.Many2one(
         'chatroom.ai.provider.model', string='Modelo activo de Chatroom',
         domain=[('active', '=', True), ('supports_chat', '=', True)],
-    )
+    
+
+        help=(
+            "Modelo que se usa cuando ninguna función tiene uno propio "
+            "asignado más abajo. Los modelos se sincronizan desde el "
+            "proveedor, no hace falta escribir el identificador a mano."))
     chatroom_ai_model_reply_id = fields.Many2one(
         'chatroom.ai.provider.model', string='Modelo para respuestas',
         domain=[('active', '=', True), ('supports_chat', '=', True)],
-    )
+    
+        help=(
+            "Modelo para redactar borradores de respuesta al cliente. Es la "
+            "función que más se usa, así que es donde más pesa el precio "
+            "por token."))
     chatroom_ai_model_summary_id = fields.Many2one(
         'chatroom.ai.provider.model', string='Modelo para resúmenes',
         domain=[('active', '=', True), ('supports_chat', '=', True)],
-    )
+    
+        help=(
+            "Modelo para resumir conversaciones largas. Un modelo pequeño "
+            "suele bastar: resumir es más fácil que redactar."))
     chatroom_ai_model_classification_id = fields.Many2one(
         'chatroom.ai.provider.model', string='Modelo para clasificación',
         domain=[('active', '=', True), ('supports_chat', '=', True)],
-    )
+    
+        help=(
+            "Modelo para clasificar de qué trata un mensaje (consulta, "
+            "queja, pedido...). Son respuestas de una palabra: conviene el "
+            "modelo más barato que acierte."))
     chatroom_ai_model_next_action_id = fields.Many2one(
         'chatroom.ai.provider.model', string='Modelo para próxima acción',
         domain=[('active', '=', True), ('supports_chat', '=', True)],
-    )
+    
+        help=(
+            "Modelo que propone el siguiente paso comercial de una "
+            "conversación."))
     chatroom_ai_model_agent_id = fields.Many2one(
         'chatroom.ai.provider.model', string='Modelo para agente',
         domain=[('active', '=', True), ('supports_chat', '=', True)],
-    )
+    
+        help=(
+            "Modelo para el agente autónomo, que encadena varios pasos. "
+            "Aquí sí compensa un modelo capaz: un error se propaga a toda "
+            "la cadena."))
     chatroom_ai_fallback_model_id = fields.Many2one(
         'chatroom.ai.provider.model', string='Modelo de respaldo',
         domain=[('active', '=', True), ('supports_chat', '=', True)],
@@ -40,22 +63,40 @@ class ResConfigSettings(models.TransientModel):
     chatroom_ai_admin_api_key = fields.Char(
         string='Admin API Key para consumo',
         config_parameter='chatroom_whatsapp.ai_admin_api_key',
-    )
+    
+        help=(
+            "Clave de administración del proveedor, distinta de la clave "
+            "normal. Solo sirve para leer el consumo y la facturación; no "
+            "se usa para generar texto."))
     chatroom_ai_usage_connection_status = fields.Selection([
         ('missing_admin_key', 'Falta Admin API Key'),
         ('ok', 'Conectado'),
         ('error', 'Revisar permisos'),
-    ], string='Estado de consumo oficial', compute='_compute_ai_usage_connection_status')
+    ], string='Estado de consumo oficial', compute='_compute_ai_usage_connection_status',
+        help=(
+            "Resultado del último intento de leer el consumo en el "
+            "proveedor. Si sale en error, el detalle está en el campo de "
+            "abajo."))
     chatroom_ai_usage_last_sync = fields.Datetime(
         string='Última comprobación', compute='_compute_ai_usage_connection_status',
-    )
+    
+        help=(
+            "Cuándo se leyó por última vez el consumo del proveedor. Si "
+            "está muy atrasado, las cifras de gasto que ves no son las de "
+            "hoy."))
     chatroom_ai_usage_last_error = fields.Text(
         string='Detalle de la última comprobación', compute='_compute_ai_usage_connection_status',
-    )
+    
+        help=(
+            "Detalle técnico del último fallo al leer el consumo. Suele ser "
+            "una clave de administración caducada o sin permisos."))
     chatroom_ai_usage_days = fields.Integer(
         string='Período de consulta (días)', default=31,
         config_parameter='chatroom_whatsapp.ai_usage_days',
-    )
+    
+        help=(
+            "Cuántos días hacia atrás se muestran en los paneles de "
+            "consumo."))
     chatroom_ai_monthly_budget = fields.Float(
         string='Presupuesto mensual de referencia', digits=(16, 2),
         config_parameter='chatroom_whatsapp.ai_monthly_budget',

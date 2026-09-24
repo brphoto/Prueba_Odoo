@@ -58,13 +58,49 @@ class CrmLead(models.Model):
         'marketing_publication_id.interaction_ids',
     )
     def _compute_marketing_profile(self):
+        # Los conteos se resuelven en dos consultas agrupadas para todo el
+        # lote. Antes cada lead cargaba en memoria TODOS los mensajes de su
+        # conversación y TODAS las interacciones de su publicación solo
+        # para contarlos, en cada fila de la lista de oportunidades.
+        conversation_ids = [
+            lead.marketing_conversation_id.id for lead in self
+            if lead.marketing_conversation_id]
+        publication_ids = [
+            lead.marketing_publication_id.id for lead in self
+            if lead.marketing_publication_id]
+        messages_by_conversation = {}
+        if conversation_ids:
+            messages_by_conversation = {
+                conversation.id: count
+                for conversation, count in self.env[
+                    'marketing.social.conversation.message']._read_group(
+                    [('conversation_id', 'in', conversation_ids)],
+                    ['conversation_id'], ['__count'])
+                if conversation
+            }
+        interactions_by_publication = {}
+        if publication_ids:
+            interactions_by_publication = {
+                publication.id: count
+                for publication, count in self.env[
+                    'marketing.social.interaction']._read_group(
+                    [('publication_id', 'in', publication_ids)],
+                    ['publication_id'], ['__count'])
+                if publication
+            }
         for lead in self:
             conversation = lead.marketing_conversation_id
             publication = lead.marketing_publication_id
             score = 0
             score += 20 if lead.partner_id else 0
             score += 15 if lead.email_from else 0
-            score += 15 if (lead.phone or (lead.partner_id and lead.partner_id.mobile)) else 0
+            # Odoo 19 unificó el móvil en `res.partner.phone`; el campo
+            # `mobile` ya no existe. Por el cortocircuito de Python solo se
+            # evaluaba cuando el lead NO tenía teléfono propio, que es
+            # justo el caso en el que hacía falta: abrir una oportunidad
+            # sin teléfono pero con contacto lanzaba AttributeError.
+            has_phone = lead.phone or (lead.partner_id and lead.partner_id.phone)
+            score += 15 if has_phone else 0
             score += 15 if lead.user_id else 0
             score += 15 if conversation else 0
             score += 10 if publication else 0
@@ -73,8 +109,10 @@ class CrmLead(models.Model):
             lead.marketing_quality_status = (
                 'excellent' if score >= 80 else
                 'qualified' if score >= 50 else 'new')
-            lead.marketing_message_count = len(conversation.message_ids) if conversation else 0
-            lead.marketing_interaction_count = len(publication.interaction_ids) if publication else 0
+            lead.marketing_message_count = messages_by_conversation.get(
+                conversation.id, 0) if conversation else 0
+            lead.marketing_interaction_count = interactions_by_publication.get(
+                publication.id, 0) if publication else 0
             bits = []
             if lead.marketing_platform:
                 bits.append(PLATFORM_LABELS.get(lead.marketing_platform, lead.marketing_platform))

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="titulo-l10n-co-payroll-dian desc-l10n-co-payroll-dian">
+  <title id="titulo-l10n-co-payroll-dian">Nómina electrónica DIAN</title>
+  <desc id="desc-l10n-co-payroll-dian">Documento firmado y validado</desc>
+  <defs>
+    <linearGradient id="marco-l10n-co-payroll-dian" x1="24" y1="18" x2="232" y2="240" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F2937"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="marca-l10n-co-payroll-dian" x1="46" y1="38" x2="215" y2="218" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#1E3A8A"/>
+    </linearGradient>
+    <filter id="sombra-l10n-co-payroll-dian" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+  </defs>
+
+  <!-- Marco, igual en todos los modulos del repositorio -->
+  <rect x="24" y="18" width="208" height="220" rx="25" fill="#0B1220"/>
+  <rect x="25.5" y="19.5" width="205" height="217" rx="23.5" fill="url(#marco-l10n-co-payroll-dian)" stroke="#475569" stroke-width="3"/>
+  <rect x="38" y="32" width="180" height="180" rx="9" fill="#0A1422" stroke="#334155" stroke-width="2"/>
+  <rect x="46" y="40" width="164" height="164" rx="4" fill="url(#marca-l10n-co-payroll-dian)" filter="url(#sombra-l10n-co-payroll-dian)"/>
+
+  <!-- Simbolo propio del modulo -->
+  <path d="M84 56h64l28 28v116H84z" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M148 56v28h28" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M104 178l18 18 34-40" fill="none" stroke="#BBF7D0" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M104 112h48M104 138h30" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

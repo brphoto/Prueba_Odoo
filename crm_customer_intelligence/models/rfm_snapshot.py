@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 
 class CrmRfmSnapshot(models.Model):
@@ -40,25 +44,32 @@ class CrmRfmSnapshot(models.Model):
         }
         to_create = []
         for company in self.env['res.company'].search([]):
-            partners = self.env['res.partner'].search([
-                ('company_id', 'in', (False, company.id)),
-                '|', ('rfm_frequency', '>', 0), ('rfm_category', '!=', 'none'),
-            ])
-            for partner in partners:
-                vals = {
-                    'rfm_score': partner.rfm_score,
-                    'rfm_category': partner.rfm_category,
-                    'rfm_recency_days': partner.rfm_recency_days,
-                    'rfm_frequency': partner.rfm_frequency,
-                    'rfm_monetary_value': partner.rfm_monetary_value,
-                }
-                snapshot = existing_by_key.get((partner.id, company.id))
-                if snapshot:
-                    snapshot.write(vals)
-                else:
-                    to_create.append({
-                        'snapshot_date': today, 'partner_id': partner.id,
-                        'company_id': company.id, **vals,
-                    })
+            try:
+                # Un fallo en un registro no puede tirar la corrida entera
+                # ni revertir lo ya hecho con los anteriores.
+                with self.env.cr.savepoint():
+                    partners = self.env['res.partner'].search([
+                        ('company_id', 'in', (False, company.id)),
+                        '|', ('rfm_frequency', '>', 0), ('rfm_category', '!=', 'none'),
+                    ])
+                    for partner in partners:
+                        vals = {
+                            'rfm_score': partner.rfm_score,
+                            'rfm_category': partner.rfm_category,
+                            'rfm_recency_days': partner.rfm_recency_days,
+                            'rfm_frequency': partner.rfm_frequency,
+                            'rfm_monetary_value': partner.rfm_monetary_value,
+                        }
+                        snapshot = existing_by_key.get((partner.id, company.id))
+                        if snapshot:
+                            snapshot.write(vals)
+                        else:
+                            to_create.append({
+                                'snapshot_date': today, 'partner_id': partner.id,
+                                'company_id': company.id, **vals,
+                            })
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "_cron_snapshot_rfm: fallo procesando %s", company.display_name)
         if to_create:
             self.create(to_create)

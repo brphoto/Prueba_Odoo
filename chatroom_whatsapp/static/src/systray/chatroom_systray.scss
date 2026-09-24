@@ -13,7 +13,7 @@
     color: inherit;
 
     i {
-        color: #25d366;
+        color: mix(#25d366, $o-main-text-color, 60%);
     }
 }
 

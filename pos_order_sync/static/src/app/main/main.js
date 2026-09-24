@@ -56,7 +56,6 @@ function getOrderInternalNoteText(order) {
 patch(PosOrder.prototype, {
     setup() {
         super.setup(...arguments);
-        //console.log("Pos Order Sync - Order setup patched");
         this.quote_id = this.quote_id || false;
         this.quote_name = this.quote_name || "";
         this.seller_name = this.seller_name || "";
@@ -82,7 +81,6 @@ patch(PosOrder.prototype, {
         return this.prices.taxDetails.tax_amount_currency;
     },
 });
-
 
 patch(PosStore.prototype, {
     async setup(...args) {
@@ -400,9 +398,6 @@ patch(Navbar.prototype, {
             );
             if (missing.every((id) => ProductModel?.get(id))) return;
 
-            console.group("🧩 POS | _loadProductsForPos (Navbar)");
-            console.log("Missing ids:", missing);
-
             const fields = [
                 "id",
                 "display_name",
@@ -418,22 +413,17 @@ patch(Navbar.prototype, {
             ];
 
             const recs = await this.env.services.orm.searchRead("product.product", [["id", "in", missing]], fields);
-            console.log("Fetched products:", recs?.length || 0);
 
             if (!recs?.length) {
                 console.warn("❌ No products returned from server.");
-                console.groupEnd();
                 return;
             }
 
             const inserted = this._tryInsertRecords(ProductModel, recs);
-            console.log("Inserted into store:", inserted);
 
             const stillMissing = missing.filter((id) => !ProductModel?.get(id));
             if (stillMissing.length) console.warn("❌ Still missing after insert:", stillMissing);
-            else console.log("✅ Products now in cache");
 
-            console.groupEnd();
         } catch (e) {
             console.warn("_loadProductsForPos error:", e);
         }
@@ -640,7 +630,6 @@ patch(Navbar.prototype, {
         });
 
         var new_order = self.pos.get_order();
-        console.log("quote_dict =", quote_dict);
 
         // 1) Partner
         const partnerId = quote_dict?.partner_id?.[0] || null;
@@ -666,8 +655,6 @@ patch(Navbar.prototype, {
         for (const line of quote_dict.line || []) {
             const productId = self._normalizeM2O(line.product_id);
             const product = productId ? ProductModel.get(productId) : undefined;
-
-            console.log("line.product_id =", line.product_id, " normalized =", productId, " product =", product);
 
             // ✅ condición correcta
             if (self.pos.config.iface_available_categ_ids.length === 0 || product !== undefined) {
@@ -710,9 +697,6 @@ patch(Navbar.prototype, {
         self.pos.markQuoteLoaded(quote_dict.quote_id);
         //new_order.quote_name = quote_dict.quote_id || "";
 
-        console.log("new_order.seller_name =", new_order.seller_name);
-        console.log("new_order =", new_order);
-        console.log('quote name', new_order.quote_name);
         return new_order;
     },
 
@@ -879,9 +863,6 @@ export class AllQuotesListScreenWidget extends Component {
             );
             if (missing.every((id) => ProductModel?.get(id))) return;
 
-            console.group("🧩 POS | _loadProductsForPos (Screen)");
-            console.log("Missing ids:", missing);
-
             const fields = [
                 "id",
                 "display_name",
@@ -897,22 +878,17 @@ export class AllQuotesListScreenWidget extends Component {
             ];
 
             const recs = await this.env.services.orm.searchRead("product.product", [["id", "in", missing]], fields);
-            console.log("Fetched products:", recs?.length || 0);
 
             if (!recs?.length) {
                 console.warn("❌ No products returned from server.");
-                console.groupEnd();
                 return;
             }
 
             const inserted = this._tryInsertRecords(ProductModel, recs);
-            console.log("Inserted into store:", inserted);
 
             const stillMissing = missing.filter((id) => !ProductModel?.get(id));
             if (stillMissing.length) console.warn("❌ Still missing after insert:", stillMissing);
-            else console.log("✅ Products now in cache");
 
-            console.groupEnd();
         } catch (e) {
             console.warn("_loadProductsForPos (screen) error:", e);
         }
@@ -1110,7 +1086,6 @@ export class AllQuotesListScreenWidget extends Component {
         });
 
         var new_order = self.pos.get_order();
-        console.log("quote_dict =", quote_dict);
 
         const partnerId = quote_dict?.partner_id?.[0] || null;
         if (partnerId) {
@@ -1133,8 +1108,6 @@ export class AllQuotesListScreenWidget extends Component {
         for (const line of quote_dict.line || []) {
             const productId = this._normalizeM2O(line.product_id);
             const product = productId ? ProductModel.get(productId) : undefined;
-
-            console.log("line.product_id =", line.product_id, " normalized =", productId, " product =", product);
 
             if (this.pos.config.iface_available_categ_ids.length === 0 || product !== undefined) {
                 let sale_order_origin_id = false;
@@ -1174,9 +1147,6 @@ export class AllQuotesListScreenWidget extends Component {
         }
         self.pos.markQuoteLoaded(quote_dict.quote_id);
 
-        console.log("new_order.seller_name =", new_order.seller_name);
-        console.log("new_order =", new_order);
-        console.log('quote name', new_order.quote_name);
         return new_order;
     }
 }
@@ -1299,18 +1269,15 @@ export class SaveAsOrderQuotePopupWidget extends Component {
     }
 
     async click_wk_save_order_quote(print_order_quote) {
-        console.log("click_wk_save_order_quote ===========");
         var self = this;
         var current_order = self.pos.get_order();
         const currentDateTime = new Date();
         let formattedDateOrder;
         let new_quote_id;
-        console.log("current_order ===========", current_order);
 
         const seller_name = self.pos.cashier?.name || self.pos.user?.name || "";
         current_order.seller_name = seller_name;
         
-        console.log("click seller_name = ", seller_name);
 
         if (!current_order.get_partner()) {
             self.props.close();
@@ -1461,9 +1428,7 @@ export class SaveAsOrderQuotePopupWidget extends Component {
                                             seller_name: order_vals.seller_name,
                                         },
                                     ]);
-                                    console.log("new_quote_id ===========", new_quote_id);
                                 } catch (error) {
-                                    console.log("Error in creating quote", error);
                                 }
 
                                 if (new_quote_id && current_order.get_partner()) {

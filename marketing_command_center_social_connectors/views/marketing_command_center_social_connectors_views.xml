@@ -53,7 +53,7 @@
                         <field name="last_sync_publications" readonly="1"/>
                         <field name="last_sync_interactions" readonly="1"/>
                     </group>
-                    <div class="alert alert-warning">
+                    <div class="alert alert-warning" role="status">
                         El token y las claves solo son visibles para administradores. Instagram usa la API de Meta; YouTube usa OAuth o API key; LinkedIn y TikTok requieren una aplicación aprobada y los permisos de lectura correspondientes.
                     </div>
                     <notebook>

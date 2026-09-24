@@ -11,7 +11,7 @@ from .marketing_social_constants import PLATFORM_LABELS
 class MarketingSocialAgentChat(models.Model):
     _name = 'marketing.social.agent.chat'
     _description = 'Agente analítico de marketing social'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'marketing.diagnostic.mixin']
     _order = 'write_date desc, id desc'
 
     name = fields.Char(string='Consulta', required=True, default='Nueva consulta de marketing')

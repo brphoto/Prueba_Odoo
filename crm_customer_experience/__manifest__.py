@@ -4,8 +4,10 @@
     'summary': 'Satisfacción NPS, valor de vida del cliente y segmentos estratégicos.',
     'description': 'Amplía Inteligencia Comercial sin duplicar RFM: Encuesta NPS nativa, LTV desde facturas, invitaciones postventa y cruce NPS + RFM.',
     'author': 'Bryan Cando', 'license': 'LGPL-3', 'category': 'Sales/CRM', 'version': '19.0.1.0.0',
+    'icon': '/crm_customer_experience/static/description/icon.svg',
     'depends': ['crm_customer_intelligence', 'survey'],
     'data': [
+        'security/crm_customer_experience_security.xml',
         'security/ir.model.access.csv', 'data/survey_nps_data.xml', 'data/ir_cron_data.xml',
         'views/nps_response_views.xml', 'views/nps_invitation_views.xml',
         'views/nps_campaign_views.xml',

@@ -18,6 +18,8 @@
         <field name="name">Administrador del conector Meta</field>
         <field name="privilege_id" ref="privilege_marketing_meta"/>
         <field name="implied_ids" eval="[(4, ref('group_meta_user'))]"/>
+        <!-- Sin esto el administrador no ve el modulo recien instalado. -->
+        <field name="user_ids" eval="[(4, ref('base.user_admin'))]"/>
     </record>
     <record id="marketing_meta_connection_company_rule" model="ir.rule">
         <field name="name">Meta: conexiones por compañía</field>

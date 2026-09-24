@@ -17,6 +17,8 @@
         <field name="name">Administrador de marketing social</field>
         <field name="privilege_id" ref="privilege_marketing_command_center"/>
         <field name="implied_ids" eval="[(4, ref('group_marketing_user'))]"/>
+        <!-- Sin esto el administrador no ve el modulo recien instalado. -->
+        <field name="user_ids" eval="[(4, ref('base.user_admin'))]"/>
     </record>
 
     <!-- Todos los registros de marketing están aislados por compañía. -->

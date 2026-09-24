@@ -17,7 +17,7 @@
                     <i t-attf-class="fa {{ aiAgent.open ? 'fa-chevron-down' : 'fa-chevron-right' }}"/>
                 </div>
                 <div class="o_chatroom_ai_agent_body" t-if="aiAgent.open">
-                    <div class="alert alert-warning py-2 px-2 mb-2" t-if="aiAgent.canUse === false">
+                    <div role="status" class="alert alert-warning py-2 px-2 mb-2" t-if="aiAgent.canUse === false">
                         Tu usuario no tiene el grupo de acceso al Agente IA. Solicita al administrador que active “Usuario del agente IA”.
                     </div>
                     <t t-if="aiAgent.canUse !== false">
@@ -78,7 +78,7 @@
                         <i class="fa fa-shield"/>
                         <div><strong>Modo <t t-esc="aiAgent.metrics.mode"/></strong><span>Las acciones sensibles conservan aprobación.</span></div>
                     </div>
-                    <div class="alert alert-danger py-2 px-2 mb-2" t-if="aiAgent.error">
+                    <div role="alert" class="alert alert-danger py-2 px-2 mb-2" t-if="aiAgent.error">
                         <t t-esc="aiAgent.error"/>
                     </div>
                     <div class="o_chatroom_ai_agent_task" t-if="aiAgent.task">

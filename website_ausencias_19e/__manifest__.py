@@ -14,6 +14,7 @@
     # Check https://github.com/odoo/odoo/blob/12.0/odoo/addons/base/data/ir_module_category_data.xml
     # for the full list
     'category': 'Uncategorized',
+    'icon': '/website_ausencias_19e/static/description/icon.svg',
     'version': '19.0.1.0.0',
     'license': 'LGPL-3',
 

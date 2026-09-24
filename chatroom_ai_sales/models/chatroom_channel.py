@@ -149,7 +149,9 @@ class ChatroomChannel(models.Model):
                     cart_line.price_unit, current_price,
                     precision_rounding=currency.rounding):
                 return _('El precio de %s cambió desde que se agregó al carrito; requiere revisión.') % product.display_name
-            if validate_stock and product.type == 'consu' and product.is_storable:
+            # is_storable / free_qty vienen de Inventario (stock), que es opcional.
+            if (validate_stock and 'free_qty' in product._fields
+                    and product.type == 'consu' and product.is_storable):
                 available = product.with_company(self.company_id).free_qty
                 if available < cart_line.quantity:
                     return _('La existencia de %s es insuficiente: disponible %s, solicitado %s.') % (

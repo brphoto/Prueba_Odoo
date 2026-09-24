@@ -5,6 +5,10 @@ import { patch } from "@web/core/utils/patch";
 import { FormController } from "@web/views/form/form_controller";
 import { ChatroomApp } from "@chatroom_whatsapp/chatroom_app/chatroom_app";
 
+// Cuanto puede envejecer el tema antes de volver a pedirlo al servidor
+// al recuperar el foco. Los ajustes visuales cambian muy de vez en cuando.
+const CHATROOM_UI_MAX_AGE_MS = 10 * 60 * 1000;
+
 function hexToRgba(hex, alpha) {
     const match = /^#([0-9a-f]{6})$/i.exec(hex || "");
     if (!match) {
@@ -19,19 +23,36 @@ patch(ChatroomApp.prototype, {
         super.setup();
         this.chatroomUiSettings = false;
         this._chatroomUiRefresh = this._loadChatroomUiSettings.bind(this);
+        this._chatroomUiLoadedAt = 0;
+        this._chatroomUiSignature = false;
+        this._chatroomUiRefreshIfStale = () => {
+            if (Date.now() - this._chatroomUiLoadedAt > CHATROOM_UI_MAX_AGE_MS) {
+                this._loadChatroomUiSettings();
+            }
+        };
         onWillStart(async () => {
             await this._loadChatroomUiSettings();
         });
         onMounted(() => {
             this._applyChatroomUiSettings();
             window.addEventListener("chatroom_ui_settings_updated", this._chatroomUiRefresh);
-            window.addEventListener("focus", this._chatroomUiRefresh);
+            // Al volver a la pestana solo se relee si los ajustes ya estan
+            // viejos. Antes se llamaba al servidor en CADA vuelta del foco,
+            // y un agente que alterna con otras aplicaciones genera decenas
+            // al dia sin que nada haya cambiado. El evento de arriba sigue
+            // dando el refresco inmediato cuando se guardan los ajustes.
+            window.addEventListener("focus", this._chatroomUiRefreshIfStale);
         });
         // El contenido de la accion puede montar el nodo visual despues del
         // primer ciclo; reaplicar aqui evita que el tema quede solo guardado
         // en Ajustes sin reflejarse en la bandeja.
         onPatched(() => this._applyChatroomUiSettings());
-        onWillUnmount(() => this._clearChatroomUiSettings());
+        onWillUnmount(() => {
+            window.removeEventListener(
+                "chatroom_ui_settings_updated", this._chatroomUiRefresh);
+            window.removeEventListener("focus", this._chatroomUiRefreshIfStale);
+            this._clearChatroomUiSettings();
+        });
     },
 
     async _loadChatroomUiSettings() {
@@ -39,6 +60,7 @@ patch(ChatroomApp.prototype, {
             const settings = await this.orm.call(
                 "chatroom.channel", "get_ui_settings", []);
             this.chatroomUiSettings = settings || {};
+            this._chatroomUiLoadedAt = Date.now();
             if (this.state) {
                 this.state.companyLogoUrl = this.chatroomUiSettings.logo_url || false;
             }
@@ -55,6 +77,15 @@ patch(ChatroomApp.prototype, {
         if (!settings) {
             return;
         }
+        // `onPatched` dispara esto en cada mensaje, cada filtro y cada
+        // sondeo. Si ni los ajustes ni los nodos cambiaron, no hay nada
+        // que escribir en el DOM.
+        const signature = JSON.stringify(settings)
+            + "|" + document.querySelectorAll(".o_chatroom_app").length;
+        if (signature === this._chatroomUiSignature) {
+            return;
+        }
+        this._chatroomUiSignature = signature;
         const variables = {
             "--chatroom-ui-primary": settings.primary_color,
             "--chatroom-ui-primary-deep": settings.secondary_color,
@@ -105,6 +136,10 @@ patch(ChatroomApp.prototype, {
     },
 
     _clearChatroomUiSettings() {
+        // Al limpiar hay que olvidar la firma: si se vuelve a montar la
+        // bandeja, el tema tiene que reaplicarse aunque los ajustes sean
+        // los mismos.
+        this._chatroomUiSignature = false;
         const root = this.el?.classList.contains("o_chatroom_app")
             ? this.el
             : this.el?.querySelector(".o_chatroom_app");

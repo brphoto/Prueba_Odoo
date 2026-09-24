@@ -53,10 +53,23 @@ class ChatroomAiDashboard(models.Model):
         for dashboard in self:
             company = dashboard.company_id or self.env.company
             task_domain = lambda domain: self._company_domain('chatroom.ai.task', domain, company)
-            dashboard.total_tasks = Task.search_count(task_domain([]))
-            dashboard.pending_tasks = Task.search_count(task_domain([('state', 'in', ('awaiting_approval', 'planned', 'running'))]))
-            dashboard.approval_tasks = Task.search_count(task_domain([('state', '=', 'awaiting_approval')]))
-            dashboard.failed_tasks = Task.search_count(task_domain([('state', '=', 'failed')]))
+            # Cuatro contadores que solo se diferencian por el estado.
+            # Antes eran cuatro SELECT COUNT sobre la misma tabla; uno
+            # agrupado da lo mismo y recorre los datos una sola vez.
+            por_estado = {
+                estado: cuantas
+                for estado, cuantas in Task._read_group(
+                    task_domain([]), groupby=['state'],
+                    aggregates=['__count'])
+            }
+            # `_read_group` devuelve el valor de la seleccion, no el
+            # recordset, asi que las claves son cadenas.
+            dashboard.total_tasks = sum(por_estado.values())
+            dashboard.pending_tasks = sum(
+                por_estado.get(estado, 0)
+                for estado in ('awaiting_approval', 'planned', 'running'))
+            dashboard.approval_tasks = por_estado.get('awaiting_approval', 0)
+            dashboard.failed_tasks = por_estado.get('failed', 0)
             dashboard.done_today = Task.search_count(task_domain([('state', '=', 'done'), ('completed_at', '>=', start)]))
             dashboard.high_risk_tasks = Task.search_count(task_domain([('risk_level', '=', 'high'), ('state', 'not in', ('done', 'cancelled'))]))
             dashboard.active_automations = self.env['chatroom.ai.automation'].sudo().search_count(self._company_domain('chatroom.ai.automation', [('active', '=', True)], company)) if 'chatroom.ai.automation' in self.env else 0
@@ -69,9 +82,16 @@ class ChatroomAiDashboard(models.Model):
                     ('state', 'in', ('approved', 'sent')), ('feedback_state', '=', 'pending'),
                     ('channel_id.company_id', '=', company.id),
                 ])
-                dashboard.feedback_helpful = suggestions.search_count([('feedback_state', '=', 'helpful'), ('channel_id.company_id', '=', company.id)])
-                dashboard.feedback_edited = suggestions.search_count([('feedback_state', '=', 'edited'), ('channel_id.company_id', '=', company.id)])
-                dashboard.feedback_unsafe = suggestions.search_count([('feedback_state', '=', 'unsafe'), ('channel_id.company_id', '=', company.id)])
+                # Tres contadores sobre el mismo campo: una sola pasada.
+                por_valoracion = {
+                    valor: cuantas
+                    for valor, cuantas in suggestions._read_group(
+                        [('channel_id.company_id', '=', company.id)],
+                        groupby=['feedback_state'], aggregates=['__count'])
+                }
+                dashboard.feedback_helpful = por_valoracion.get('helpful', 0)
+                dashboard.feedback_edited = por_valoracion.get('edited', 0)
+                dashboard.feedback_unsafe = por_valoracion.get('unsafe', 0)
                 dashboard.suggestions_unsafe = dashboard.feedback_unsafe
                 evaluated = dashboard.feedback_helpful + dashboard.feedback_edited + dashboard.feedback_unsafe
                 dashboard.feedback_quality_percent = round(

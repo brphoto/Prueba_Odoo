@@ -15,7 +15,7 @@ class CrmCustomerHistoryLine(models.Model):
         string='Lote')
     company_id = fields.Many2one(
         related='batch_id.company_id', store=True, index=True, string='Empresa')
-    row_number = fields.Integer(string='Fila', readonly=True)
+    row_number = fields.Integer(string='Fila', readonly=True, index=True)
     customer_name = fields.Char(string='Nombre del cliente', readonly=True)
     customer_external_ref = fields.Char(string='Código externo', readonly=True)
     customer_vat = fields.Char(string='RUC / Identificación', readonly=True)
@@ -52,24 +52,66 @@ class CrmCustomerHistoryLine(models.Model):
     error_message = fields.Text(string='Detalle del error', readonly=True)
 
     @api.depends('customer_name', 'customer_vat', 'customer_email', 'customer_phone', 'partner_id')
+    @staticmethod
+    def _match_keys(line):
+        """Claves normalizadas por las que se busca un contacto."""
+        keys = []
+        if line.customer_vat:
+            keys.append(('vat', line.customer_vat.strip().lower()))
+        if line.customer_email:
+            keys.append(('email', line.customer_email.strip().lower()))
+        if line.customer_name:
+            keys.append(('name', line.customer_name.strip().lower()))
+        return keys
+
+    def _candidate_partners(self):
+        """{(campo, valor en minusculas): ids de contacto} para todo el lote.
+
+        Antes se hacia una busqueda por linea. Una importacion de historico
+        trae miles de lineas, asi que eran miles de consultas solo para
+        pintar la columna de sugerencias. Ahora es una por campo.
+
+        Se usa SQL directo porque el original comparaba con `=ilike`, que
+        sin comodines es una igualdad sin distinguir mayusculas: `lower()`
+        en ambos lados da exactamente el mismo resultado, cosa que un
+        dominio `in` del ORM no haria.
+        """
+        wanted = {}
+        for line in self:
+            for field, value in self._match_keys(line):
+                wanted.setdefault(field, set()).add(value)
+        if not wanted:
+            return {}
+        self.env['res.partner'].flush_model(['vat', 'email', 'name', 'active'])
+        candidates = {}
+        for field, values in wanted.items():
+            if not values:
+                continue
+            self.env.cr.execute(
+                "SELECT lower(%s), id FROM res_partner "
+                " WHERE active = true AND lower(%s) IN %%s" % (field, field),
+                (tuple(values),))
+            for value, partner_id in self.env.cr.fetchall():
+                candidates.setdefault((field, value), []).append(partner_id)
+        return candidates
+
     def _compute_suggested_partners(self):
         Partner = self.env['res.partner']
+        candidates = self._candidate_partners()
         for line in self:
             if line.partner_id:
                 line.suggested_partner_ids = Partner
                 continue
-            domains = []
-            if line.customer_vat:
-                domains.append(('vat', '=ilike', line.customer_vat.strip()))
-            if line.customer_email:
-                domains.append(('email', '=ilike', line.customer_email.strip()))
-            if line.customer_name:
-                domains.append(('name', '=ilike', line.customer_name.strip()))
-            if not domains:
+            keys = self._match_keys(line)
+            if not keys:
                 line.suggested_partner_ids = Partner
                 continue
-            domain = (['|'] * (len(domains) - 1)) + domains
-            line.suggested_partner_ids = Partner.search(domain, limit=5)
+            matches = Partner
+            for key in keys:
+                matches |= Partner.browse(candidates.get(key, ()))
+            # Se conserva el limite de 5: la ficha muestra sugerencias,
+            # no un listado completo.
+            line.suggested_partner_ids = matches[:5]
 
     def action_use_suggested_partner(self):
         self.ensure_one()

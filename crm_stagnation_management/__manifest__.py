@@ -18,6 +18,7 @@ seguimiento como integración opcional.
 """,
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
+    'icon': '/crm_stagnation_management/static/description/icon.svg',
     'category': 'Sales/CRM',
     'version': '19.0.1.0.1',
     'depends': ['crm', 'mail'],

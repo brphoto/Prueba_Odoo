@@ -17,7 +17,7 @@ class MarketingSocialConversation(models.Model):
     contact_external_id = fields.Char(string='ID del contacto')
     last_message_at = fields.Datetime(string='Último mensaje', index=True)
     last_message_preview = fields.Text(string='Vista previa del último mensaje')
-    message_count = fields.Integer(compute='_compute_message_stats', string='Mensajes')
+    message_count = fields.Integer(compute='_compute_message_stats', string='Número de mensajes')
     unread_count = fields.Integer(compute='_compute_message_stats', string='Sin leer')
     direction = fields.Selection([
         ('inbound', 'Entrante'), ('outbound', 'Saliente'), ('mixed', 'Mixta'),
@@ -37,10 +37,33 @@ class MarketingSocialConversation(models.Model):
 
     @api.depends('message_ids', 'message_ids.read_state')
     def _compute_message_stats(self):
+        # Dos consultas agrupadas para toda la bandeja. Antes cada
+        # conversación cargaba en memoria todos sus mensajes solo para
+        # contarlos, así que abrir la lista de conversaciones sociales
+        # traía el historial completo de todas las filas de la página.
+        Message = self.env['marketing.social.conversation.message']
+        conversation_ids = [record.id for record in self._origin if record.id]
+        totals, unread = {}, {}
+        if conversation_ids:
+            totals = {
+                conversation.id: count
+                for conversation, count in Message._read_group(
+                    [('conversation_id', 'in', conversation_ids)],
+                    ['conversation_id'], ['__count'])
+                if conversation
+            }
+            unread = {
+                conversation.id: count
+                for conversation, count in Message._read_group(
+                    [('conversation_id', 'in', conversation_ids),
+                     ('direction', '=', 'inbound'),
+                     ('read_state', '=', 'unread')],
+                    ['conversation_id'], ['__count'])
+                if conversation
+            }
         for record in self:
-            record.message_count = len(record.message_ids)
-            record.unread_count = len(record.message_ids.filtered(
-                lambda message: message.direction == 'inbound' and message.read_state == 'unread'))
+            record.message_count = totals.get(record._origin.id, 0)
+            record.unread_count = unread.get(record._origin.id, 0)
 
     @api.depends('message_ids', 'message_ids.direction')
     def _compute_direction(self):

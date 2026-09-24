@@ -35,7 +35,7 @@ class MarketingSocialNetworkConnection(models.Model):
         ('draft', 'Sin probar'), ('connected', 'Conectada'), ('error', 'Con error'),
     ], string='Estado', default='draft', tracking=True, readonly=True)
     profile_ids = fields.One2many('marketing.social.network.profile', 'connection_id', string='Cuentas')
-    profile_count = fields.Integer(string='Cuentas', compute='_compute_profile_count')
+    profile_count = fields.Integer(string='Número de cuentas', compute='_compute_profile_count')
     last_checked_at = fields.Datetime(string='Última comprobación', readonly=True)
     last_sync_at = fields.Datetime(string='Última sincronización', readonly=True)
     last_sync_duration = fields.Float(string='Duración última sincronización (s)', readonly=True)

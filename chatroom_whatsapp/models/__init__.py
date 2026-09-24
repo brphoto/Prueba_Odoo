@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from . import chatroom_diagnostic_mixin
 from . import chatroom_meta_mixin
 from . import res_config_settings
 from . import res_users

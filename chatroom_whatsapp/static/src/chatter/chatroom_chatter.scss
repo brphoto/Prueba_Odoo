@@ -7,7 +7,7 @@
 .o-chatroom-chatter {
     border-top: 1px solid var(--border-color, #dee2e6);
     border-bottom: 1px solid var(--border-color, #dee2e6);
-    background: var(--o-view-background-color, #fff);
+    background: $o-view-background-color;
     // El scroll principal pertenece al chatter nativo de Odoo. El hilo
     // incrustado tiene su propio scroll para no crear dos páginas anidadas.
     max-height: none;
@@ -90,21 +90,21 @@
         padding: .6rem .75rem;
         border: 0;
         color: var(--o-brand-odoo, #714b67);
-        background: var(--o-webclient-background-color, #f8f9fa);
+        background: $o-webclient-background-color;
         font-weight: 600;
         text-align: left;
     }
 
     &__ai-body {
         padding: .65rem .75rem .75rem;
-        background: var(--o-view-background-color, #fff);
+        background: $o-view-background-color;
     }
 
     &__ai-suggestion {
         margin-top: .3rem;
         padding: .55rem .65rem;
         border-left: 3px solid var(--o-brand-odoo, #714b67);
-        background: var(--o-webclient-background-color, #f8f9fa);
+        background: $o-webclient-background-color;
         white-space: pre-wrap;
     }
 
@@ -197,21 +197,21 @@
         border: 1px solid var(--border-color, #dee2e6);
         border-radius: .5rem;
         color: inherit;
-        background: var(--o-view-background-color, #fff);
+        background: $o-view-background-color;
         text-align: left;
         transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
 
         &:hover, &:focus-visible {
             border-color: var(--o-brand-odoo, #714b67);
             box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
-            background: var(--o-webclient-background-color, #f8f9fa);
+            background: $o-webclient-background-color;
             outline: none;
         }
 
         &--selected {
             border-color: var(--o-brand-odoo, #714b67);
             box-shadow: inset 3px 0 0 var(--o-brand-odoo, #714b67);
-            background: var(--o-webclient-background-color, #f8f9fa);
+            background: $o-webclient-background-color;
         }
     }
 

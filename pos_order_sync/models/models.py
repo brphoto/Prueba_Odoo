@@ -24,14 +24,6 @@ class PosConfig(models.Model):
         help="Registra el cajero que recibe un pedido transferido y lo muestra en los reportes de sesión.",
     )
 
-    def _compute_all_active_session(self):
-        # La busqueda no dependia de `obj`: era exactamente la misma para
-        # cada configuracion de TPV y se repetia una vez por registro.
-        all_session_ids = self.env['pos.session'].search(
-            [('state', '=', 'opened')]).ids
-        for obj in self:
-            obj.all_active_session_ids = all_session_ids
-
     @api.constrains('quotation_print_type', 'iface_print_via_proxy')
     def check_hardware_connection(self):
         for obj in self:
@@ -270,13 +262,18 @@ class PosQuotes(models.Model):
                 return True
 
     def write(self, vals):
-        for obj in self:
-            if 'quote_id' in vals:
-                found_ids = self.env['pos.quote'].search(
-                    [('quote_id', '=', vals['quote_id'])]).ids
-                if len(found_ids) > 0:
-                    raise UserError(
-                        "Usa otro número de pedido.\nEste número ya fue utilizado en otro pedido.")
+        # La comprobacion anterior no se excluia a si misma: guardar un
+        # pedido reenviando su propio numero (lo que hace el formulario
+        # en cada guardado) encontraba ese mismo registro y lanzaba el
+        # error, asi que un pedido no se podia editar.
+        if vals.get('quote_id'):
+            duplicated = self.search_count([
+                ('quote_id', '=', vals['quote_id']),
+                ('id', 'not in', self.ids),
+            ])
+            if duplicated:
+                raise UserError(
+                    "Usa otro número de pedido.\nEste número ya fue utilizado en otro pedido.")
         return super(PosQuotes, self).write(vals)
 
     @api.model_create_multi
@@ -292,6 +289,20 @@ class PosQuotes(models.Model):
             if vals.get('seller_name'):
                 vals['seller_name'] = vals.get('seller_name')
 
+        # El duplicado se comprobaba solo al escribir, nunca al crear:
+        # por ahi entraban los numeros repetidos que luego hacian fallar
+        # `search_quote` y confundian al cajero receptor.
+        numbers = [v.get('quote_id') for v in vals_list if v.get('quote_id')]
+        if numbers:
+            existing = self.search([('quote_id', 'in', numbers)])
+            if existing:
+                raise UserError(
+                    "Usa otro número de pedido.\nEste número ya fue utilizado en otro pedido: %s"
+                    % ', '.join(sorted(set(existing.mapped('quote_id')))))
+            repeated = sorted({n for n in numbers if numbers.count(n) > 1})
+            if repeated:
+                raise UserError(
+                    "El lote trae el número de pedido %s repetido." % repeated[0])
         result = super(PosQuotes, self).create(vals_list)
         return result
 
@@ -398,13 +409,10 @@ class PosQuotes(models.Model):
             obj.state = 'cancel'
 
     @api.depends('quote_id')
-    def name_get(self):
-        '''Overridden name_get() method for returning the registered number as name'''
-        res = []
+    def _compute_display_name(self):
+        """Muestra el numero de presupuesto en vez del nombre de la linea."""
         for record in self:
-            name = str(record.quote_id)
-            res.append((record.id, name))
-        return res
+            record.display_name = str(record.quote_id)
 
 class PosQuoteLine(models.Model):
     _name = 'pos.quote.line'

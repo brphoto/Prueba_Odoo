@@ -1,4 +1,4 @@
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 
 
 class CoPayrollAudit(models.Model):
@@ -21,5 +21,7 @@ class CoPayrollAudit(models.Model):
     event_at = fields.Datetime(string="Fecha", required=True, readonly=True, default=fields.Datetime.now, index=True)
     user_id = fields.Many2one("res.users", string="Usuario", required=True, readonly=True, default=lambda self: self.env.user)
 
-    def name_get(self):
-        return [(record.id, _("%s - %s") % (record.action, record.event_at)) for record in self]
+    @api.depends("action", "event_at")
+    def _compute_display_name(self):
+        for record in self:
+            record.display_name = _("%s - %s") % (record.action, record.event_at)

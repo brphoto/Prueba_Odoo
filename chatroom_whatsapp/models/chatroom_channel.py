@@ -54,7 +54,8 @@ class ChatroomChannel(models.Model):
     # en el menú de Actividades de cada usuario y, si son de tipo reunión,
     # también en Calendario. Ningún código propio necesario más allá del
     # mixin: el chatter ya sabe pintar el botón "Programar actividad".
-    _inherit = ['mail.thread', 'mail.activity.mixin', 'chatroom.meta.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'chatroom.meta.mixin',
+                'chatroom.diagnostic.mixin']
     _order = 'is_pinned desc, is_favorite desc, last_message_date desc'
     _rec_name = 'display_name'
 
@@ -100,6 +101,7 @@ class ChatroomChannel(models.Model):
         help="Marca esta conversacion para encontrarla rapidamente.")
     assigned_user_id = fields.Many2one(
         'res.users', string="Agente asignado", tracking=True,
+        index='btree_not_null',
         default=lambda self: self.env.user)
     assigned_user_initials = fields.Char(compute='_compute_assignment_visual')
     assigned_user_color = fields.Char(compute='_compute_assignment_visual')
@@ -418,24 +420,31 @@ class ChatroomChannel(models.Model):
         NO cuente como respuesta y no reinicie el semáforo sola."""
         channels = self.search([('state', 'in', ('open', 'pending'))])
         for channel in channels:
-            if channel.first_response_sla_state == 'red':
-                if not channel.sla_breach_notified and channel.assigned_user_id:
-                    channel.message_post(
-                        body=_(
-                            "⏱️ Esta conversación lleva %(minutes)s minutos "
-                            "sin primera respuesta (SLA vencido). Contactá "
-                            "a %(contact)s."
-                        ) % {
-                            'minutes': channel.pending_response_minutes,
-                            'contact': channel.partner_id.name or channel.external_id,
-                        },
-                        partner_ids=[channel.assigned_user_id.partner_id.id],
-                        subtype_xmlid='mail.mt_comment',
-                    )
-                    channel.sla_breach_notified = True
-            elif channel.sla_breach_notified:
-                channel.sla_breach_notified = False
+            try:
+                # Un fallo en un registro no puede tirar la corrida entera
+                # ni revertir lo ya hecho con los anteriores.
+                with self.env.cr.savepoint():
+                    if channel.first_response_sla_state == 'red':
+                        if not channel.sla_breach_notified and channel.assigned_user_id:
+                            channel.message_post(
+                                body=_(
+                                    "⏱️ Esta conversación lleva %(minutes)s minutos "
+                                    "sin primera respuesta (SLA vencido). Contactá "
+                                    "a %(contact)s."
+                                ) % {
+                                    'minutes': channel.pending_response_minutes,
+                                    'contact': channel.partner_id.name or channel.external_id,
+                                },
+                                partner_ids=[channel.assigned_user_id.partner_id.id],
+                                subtype_xmlid='mail.mt_comment',
+                            )
+                            channel.sla_breach_notified = True
+                    elif channel.sla_breach_notified:
+                        channel.sla_breach_notified = False
 
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "_cron_notify_sla_breach: fallo procesando %s", channel.display_name)
     @api.model
     def _cron_process_assignment_sla(self):
         """Libera y vuelve a repartir conversaciones sin primera respuesta.
@@ -456,18 +465,25 @@ class ChatroomChannel(models.Model):
         if not agents:
             return
         for channel in self.search([('state', 'in', ('open', 'pending'))]):
-            if channel.first_response_sla_state != 'red' or not channel.assigned_user_id:
-                continue
-            candidates = agents - channel.assigned_user_id
-            if not candidates:
-                candidates = agents
-            next_agent = self._get_next_assignee(candidates)
-            if next_agent == channel.assigned_user_id:
-                continue
-            channel.with_context(chatroom_assignment_reason='sla').write({
-                'assigned_user_id': next_agent.id if next_agent else False,
-            })
+            try:
+                # Un fallo en un registro no puede tirar la corrida entera
+                # ni revertir lo ya hecho con los anteriores.
+                with self.env.cr.savepoint():
+                    if channel.first_response_sla_state != 'red' or not channel.assigned_user_id:
+                        continue
+                    candidates = agents - channel.assigned_user_id
+                    if not candidates:
+                        candidates = agents
+                    next_agent = self._get_next_assignee(candidates)
+                    if next_agent == channel.assigned_user_id:
+                        continue
+                    channel.with_context(chatroom_assignment_reason='sla').write({
+                        'assigned_user_id': next_agent.id if next_agent else False,
+                    })
 
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "_cron_process_assignment_sla: fallo procesando %s", channel.display_name)
     # No es un Many2one a 'crm.lead': CRM es un módulo opcional (no está
     # en 'depends'), y un campo relacional a un modelo no instalado rompe
     # la carga del registro. Se guarda el id "a mano" y se resuelve solo
@@ -659,30 +675,60 @@ class ChatroomChannel(models.Model):
                 channel.whatsapp_number_id = whatsapp_number.id
             return channel
 
-        partner = self.env['res.partner'].search(
-            [('whatsapp_id', '=', external_id)], limit=1)
-        if not partner and channel_type == 'whatsapp':
-            # external_id es un número de verdad solo en WhatsApp (en
-            # Messenger/Instagram es un PSID, no comparable por teléfono).
-            partner = self.env['res.partner']._find_by_whatsapp_number(external_id)
-            if partner:
-                partner.whatsapp_id = external_id
-        if not partner:
-            partner = self.env['res.partner'].create({
-                'name': profile_name or external_id,
-                'whatsapp_id': external_id,
-                'phone': f"+{external_id}" if channel_type == 'whatsapp' else False,
-            })
+        # Dos mensajes del mismo contacto NUEVO pueden llegar a la vez:
+        # Meta entrega en paralelo y cada webhook corre en su propia
+        # transacción. Los dos buscan, ninguno encuentra, y los dos crean.
+        #
+        # El canal está protegido por `unique(external_id, channel_type,
+        # company_id)`, así que el segundo se estrellaba con IntegrityError
+        # y la petición entera fallaba. El contacto NO tiene restricción,
+        # así que además quedaban dos `res.partner` para el mismo número.
+        #
+        # Con el savepoint alrededor de LAS DOS creaciones, el perdedor de
+        # la carrera lo deshace todo -contacto incluido- y se queda con el
+        # canal que gano el otro. Es el mismo patrón que ya usa la creación
+        # de mensajes entrantes.
+        try:
+            with self.env.cr.savepoint():
+                partner = self.env['res.partner'].search(
+                    [('whatsapp_id', '=', external_id)], limit=1)
+                if not partner and channel_type == 'whatsapp':
+                    # external_id es un número de verdad solo en WhatsApp (en
+                    # Messenger/Instagram es un PSID, no comparable por teléfono).
+                    partner = self.env['res.partner']._find_by_whatsapp_number(external_id)
+                    if partner:
+                        partner.whatsapp_id = external_id
+                if not partner:
+                    partner = self.env['res.partner'].create({
+                        'name': profile_name or external_id,
+                        'whatsapp_id': external_id,
+                        'phone': f"+{external_id}" if channel_type == 'whatsapp' else False,
+                    })
 
-        assignee = whatsapp_number._get_next_assignee() if whatsapp_number else self._get_next_assignee()
+                assignee = (whatsapp_number._get_next_assignee() if whatsapp_number
+                            else self._get_next_assignee())
 
-        return self.create({
-            'channel_type': channel_type,
-            'external_id': external_id,
-            'partner_id': partner.id,
-            'whatsapp_number_id': whatsapp_number.id if whatsapp_number else False,
-            'assigned_user_id': assignee.id,
-        })
+                return self.create({
+                    'channel_type': channel_type,
+                    'external_id': external_id,
+                    'partner_id': partner.id,
+                    'whatsapp_number_id': whatsapp_number.id if whatsapp_number else False,
+                    'assigned_user_id': assignee.id,
+                })
+        except pg_errors.UniqueViolation:
+            ganador = self.search([
+                ('channel_type', '=', channel_type),
+                ('external_id', '=', external_id),
+                ('company_id', '=', self.env.company.id),
+            ], limit=1)
+            if not ganador:
+                raise
+            _logger.info(
+                "Carrera controlada: el canal de %s ya lo creó otro worker",
+                external_id)
+            if whatsapp_number and ganador.whatsapp_number_id != whatsapp_number:
+                ganador.whatsapp_number_id = whatsapp_number.id
+            return ganador
 
     @api.model
     def action_start_conversation(self, partner_id, phone=False, whatsapp_number_id=False):
@@ -2143,14 +2189,24 @@ class ChatroomChannel(models.Model):
             # cliente (no hay ninguna respuesta posterior).
             if not last_in or (last_out and last_out >= last_in):
                 continue
-            self.env['bus.bus']._sendone(
-                f'chatroom_channel_{channel.id}', 'chatroom.message/waiting_response', {
-                    'channel_id': channel.id,
-                    'partner_name': channel.partner_id.name or channel.external_id,
-                })
-            if template and channel.assigned_user_id.partner_id.email:
-                template.send_mail(channel.id, force_send=False, raise_exception=False)
-            channel.waiting_response_notified = True
+            # Un savepoint por conversación, igual que en
+            # `_cron_retry_failed_messages`. Sin él, un fallo en una sola
+            # tumbaba la corrida entera y revertía la marca de las ya
+            # avisadas: al cron siguiente les volvía a llegar el aviso.
+            try:
+                with self.env.cr.savepoint():
+                    self.env['bus.bus']._sendone(
+                        f'chatroom_channel_{channel.id}', 'chatroom.message/waiting_response', {
+                            'channel_id': channel.id,
+                            'partner_name': channel.partner_id.name or channel.external_id,
+                        })
+                    if template and channel.assigned_user_id.partner_id.email:
+                        template.send_mail(channel.id, force_send=False, raise_exception=False)
+                    channel.waiting_response_notified = True
+            except Exception as exc:  # noqa: BLE001
+                _logger.warning(
+                    'No se pudo avisar de la conversación %s sin responder: %s',
+                    channel.id, exc)
 
     def action_mark_read(self):
         """Marca como leídos los mensajes entrantes pendientes y le avisa
@@ -2390,10 +2446,14 @@ class ChatroomChannel(models.Model):
         credentials = self._ai_get_credentials(task_type=task_type)
         return [credentials] if credentials else []
 
-    def _ai_chat_completion(self, messages, task_type=None):
+    def _ai_chat_completion(self, messages, task_type=None, model_id=None):
         """Llama al endpoint 'chat completions' configurado (cualquier
         proveedor LLM compatible: OpenAI, Anthropic vía proxy, Azure, un
-        modelo propio, etc.) y devuelve el texto de la respuesta."""
+        modelo propio, etc.) y devuelve el texto de la respuesta.
+
+        ``model_id`` elige un modelo del catálogo de chatroom_ai_usage. Aquí
+        se acepta y se ignora: sin ese módulo solo existe el modelo de
+        Ajustes, y chatroom_ai / _ai_classify_intent lo envían igualmente."""
         candidates = self._ai_model_candidates(task_type=task_type)
         if not candidates:
             raise UserError(_(

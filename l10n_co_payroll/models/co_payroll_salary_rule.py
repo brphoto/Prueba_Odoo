@@ -134,6 +134,7 @@ def _evaluate_configured_rules(rules, values, salary_rule_totals, parameter):
 
 class CoPayrollSalaryRule(models.Model):
     _name = "l10n.co.payroll.salary.rule"
+    _inherit = ['l10n.co.payroll.diagnostic.mixin']
     _description = "Regla salarial parametrizable"
     _order = "sequence, code"
     _check_company_auto = True
@@ -193,7 +194,7 @@ class CoPayrollSalaryRule(models.Model):
                 _validate_formula(record.condition)
                 _validate_formula(record.amount_expression)
             except ValidationError as error:
-                record.write({"validation_state": "error", "validation_message": str(error), "validated_at": fields.Datetime.now()})
+                record._persist_diagnostic({"validation_state": "error", "validation_message": str(error), "validated_at": fields.Datetime.now()})
                 raise
             record.write({"code": record.code.upper(), "validation_state": "valid", "validation_message": False, "validated_at": fields.Datetime.now()})
         return True

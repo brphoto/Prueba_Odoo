@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 from odoo.http import request as http_request
 from odoo.tools.urls import urljoin
@@ -83,6 +83,27 @@ class PaymentProvider(models.Model):
     def _placetopay_get_base_url(self):
         self.ensure_one()
         return (self.placetopay_base_url or const.DEFAULT_BASE_URL).rstrip('/')
+
+    @api.constrains('state', 'placetopay_base_url')
+    def _check_placetopay_production_host(self):
+        """Impide dejar el proveedor activo apuntando al sandbox.
+
+        La URL es configurable porque el host de produccion depende de la
+        region (Colombia, Ecuador, etc.), y el valor por defecto es el de
+        pruebas. Sin esta comprobacion, activar el proveedor sin cambiarla
+        deja los cobros yendo al entorno de pruebas: la pasarela responde
+        que todo fue bien y el dinero no se mueve.
+        """
+        for provider in self:
+            if provider.code != 'placetopay' or provider.state != 'enabled':
+                continue
+            host = (provider.placetopay_base_url or '').lower()
+            if 'checkout-test.placetopay.com' in host or not host:
+                raise ValidationError(_(
+                    "PlacetoPay está activo en producción pero su URL sigue "
+                    "siendo la de pruebas (%s). Cambiala por el host que te "
+                    "asignó PlacetoPay para tu región antes de activarlo."
+                ) % (provider.placetopay_base_url or '-'))
 
     def _placetopay_build_auth(self):
         """Build the `auth` object required by every PlacetoPay API call.

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_move_line_tree" model="ir.ui.view">
+        <field name="name">account.move.line.list.inherit.parallel.currency</field>
+        <field name="model">account.move.line</field>
+        <field name="inherit_id" ref="account.view_move_line_tree"/>
+        <field name="arch" type="xml">
+            <field name="credit" position="after">
+                <field name="other_currency_id" column_invisible="True"/>
+                <field name="debit_other_currency" sum="Total Debe en Otra Moneda" optional="show"/>
+                <field name="credit_other_currency" sum="Total Haber en Otra Moneda" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_move_line_form" model="ir.ui.view">
+        <field name="name">account.move.line.form.inherit.parallel.currency</field>
+        <field name="model">account.move.line</field>
+        <field name="inherit_id" ref="account.view_move_line_form"/>
+        <field name="arch" type="xml">
+            <field name="balance" position="after">
+                <field name="other_currency_id" invisible="1"/>
+                <field name="debit_other_currency" readonly="1" invisible="not other_currency_id"/>
+                <field name="credit_other_currency" readonly="1" invisible="not other_currency_id"/>
+                <field name="other_currency_rounding_amount" readonly="1" invisible="not other_currency_rounding_amount"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_move_form" model="ir.ui.view">
+        <field name="model">account.move</field>
+        <field name="name">account.move.form.inherit.parallel.currency</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@id='aml_tab']//list/field[@name='credit']" position="after">
+                <field name="other_currency_id" column_invisible="True"/>
+                <field name="debit_other_currency" sum="Total Debe en Otra Moneda" optional="show"/>
+                <field name="credit_other_currency" sum="Total Haber en Otra Moneda" optional="show"/>
+            </xpath>
+            <xpath expr="//page[@id='aml_tab']/field[@name='line_ids']" position="after">
+                <group class="oe_subtotal_footer" invisible="not other_currency_id">
+                    <field name="other_currency_id" invisible="1"/>
+                    <field name="total_debit_other_currency"/>
+                    <field name="total_credit_other_currency"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

@@ -45,4 +45,25 @@
         <field name="domain_force">[('id', '!=', False)]</field>
         <field name="groups" eval="[(4, ref('group_chatroom_ai_agent_manager'))]"/>
     </record>
+
+    <!-- Aislamiento por empresa.
+
+         Son reglas GLOBALES (sin `groups`) a proposito: Odoo une con OR
+         las reglas de los grupos del usuario y aplica las globales con
+         AND sobre el resultado. Puesta en un grupo, una regla por empresa
+         se uniria con OR a las que ya existen -alguna con dominio
+         `[('id', '!=', False)]`- y no aislaria nada.
+
+         `company_id = False` significa "de todas las empresas" y por eso
+         se deja pasar. -->
+    <record id="chatroom_ai_task_rule_company" model="ir.rule">
+        <field name="name">Tareas IA: solo las de la empresa activa</field>
+        <field name="model_id" ref="model_chatroom_ai_task"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="chatroom_ai_memory_rule_company" model="ir.rule">
+        <field name="name">Memoria IA: solo las de la empresa activa</field>
+        <field name="model_id" ref="model_chatroom_ai_memory"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
 </odoo>

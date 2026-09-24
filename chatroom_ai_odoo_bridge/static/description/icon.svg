@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="titulo-chatroom-ai-odoo-bridge desc-chatroom-ai-odoo-bridge">
+  <title id="titulo-chatroom-ai-odoo-bridge">Puente con la IA de Odoo</title>
+  <desc id="desc-chatroom-ai-odoo-bridge">Dos nodos unidos por un puente</desc>
+  <defs>
+    <linearGradient id="marco-chatroom-ai-odoo-bridge" x1="24" y1="18" x2="232" y2="240" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F2937"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="marca-chatroom-ai-odoo-bridge" x1="46" y1="38" x2="215" y2="218" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#6D28D9"/>
+    </linearGradient>
+    <filter id="sombra-chatroom-ai-odoo-bridge" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+  </defs>
+
+  <!-- Marco, igual en todos los modulos del repositorio -->
+  <rect x="24" y="18" width="208" height="220" rx="25" fill="#0B1220"/>
+  <rect x="25.5" y="19.5" width="205" height="217" rx="23.5" fill="url(#marco-chatroom-ai-odoo-bridge)" stroke="#475569" stroke-width="3"/>
+  <rect x="38" y="32" width="180" height="180" rx="9" fill="#0A1422" stroke="#334155" stroke-width="2"/>
+  <rect x="46" y="40" width="164" height="164" rx="4" fill="url(#marca-chatroom-ai-odoo-bridge)" filter="url(#sombra-chatroom-ai-odoo-bridge)"/>
+
+  <!-- Simbolo propio del modulo -->
+  <path d="M58 150h140" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M58 150c24-44 116-44 140 0" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M86 150v-22M128 150v-32M170 150v-22" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M58 150v34M198 150v34" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="128" cy="96" r="13" fill="#FDE68A"/>
+</svg>

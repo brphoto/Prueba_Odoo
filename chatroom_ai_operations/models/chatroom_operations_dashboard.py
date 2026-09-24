@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 from odoo import _, api, fields, models
 
+# Los niveles que cuentan como estancamiento. Estaban escritos dos veces,
+# una para contar oportunidades y otra para sumar capital, y cualquier
+# cambio en uno dejaba el otro midiendo algo distinto.
+STAGNANT_SCORES = ('warning', 'critical', 'stagnant', 'dead')
+
 
 class ChatroomOperationsDashboard(models.TransientModel):
     _name = 'chatroom.operations.dashboard'
@@ -118,18 +123,29 @@ class ChatroomOperationsDashboard(models.TransientModel):
             record.stagnant_opportunities = self._count('crm.lead', [
                 ('type', '=', 'opportunity'), ('active', '=', True),
                 ('stage_id.is_won', '=', False),
-                ('stagnation_score', 'in', ('warning', 'critical', 'stagnant', 'dead')),
+                ('stagnation_score', 'in', STAGNANT_SCORES),
             ]) if 'crm.lead' in self.env and 'stagnation_score' in self.env['crm.lead']._fields else 0
             if 'crm.lead' in self.env:
-                open_leads = self.env['crm.lead'].sudo().search(self._company_domain('crm.lead', [
+                Lead = self.env['crm.lead'].sudo()
+                open_domain = self._company_domain('crm.lead', [
                     ('type', '=', 'opportunity'), ('active', '=', True),
                     ('stage_id.is_won', '=', False), ('probability', '<', 100),
-                ]))
-                record.open_opportunities = len(open_leads)
-                record.pipeline_value = sum(open_leads.mapped('expected_revenue'))
-                record.stagnant_capital = sum(open_leads.filtered(
-                    lambda lead: lead.stagnation_score in ('warning', 'critical', 'stagnant', 'dead')
-                ).mapped('estimated_capital_trapped')) if 'stagnation_score' in self.env['crm.lead']._fields else 0.0
+                ])
+                # Sumar en Postgres en vez de traerse el pipeline entero a
+                # memoria para recorrerlo con mapped() y filtered(). Los dos
+                # campos están almacenados, así que el agregado sale de la
+                # misma consulta que cuenta.
+                [(count, revenue)] = Lead._read_group(
+                    open_domain, aggregates=['__count', 'expected_revenue:sum'])
+                record.open_opportunities = count
+                record.pipeline_value = revenue or 0.0
+                if 'stagnation_score' in Lead._fields:
+                    [(trapped,)] = Lead._read_group(
+                        open_domain + [('stagnation_score', 'in', STAGNANT_SCORES)],
+                        aggregates=['estimated_capital_trapped:sum'])
+                    record.stagnant_capital = trapped or 0.0
+                else:
+                    record.stagnant_capital = 0.0
             else:
                 record.open_opportunities = record.pipeline_value = record.stagnant_capital = 0.0
             today = fields.Date.context_today(record)
@@ -142,11 +158,22 @@ class ChatroomOperationsDashboard(models.TransientModel):
             usage_start = fields.Datetime.to_string(fields.Datetime.start_of(fields.Datetime.now(), 'day'))
             usage_end = fields.Datetime.to_string(fields.Datetime.end_of(fields.Datetime.now(), 'day'))
             usage_domain = [('request_date', '>=', usage_start), ('request_date', '<=', usage_end)]
-            record.ai_requests_today = self._count('chatroom.ai.usage.event', usage_domain)
-            usage = self.env['chatroom.ai.usage.event'].sudo().search(
-                self._company_domain('chatroom.ai.usage.event', usage_domain)) if 'chatroom.ai.usage.event' in self.env else False
-            record.ai_tokens_today = sum(usage.mapped('total_tokens')) if usage else 0
-            record.ai_failed_today = len(usage.filtered(lambda event: not event.success)) if usage else 0
+            if 'chatroom.ai.usage.event' in self.env:
+                # Los tres contadores salían de dos consultas sobre el mismo
+                # conjunto —un search_count y un search— más dos recorridos
+                # en memoria. Agrupando por «correcta» salen los tres de una
+                # sola consulta y sin cargar ningún registro.
+                by_success = self.env['chatroom.ai.usage.event'].sudo()._read_group(
+                    self._company_domain('chatroom.ai.usage.event', usage_domain),
+                    groupby=['success'], aggregates=['__count', 'total_tokens:sum'])
+                record.ai_requests_today = sum(count for _ok, count, _tok in by_success)
+                record.ai_tokens_today = sum(tokens or 0 for _ok, _count, tokens in by_success)
+                record.ai_failed_today = sum(
+                    count for ok, count, _tok in by_success if not ok)
+            else:
+                record.ai_requests_today = 0
+                record.ai_tokens_today = 0
+                record.ai_failed_today = 0
             icp = self.env['ir.config_parameter'].sudo()
             ai_enabled = icp.get_param('chatroom_whatsapp.ai_enabled', 'False') == 'True'
             has_credentials = bool(icp.get_param('chatroom_whatsapp.ai_provider_url') and icp.get_param('chatroom_whatsapp.ai_api_key'))

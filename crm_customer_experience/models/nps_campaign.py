@@ -237,26 +237,48 @@ class CrmNpsCampaign(models.Model):
         channels = self._requested_channels()
         self.write({'state': 'processing', 'last_run': fields.Datetime.now()})
         pending = self.recipient_ids.filtered(lambda line: line.state == 'pending')[:self.batch_size]
+        envios = (
+            ('email', 'email_state', self._send_email_recipient),
+            ('whatsapp', 'whatsapp_state', self._send_whatsapp_recipient),
+        )
         for line in pending:
-            try:
-                if 'email' in channels and line.email_state == 'pending':
-                    self._send_email_recipient(line)
-                if 'whatsapp' in channels and line.whatsapp_state == 'pending':
-                    self._send_whatsapp_recipient(line)
-            except Exception as exc:  # noqa: BLE001 - un fallo individual no detiene la campaña
-                _logger.exception('Error procesando destinatario NPS %s', line.id)
-                line.write({'error_message': str(exc)[:500]})
-                if 'email' in channels and line.email_state == 'pending':
-                    line.email_state = 'failed'
-                if 'whatsapp' in channels and line.whatsapp_state == 'pending':
-                    line.whatsapp_state = 'failed'
+            for canal, campo_estado, enviar in envios:
+                if canal not in channels or line[campo_estado] != 'pending':
+                    continue
+                try:
+                    # Un savepoint POR CANAL, no por destinatario. Sin él,
+                    # si el fallo es de consulta, PostgreSQL deja la
+                    # transacción abortada y revientan tanto el `write` de
+                    # abajo como todos los destinatarios siguientes: justo
+                    # lo que este `except` pretendía evitar.
+                    #
+                    # Y tiene que ser por canal, no por destinatario: si se
+                    # envolvieran los dos juntos, un fallo de WhatsApp
+                    # desharía el correo que ya había salido y el
+                    # destinatario quedaría marcado como fallido en ambos.
+                    with self.env.cr.savepoint():
+                        enviar(line)
+                except Exception as exc:  # noqa: BLE001 - un fallo individual no detiene la campaña
+                    _logger.exception(
+                        'Error enviando NPS por %s al destinatario %s', canal, line.id)
+                    line.write({
+                        campo_estado: 'failed',
+                        'error_message': str(exc)[:500],
+                    })
         if not self.recipient_ids.filtered(lambda line: line.state == 'pending'):
             self.write({'state': 'done', 'completed_date': fields.Datetime.now()})
 
     @api.model
     def _cron_process_campaigns(self):
         for campaign in self.search([('state', 'in', ('queued', 'processing'))], order='id'):
-            campaign._process_batch()
+            try:
+                # Un fallo en un registro no puede tirar la corrida entera
+                # ni revertir lo ya hecho con los anteriores.
+                with self.env.cr.savepoint():
+                    campaign._process_batch()
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "_cron_process_campaigns: fallo procesando %s", campaign.display_name)
         return True
 
 

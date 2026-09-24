@@ -6,6 +6,7 @@
 Sincroniza pagos confirmados, evita duplicados, prepara facturas y notifica
 al cliente. Los pasos con error quedan registrados para reintento.''',
     'version': '19.0.1.0.1',
+    'icon': '/chatroom_ai_sales_payment/static/description/icon.svg',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',
     'category': 'Sales/Payment',

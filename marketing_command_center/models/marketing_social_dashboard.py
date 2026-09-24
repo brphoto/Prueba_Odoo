@@ -214,15 +214,10 @@ class MarketingSocialDashboard(models.Model):
             'res_model': 'marketing.social.metric.snapshot',
             'view_mode': 'graph,pivot,list',
             'domain': self._period_metric_domain(),
-            # La vista de grafico del modulo ya agrupa por dia y separa por
-            # red, que es exactamente la lectura que hace falta aqui.
-            'views': [
-                (self.env.ref('marketing_command_center.view_marketing_social_metric_graph').id, 'graph'),
-                (False, 'pivot'),
-                (self.env.ref('marketing_command_center.view_marketing_social_metric_list').id, 'list'),
-            ],
-            'search_view_id': self.env.ref(
-                'marketing_command_center.view_marketing_social_metric_search').id,
+            # Sin lista explicita de vistas: Odoo resuelve por modelo la del
+            # modulo (que ya agrupa por dia y separa por red) y genera la
+            # tabla dinamica. Pasarlas a mano dejaba la vista de grafico
+            # colgada al abrirse.
             'context': {},
         }
 
