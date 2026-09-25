@@ -101,4 +101,27 @@
         <field name="active">True</field>
     </record>
 
+    <!-- Entrega en segundo plano los archivos enviados desde el chat: el agente
+         no espera la subida a Meta. Se dispara al instante al encolar. -->
+    <record id="ir_cron_send_queued_media" model="ir.cron">
+        <field name="name">Chatroom: enviar archivos en cola</field>
+        <field name="model_id" ref="model_chatroom_channel"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_send_queued_media()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+
+    <!-- Respuestas de IA en cola: se dispara al vencer cada espera; el
+         intervalo es solo el respaldo si un disparo se perdió. -->
+    <record id="ir_cron_ai_reply_queue" model="ir.cron">
+        <field name="name">Chatroom: responder con IA (cola)</field>
+        <field name="model_id" ref="model_chatroom_channel"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_process_ai_queue()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
 </odoo>

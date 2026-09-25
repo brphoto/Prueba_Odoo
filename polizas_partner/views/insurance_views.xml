@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_poliza_partner_form_insurance_management" model="ir.ui.view">
+        <field name="name">poliza.partner.form.insurance.management</field>
+        <field name="model">poliza.partner</field>
+        <field name="inherit_id" ref="polizas_partner.view_poliza_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_generar_devengamientos" string="Generar devengamientos"
+                        type="object" class="btn-secondary"
+                        invisible="not fecha_inicio or not fecha_fin or prima_total &lt;= 0"/>
+                <button name="action_post_devengamientos" string="Contabilizar devengamientos"
+                        type="object" class="btn-primary"
+                        invisible="state not in ['vigente', 'vencida']"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <group string="Control institucional" col="4">
+                    <field name="company_id"/>
+                    <field name="currency_id" readonly="1"/>
+                    <field name="devengamiento_automatico"/>
+                    <field name="prima_mensual" readonly="1"/>
+                    <field name="journal_devengamiento_id"/>
+                    <field name="account_expense_id"/>
+                    <field name="account_prepaid_id"/>
+                </group>
+                <notebook>
+                    <page string="Coberturas">
+                        <field name="cobertura_ids">
+                            <list editable="bottom">
+                                <field name="sequence" widget="handle"/>
+                                <field name="name"/>
+                                <field name="description"/>
+                                <field name="insured_amount"/>
+                                <field name="deductible"/>
+                                <field name="premium_amount"/>
+                                <field name="active"/>
+                            </list>
+                        </field>
+                    </page>
+                    <page string="Bienes asegurados">
+                        <field name="bien_asegurado_ids">
+                            <list editable="bottom">
+                                <field name="name"/>
+                                <field name="asset_id"/>
+                                <field name="serial_number"/>
+                                <field name="location"/>
+                                <field name="insured_amount"/>
+                                <field name="asset_value" readonly="1"/>
+                            </list>
+                        </field>
+                    </page>
+                    <page string="Siniestros">
+                        <field name="siniestro_ids">
+                            <list>
+                                <field name="name"/>
+                                <field name="claim_date"/>
+                                <field name="insured_item_id"/>
+                                <field name="claim_amount"/>
+                                <field name="indemnity_amount"/>
+                                <field name="state"/>
+                            </list>
+                        </field>
+                    </page>
+                    <page string="Devengamientos">
+                        <field name="devengamiento_ids">
+                            <list>
+                                <field name="name"/>
+                                <field name="period_date"/>
+                                <field name="amount"/>
+                                <field name="state"/>
+                                <field name="move_id"/>
+                            </list>
+                        </field>
+                    </page>
+                </notebook>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_poliza_cobertura_list" model="ir.ui.view">
+        <field name="name">poliza.cobertura.list</field>
+        <field name="model">poliza.cobertura</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="poliza_id"/>
+                <field name="insured_amount"/>
+                <field name="deductible"/>
+                <field name="premium_amount"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_poliza_cobertura_form" model="ir.ui.view">
+        <field name="name">poliza.cobertura.form</field>
+        <field name="model">poliza.cobertura</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="poliza_id"/>
+                        <field name="insured_amount"/>
+                        <field name="deductible"/>
+                        <field name="premium_amount"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="description"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_poliza_cobertura" model="ir.actions.act_window">
+        <field name="name">Coberturas</field>
+        <field name="res_model">poliza.cobertura</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_poliza_bien_asegurado_list" model="ir.ui.view">
+        <field name="name">poliza.bien.asegurado.list</field>
+        <field name="model">poliza.bien.asegurado</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="poliza_id"/>
+                <field name="asset_id"/>
+                <field name="serial_number"/>
+                <field name="location"/>
+                <field name="insured_amount"/>
+                <field name="asset_value"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_poliza_bien_asegurado_form" model="ir.ui.view">
+        <field name="name">poliza.bien.asegurado.form</field>
+        <field name="model">poliza.bien.asegurado</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="poliza_id"/>
+                        <field name="asset_id"/>
+                        <field name="asset_state" readonly="1"/>
+                        <field name="asset_value" readonly="1"/>
+                        <field name="serial_number"/>
+                        <field name="location"/>
+                        <field name="insured_amount"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="notes"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_poliza_activo_list" model="ir.ui.view">
+        <field name="name">poliza.activo.list</field>
+        <field name="model">poliza.activo</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="serial_number"/>
+                <field name="book_value"/>
+                <field name="state"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_poliza_activo_form" model="ir.ui.view">
+        <field name="name">poliza.activo.form</field>
+        <field name="model">poliza.activo</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,open,close"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="company_id"/>
+                            <field name="serial_number"/>
+                            <field name="location"/>
+                        </group>
+                        <group>
+                            <field name="book_value"/>
+                            <field name="currency_id" readonly="1"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Pólizas">
+                            <field name="bien_asegurado_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="poliza_id"/>
+                                    <field name="insured_amount"/>
+                                    <field name="active"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Observaciones">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_poliza_activo" model="ir.actions.act_window">
+        <field name="name">Bienes y activos asegurables</field>
+        <field name="res_model">poliza.activo</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_poliza_bien_asegurado" model="ir.actions.act_window">
+        <field name="name">Bienes asegurados</field>
+        <field name="res_model">poliza.bien.asegurado</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_poliza_siniestro_list" model="ir.ui.view">
+        <field name="name">poliza.siniestro.list</field>
+        <field name="model">poliza.siniestro</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="poliza_id"/>
+                <field name="claim_date"/>
+                <field name="insured_item_id"/>
+                <field name="claim_amount"/>
+                <field name="reserve_amount"/>
+                <field name="indemnity_amount"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_poliza_siniestro_form" model="ir.ui.view">
+        <field name="name">poliza.siniestro.form</field>
+        <field name="model">poliza.siniestro</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_report" string="Reportar" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_investigate" string="Investigar" type="object" invisible="state != 'reported'"/>
+                    <button name="action_approve" string="Aprobar" type="object" invisible="state != 'investigation'"/>
+                    <button name="action_pay" string="Marcar pagado" type="object" invisible="state != 'approved'"/>
+                    <button name="action_close" string="Cerrar" type="object" invisible="state != 'paid'"/>
+                    <button name="action_reject" string="Rechazar" type="object" class="btn-danger" invisible="state in ['closed', 'rejected']"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,reported,investigation,approved,paid,closed"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="poliza_id"/>
+                            <field name="coverage_id" domain="[('poliza_id', '=', poliza_id)]"/>
+                            <field name="insured_item_id" domain="[('poliza_id', '=', poliza_id)]"/>
+                            <field name="insurer_reference"/>
+                        </group>
+                        <group>
+                            <field name="claim_date"/>
+                            <field name="report_date"/>
+                            <field name="resolution_date"/>
+                            <field name="claim_amount"/>
+                            <field name="reserve_amount"/>
+                            <field name="indemnity_amount"/>
+                        </group>
+                    </group>
+                    <field name="description"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_poliza_siniestro" model="ir.actions.act_window">
+        <field name="name">Siniestros</field>
+        <field name="res_model">poliza.siniestro</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_poliza_devengamiento_list" model="ir.ui.view">
+        <field name="name">poliza.devengamiento.list</field>
+        <field name="model">poliza.devengamiento</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="poliza_id"/>
+                <field name="period_date"/>
+                <field name="amount"/>
+                <field name="state"/>
+                <field name="move_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_poliza_devengamiento_form" model="ir.ui.view">
+        <field name="name">poliza.devengamiento.form</field>
+        <field name="model">poliza.devengamiento</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_post" string="Contabilizar" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_cancel" string="Cancelar" type="object" class="btn-secondary" invisible="state != 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,posted,cancelled"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name" readonly="1"/>
+                        <field name="poliza_id"/>
+                        <field name="period_date"/>
+                        <field name="amount"/>
+                        <field name="move_id" readonly="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_poliza_devengamiento" model="ir.actions.act_window">
+        <field name="name">Devengamientos</field>
+        <field name="res_model">poliza.devengamiento</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_poliza_coberturas" name="Coberturas" parent="polizas_partner.menu_configuracion" action="action_poliza_cobertura"/>
+    <menuitem id="menu_poliza_bienes_asegurados" name="Bienes asegurados" parent="polizas_partner.menu_configuracion" action="action_poliza_bien_asegurado"/>
+    <menuitem id="menu_poliza_activos" name="Bienes y activos" parent="polizas_partner.menu_configuracion" action="action_poliza_activo"/>
+    <menuitem id="menu_poliza_siniestros" name="Siniestros" parent="polizas_partner.menu_configuracion" action="action_poliza_siniestro"/>
+    <menuitem id="menu_poliza_devengamientos" name="Devengamientos" parent="polizas_partner.menu_configuracion" action="action_poliza_devengamiento"/>
+</odoo>

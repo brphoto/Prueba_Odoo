@@ -1,0 +1,62 @@
+// Cuadro comparativo en el formulario del comparativo.
+.o_insurance_matrix_wrap {
+    overflow-x: auto;
+}
+
+.o_insurance_matrix {
+    min-width: 560px;
+    margin-bottom: 4px;
+
+    th, td {
+        vertical-align: top;
+        border-color: var(--border-color, #dee2e6);
+    }
+
+    thead th {
+        text-align: center;
+        white-space: nowrap;
+        background: rgba(0, 0, 0, 0.03);
+    }
+
+    tbody th {
+        width: 24%;
+        font-weight: 500;
+    }
+
+    .o_insurance_best {
+        background: rgba(18, 183, 106, 0.1);
+    }
+}
+
+.o_insurance_cov {
+    font-weight: 700;
+}
+
+.o_insurance_cov_yes { color: #067647; }
+.o_insurance_cov_limited { color: #b54708; }
+.o_insurance_cov_no { color: #b42318; }
+.o_insurance_cov_unknown { color: #98a2b3; }
+
+.o_insurance_offer_cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.o_insurance_offer_card {
+    padding: 10px 12px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 8px;
+
+    h5 {
+        margin-bottom: 6px;
+    }
+
+    pre {
+        margin: 2px 0 6px;
+        white-space: pre-line;
+        font-family: inherit;
+        font-size: 0.9em;
+    }
+}

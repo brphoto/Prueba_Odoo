@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="rule_ask_human" model="chatroom.ai.handoff.rule">
+        <field name="name">El cliente pide una persona</field>
+        <field name="sequence">10</field>
+        <field name="company_id" eval="False"/>
+        <field name="trigger">keywords</field>
+        <field name="keywords">hablar con una persona, hablar con alguien, hablar con un asesor, quiero un asesor, asesor humano, persona real, agente humano, operador, no quiero hablar con un robot, eres un robot</field>
+        <field name="notify">assigned</field>
+    </record>
+    <record id="rule_claims" model="chatroom.ai.handoff.rule">
+        <field name="name">Siniestro o accidente</field>
+        <field name="sequence">20</field>
+        <field name="company_id" eval="False"/>
+        <field name="trigger">keywords</field>
+        <field name="keywords">siniestro, choque, choqué, me chocaron, accidente, me robaron, robo del vehículo, grúa urgente, herido, hospital</field>
+        <field name="notify">line</field>
+        <field name="customer_message">Lamentamos lo ocurrido. Te comunico de inmediato con una persona de nuestro equipo para ayudarte con el siniestro.</field>
+    </record>
+    <record id="rule_payments" model="chatroom.ai.handoff.rule">
+        <field name="name">Disputa de pagos o reembolso</field>
+        <field name="sequence">30</field>
+        <field name="company_id" eval="False"/>
+        <field name="trigger">keywords</field>
+        <field name="keywords">reembolso, devolución del dinero, devuelvan mi dinero, cobro indebido, me cobraron dos veces, doble cobro, contracargo</field>
+        <field name="notify">assigned</field>
+    </record>
+    <record id="rule_legal" model="chatroom.ai.handoff.rule">
+        <field name="name">Tema legal o denuncia</field>
+        <field name="sequence">40</field>
+        <field name="company_id" eval="False"/>
+        <field name="trigger">keywords</field>
+        <field name="keywords">abogado, demanda, denuncia, defensoría del consumidor, superintendencia, estafa</field>
+        <field name="notify">managers</field>
+    </record>
+    <record id="rule_complaint" model="chatroom.ai.handoff.rule">
+        <field name="name">Reclamo</field>
+        <field name="sequence">50</field>
+        <field name="company_id" eval="False"/>
+        <field name="trigger">intent</field>
+        <field name="intent">queja</field>
+        <field name="notify">assigned</field>
+    </record>
+    <record id="rule_upset" model="chatroom.ai.handoff.rule">
+        <field name="name">Cliente molesto</field>
+        <field name="sequence">60</field>
+        <field name="company_id" eval="False"/>
+        <field name="trigger">negative</field>
+        <field name="notify">assigned</field>
+    </record>
+    <record id="rule_urgent" model="chatroom.ai.handoff.rule">
+        <field name="name">Urgencia alta</field>
+        <field name="sequence">70</field>
+        <field name="company_id" eval="False"/>
+        <field name="trigger">urgency</field>
+        <field name="notify">assigned</field>
+    </record>
+</odoo>

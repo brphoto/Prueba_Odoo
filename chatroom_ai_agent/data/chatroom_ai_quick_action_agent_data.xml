@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <record id="quick_action_agent_sale" model="chatroom.ai.quick.action">
+        <field name="name">Preparar venta con el agente</field>
+        <field name="sequence">100</field>
+        <field name="company_id" eval="False"/>
+        <field name="icon">fa-cogs</field>
+        <field name="shortcut">vender</field>
+        <field name="description">El agente prepara oportunidad y cotización; tú apruebas.</field>
+        <field name="output_mode">agent_task</field>
+        <field name="agent_task_type">sales_conversion</field>
+        <field name="use_catalog" eval="True"/>
+        <field name="use_customer_history" eval="True"/>
+        <field name="instruction">Analiza la conversación con {cliente} y prepara lo necesario para cerrar la venta: identifica productos y cantidades, crea o actualiza la oportunidad y deja lista la cotización. No envíes nada al cliente sin aprobación.</field>
+    </record>
+
+</odoo>

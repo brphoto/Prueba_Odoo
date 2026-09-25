@@ -18,6 +18,8 @@ registry.category("web_tour.tours").add("chatroom_app_smoke_tour", {
         {
             content: "La bandeja carga y muestra las conversaciones",
             trigger: ".o_chatroom_app_list .o_chatroom_app_list_item",
+            // Tras actualizar el módulo, el primer acceso compila los assets.
+            timeout: 30000,
             run: () => {},
         },
         {
@@ -28,6 +30,7 @@ registry.category("web_tour.tours").add("chatroom_app_smoke_tour", {
         {
             content: "El hilo carga solo la ultima tanda de mensajes",
             trigger: ".o_chatroom_thread_messages .o_chatroom_load_older button",
+            timeout: 30000,
             run: () => {},
         },
         {

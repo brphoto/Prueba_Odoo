@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_insurance_compare_root" name="Comparativos IA"
+              parent="polizas_partner.menu_polizas_root" sequence="5"
+              groups="group_insurance_compare_user"/>
+    <menuitem id="menu_insurance_compare" name="Comparativos"
+              parent="menu_insurance_compare_root" sequence="10"
+              action="action_insurance_compare"/>
+    <menuitem id="menu_insurance_client_profile" name="Perfiles de clientes"
+              parent="menu_insurance_compare_root" sequence="20"
+              action="action_insurance_client_profile"/>
+
+    <record id="action_insurance_insurers" model="ir.actions.act_window">
+        <field name="name">Aseguradoras</field>
+        <field name="res_model">polizas.aseguradoras</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_polizas_aseguradoras_list_ai')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_polizas_aseguradoras_form_ai')})]"/>
+    </record>
+    <menuitem id="menu_insurance_compare_config" name="Configuración del comparativo"
+              parent="polizas_partner.menu_configuracion" sequence="50"
+              groups="group_insurance_compare_manager"/>
+    <menuitem id="menu_insurance_compare_template" name="Plantillas y coberturas"
+              parent="menu_insurance_compare_config" sequence="10"
+              action="action_insurance_compare_template"/>
+    <menuitem id="menu_insurance_insurers" name="Aseguradoras (logo y lectura IA)"
+              parent="menu_insurance_compare_config" sequence="20"
+              action="action_insurance_insurers"/>
+</odoo>

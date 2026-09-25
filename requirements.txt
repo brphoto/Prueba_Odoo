@@ -18,3 +18,6 @@ pdfminer.six>=20221105
 # README_DEPENDENCIAS.md (Tesseract y Poppler).
 pdf2image>=1.17,<2
 pytesseract>=0.3.10,<0.4
+
+# Tablas de coberturas en PDFs de cotizaciones (comparativo de seguros).
+pdfplumber>=0.11

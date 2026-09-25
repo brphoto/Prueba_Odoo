@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_insurance_compare_template_list" model="ir.ui.view">
+        <field name="name">insurance.compare.template.list</field>
+        <field name="model">insurance.compare.template</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="ramo_id"/>
+                <field name="weight_price" string="Precio %"/>
+                <field name="weight_deductible" string="Deducible %"/>
+                <field name="weight_coverage" string="Coberturas %"/>
+                <field name="weight_service" string="Servicio %"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_insurance_compare_template_form" model="ir.ui.view">
+        <field name="name">insurance.compare.template.form</field>
+        <field name="model">insurance.compare.template</field>
+        <field name="arch" type="xml">
+            <form string="Plantilla de comparativo">
+                <sheet>
+                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="Ej. Vehículos livianos"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="ramo_id"/>
+                            <field name="active" widget="boolean_toggle"/>
+                            <field name="company_id" groups="base.group_multi_company" placeholder="Todas las empresas"/>
+                        </group>
+                        <group string="Pesos del puntaje">
+                            <field name="weight_price"/>
+                            <field name="weight_deductible"/>
+                            <field name="weight_coverage"/>
+                            <field name="weight_service"/>
+                            <field name="weight_total" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Coberturas a comparar" name="coverages">
+                            <p class="text-muted">Cada aseguradora llama distinto a sus coberturas: agrega
+                                los sinónimos para que la IA las ubique en la misma fila. Las
+                                obligatorias descartan del ranking a la oferta que no las incluya.</p>
+                            <field name="coverage_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="synonyms"/>
+                                    <field name="weight"/>
+                                    <field name="required"/>
+                                    <field name="description" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Datos del cliente" name="profile">
+                            <p class="text-muted">Uno por línea: <code>clave: descripción</code>. Es la
+                                lista que usan /perfil y /faltantes en el chat.</p>
+                            <field name="profile_fields" nolabel="1" placeholder="marca: Marca del vehículo"/>
+                        </page>
+                        <page string="Instrucciones y nota legal" name="texts">
+                            <group>
+                                <field name="extraction_instructions"/>
+                                <field name="legal_note"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_insurance_compare_template" model="ir.actions.act_window">
+        <field name="name">Plantillas de comparativo</field>
+        <field name="res_model">insurance.compare.template</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

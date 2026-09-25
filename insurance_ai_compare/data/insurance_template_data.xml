@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Plantillas de ejemplo: el broker las ajusta a su catálogo y pesos. -->
+<odoo noupdate="1">
+
+    <record id="template_vehicles" model="insurance.compare.template">
+        <field name="name">Vehículos livianos</field>
+        <field name="sequence">10</field>
+        <field name="company_id" eval="False"/>
+        <field name="weight_price">35</field>
+        <field name="weight_deductible">20</field>
+        <field name="weight_coverage">35</field>
+        <field name="weight_service">10</field>
+        <field name="extraction_instructions">Distingue el deducible por pérdida parcial del deducible por pérdida total si la cotización los separa (usa el de pérdida parcial como deducible general y detalla el otro en la cobertura). Toma la prima total con impuestos y contribuciones.</field>
+        <field name="profile_fields">marca: Marca del vehículo
+modelo: Modelo del vehículo
+anio: Año del vehículo
+valor_comercial: Valor comercial del vehículo
+uso: Uso (particular, trabajo, comercial)
+ciudad: Ciudad donde circula
+conductor_edad: Edad del conductor principal
+siniestros_previos: Siniestros en los últimos años
+accesorios: Accesorios o extras a asegurar</field>
+    </record>
+    <record id="cov_vehicles_pt_dano" model="insurance.coverage">
+        <field name="template_id" ref="template_vehicles"/>
+        <field name="sequence">10</field>
+        <field name="name">Pérdida total por daño</field>
+        <field name="synonyms">pérdida total por choque, PT daño, destrucción total</field>
+        <field name="weight">3</field>
+        <field name="required" eval="True"/>
+    </record>
+    <record id="cov_vehicles_pt_robo" model="insurance.coverage">
+        <field name="template_id" ref="template_vehicles"/>
+        <field name="sequence">20</field>
+        <field name="name">Pérdida total por robo</field>
+        <field name="synonyms">robo total, hurto total, PT robo</field>
+        <field name="weight">3</field>
+    </record>
+    <record id="cov_vehicles_pp_dano" model="insurance.coverage">
+        <field name="template_id" ref="template_vehicles"/>
+        <field name="sequence">30</field>
+        <field name="name">Pérdida parcial por daño</field>
+        <field name="synonyms">daño parcial, choque parcial, PP daño</field>
+        <field name="weight">2</field>
+    </record>
+    <record id="cov_vehicles_pp_robo" model="insurance.coverage">
+        <field name="template_id" ref="template_vehicles"/>
+        <field name="sequence">40</field>
+        <field name="name">Pérdida parcial por robo</field>
+        <field name="synonyms">robo parcial, robo de partes, hurto parcial</field>
+        <field name="weight">1.5</field>
+    </record>
+    <record id="cov_vehicles_rc" model="insurance.coverage">
+        <field name="template_id" ref="template_vehicles"/>
+        <field name="sequence">50</field>
+        <field name="name">Responsabilidad civil</field>
+        <field name="synonyms">RC, daños a terceros, responsabilidad civil extracontractual, RC a terceros</field>
+        <field name="weight">3</field>
+        <field name="required" eval="True"/>
+    </record>
+    <record id="cov_vehicles_ma" model="insurance.coverage">
+        <field name="template_id" ref="template_vehicles"/>
+        <field name="sequence">60</field>
+        <field name="name">Muerte accidental de ocupantes</field>
+        <field name="synonyms">muerte accidental, MA ocupantes, accidentes personales ocupantes</field>
+        <field name="weight">1.5</field>
+    </record>
+    <record id="cov_vehicles_gm" model="insurance.coverage">
+        <field name="template_id" ref="template_vehicles"/>
+        <field name="sequence">70</field>
+        <field name="name">Gastos médicos de ocupantes</field>
+        <field name="synonyms">gastos médicos, GM ocupantes</field>
+        <field name="weight">1.5</field>
+    </record>
+    <record id="cov_vehicles_amparo" model="insurance.coverage">
+        <field name="template_id" ref="template_vehicles"/>
+        <field name="sequence">80</field>
+        <field name="name">Amparo patrimonial</field>
+        <field name="synonyms">amparo patrimonial, conductor en estado de embriaguez</field>
+        <field name="weight">1</field>
+    </record>
+    <record id="cov_vehicles_sustituto" model="insurance.coverage">
+        <field name="template_id" ref="template_vehicles"/>
+        <field name="sequence">90</field>
+        <field name="name">Auto sustituto</field>
+        <field name="synonyms">vehículo de reemplazo, auto de reemplazo, carro sustituto</field>
+        <field name="weight">1</field>
+    </record>
+    <record id="cov_vehicles_asistencia" model="insurance.coverage">
+        <field name="template_id" ref="template_vehicles"/>
+        <field name="sequence">100</field>
+        <field name="name">Asistencia vial y grúa</field>
+        <field name="synonyms">grúa, remolque, asistencia en viaje, asistencia vehicular</field>
+        <field name="weight">1</field>
+    </record>
+
+    <record id="template_general" model="insurance.compare.template">
+        <field name="name">General (cualquier ramo)</field>
+        <field name="sequence">90</field>
+        <field name="company_id" eval="False"/>
+        <field name="weight_price">40</field>
+        <field name="weight_deductible">20</field>
+        <field name="weight_coverage">30</field>
+        <field name="weight_service">10</field>
+        <field name="profile_fields">bien_asegurado: Qué se quiere asegurar
+valor_asegurado: Valor a asegurar
+uso: Uso o actividad
+ciudad: Ciudad
+coberturas_deseadas: Coberturas que le interesan</field>
+    </record>
+</odoo>

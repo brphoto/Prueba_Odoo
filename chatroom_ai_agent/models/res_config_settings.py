@@ -106,9 +106,15 @@ class ResConfigSettings(models.TransientModel):
         help='Valor entre 0 y 1. Si la IA no alcanza este nivel, deja una sugerencia para un agente.',
     )
     chatroom_ai_auto_reply_cooldown_minutes = fields.Integer(
-        string='Espera entre respuestas automaticas (minutos)', default=15,
+        string='Ventana anti-bucle (minutos)', default=15,
         config_parameter='chatroom_ai_agent.auto_reply_cooldown_minutes',
-        help='Evita respuestas repetidas cuando llegan varios mensajes seguidos.',
+        help='Junto con el máximo de respuestas: si la IA responde más veces que ese máximo dentro de esta '
+             'ventana (por ejemplo, conversando con otro bot), se pausa. 0 = sin límite.',
+    )
+    chatroom_ai_auto_reply_burst_limit = fields.Integer(
+        string='Máximo de respuestas automáticas en la ventana', default=5,
+        config_parameter='chatroom_ai_agent.auto_reply_burst_limit',
+        help='Un guion normal necesita varias respuestas seguidas; más que esto en la ventana se considera un bucle.',
     )
     chatroom_ai_auto_reply_daily_limit = fields.Integer(
         string='Maximo diario por conversacion', default=30,

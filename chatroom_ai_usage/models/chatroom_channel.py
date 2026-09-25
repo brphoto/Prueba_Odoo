@@ -57,8 +57,12 @@ class ChatroomChannel(models.Model):
         return data
 
     def _ai_daily_usage(self):
-        """Devuelve el consumo del día sin revelar credenciales al frontend."""
-        self.ensure_one()
+        """Devuelve el consumo del día sin revelar credenciales al frontend.
+
+        Sin conversación (análisis de documentos) cuenta el de la empresa activa.
+        """
+        if len(self) > 1:
+            self.ensure_one()
         if 'chatroom.ai.usage.event' not in self.env:
             return {'requests': 0, 'tokens': 0, 'request_limit': 0, 'token_limit': 0}
         icp = self.env['ir.config_parameter'].sudo()
@@ -72,7 +76,8 @@ class ChatroomChannel(models.Model):
             token_limit = 0
         start = datetime.combine(fields.Date.context_today(self), datetime.min.time())
         events = self.env['chatroom.ai.usage.event'].sudo().search([
-            ('company_id', '=', self.company_id.id), ('request_date', '>=', start),
+            ('company_id', '=', (self.company_id or self.env.company).id),
+            ('request_date', '>=', start),
         ])
         return {
             'requests': len(events), 'tokens': sum(events.mapped('total_tokens')),
@@ -204,8 +209,14 @@ class ChatroomChannel(models.Model):
         return '%s Detalle: %s' % (message, detail) if detail else message
 
     def _ai_chat_completion(self, messages, task_type=None, model_id=None):
-        """Ejecuta el modelo por tarea y usa el respaldo ante fallos recuperables."""
-        self.ensure_one()
+        """Ejecuta el modelo por tarea y usa el respaldo ante fallos recuperables.
+
+        Admite un registro vacío para consultas que no pertenecen a una
+        conversación (por ejemplo, el análisis de documentos): el consumo se
+        registra igual, sin conversación asociada.
+        """
+        if len(self) > 1:
+            self.ensure_one()
         self._ai_budget_guard()
         candidates = self._ai_model_candidates(task_type=task_type, model_id=model_id)
         if not candidates:
@@ -217,7 +228,8 @@ class ChatroomChannel(models.Model):
                 response = self._meta_request(
                     'POST', api_url,
                     headers={'Authorization': 'Bearer %s' % api_key},
-                    json={'model': model, 'messages': messages}, timeout=30,
+                    json={'model': model, 'messages': messages},
+                    timeout=self.env.context.get('chatroom_ai_timeout') or 30,
                 )
                 status = getattr(response, 'status_code', 200)
                 if status >= 400:
@@ -252,10 +264,15 @@ class ChatroomChannel(models.Model):
                 usage = payload.get('usage') or {}
                 input_tokens = int(usage.get('prompt_tokens') or usage.get('input_tokens') or 0)
                 output_tokens = int(usage.get('completion_tokens') or usage.get('output_tokens') or 0)
-                self.env['chatroom.ai.usage.event'].sudo().create({
-                    'model': model, 'channel_id': self.id,
-                    'task_type': task_type or 'general',
+                details = usage.get('prompt_tokens_details') or usage.get('input_tokens_details') or {}
+                cached_tokens = int(details.get('cached_tokens') or 0) if isinstance(details, dict) else 0
+                event_model = self.env['chatroom.ai.usage.event']
+                valid_types = dict(event_model._fields['task_type'].selection)
+                event_model.sudo().create({
+                    'model': model, 'channel_id': self.id or False,
+                    'task_type': task_type if task_type in valid_types else 'general',
                     'input_tokens': input_tokens, 'output_tokens': output_tokens,
+                    'cached_tokens': min(cached_tokens, input_tokens),
                     'total_tokens': int(usage.get('total_tokens') or input_tokens + output_tokens),
                     'success': True,
                 })

@@ -1,0 +1,58 @@
+<odoo>
+    <!-- Menú principal -->
+    <menuitem id="menu_polizas_root" name="Pólizas" web_icon="polizas_partner,static/description/icon.svg"/>
+
+    <!-- Submenú de gestión de pólizas -->
+    <menuitem id="menu_polizas" name="Gestión de Pólizas" parent="menu_polizas_root" />
+    <menuitem id="menu_polizas_polizas_gestion" name="Polizas" parent="menu_polizas" action="action_polizas_partner"/>
+
+    <!-- Submenú de configuración -->
+    <menuitem id="menu_configuracion" name="Configuración" parent="menu_polizas_root"/>
+
+    <!-- Submenú aseguradoras -->
+    <menuitem id="menu_aseguradoras" name="Gestión de Aseguradoras" parent="menu_configuracion" action="action_polizas_aseguradoras"/>
+
+    <!-- Submenú ramos -->
+    <menuitem id="menu_polizas_ramos" name="Ejecutivos" parent="menu_configuracion" action="action_polizas_ramos"/>
+
+    <!-- Submenú de gestión de pólizas -->
+    <menuitem id="menu_polizas_partner" name="Actividades Cliente" parent="menu_configuracion" action="action_polizas_actividad"/>
+
+    <!-- Submenú de gestión de pólizas -->
+    <menuitem id="menu_polizas_aseguradoras" name="Tipo de Polizas" parent="menu_configuracion" action="action_tipo_polizas"/>
+
+  <menuitem id="menu_polizas_ramo" name="Tipo de Ramo" parent="menu_configuracion" action="action_polizas_ramo"/>
+
+    <!-- Submenú de Plantillas -->
+
+    <menuitem id="menu_configuracion_action" name="Plantillas Recordatorio" parent="menu_configuracion" action="action_polizas_recordatorio_template"/>
+<record id="res_config_settings_view_form_poliza" model="ir.ui.view">
+  <field name="name">res.config.settings.view.form.poliza</field>
+  <field name="model">res.config.settings</field>
+  <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+  <field name="arch" type="xml">
+    <xpath expr="//form" position="inside">
+      <app string="Pólizas" name="polizas" icon="fa-shield-alt">
+        <block title="Configuración de Comisiones de Pólizas">
+          <setting title="Producto para comisión CxC"
+                   help="Producto utilizado para las órdenes de venta generadas desde comisiones CxC.">
+            <field name="producto_comision_cxc_id"/>
+          </setting>
+          <setting title="Producto para comisión CxP"
+                   help="Producto utilizado para las órdenes de compra generadas desde comisiones CxP.">
+            <field name="producto_comision_cxp_id"/>
+          </setting>
+
+           <setting title="Dias de recordatorio"
+                   help="Días de recordatorio para las pólizas.">
+            <field name="days_reminder"/>
+          </setting>
+        </block>
+      </app>
+    </xpath>
+  </field>
+</record>
+
+
+
+</odoo>

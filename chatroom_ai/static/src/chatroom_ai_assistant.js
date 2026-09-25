@@ -1,7 +1,7 @@
 /** @odoo-module **/
 
 import { patch } from "@web/core/utils/patch";
-import { onWillUpdateProps, useState } from "@odoo/owl";
+import { onMounted, onWillUnmount, onWillUpdateProps, useState } from "@odoo/owl";
 import { ContactPanel } from "@chatroom_whatsapp/chatroom_app/contact_panel";
 
 patch(ContactPanel.prototype, {
@@ -15,7 +15,10 @@ patch(ContactPanel.prototype, {
             approvalRequired: true,
             summary: "",
             intent: "",
-            mode: "suggestion",
+            quickActions: [],
+            actionId: false,
+            canConfigure: false,
+            showDetails: false,
             modelId: false,
             modelOptions: [],
             knowledgeCount: 0,
@@ -31,6 +34,15 @@ patch(ContactPanel.prototype, {
                 this._resetAiAssistant();
             }
         });
+        // El compositor (✨ o /atajo) avisa cuando cambió algo que el panel
+        // muestra: borrador, resumen o intención.
+        this._onAiAssistantRefresh = (ev) => {
+            if ((ev.detail || {}).channelId === this.props.channelId && this.aiAssistant.open) {
+                this._loadAiAssistant();
+            }
+        };
+        onMounted(() => window.addEventListener("chatroom-ai-assistant-refresh", this._onAiAssistantRefresh));
+        onWillUnmount(() => window.removeEventListener("chatroom-ai-assistant-refresh", this._onAiAssistantRefresh));
     },
 
     _resetAiAssistant() {
@@ -39,7 +51,9 @@ patch(ContactPanel.prototype, {
         this.aiAssistant.busy = false;
         this.aiAssistant.summary = "";
         this.aiAssistant.intent = "";
-        this.aiAssistant.mode = "suggestion";
+        this.aiAssistant.quickActions = [];
+        this.aiAssistant.actionId = false;
+        this.aiAssistant.showDetails = false;
         this.aiAssistant.modelId = false;
         this.aiAssistant.modelOptions = [];
         this.aiAssistant.suggestion = false;
@@ -80,6 +94,25 @@ patch(ContactPanel.prototype, {
         this.aiAssistant.budget = data?.budget || false;
         this.aiAssistant.aiPaused = Boolean(data?.ai_paused);
         this.aiAssistant.suggestion = data?.suggestion || false;
+        this.aiAssistant.quickActions = data?.quick_actions || [];
+        this.aiAssistant.canConfigure = Boolean(data?.can_configure);
+        const ids = this.aiAssistant.quickActions.map((action) => action.id);
+        if (!ids.includes(this.aiAssistant.actionId)) {
+            this.aiAssistant.actionId = ids[0] || false;
+        }
+    },
+
+    selectedAiAction() {
+        return this.aiAssistant.quickActions.find(
+            (action) => action.id === this.aiAssistant.actionId) || false;
+    },
+
+    toggleAiDetails() {
+        this.aiAssistant.showDetails = !this.aiAssistant.showDetails;
+    },
+
+    openAiQuickActionConfig() {
+        this.action.doAction("chatroom_ai.action_chatroom_ai_quick_action");
     },
 
     async toggleAiAssistant() {
@@ -96,8 +129,8 @@ patch(ContactPanel.prototype, {
         }
     },
 
-    onAiModeChange(ev) {
-        this.aiAssistant.mode = ev.target.value;
+    onAiActionChange(ev) {
+        this.aiAssistant.actionId = ev.target.value ? Number(ev.target.value) : false;
     },
 
     onAiModelChange(ev) {
@@ -105,19 +138,50 @@ patch(ContactPanel.prototype, {
     },
 
     async runAiAction() {
-        if (this.aiAssistant.mode === "summary") {
-            // Un resumen es material interno: nunca debe convivir con la
-            // tarjeta de respuesta ni parecer texto listo para enviar.
-            this.aiAssistant.suggestion = false;
-            return this.prepareAiSummary();
+        const action = this.selectedAiAction();
+        if (!action || !this.props.channelId || this.aiAssistant.busy) {
+            return;
         }
-        if (this.aiAssistant.mode === "intent") {
-            this.aiAssistant.suggestion = false;
-            this.aiAssistant.summary = "";
-            return this.classifyAiIntent();
+        if (action.output_mode === "rewrite") {
+            // Reescribir trabaja sobre lo escrito en el mensaje: lo ejecuta
+            // el compositor, que es quien tiene el borrador.
+            window.dispatchEvent(new CustomEvent("chatroom-ai-run-quick-action", {
+                detail: { channelId: this.props.channelId, action },
+            }));
+            return;
         }
-        this.aiAssistant.summary = "";
-        return this.prepareAiSuggestion();
+        this.aiAssistant.busy = true;
+        this.aiAssistant.error = "";
+        try {
+            const result = await this.orm.call(
+                "chatroom.channel", "action_ai_run_quick_action",
+                [this.props.channelId, action.id], {
+                    model_id: this.aiAssistant.modelId || false,
+                }) || {};
+            if (result.mode === "reply") {
+                // Un resumen es material interno: nunca debe convivir con la
+                // tarjeta de respuesta ni parecer texto listo para enviar.
+                this.aiAssistant.summary = "";
+                this.aiAssistant.suggestion = result.suggestion || false;
+            } else if (result.mode === "summary") {
+                this.aiAssistant.suggestion = false;
+                this.aiAssistant.summary = result.summary || "";
+            } else if (result.mode === "intent") {
+                this.aiAssistant.intent = result.intent || "otro";
+                this.notification.add(`Intención: ${this.aiAssistant.intent}`, { type: "success" });
+            } else if (result.mode === "note") {
+                window.dispatchEvent(new CustomEvent("chatroom-ai-reload-messages", {
+                    detail: { channelId: this.props.channelId },
+                }));
+                this.notification.add("Nota interna guardada en la conversación.", { type: "success" });
+            } else if (["agent_task", "action"].includes(result.mode) && result.action) {
+                await this.action.doAction(result.action);
+            }
+        } catch (error) {
+            this.aiAssistant.error = error.data ? error.data.message : error.message;
+        } finally {
+            this.aiAssistant.busy = false;
+        }
     },
 
     suggestionStateLabel() {
@@ -142,7 +206,9 @@ patch(ContactPanel.prototype, {
 
     suggestionSourceLabel() {
         const source = this.aiAssistant.suggestion?.source;
-        return source === "conversation" ? "Conversación" : source === "manual" ? "Generación manual" : "No indicada";
+        const label = source === "conversation" ? "Conversación" : source === "manual" ? "Generación manual" : "No indicada";
+        return this.aiAssistant.suggestion?.quick_action
+            ? `${this.aiAssistant.suggestion.quick_action} · ${label}` : label;
     },
 
     budgetLabel() {

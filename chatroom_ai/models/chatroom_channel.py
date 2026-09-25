@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import re
+from datetime import timedelta
 
 from odoo import _, fields, models
 from odoo.exceptions import UserError
@@ -12,17 +13,23 @@ class ChatroomChannel(models.Model):
     def _ai_build_conversation(self, extra_system=None):
         conversation = super()._ai_build_conversation(extra_system=extra_system)
         self.ensure_one()
+        sources = self._ai_sources()
         context = []
-        if 'chatroom.ai.memory' in self.env and self.partner_id:
+        persona = self._ai_line_persona()
+        if persona:
+            context.append(persona)
+        if sources.get('memory', True) and 'chatroom.ai.memory' in self.env and self.partner_id:
             memory = self.env['chatroom.ai.memory'].sudo().get_context(
                 partner=self.partner_id, channel=self, limit=8)
             if memory:
                 context.append('Memoria empresarial autorizada:\n%s' % memory)
-        if 'ai.knowledge.base' in self.env:
+        if sources.get('knowledge', True) and 'ai.knowledge.base' in self.env:
+            # _ai_text incluye la transcripción de audios y la descripción de
+            # imágenes: sin eso, un audio no encontraba nada en el conocimiento.
             query = ' '.join(
-                (message.body or '')
+                message._ai_text()
                 for message in self.message_ids.sorted('date')[-self._ai_history_limit():]
-                if message.body
+                if message._ai_text()
             )
             knowledge = self.env['ai.knowledge.base'].get_sales_context(self, query=query)
             if knowledge:
@@ -30,6 +37,39 @@ class ChatroomChannel(models.Model):
         if context and conversation:
             conversation[0]['content'] = '%s\n\n%s' % (conversation[0]['content'], '\n\n'.join(context))
         return conversation
+
+    def _ai_line_persona(self):
+        """Cómo habla la IA en la línea de esta conversación.
+
+        Cada número puede ser otra marca o equipo: la persona de la línea
+        se agrega a todas las consultas de IA de sus conversaciones.
+        """
+        self.ensure_one()
+        line = self.whatsapp_number_id
+        if not line or not line.ai_persona:
+            return ''
+        return _('Identidad y estilo de la línea «%(line)s»:\n%(persona)s') % {
+            'line': line.name, 'persona': line.ai_persona.strip()}
+
+    def _ai_suggestion_payload(self, suggestion):
+        """Datos del borrador que consume el panel. Nunca credenciales."""
+        if not suggestion:
+            return False
+        return {
+            'id': suggestion.id,
+            'text': suggestion.suggested_text,
+            'state': suggestion.state,
+            'intent': suggestion.intent or '',
+            'confidence': suggestion.confidence,
+            'safety_decision': suggestion.safety_decision,
+            'safety_reason': suggestion.safety_reason or '',
+            'feedback_state': suggestion.feedback_state,
+            'source': suggestion.source or '',
+            'source_detail': suggestion.source_detail or '',
+            'knowledge_sources': suggestion.knowledge_sources or '',
+            'estimated_context_tokens': suggestion.estimated_context_tokens or 0,
+            'quick_action': suggestion.quick_action_id.name or '',
+        }
 
     def get_ai_assistant_data(self):
         """Estado seguro que consume el panel lateral del agente.
@@ -58,25 +98,17 @@ class ChatroomChannel(models.Model):
             'usage': usage,
             'safety_policy': self._ai_safety_policy(),
             'ai_paused': self.ai_paused,
-            'suggestion': {
-                'id': suggestion.id,
-                'text': suggestion.suggested_text,
-                'state': suggestion.state,
-                'intent': suggestion.intent or '',
-                'confidence': suggestion.confidence,
-                'safety_decision': suggestion.safety_decision,
-                'safety_reason': suggestion.safety_reason or '',
-                'feedback_state': suggestion.feedback_state,
-                'source': suggestion.source or '',
-                'source_detail': suggestion.source_detail or '',
-                'knowledge_sources': suggestion.knowledge_sources or '',
-                'estimated_context_tokens': suggestion.estimated_context_tokens or 0,
-            } if suggestion else False,
+            'suggestion': self._ai_suggestion_payload(suggestion),
+            'quick_actions': self.get_ai_quick_actions(),
+            'can_configure': self.env.user.has_group('chatroom_whatsapp.group_chatroom_manager')
+                or self.env.user.has_group('chatroom_ai.group_chatroom_ai_manager'),
         }
 
     def _ai_safety_policy(self):
-        """Devuelve controles operativos, nunca credenciales."""
-        self.ensure_one()
+        """Devuelve controles operativos, nunca credenciales.
+
+        Solo lee parámetros: funciona también sin conversación (probador del
+        agente, casos de prueba) para aplicar los mismos umbrales."""
         icp = self.env['ir.config_parameter'].sudo()
 
         def integer(key, default):
@@ -94,6 +126,7 @@ class ChatroomChannel(models.Model):
             'enabled': self._ai_param_enabled('chatroom_ai_agent.safe_auto_reply', default=True),
             'min_confidence': min(max(confidence, 0.0), 1.0),
             'cooldown_minutes': integer('chatroom_ai_agent.auto_reply_cooldown_minutes', 15),
+            'burst_limit': max(1, integer('chatroom_ai_agent.auto_reply_burst_limit', 5)),
             'daily_limit': integer('chatroom_ai_agent.auto_reply_daily_limit', 30),
             'escalate_negative': self._ai_param_enabled(
                 'chatroom_ai_agent.auto_reply_escalate_negative', default=True),
@@ -273,7 +306,8 @@ class ChatroomChannel(models.Model):
         # Saludos y agradecimientos no necesitan consumir tokens.
         local_reply = self._ai_local_reply()
         if local_reply:
-            return self._ai_deliver_guarded_reply(
+            # Marcada como local: no depende del modelo ni de su nivel de autonomía.
+            return self.with_context(chatroom_ai_local_reply=True)._ai_deliver_guarded_reply(
                 local_reply, 1.0, intent='consulta',
                 reason=_('Respuesta local para una interacción sencilla; no consumió tokens.'))
 
@@ -283,11 +317,19 @@ class ChatroomChannel(models.Model):
                 ('channel_id', '=', self.id), ('direction', '=', 'outbound'),
                 ('ai_generated', '=', True),
             ], order='date desc, id desc', limit=1)
+            # Anti-bucle: un máximo de respuestas automáticas en la ventana. Antes
+            # era «una respuesta cada N minutos», lo que dejaba sin respuesta al
+            # cliente que contestaba enseguida (guiones, preguntas seguidas).
             if latest and policy['cooldown_minutes']:
-                elapsed = (now - latest.date).total_seconds() / 60.0
-                if elapsed < policy['cooldown_minutes']:
-                    remaining = max(1, int(policy['cooldown_minutes'] - elapsed))
-                    reason = _('Pausa preventiva: espera %s minuto(s) antes de otra respuesta IA.') % remaining
+                since = now - timedelta(minutes=policy['cooldown_minutes'])
+                recent = message_model.search_count([
+                    ('channel_id', '=', self.id), ('direction', '=', 'outbound'),
+                    ('ai_generated', '=', True), ('date', '>=', fields.Datetime.to_string(since)),
+                ])
+                if recent >= policy['burst_limit']:
+                    reason = _('Pausa preventiva: %(count)s respuestas automáticas en %(minutes)s minutos '
+                               '(posible bucle con otro sistema).') % {
+                        'count': recent, 'minutes': policy['cooldown_minutes']}
                     self._ai_guard_notification(reason)
                     return {'status': 'cooldown', 'reason': reason}
             if policy['daily_limit']:
@@ -302,38 +344,20 @@ class ChatroomChannel(models.Model):
                     self._ai_guard_notification(reason, priority='2')
                     return {'status': 'daily_limit', 'reason': reason}
 
-        system_prompt = _(
-            'Responde SOLO JSON valido con esta estructura: '
-            '{"reply":"texto breve", "confidence":0.0, '
-            '"needs_human":false, "reason":"motivo", '
-            '"sentiment":"positive|neutral|negative", '
-            '"urgency":"low|normal|high|critical", '
-            '"intent":"consulta|venta|soporte|queja|otro"}. '
-            'No inventes precios, fechas, stock, estados de pago ni promesas. '
-            'Marca needs_human=true ante quejas, reclamos, pagos, urgencias, '
-            'datos faltantes o cualquier duda. La respuesta debe ser breve, '
-            'profesional y en espanol.')
-        raw = self._ai_chat_completion(
-            self._ai_build_conversation(extra_system=system_prompt), task_type='reply')
-        match = re.search(r'\{.*\}', raw or '', re.DOTALL)
-        try:
-            data = json.loads(match.group(0) if match else raw)
-        except (ValueError, TypeError, AttributeError):
+        draft = self._ai_guarded_draft()
+        if draft.get('invalid'):
             reason = _('El proveedor devolvio un formato no valido; se necesita revision humana.')
             self._ai_guard_notification(reason, priority='2')
             return {'status': 'invalid_provider_response', 'reason': reason}
+        # Extensiones (reglas de traspaso, autonomía por niveles...) pueden
+        # resolver aquí la conversación antes de responder.
+        handled = self._ai_after_guarded_draft(draft)
+        if handled:
+            return handled
 
-        reply = (data.get('reply') or '').strip() if isinstance(data, dict) else ''
-        try:
-            confidence = min(max(float(data.get('confidence', 0.0)), 0.0), 1.0)
-        except (TypeError, ValueError, AttributeError):
-            confidence = 0.0
-        valid_intents = dict(self._fields['ai_intent'].selection)
-        intent = data.get('intent') if data.get('intent') in valid_intents else False
-        sentiment = data.get('sentiment') or 'neutral'
-        urgency = data.get('urgency') or 'normal'
-        needs_human = bool(data.get('needs_human'))
-        reason = (data.get('reason') or _('La IA solicito revision humana.')).strip()
+        reply, confidence, intent = draft['reply'], draft['confidence'], draft['intent']
+        needs_human, reason = draft['needs_human'], draft['reason']
+        sentiment, urgency = draft['sentiment'], draft['urgency']
         if policy['escalate_negative'] and (sentiment == 'negative' or urgency in ('high', 'critical')):
             needs_human = True
             reason = _('Sentimiento negativo o urgencia detectada: %s') % reason
@@ -362,6 +386,84 @@ class ChatroomChannel(models.Model):
         return self._ai_deliver_guarded_reply(
             reply, confidence, intent=intent,
             reason=_('Respuesta aprobada por la guardia automatica.'))
+
+    def _ai_guarded_draft_prompt(self):
+        return _(
+            'Responde SOLO JSON valido con esta estructura: '
+            '{"reply":"texto breve", "confidence":0.0, '
+            '"needs_human":false, "reason":"motivo", '
+            '"sentiment":"positive|neutral|negative", '
+            '"urgency":"low|normal|high|critical", '
+            '"intent":"consulta|venta|soporte|queja|otro"}. '
+            'No inventes precios, fechas, stock, estados de pago ni promesas. '
+            'Marca needs_human=true ante quejas, reclamos, pagos, urgencias, '
+            'datos faltantes o cualquier duda. La respuesta debe ser breve, '
+            'profesional y en espanol.')
+
+    def _ai_guarded_draft(self, conversation=None):
+        """Borrador de respuesta con su evaluación (confianza, intención...).
+
+        Es la misma lógica para la respuesta automática, el modo sombra y las
+        pruebas de regresión: así lo que se mide es lo que se envía.
+
+        :param conversation: mensajes ya armados (para evaluar un caso sin
+            conversación real); por defecto, la de este canal.
+        :return: dict con reply, confidence, intent, sentiment, urgency,
+            needs_human, reason e invalid (formato no utilizable).
+        """
+        if conversation is None:
+            self.ensure_one()
+            conversation = self._ai_build_conversation(extra_system=self._ai_guarded_draft_prompt())
+        # Con historial, el modelo tiende a imitar los mensajes del asesor
+        # (texto normal) y olvida el formato: se recuerda al final y, si igual
+        # no cumple, se le pide una sola vez más.
+        conversation = list(conversation) + [{'role': 'system', 'content': _(
+            'Recuerda: responde SOLO con el JSON indicado al inicio, sin texto fuera del JSON, '
+            'aunque los mensajes anteriores del asesor estén en texto normal. Escribe "reply" en el '
+            'idioma del último mensaje del cliente.')}]
+        raw = self._ai_chat_completion(conversation, task_type='reply')
+        data = self._ai_parse_json_object(raw)
+        if not isinstance(data, dict) and raw:
+            raw = self._ai_chat_completion(conversation + [
+                {'role': 'assistant', 'content': raw},
+                {'role': 'system', 'content': _(
+                    'Tu respuesta anterior no fue JSON válido. Devuelve ahora SOLO el JSON con la '
+                    'estructura indicada, con esa misma respuesta en "reply".')},
+            ], task_type='reply')
+            data = self._ai_parse_json_object(raw)
+        if not isinstance(data, dict):
+            return {'invalid': True, 'raw': raw or '', 'reply': '', 'confidence': 0.0,
+                    'intent': False, 'sentiment': 'neutral', 'urgency': 'normal',
+                    'needs_human': True, 'reason': ''}
+        try:
+            confidence = min(max(float(data.get('confidence', 0.0)), 0.0), 1.0)
+        except (TypeError, ValueError):
+            confidence = 0.0
+        valid_intents = dict(self.env['chatroom.channel']._fields['ai_intent'].selection)
+        return {
+            'invalid': False,
+            'raw': raw or '',
+            'reply': (data.get('reply') or '').strip() if isinstance(data.get('reply'), str) else '',
+            'confidence': confidence,
+            'intent': data.get('intent') if data.get('intent') in valid_intents else False,
+            'sentiment': data.get('sentiment') or 'neutral',
+            'urgency': data.get('urgency') or 'normal',
+            'needs_human': bool(data.get('needs_human')),
+            'reason': (data.get('reason') or _('La IA solicito revision humana.')).strip()
+            if isinstance(data.get('reason') or '', str) else _('La IA solicito revision humana.'),
+        }
+
+    @staticmethod
+    def _ai_parse_json_object(raw):
+        match = re.search(r'\{.*\}', raw or '', re.DOTALL)
+        try:
+            return json.loads(match.group(0) if match else raw)
+        except (ValueError, TypeError, AttributeError):
+            return None
+
+    def _ai_after_guarded_draft(self, draft):
+        """Gancho: devolver un dict corta el flujo (por ejemplo, un traspaso)."""
+        return False
 
     def action_ai_prepare_suggestion(self, model_id=None):
         self.ensure_one()

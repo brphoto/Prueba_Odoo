@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_ai_center" model="ir.actions.client">
+        <field name="name">Centro de IA</field>
+        <field name="tag">chatroom_ai_agent_profile.ai_center</field>
+    </record>
+
+    <!-- Perfil: un solo control de autonomía, plantilla, fotos y resumen diario -->
+    <record id="view_agent_profile_form_center" model="ir.ui.view">
+        <field name="name">chatroom.ai.agent.profile.form.center</field>
+        <field name="model">chatroom.ai.agent.profile</field>
+        <field name="inherit_id" ref="view_agent_profile_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='action_open_setup']" position="before">
+                <button name="action_open_ai_center" type="object" string="Centro de IA" icon="fa-rocket"
+                        class="btn-secondary"/>
+            </xpath>
+            <xpath expr="//field[@name='knowledge_mode']" position="before">
+                <label for="business_template"/>
+                <div class="o_row">
+                    <field name="business_template"/>
+                    <button name="action_apply_template" type="object" string="Aplicar plantilla"
+                            icon="fa-magic" class="btn-link" invisible="not business_template"
+                            confirm="Se llenan el rol, el objetivo, los sinónimos y los guiones de este tipo de negocio (los guiones actuales se archivan). ¿Continuar?"/>
+                </div>
+            </xpath>
+            <xpath expr="//page[@name='autonomy']/group" position="before">
+                <group>
+                    <field name="autonomy_mode" widget="radio" options="{'horizontal': true}"/>
+                </group>
+                <div class="alert alert-info py-2">
+                    <field name="autonomy_help" nolabel="1" readonly="1"/>
+                </div>
+                <p class="text-muted small">Detalle de lo que ajusta cada modo (se puede afinar):</p>
+            </xpath>
+            <xpath expr="//field[@name='field_ids']/list/field[@name='hint']" position="after">
+                <field name="options" placeholder="Opción A, Opción B, Opción C"/>
+            </xpath>
+            <xpath expr="//page[@name='cost']/group" position="after">
+                <group string="Venta">
+                    <field name="send_product_images"/>
+                </group>
+            </xpath>
+            <xpath expr="//page[@name='followup']/group" position="after">
+                <group string="Resumen diario para el equipo">
+                    <field name="summary_enabled"/>
+                    <field name="summary_user_ids" widget="many2many_tags" invisible="not summary_enabled"
+                           placeholder="Administradores de Chatroom"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Conocimiento: publicar en un paso -->
+    <record id="view_ai_knowledge_base_form_publish_now" model="ir.ui.view">
+        <field name="name">ai.knowledge.base.form.publish.now</field>
+        <field name="model">ai.knowledge.base</field>
+        <field name="inherit_id" ref="chatroom_sales_intelligence.view_ai_knowledge_base_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='action_index']" position="before">
+                <button name="action_index_and_publish" type="object" string="Publicar ahora" class="btn-primary"
+                        icon="fa-bolt" invisible="state == 'indexed' and publication_state == 'published'"/>
+            </xpath>
+            <xpath expr="//field[@name='source_text']" position="after">
+                <field name="source_url" widget="url" invisible="not source_url"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Cargar desde la web -->
+    <record id="view_web_import_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.web.import.form</field>
+        <field name="model">chatroom.ai.web.import</field>
+        <field name="arch" type="xml">
+            <form string="Cargar desde la web">
+                <field name="state" invisible="1"/>
+                <div invisible="state == 'done'">
+                    <p class="text-muted">
+                        Lee la página indicada y las enlazadas del mismo sitio (preguntas frecuentes, envíos,
+                        servicios...) y las deja como información para la IA.
+                    </p>
+                    <group>
+                        <field name="url" widget="url" placeholder="https://www.miempresa.com/preguntas-frecuentes"/>
+                        <field name="max_pages"/>
+                        <field name="publish"/>
+                    </group>
+                </div>
+                <field name="result" invisible="state != 'done'" nolabel="1" readonly="1"/>
+                <footer>
+                    <button name="action_import" type="object" string="Cargar" class="btn-primary"
+                            icon="fa-download" invisible="state == 'done'"/>
+                    <button string="Cerrar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_web_import" model="ir.actions.act_window">
+        <field name="name">Cargar desde la web</field>
+        <field name="res_model">chatroom.ai.web.import</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

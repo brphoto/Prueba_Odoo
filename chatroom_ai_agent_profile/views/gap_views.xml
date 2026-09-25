@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_knowledge_gap_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.knowledge.gap.list</field>
+        <field name="model">chatroom.ai.knowledge.gap</field>
+        <field name="arch" type="xml">
+            <list string="Vacíos de conocimiento" create="0"
+                  decoration-info="state == 'proposed'" decoration-muted="state in ('published', 'ignored')">
+                <field name="question"/>
+                <field name="count"/>
+                <field name="source" optional="show"/>
+                <field name="category" optional="show"/>
+                <field name="answer" optional="show"/>
+                <field name="last_seen"/>
+                <field name="state" widget="badge" decoration-info="state == 'proposed'"
+                       decoration-success="state == 'published'" decoration-warning="state == 'open'"/>
+                <button name="action_publish" type="object" string="Publicar" icon="fa-check"
+                        invisible="state != 'proposed'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_knowledge_gap_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.knowledge.gap.form</field>
+        <field name="model">chatroom.ai.knowledge.gap</field>
+        <field name="arch" type="xml">
+            <form string="Vacío de conocimiento">
+                <header>
+                    <button name="action_publish" type="object" string="Publicar como conocimiento"
+                            class="btn-primary" invisible="state not in ('open', 'proposed')"/>
+                    <button name="action_ignore" type="object" string="Descartar"
+                            invisible="state not in ('open', 'proposed')"/>
+                    <button name="action_reopen" type="object" string="Reabrir"
+                            invisible="state not in ('published', 'ignored')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="open,proposed,published"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="question"/>
+                        <field name="answer" placeholder="Escribe la respuesta oficial; al publicarla la IA la usará."/>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="count"/>
+                            <field name="category"/>
+                            <field name="profile_id"/>
+                        </group>
+                        <group>
+                            <field name="last_seen"/>
+                            <field name="channel_id"/>
+                            <field name="answered_by"/>
+                            <field name="knowledge_id" invisible="not knowledge_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_knowledge_gap_search" model="ir.ui.view">
+        <field name="name">chatroom.ai.knowledge.gap.search</field>
+        <field name="model">chatroom.ai.knowledge.gap</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="question"/>
+                <filter name="pending" string="Por resolver" domain="[('state', 'in', ('open', 'proposed'))]"/>
+                <filter name="proposed" string="Con respuesta propuesta" domain="[('state', '=', 'proposed')]"/>
+                <filter name="from_history" string="Desde chats anteriores" domain="[('source', '=', 'history')]"/>
+                <group>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_category" string="Tipo" context="{'group_by': 'category'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_knowledge_gap" model="ir.actions.act_window">
+        <field name="name">Vacíos de conocimiento</field>
+        <field name="res_model">chatroom.ai.knowledge.gap</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin vacíos por ahora</p>
+            <p>Aquí aparecen las preguntas que la IA no pudo responder con la información publicada,
+               junto con lo que respondió el equipo. Publícalas y la IA las sabrá la próxima vez.</p>
+        </field>
+    </record>
+</odoo>

@@ -269,6 +269,11 @@
                                 <i t-if="message.message_type === 'location'" class="fa fa-map-marker me-1"/>
                                 <t t-esc="message.body"/>
                             </div>
+                            <div class="o_chatroom_bubble_translation o_chatroom_bubble_transcript"
+                                 t-if="message.ai_transcript">
+                                <i t-attf-class="fa {{ message.message_type === 'audio' ? 'fa-microphone' : 'fa-eye' }}"/>
+                                <span t-esc="message.ai_transcript"/>
+                            </div>
                             <div class="o_chatroom_bubble_translation" t-if="message.translatedBody">
                                 <i class="fa fa-language"/>
                                 <span t-esc="message.translatedBody"/>

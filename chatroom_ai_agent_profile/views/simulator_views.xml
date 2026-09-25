@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_agent_simulator_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.agent.simulator.form</field>
+        <field name="model">chatroom.ai.agent.simulator</field>
+        <field name="arch" type="xml">
+            <form string="Probar agente">
+                <sheet>
+                    <div class="alert alert-info py-2" role="status">
+                        Conversación de prueba con el mismo proceso que producción (perfil, guiones,
+                        conocimiento, ejemplos, reglas de traspaso y autonomía). No se envía nada a WhatsApp.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="profile_id" options="{'no_create': True}"/>
+                            <field name="line_id" options="{'no_create': True}" placeholder="Cualquier línea"/>
+                        </group>
+                        <group>
+                            <field name="partner_id" options="{'no_create': True}" placeholder="Cliente nuevo"/>
+                            <field name="playbook_progress" invisible="not playbook_progress"/>
+                        </group>
+                    </group>
+                    <div class="o_agent_sim_chat border rounded-3 p-3 mb-3" style="max-height:420px;overflow-y:auto">
+                        <field name="chat_html" nolabel="1"/>
+                    </div>
+                    <div class="d-flex gap-2 align-items-start">
+                        <field name="message" nolabel="1" class="flex-grow-1 o_agent_sim_input"
+                               placeholder="Escribe como si fueras el cliente..."/>
+                        <button name="action_send" type="object" string="Enviar" class="btn-primary o_agent_sim_send"
+                                icon="fa-paper-plane"/>
+                    </div>
+                    <group invisible="not last_decision" class="mt-3">
+                        <group string="Qué haría en producción">
+                            <field name="last_decision" widget="badge"
+                                   decoration-success="last_decision == 'send'"
+                                   decoration-info="last_decision == 'approval'"
+                                   decoration-warning="last_decision == 'review'"
+                                   decoration-danger="last_decision == 'handoff'"/>
+                            <field name="last_reason"/>
+                            <field name="last_backing" invisible="not last_backing"/>
+                            <field name="last_confidence" widget="percentage" invisible="not last_backing"/>
+                            <field name="last_gap" invisible="not last_gap"/>
+                        </group>
+                        <group string="Información usada">
+                            <field name="last_sources" nolabel="1" colspan="2"/>
+                        </group>
+                    </group>
+                    <group invisible="not last_decision" string="¿La respuesta no fue la correcta?">
+                        <field name="correction" placeholder="Escribe la respuesta correcta: la IA la aprende como ejemplo."/>
+                    </group>
+                    <details invisible="not last_prompt" class="mt-2">
+                        <summary class="text-muted">Ver instrucciones enviadas a la IA</summary>
+                        <field name="last_prompt" nolabel="1" class="font-monospace small"/>
+                    </details>
+                </sheet>
+                <footer>
+                    <button name="action_correct" type="object" string="Guardar corrección"
+                            invisible="not last_decision"/>
+                    <button name="action_save_case" type="object" string="Guardar como caso de prueba"
+                            invisible="not last_decision"/>
+                    <button name="action_reset" type="object" string="Nueva conversación"/>
+                    <button string="Cerrar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_agent_simulator" model="ir.actions.act_window">
+        <field name="name">Probar agente</field>
+        <field name="res_model">chatroom.ai.agent.simulator</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'dialog_size': 'extra-large'}</field>
+    </record>
+</odoo>

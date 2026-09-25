@@ -61,6 +61,13 @@ class ResConfigSettings(models.TransientModel):
         help="Última vez que Meta nos mandó un evento (mensaje o cambio de "
              "estado), de cualquier línea. Si nunca llegó ninguno, revisá "
              "que la URL del Webhook esté bien registrada en Meta.")
+    chatroom_conversation_per_line = fields.Boolean(
+        string="Una conversación por línea",
+        config_parameter='chatroom_whatsapp.conversation_per_line',
+        help="Si el mismo cliente escribe a dos números (ej. Ventas y Soporte), "
+             "cada línea lleva su propia conversación y cada equipo ve solo la "
+             "suya. Desactivado, el cliente tiene una única conversación que se "
+             "mueve a la última línea por la que escribió.")
     chatroom_auto_assign = fields.Boolean(
         string="Asignación automática de conversaciones",
         config_parameter='chatroom_whatsapp.auto_assign', default=True,
@@ -225,6 +232,18 @@ class ResConfigSettings(models.TransientModel):
         help="Envía la sugerencia de IA sin intervención humana. "
              "Actívalo solo si confías en las respuestas del modelo/prompt "
              "configurado: no hay revisión previa de un agente.")
+    chatroom_ai_queue = fields.Boolean(
+        string="Responder desde una cola (recomendado)", default=True,
+        config_parameter='chatroom_whatsapp.ai_queue',
+        help="La respuesta se prepara en segundo plano y sobrevive a un reinicio del servidor.")
+    chatroom_ai_debounce_seconds = fields.Integer(
+        string="Esperar antes de responder (segundos)", default=6,
+        config_parameter='chatroom_whatsapp.ai_debounce_seconds',
+        help="Si el cliente sigue escribiendo, la IA espera y responde una sola vez a todo "
+             "(máximo 20 segundos desde el primer mensaje).")
+    chatroom_ai_typing_indicator = fields.Boolean(
+        string="Mostrar «escribiendo…» mientras responde", default=True,
+        config_parameter='chatroom_whatsapp.ai_typing_indicator')
     chatroom_ai_require_approval = fields.Boolean(
         string="Requerir aprobación humana",
         config_parameter='chatroom_whatsapp.ai_require_approval',

@@ -60,6 +60,13 @@ class ChatroomMessage(models.Model):
          ('failed', "Fallido")],
         default='received')
     date = fields.Datetime(default=fields.Datetime.now, required=True, index=True)
+    ai_transcript = fields.Text(
+        string='Transcripción / descripción (IA)', copy=False, readonly=True,
+        help='Lo que dijo el cliente en un audio o lo que muestra una imagen, para que la IA y el '
+             'equipo lo lean sin abrir el archivo.')
+    media_queued = fields.Boolean(
+        string='Adjunto en cola', index=True, copy=False,
+        help='El archivo espera a que la cola lo suba a Meta y lo envíe.')
     retry_count = fields.Integer(
         default=0, copy=False,
         help="Cuántas veces se reintentó el envío (a mano o automático). "
@@ -150,6 +157,16 @@ class ChatroomMessage(models.Model):
         except (requests.RequestException, KeyError, IndexError) as exc:
             _logger.error("Error consultando IA para traducción: %s", exc)
             raise UserError(_("No se pudo traducir el mensaje: %s") % exc)
+
+    def _ai_text(self):
+        """Lo que la IA lee de este mensaje: el texto y, si hay, la
+        transcripción del audio o la descripción de la imagen."""
+        self.ensure_one()
+        body, transcript = (self.body or '').strip(), (self.ai_transcript or '').strip()
+        if not transcript:
+            return body
+        label = _('Audio') if self.message_type == 'audio' else _('Imagen')
+        return '%s\n[%s] %s' % (body, label, transcript) if body else '[%s] %s' % (label, transcript)
 
     def _fetch_whatsapp_media(self, media_id):
         """Descarga un adjunto entrante desde Meta y lo guarda como

@@ -6,7 +6,7 @@ from datetime import datetime, time, timedelta
 
 import pytz
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 
 class ChatroomAiTaskAction(models.Model):
@@ -212,6 +212,11 @@ class ChatroomAiTask(models.Model):
         ('low', 'Bajo'), ('medium', 'Medio'), ('high', 'Alto'),
     ], string='Nivel de riesgo', compute='_compute_risk_level', store=True)
     approved_by = fields.Many2one('res.users', string='Aprobado por', readonly=True)
+    policy_approved = fields.Boolean(
+        string='Autorizada por política', readonly=True, copy=False,
+        help='Una política de autonomía autorizó ejecutar esta tarea concreta sin '
+             'aprobación manual. No cambia la definición de las herramientas: '
+             'cada acción sigue marcada como sensible.')
     approved_at = fields.Datetime(string='Aprobado el', readonly=True)
     started_at = fields.Datetime(string='Iniciada el', readonly=True)
     completed_at = fields.Datetime(string='Completada el', readonly=True,
@@ -494,7 +499,7 @@ class ChatroomAiTask(models.Model):
         self.ensure_one()
         request_text = ' '.join([
             self.prompt or '',
-            ' '.join((message.body or '') for message in self.channel_id.message_ids
+            ' '.join(message._ai_text() for message in self.channel_id.message_ids
                      if message.body) if self.channel_id else '',
         ]).lower()
         normalized_request = ''.join(
@@ -698,7 +703,7 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
         self.ensure_one()
         request_text = ' '.join([
             self.prompt or '',
-            ' '.join((message.body or '') for message in self.channel_id.message_ids
+            ' '.join(message._ai_text() for message in self.channel_id.message_ids
                      if message.body) if self.channel_id else '',
         ]).lower()
         time_match = re.search(
@@ -757,7 +762,7 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
         channel = self.channel_id
         return ' '.join([
             self.prompt or '',
-            ' '.join((message.body or '') for message in channel.message_ids
+            ' '.join(message._ai_text() for message in channel.message_ids
                      if message.body) if channel else '',
         ]).strip()
 
@@ -869,12 +874,12 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             return [], False, False, False
         context = self._conversation_text()
         inbound_messages = self.channel_id.message_ids.filtered(
-            lambda message: message.direction == 'inbound' and message.body
+            lambda message: message.direction == 'inbound' and message._ai_text()
         ).sorted('date')
-        current_request = inbound_messages[-1].body if inbound_messages else context
+        current_request = inbound_messages[-1]._ai_text() if inbound_messages else context
         customer_text = ' '.join(
-            message.body for message in self.channel_id.message_ids
-            if message.direction == 'inbound' and message.body)
+            message._ai_text() for message in self.channel_id.message_ids
+            if message.direction == 'inbound' and message._ai_text())
         # Una nueva petición debe producir una cotización independiente. El
         # historial completo solo se consulta si la última frase usa un
         # pronombre («esas horas», «lo anterior») y no vuelve a nombrar el
@@ -1153,7 +1158,7 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
             else:
                 request_text = ' '.join([
                     self.prompt or '',
-                    ' '.join((message.body or '') for message in channel.message_ids
+                    ' '.join(message._ai_text() for message in channel.message_ids
                              if message.body),
                 ]).strip()
                 start, stop = self._requested_meeting_window()
@@ -1270,6 +1275,14 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                     channel.with_context(chatroom_ai_generated=True).action_send_text(reply)
         return result
 
+    def write(self, vals):
+        # Autorizar por política equivale a aprobar la tarea: solo lo hace el
+        # código del servidor con sudo (la política de autonomía), nunca un
+        # usuario por RPC, aunque envíe un contexto a medida.
+        if vals.get('policy_approved') and not self.env.su:
+            raise AccessError(_('Solo una política de autonomía puede autorizar una tarea.'))
+        return super().write(vals)
+
     def action_approve(self):
         if not self.env.user.has_group('chatroom_ai_agent.group_chatroom_ai_agent_manager'):
             raise UserError(_('Solo un administrador del agente IA puede aprobar planes.'))
@@ -1303,7 +1316,7 @@ Contexto: %s''') % (self.prompt or '', self._json(context))
                 outputs = []
                 for action in task.action_ids.filtered(lambda line: line.state in ('pending', 'error')):
                     tool = action._check_execution_authorization()
-                    if tool.requires_approval and (
+                    if tool.requires_approval and not task.policy_approved and (
                             not task.approved_by
                             or not task.approved_by.has_group(
                                 'chatroom_ai_agent.group_chatroom_ai_agent_manager')):

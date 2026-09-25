@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="chatroom_ai_sales_event_rule_user" model="ir.rule">
-        <field name="name">Eventos de ventas autónomas por compañía</field>
+        <field name="name">Eventos de ventas autónomas de sus conversaciones y sus líneas</field>
         <field name="model_id" ref="model_chatroom_ai_sales_event"/>
         <field name="groups" eval="[(4, ref('chatroom_ai_agent.group_chatroom_ai_agent_user'))]"/>
+        <field name="domain_force">['&amp;', ('channel_id.company_id', 'in', company_ids), '|', ('channel_id.assigned_user_id', '=', user.id), ('channel_id.whatsapp_number_id.member_ids', 'in', [user.id])]</field>
+    </record>
+    <record id="chatroom_ai_sales_event_rule_supervisor" model="ir.rule">
+        <field name="name">Supervisor de Chatroom: eventos de ventas de su compañía</field>
+        <field name="model_id" ref="model_chatroom_ai_sales_event"/>
+        <field name="groups" eval="[(4, ref('chatroom_whatsapp.group_chatroom_supervisor'))]"/>
         <field name="domain_force">[('channel_id.company_id', 'in', company_ids)]</field>
     </record>
 </odoo>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rule_agent_profile_company" model="ir.rule">
+        <field name="name">Perfil del agente IA: empresas permitidas</field>
+        <field name="model_id" ref="model_chatroom_ai_agent_profile"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_agent_event_company" model="ir.rule">
+        <field name="name">Actividad del agente IA: empresas permitidas</field>
+        <field name="model_id" ref="model_chatroom_ai_agent_event"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_knowledge_gap_company" model="ir.rule">
+        <field name="name">Vacíos de conocimiento: empresas permitidas</field>
+        <field name="model_id" ref="model_chatroom_ai_knowledge_gap"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

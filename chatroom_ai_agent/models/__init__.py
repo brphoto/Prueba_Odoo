@@ -11,3 +11,5 @@ from . import chatroom_ai_automation
 from . import chatroom_ai_automation_run
 from . import chatroom_channel
 from . import res_config_settings
+from . import chatroom_ai_quick_action
+from . import res_users

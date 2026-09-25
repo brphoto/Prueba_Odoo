@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="chatroom_ai_agent_profile.AiCenter">
+        <div class="o_ai_center o_action h-100 overflow-auto">
+            <div t-if="state.loading" class="o_ai_center_loading text-muted p-5 text-center">
+                <i class="fa fa-spinner fa-spin me-2"/>Cargando…
+            </div>
+            <t t-else="">
+                <t t-set="d" t-value="state.data"/>
+                <header class="o_ai_center_header">
+                    <div class="o_ai_center_title">
+                        <span class="o_ai_center_avatar"><i class="fa fa-magic"/></span>
+                        <div>
+                            <h2 class="mb-0"><t t-esc="d.profile.agent_name"/></h2>
+                            <div class="text-muted small">
+                                <span t-attf-class="o_ai_center_dot {{ d.profile.auto_reply_on ? 'o_on' : 'o_off' }}"/>
+                                <t t-if="d.profile.auto_reply_on">Atendiendo</t><t t-else="">En pausa</t>
+                                · Modo <b t-esc="modeLabel"/>
+                            </div>
+                        </div>
+                    </div>
+                    <nav class="o_ai_center_tabs" role="tablist">
+                        <button t-foreach="tabs" t-as="tab" t-key="tab.key" role="tab"
+                                t-attf-class="o_ai_center_tab {{ state.tab === tab.key ? 'active' : '' }}"
+                                t-att-data-tab="tab.key" t-on-click="() => this.selectTab(tab.key)">
+                            <i t-attf-class="fa {{ tab.icon }} me-1"/><t t-esc="tab.label"/>
+                            <span t-if="tab.key === 'today' and todayCount" class="badge rounded-pill text-bg-warning ms-1"
+                                  t-esc="todayCount"/>
+                            <span t-if="tab.key === 'improve' and d.improve.gaps_count"
+                                  class="badge rounded-pill text-bg-info ms-1" t-esc="d.improve.gaps_count"/>
+                        </button>
+                    </nav>
+                </header>
+
+                <!-- HOY -->
+                <section t-if="state.tab === 'today'" class="o_ai_center_body o_ai_center_today">
+                    <div t-if="!d.today.pending.length and !d.today.handoffs.length" class="o_ai_center_empty">
+                        <i class="fa fa-check-circle"/>
+                        <p>Todo al día: no hay borradores por aprobar ni conversaciones esperando a una persona.</p>
+                    </div>
+                    <div t-if="d.today.handoffs.length" class="o_ai_center_block">
+                        <h4><i class="fa fa-user me-1"/>Esperan a una persona</h4>
+                        <div t-foreach="d.today.handoffs" t-as="item" t-key="item.id" class="o_ai_center_card o_ai_handoff_card">
+                            <div class="flex-grow-1">
+                                <b t-esc="item.partner"/>
+                                <div class="text-muted small" t-esc="item.reason"/>
+                                <div t-if="item.user" class="small">A cargo de <t t-esc="item.user"/></div>
+                            </div>
+                            <button t-if="!item.mine" class="btn btn-primary btn-sm" t-on-click="() => this.takeOver(item)"
+                                    t-att-disabled="state.busy">Tomar</button>
+                            <button class="btn btn-secondary btn-sm" t-on-click="() => this.openChat(item.id)">Abrir chat</button>
+                        </div>
+                    </div>
+                    <div t-if="d.today.pending.length" class="o_ai_center_block">
+                        <h4><i class="fa fa-hourglass-half me-1"/>Para aprobar
+                            <span class="text-muted small">(<t t-esc="d.today.pending_count"/>)</span></h4>
+                        <div t-foreach="d.today.pending" t-as="item" t-key="item.id" class="o_ai_center_card o_ai_draft_card">
+                            <div class="o_ai_draft_head">
+                                <b t-esc="item.partner"/>
+                                <span class="text-muted small ms-2">hace <t t-esc="item.waiting"/> min</span>
+                            </div>
+                            <div t-if="item.question" class="o_ai_draft_question">
+                                <i class="fa fa-quote-left me-1"/><t t-esc="item.question"/>
+                            </div>
+                            <textarea class="form-control o_ai_draft_text" rows="3"
+                                      t-model="state.drafts[item.id]"/>
+                            <div t-if="item.reason" class="text-muted small mt-1">
+                                <i class="fa fa-info-circle me-1"/><t t-esc="item.reason"/>
+                            </div>
+                            <div class="o_ai_draft_actions">
+                                <button class="btn btn-primary btn-sm o_ai_draft_send" t-att-disabled="state.busy"
+                                        t-on-click="() => this.sendDraft(item)">
+                                    <i class="fa fa-paper-plane me-1"/>Enviar
+                                </button>
+                                <button class="btn btn-secondary btn-sm" t-on-click="() => this.openChat(item.channel_id)">Abrir chat</button>
+                                <button class="btn btn-link btn-sm text-danger" t-att-disabled="state.busy"
+                                        t-on-click="() => this.discardDraft(item)">Descartar</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CONFIGURAR -->
+                <section t-if="state.tab === 'setup'" class="o_ai_center_body o_ai_center_setup">
+                    <div class="o_ai_center_block">
+                        <h4>¿Cuánto decide sola la IA?</h4>
+                        <div class="o_ai_modes">
+                            <button t-foreach="d.profile.modes" t-as="mode" t-key="mode.key"
+                                    t-attf-class="o_ai_mode {{ mode.key === d.profile.autonomy_mode ? 'active' : '' }}"
+                                    t-att-data-mode="mode.key" t-att-disabled="state.busy"
+                                    t-on-click="() => this.setMode(mode.key)">
+                                <b t-esc="mode.label"/>
+                                <span t-esc="mode.help"/>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="o_ai_center_grid">
+                        <div class="o_ai_center_block">
+                            <h4>Estado</h4>
+                            <ul class="o_ai_checks list-unstyled">
+                                <li t-foreach="d.setup.checks" t-as="check" t-key="check.key">
+                                    <i t-attf-class="fa {{ check.ok ? 'fa-check-circle text-success' : 'fa-circle-o text-muted' }} me-1"/>
+                                    <t t-esc="check.label"/>
+                                    <div t-if="!check.ok" class="text-muted small ms-4" t-esc="check.hint"/>
+                                </li>
+                            </ul>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button t-attf-class="btn btn-sm {{ d.profile.auto_reply_on ? 'btn-secondary' : 'btn-primary' }}"
+                                        t-on-click="toggleAutoReply" t-att-disabled="state.busy">
+                                    <t t-if="d.profile.auto_reply_on">Pausar respuesta automática</t>
+                                    <t t-else="">Activar respuesta automática</t>
+                                </button>
+                                <button class="btn btn-secondary btn-sm" t-on-click="() => this.openProfileAction('action_open_simulator')">
+                                    <i class="fa fa-comments me-1"/>Probar agente</button>
+                                <button class="btn btn-link btn-sm" t-on-click="() => this.openProfileAction('action_open_setup')">Puesta en marcha</button>
+                                <button class="btn btn-link btn-sm" t-on-click="openProfile">Perfil completo</button>
+                            </div>
+                        </div>
+                        <div class="o_ai_center_block">
+                            <h4>Tipo de negocio</h4>
+                            <p class="text-muted small">Llena rol, guiones con botones y una lista de información por cargar.</p>
+                            <div class="d-flex gap-2">
+                                <select class="form-select o_ai_template_select" t-model="state.template">
+                                    <option value="">Elegir…</option>
+                                    <option t-foreach="d.profile.templates" t-as="tpl" t-key="tpl.key"
+                                            t-att-value="tpl.key" t-esc="tpl.label"/>
+                                </select>
+                                <button class="btn btn-secondary" t-att-disabled="!state.template or state.busy"
+                                        t-on-click="applyTemplate">Aplicar</button>
+                            </div>
+                            <h5 class="mt-3">Guiones</h5>
+                            <ul class="list-unstyled small">
+                                <li t-foreach="d.setup.playbooks" t-as="pb" t-key="pb.id" t-att-class="pb.active ? '' : 'text-muted text-decoration-line-through'">
+                                    <b t-esc="pb.name"/> → <t t-esc="pb.on_complete"/>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="o_ai_center_block">
+                        <h4>Agregar información <span class="text-muted small">(<t t-esc="d.setup.knowledge_count"/> publicadas)</span></h4>
+                        <input class="form-control mb-2 o_ai_knowledge_title" placeholder="Título (ej.: Envíos)"
+                               t-model="state.knowledgeTitle"/>
+                        <textarea class="form-control o_ai_knowledge_text" rows="4"
+                                  placeholder="Ej.: Enviamos a todo el país en 24 a 48 horas. El envío cuesta $5 y es gratis desde $50."
+                                  t-model="state.knowledgeText"/>
+                        <div class="d-flex flex-wrap gap-2 mt-2">
+                            <button class="btn btn-primary btn-sm o_ai_knowledge_publish" t-att-disabled="state.busy"
+                                    t-on-click="publishKnowledge"><i class="fa fa-bolt me-1"/>Publicar</button>
+                            <button class="btn btn-secondary btn-sm"
+                                    t-on-click="() => this.openAction('chatroom_ai_agent_profile.action_web_import')">
+                                <i class="fa fa-globe me-1"/>Cargar desde la web</button>
+                            <button class="btn btn-link btn-sm"
+                                    t-on-click="() => this.openAction('chatroom_sales_intelligence.action_ai_knowledge_base')">
+                                Ver toda la información</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- MEJORAR -->
+                <section t-if="state.tab === 'improve'" class="o_ai_center_body o_ai_center_improve">
+                    <div class="o_ai_center_grid">
+                        <div class="o_ai_center_block">
+                            <h4>Aprendizaje</h4>
+                            <p><b t-esc="d.improve.corrections_7d"/> correcciones aprendidas en 7 días.</p>
+                            <p class="small">Pruebas: <t t-esc="d.improve.last_run or 'sin ejecutar'"/>
+                                <span t-if="d.improve.frozen" class="badge text-bg-danger ms-1">Autonomía congelada</span></p>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button class="btn btn-secondary btn-sm" t-att-disabled="state.busy"
+                                        t-on-click="() => this.openProfileAction('action_run_tests')">
+                                    <i class="fa fa-check-square-o me-1"/>Ejecutar pruebas</button>
+                                <button class="btn btn-link btn-sm"
+                                        t-on-click="() => this.openAction('chatroom_ai_agent_profile.action_history_import')">
+                                    Aprender de chats anteriores</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="o_ai_center_block">
+                        <h4>Preguntas que la IA no supo responder</h4>
+                        <p t-if="!d.today.gaps.length" class="text-muted">No hay preguntas pendientes.</p>
+                        <div t-foreach="d.today.gaps" t-as="gap" t-key="gap.id" class="o_ai_center_card o_ai_gap_card">
+                            <div class="o_ai_gap_question">
+                                <b t-esc="gap.question"/>
+                                <span class="badge text-bg-light ms-1" t-if="gap.count > 1">×<t t-esc="gap.count"/></span>
+                            </div>
+                            <textarea class="form-control o_ai_gap_answer" rows="2" placeholder="Escribe la respuesta correcta…"
+                                      t-model="state.answers[gap.id]"/>
+                            <div class="o_ai_draft_actions">
+                                <button class="btn btn-primary btn-sm o_ai_gap_publish" t-att-disabled="state.busy"
+                                        t-on-click="() => this.publishGap(gap)">Publicar respuesta</button>
+                                <button class="btn btn-link btn-sm text-muted" t-att-disabled="state.busy"
+                                        t-on-click="() => this.ignoreGap(gap)">Ignorar</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- RESULTADOS -->
+                <section t-if="state.tab === 'results'" class="o_ai_center_body o_ai_center_results">
+                    <div class="o_ai_kpis">
+                        <div class="o_ai_kpi"><b t-esc="d.results.answered"/><span>Conversaciones (30 días)</span></div>
+                        <div class="o_ai_kpi"><b><t t-esc="d.results.alone_rate"/>%</b><span>Respondió sola</span></div>
+                        <div class="o_ai_kpi"><b><t t-esc="d.results.latency"/> s</b><span>Tiempo de respuesta</span></div>
+                        <div class="o_ai_kpi"><b t-esc="formatMoney(d.results.cost)"/><span>Costo IA</span></div>
+                        <div class="o_ai_kpi"><b t-esc="formatMoney(d.results.savings_usd)"/><span>Ahorro estimado</span></div>
+                        <div class="o_ai_kpi"><b t-esc="d.results.counts.handoff"/><span>Pasaron a una persona</span></div>
+                    </div>
+                    <div class="o_ai_center_grid">
+                        <div class="o_ai_center_block">
+                            <h4>Por semana</h4>
+                            <div class="o_ai_trend">
+                                <div t-foreach="d.results.trend" t-as="week" t-key="week.week" class="o_ai_trend_col"
+                                     t-att-title="week.total + ' conversaciones · ' + week.rate + '% sola'">
+                                    <div class="o_ai_trend_bar" t-att-style="'height:' + trendHeight(week)"/>
+                                    <span t-esc="week.week"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="o_ai_center_block">
+                            <h4>Por qué pasan a una persona</h4>
+                            <p t-if="!d.results.reasons.length" class="text-muted">Sin traspasos en el periodo.</p>
+                            <ul class="list-unstyled">
+                                <li t-foreach="d.results.reasons" t-as="r" t-key="r_index">
+                                    <b t-esc="r.count"/> · <t t-esc="r.reason"/>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="o_ai_center_block o_ai_ask">
+                        <h4><i class="fa fa-comments-o me-1"/>Pregúntale a tus datos</h4>
+                        <div class="d-flex gap-2">
+                            <input class="form-control o_ai_ask_input" placeholder="Ej.: ¿qué producto preguntan más?"
+                                   t-model="state.question" t-on-keydown="onAskKeydown"/>
+                            <button class="btn btn-primary o_ai_ask_btn" t-att-disabled="state.asking" t-on-click="() => this.ask()">
+                                <i t-attf-class="fa {{ state.asking ? 'fa-spinner fa-spin' : 'fa-arrow-right' }}"/>
+                            </button>
+                        </div>
+                        <div class="d-flex flex-wrap gap-1 mt-2">
+                            <button t-foreach="suggestedQuestions" t-as="q" t-key="q_index" class="btn btn-light btn-sm"
+                                    t-on-click="() => this.ask(q)" t-esc="q"/>
+                        </div>
+                        <div t-if="state.answer" class="o_ai_ask_answer" t-esc="state.answer"/>
+                    </div>
+                </section>
+            </t>
+        </div>
+    </t>
+</templates>

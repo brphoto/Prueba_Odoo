@@ -42,6 +42,12 @@ class ChatroomTemplate(models.Model):
          ('disabled', "Deshabilitada")],
         default='draft', required=True)
     waba_template_id = fields.Char(string="ID en Meta", copy=False)
+    business_account_id = fields.Char(
+        string="WABA", index=True,
+        default=lambda self: self._default_business_account_id(),
+        help="WhatsApp Business Account donde vive la plantilla. Cada WABA tiene "
+             "su propio catálogo: una plantilla solo puede enviarse por los "
+             "números de su WABA. Por defecto, la WABA general de Ajustes.")
     last_synced_at = fields.Datetime(
         string="Última sincronización", readonly=True, copy=False)
     header_type = fields.Selection(
@@ -66,10 +72,60 @@ class ChatroomTemplate(models.Model):
         'chatroom.template.variable', 'template_id', string='Campos de variables',
         copy=True)
 
-    _name_language_uniq = models.Constraint(
-        'unique(name, language)',
-        "Ya existe una plantilla con ese nombre e idioma.",
+    # El mismo nombre e idioma puede existir en varias WABAs (una por marca
+    # o por cliente). Reemplaza a name_language_uniq (ver migrations/19.0.2.2.0).
+    _name_language_waba_uniq = models.UniqueIndex(
+        "(name, language, COALESCE(business_account_id, ''))",
+        "Ya existe una plantilla con ese nombre e idioma en esa WABA.",
     )
+
+    @api.model
+    def _default_business_account_id(self):
+        return self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_whatsapp.business_account_id') or False
+
+    @api.model
+    def _get_waba_accounts(self):
+        """Todas las WABAs configuradas con el token con que se consultan.
+
+        La general de Ajustes y la de cada línea activa que tenga una
+        propia. Una línea sin token propio usa el general (caso típico:
+        un mismo System User con acceso a varias WABAs).
+
+        :return: lista de dicts ``waba_id``, ``token``, ``api_version`` y
+            ``label``, sin WABAs repetidas.
+        """
+        icp = self.env['ir.config_parameter'].sudo()
+        general_token = icp.get_param('chatroom_whatsapp.access_token')
+        api_version = icp.get_param('chatroom_whatsapp.graph_api_version', 'v20.0')
+        accounts = {}
+        general_waba = icp.get_param('chatroom_whatsapp.business_account_id')
+        if general_waba and general_token:
+            accounts[general_waba] = {
+                'waba_id': general_waba, 'token': general_token,
+                'api_version': api_version, 'label': _('WABA general'),
+            }
+        for number in self.env['chatroom.whatsapp.number'].sudo().search([
+                ('business_account_id', '!=', False)]):
+            token = number.access_token or general_token
+            if number.business_account_id in accounts or not token:
+                continue
+            accounts[number.business_account_id] = {
+                'waba_id': number.business_account_id, 'token': token,
+                'api_version': api_version, 'label': number.name,
+            }
+        return list(accounts.values())
+
+    def _get_waba_credentials_for(self, waba_id):
+        """Token, WABA y versión para hablar con una WABA concreta."""
+        if not waba_id:
+            return self._get_meta_waba_credentials()
+        for account in self._get_waba_accounts():
+            if account['waba_id'] == waba_id:
+                return account['token'], account['waba_id'], account['api_version']
+        raise UserError(_(
+            "La WABA %s no está configurada: ponla en Ajustes o en una Línea "
+            "de WhatsApp activa, con su token si es distinto del general.") % waba_id)
 
     @api.depends('body')
     def _compute_variable_count(self):
@@ -127,9 +183,45 @@ class ChatroomTemplate(models.Model):
     @api.model
     def action_sync_templates(self):
         """Trae desde Meta el catálogo de plantillas aprobadas/pendientes
-        de la cuenta de WhatsApp Business configurada y las guarda/actualiza
-        localmente."""
-        token, waba_id, api_version = self._get_meta_waba_credentials()
+        de cada WABA configurada (la general y la de cada línea que viva en
+        otra) y las guarda/actualiza localmente, cada una con su WABA.
+
+        Una WABA que falla no impide sincronizar las demás: se informa al
+        final. Solo si fallan todas se lanza el error."""
+        accounts = self._get_waba_accounts()
+        if not accounts:
+            # Mismo mensaje de siempre cuando no hay nada configurado.
+            self._get_meta_waba_credentials()
+        created = updated = 0
+        failures = []
+        for account in accounts:
+            try:
+                account_created, account_updated = self._sync_waba_templates(account)
+            except UserError as exc:
+                failures.append('%s: %s' % (account['label'], exc.args[0] if exc.args else exc))
+                continue
+            created += account_created
+            updated += account_updated
+        if failures and len(failures) == len(accounts):
+            raise UserError('\n'.join(failures))
+        message = _("%(created)s nuevas, %(updated)s actualizadas.") % {
+            'created': created, 'updated': updated}
+        if failures:
+            message += ' ' + _('No se pudo sincronizar: %s') % '; '.join(failures)
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _("Plantillas sincronizadas"),
+                'message': message,
+                'type': 'warning' if failures else 'success',
+            },
+        }
+
+    @api.model
+    def _sync_waba_templates(self, account):
+        """Sincroniza las plantillas de una WABA. Devuelve (creadas, actualizadas)."""
+        token, waba_id, api_version = account['token'], account['waba_id'], account['api_version']
         headers = {"Authorization": f"Bearer {token}"}
         url = f"https://graph.facebook.com/{api_version}/{waba_id}/message_templates"
         params = {"limit": 100}
@@ -152,8 +244,12 @@ class ChatroomTemplate(models.Model):
         # Un indice de lo que ya existe en UNA consulta. Antes se buscaba
         # por plantilla: una cuenta con 200 plantillas aprobadas eran 200
         # SELECT antes de escribir nada.
+        #
+        # Las plantillas anteriores a las WABAs por línea no tienen WABA:
+        # se tratan como de la general y se completan al actualizarlas.
+        general_waba = self._default_business_account_id()
         known = {
-            (record.name, record.language): record
+            (record.name, record.language, record.business_account_id or general_waba): record
             for record in self.search([
                 ('name', 'in', [t.get('name') for t in templates_data if t.get('name')]),
             ])
@@ -181,8 +277,9 @@ class ChatroomTemplate(models.Model):
                 'header_text': header_component.get('text'),
                 'footer_text': footer_component.get('text'),
                 'last_synced_at': synced_at,
+                'business_account_id': waba_id,
             }
-            key = (tmpl.get('name'), tmpl.get('language'))
+            key = (tmpl.get('name'), tmpl.get('language'), waba_id)
             existing = known.get(key, self.browse())
             if existing:
                 existing.write(vals)
@@ -195,17 +292,7 @@ class ChatroomTemplate(models.Model):
                 # hacia la busqueda original.
                 known[key] = self.create(vals)
                 created += 1
-
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _("Plantillas sincronizadas"),
-                'message': _("%(created)s nuevas, %(updated)s actualizadas.") % {
-                    'created': created, 'updated': updated},
-                'type': 'success',
-            },
-        }
+        return created, updated
 
     def action_submit_to_meta(self):
         """Submit a locally prepared text template to Meta for approval."""
@@ -222,7 +309,7 @@ class ChatroomTemplate(models.Model):
                 "contenido o de texto. Los encabezados multimedia requieren "
                 "ejemplos gestionados desde Meta."))
 
-        token, waba_id, api_version = self._get_meta_waba_credentials()
+        token, waba_id, api_version = self._get_waba_credentials_for(self.business_account_id)
         components = [{'type': 'BODY', 'text': self.body}]
         if self.header_type == 'text':
             if not self.header_text:

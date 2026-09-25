@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Punto de partida neutral, válido para cualquier negocio. Se completa
+     «Qué hace la empresa» y se ajustan los guiones desde la pantalla. -->
+<odoo noupdate="1">
+    <record id="profile_main" model="chatroom.ai.agent.profile">
+        <field name="name">Agente principal</field>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="playbook_quote" model="chatroom.ai.agent.playbook">
+        <field name="profile_id" ref="profile_main"/>
+        <field name="name">Cotización o compra</field>
+        <field name="code">cotizacion</field>
+        <field name="sequence">10</field>
+        <field name="intent">venta</field>
+        <field name="when_to_use">Cuando el cliente quiere comprar, contratar un servicio o pedir una cotización.</field>
+        <field name="goal">Reunir los datos para que el equipo prepare la propuesta sin volver a preguntar.</field>
+        <field name="on_complete">handoff</field>
+    </record>
+    <record id="playbook_quote_name" model="chatroom.ai.agent.playbook.field">
+        <field name="playbook_id" ref="playbook_quote"/>
+        <field name="sequence">10</field>
+        <field name="label">Nombre del cliente</field>
+        <field name="key">nombre</field>
+    </record>
+    <record id="playbook_quote_need" model="chatroom.ai.agent.playbook.field">
+        <field name="playbook_id" ref="playbook_quote"/>
+        <field name="sequence">20</field>
+        <field name="label">Producto o servicio que necesita</field>
+        <field name="key">necesidad</field>
+    </record>
+    <record id="playbook_quote_detail" model="chatroom.ai.agent.playbook.field">
+        <field name="playbook_id" ref="playbook_quote"/>
+        <field name="sequence">30</field>
+        <field name="label">Cantidad, alcance o características</field>
+        <field name="key">detalle</field>
+    </record>
+    <record id="playbook_quote_city" model="chatroom.ai.agent.playbook.field">
+        <field name="playbook_id" ref="playbook_quote"/>
+        <field name="sequence">40</field>
+        <field name="label">Ciudad o ubicación</field>
+        <field name="key">ciudad</field>
+        <field name="required" eval="False"/>
+    </record>
+    <record id="playbook_quote_contact" model="chatroom.ai.agent.playbook.field">
+        <field name="playbook_id" ref="playbook_quote"/>
+        <field name="sequence">50</field>
+        <field name="label">Horario o medio de contacto preferido</field>
+        <field name="key">contacto</field>
+        <field name="required" eval="False"/>
+    </record>
+
+    <record id="playbook_support" model="chatroom.ai.agent.playbook">
+        <field name="profile_id" ref="profile_main"/>
+        <field name="name">Soporte o problema</field>
+        <field name="code">soporte</field>
+        <field name="sequence">20</field>
+        <field name="intent">soporte</field>
+        <field name="when_to_use">Cuando el cliente tiene un problema con un pedido, producto o servicio ya contratado.</field>
+        <field name="goal">Entender el problema y dejarlo documentado para el equipo.</field>
+        <field name="on_complete">handoff</field>
+    </record>
+    <record id="playbook_support_ref" model="chatroom.ai.agent.playbook.field">
+        <field name="playbook_id" ref="playbook_support"/>
+        <field name="sequence">10</field>
+        <field name="label">Número de pedido, factura o cliente</field>
+        <field name="key">referencia</field>
+    </record>
+    <record id="playbook_support_problem" model="chatroom.ai.agent.playbook.field">
+        <field name="playbook_id" ref="playbook_support"/>
+        <field name="sequence">20</field>
+        <field name="label">Descripción del problema</field>
+        <field name="key">problema</field>
+    </record>
+    <record id="playbook_support_since" model="chatroom.ai.agent.playbook.field">
+        <field name="playbook_id" ref="playbook_support"/>
+        <field name="sequence">30</field>
+        <field name="label">Desde cuándo ocurre</field>
+        <field name="key">desde</field>
+        <field name="required" eval="False"/>
+    </record>
+
+    <record id="rule_playbook_done" model="chatroom.ai.handoff.rule">
+        <field name="name">Guion completado</field>
+        <field name="sequence">90</field>
+        <field name="company_id" eval="False"/>
+        <field name="trigger">playbook</field>
+        <field name="notify">line</field>
+        <field name="customer_message" eval="False"/>
+        <field name="post_summary" eval="False"/>
+    </record>
+</odoo>

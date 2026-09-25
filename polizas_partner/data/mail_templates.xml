@@ -1,0 +1,13 @@
+
+<odoo>
+  <record id="email_template_bienvenida" model="mail.template">
+    <field name="name">Bienvenida Póliza</field>
+    <field name="model_id" ref="polizas_partner.model_poliza"/>
+    <field name="subject">Bienvenido - Tu póliza ha sido registrada</field>
+    <field name="email_from">info@tuseguro.com</field>
+    <field name="body_html"><![CDATA[
+      <p>Hola ${object.cliente_id.name},</p>
+      <p>Gracias por confiar en nosotros. Tu póliza <b>${object.name}</b> ha sido registrada correctamente.</p>
+    ]]></field>
+  </record>
+</odoo>

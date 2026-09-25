@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="consent_type_asesoria_ia" model="ec.data.consent.type">
+        <field name="name">Asesoría de seguros con IA</field>
+        <field name="code">ASESORIA_IA</field>
+        <field name="description">Autorización para analizar con inteligencia artificial los datos personales, conversaciones y cotizaciones del cliente con el fin de asesorarlo en la contratación de seguros. Los datos se envían al proveedor de IA configurado solo para ese análisis.</field>
+    </record>
+</odoo>

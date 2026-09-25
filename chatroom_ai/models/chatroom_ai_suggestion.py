@@ -23,6 +23,9 @@ class ChatroomAiSuggestion(models.Model):
     source_detail = fields.Char(string='Detalle de fuente')
     knowledge_sources = fields.Text(string='Fuentes de conocimiento', readonly=True)
     estimated_context_tokens = fields.Integer(string='Tokens estimados de contexto', readonly=True)
+    quick_action_id = fields.Many2one(
+        'chatroom.ai.quick.action', string='Acción de IA', readonly=True, index=True,
+        ondelete='set null', help='Acción rápida que generó este borrador.')
     intent = fields.Selection([
         ('consulta', 'Consulta'), ('venta', 'Venta'), ('soporte', 'Soporte'),
         ('queja', 'Queja'), ('otro', 'Otro'),
@@ -71,7 +74,7 @@ class ChatroomAiSuggestion(models.Model):
         }
         if 'ai.knowledge.base' in self.env:
             query = ' '.join(
-                (message.body or '') for message in channel.message_ids.sorted('date')[-20:]
+                message._ai_text() for message in channel.message_ids.sorted('date')[-20:]
                 if message.body)
             details = self.env['ai.knowledge.base'].sudo().get_sales_context_details(
                 channel=channel, query=query, partner=channel.partner_id,

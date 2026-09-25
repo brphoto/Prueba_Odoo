@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ec_data_consent_type_manager,ec.data.consent.type manager,model_ec_data_consent_type,base.group_system,1,1,1,1
+access_ec_data_consent_type_user,ec.data.consent.type user,model_ec_data_consent_type,base.group_user,1,0,0,0
+access_ec_data_consent_manager,ec.data.consent manager,model_ec_data_consent,base.group_system,1,1,1,1
+access_ec_data_consent_user,ec.data.consent user,model_ec_data_consent,base.group_user,1,1,1,0

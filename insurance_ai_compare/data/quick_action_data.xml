@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Acciones de IA para asesorar seguros desde el chat. Solo las ven los
+     asesores (grupo Comparativo de seguros / Asesor). -->
+<odoo noupdate="1">
+
+    <record id="quick_action_insurance_profile" model="chatroom.ai.quick.action">
+        <field name="name">Guardar perfil de seguro</field>
+        <field name="sequence">200</field>
+        <field name="company_id" eval="False"/>
+        <field name="icon">fa-id-card-o</field>
+        <field name="shortcut">perfil</field>
+        <field name="description">Extrae del chat los datos del cliente para cotizar y dice qué falta.</field>
+        <field name="output_mode">insurance_profile</field>
+        <field name="use_knowledge" eval="False"/>
+        <field name="use_memory" eval="False"/>
+        <field name="group_ids" eval="[(6, 0, [ref('group_insurance_compare_user')])]"/>
+        <field name="instruction">Extrae los datos del cliente necesarios para cotizar su seguro.</field>
+    </record>
+
+    <record id="quick_action_insurance_missing" model="chatroom.ai.quick.action">
+        <field name="name">Pedir datos que faltan</field>
+        <field name="sequence">210</field>
+        <field name="company_id" eval="False"/>
+        <field name="icon">fa-list-ul</field>
+        <field name="shortcut">faltantes</field>
+        <field name="description">Redacta un mensaje amable pidiendo solo los datos que faltan para cotizar.</field>
+        <field name="output_mode">reply</field>
+        <field name="use_knowledge" eval="False"/>
+        <field name="use_insurance" eval="True"/>
+        <field name="tone">friendly</field>
+        <field name="group_ids" eval="[(6, 0, [ref('group_insurance_compare_user')])]"/>
+        <field name="instruction">Redacta un mensaje breve para {cliente} pidiendo únicamente los datos que todavía faltan para cotizar su seguro (usa la lista de datos que faltan del contexto). Explica en una frase para qué los necesitas. No pidas datos que ya dio.</field>
+    </record>
+
+    <record id="quick_action_insurance_advise" model="chatroom.ai.quick.action">
+        <field name="name">Asesorar coberturas</field>
+        <field name="sequence">220</field>
+        <field name="company_id" eval="False"/>
+        <field name="icon">fa-shield</field>
+        <field name="shortcut">asesorar</field>
+        <field name="description">Sugiere qué coberturas le convienen según su perfil.</field>
+        <field name="output_mode">reply</field>
+        <field name="use_insurance" eval="True"/>
+        <field name="group_ids" eval="[(6, 0, [ref('group_insurance_compare_user')])]"/>
+        <field name="instruction">Con el perfil de {cliente}, recomienda en lenguaje simple qué coberturas le conviene contratar y por qué (máximo 4 puntos), relacionándolas con su situación. No menciones precios ni aseguradoras si no hay un comparativo. Termina ofreciendo preparar el comparativo.</field>
+    </record>
+
+    <record id="quick_action_insurance_explain" model="chatroom.ai.quick.action">
+        <field name="name">Explicar comparativo</field>
+        <field name="sequence">230</field>
+        <field name="company_id" eval="False"/>
+        <field name="icon">fa-balance-scale</field>
+        <field name="shortcut">explicar</field>
+        <field name="description">Explica al cliente el último comparativo y la opción recomendada.</field>
+        <field name="output_mode">reply</field>
+        <field name="use_knowledge" eval="False"/>
+        <field name="use_insurance" eval="True"/>
+        <field name="tone">friendly</field>
+        <field name="max_words">120</field>
+        <field name="group_ids" eval="[(6, 0, [ref('group_insurance_compare_user')])]"/>
+        <field name="instruction">Explica a {cliente}, en lenguaje simple, el resultado del último comparativo: cuál es la opción recomendada, por qué, y la principal diferencia con la siguiente opción. Usa solo los datos del comparativo. Si no hay comparativo en el contexto, dilo y ofrece prepararlo.</field>
+    </record>
+
+    <record id="quick_action_insurance_compare" model="chatroom.ai.quick.action">
+        <field name="name">Crear comparativo</field>
+        <field name="sequence">240</field>
+        <field name="company_id" eval="False"/>
+        <field name="icon">fa-table</field>
+        <field name="shortcut">comparativo</field>
+        <field name="description">Abre un comparativo de cotizaciones con el perfil ya cargado.</field>
+        <field name="output_mode">insurance_compare</field>
+        <field name="use_knowledge" eval="False"/>
+        <field name="use_memory" eval="False"/>
+        <field name="group_ids" eval="[(6, 0, [ref('group_insurance_compare_user')])]"/>
+        <field name="instruction">Crear el comparativo de cotizaciones del cliente.</field>
+    </record>
+
+</odoo>

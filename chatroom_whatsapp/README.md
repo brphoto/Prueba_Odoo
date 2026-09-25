@@ -359,6 +359,43 @@ nombre, `Phone Number ID` propio y, opcionalmente, agentes asignados
   > la misma línea real; con líneas de verdad distintas, usalo sabiendo
   > esto.
 
+### Un número por equipo, sin cruzar información (19.0.2.2)
+
+Pensado para que cada agente o equipo atienda **su** número y no vea lo
+de los demás, mientras supervisores y administradores ven todo.
+
+- **Aislamiento por línea.** Un agente (*Chatroom / Agente*) ve las
+  conversaciones de las líneas donde es miembro y las que se le asignen.
+  Sus **mensajes, mensajes programados, carrito, auditoría, historial de
+  asignaciones, sugerencias IA y eventos de ventas** siguen la misma
+  regla: antes solo la conversación estaba protegida y los mensajes se
+  podían leer buscándolos directamente. *Supervisor* y *Administrador*
+  ven todo lo de su compañía.
+- **Una conversación por línea** (Ajustes > Chatroom WhatsApp). Si el
+  mismo cliente escribe a Ventas y a Soporte, cada línea lleva su propio
+  chat y cada equipo ve solo el suyo. Desactivado (por defecto, como
+  antes), el cliente tiene una única conversación que se mueve a la
+  última línea por la que escribió: **para aislar equipos, actívalo**.
+- **Iniciar conversaciones.** El selector de línea solo ofrece las del
+  agente (y las que no tienen equipo). El servidor rechaza una línea
+  ajena y, si el agente no elige, usa la suya.
+- **Plantillas por WABA.** Cada plantilla guarda su WABA. *Sincronizar
+  con Meta* recorre la WABA general y la de cada línea que tenga otra
+  (con su token propio o el general); si una falla, las demás se
+  sincronizan igual. El asistente de envío solo ofrece las plantillas de
+  la WABA de la conversación. El mismo nombre puede existir en varias
+  WABAs.
+- **Varias Apps de Meta.** Una línea puede tener su propio *App Secret* y
+  *Verify Token*: el webhook acepta la firma y la verificación de
+  cualquiera de las Apps configuradas, todas apuntando a la misma URL.
+- **Actualización.** `migrations/19.0.2.2.0` cambia las restricciones
+  únicas antiguas (contacto+canal, nombre+idioma) por índices que
+  incluyen la línea y la WABA, y asigna la WABA general a las plantillas
+  existentes.
+- **Lo que sigue siendo compartido:** los **contactos** (`res.partner`)
+  son de Odoo y comunes a toda la empresa; un agente puede ver el nombre
+  y teléfono de un cliente en Contactos aunque no vea sus chats.
+
 ## Envío masivo de WhatsApp desde cualquier lista
 
 Desde el menú de **Acciones** (⚙) de la lista de **Contactos**,

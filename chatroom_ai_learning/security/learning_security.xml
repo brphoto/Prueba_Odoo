@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Reglas globales: aíslan por empresa para todos los usuarios. -->
+    <record id="chatroom_ai_evaluation_rule_company" model="ir.rule">
+        <field name="name">Evaluaciones de IA: empresa activa</field>
+        <field name="model_id" ref="model_chatroom_ai_evaluation"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="chatroom_ai_example_rule_company" model="ir.rule">
+        <field name="name">Ejemplos aprendidos: empresa activa</field>
+        <field name="model_id" ref="model_chatroom_ai_example"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="chatroom_ai_autonomy_level_rule_company" model="ir.rule">
+        <field name="name">Niveles de autonomía: empresa activa</field>
+        <field name="model_id" ref="model_chatroom_ai_autonomy_level"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="chatroom_ai_handoff_rule_rule_company" model="ir.rule">
+        <field name="name">Reglas de traspaso: empresa activa</field>
+        <field name="model_id" ref="model_chatroom_ai_handoff_rule"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="chatroom_ai_eval_case_rule_company" model="ir.rule">
+        <field name="name">Casos de prueba: empresa activa</field>
+        <field name="model_id" ref="model_chatroom_ai_eval_case"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="chatroom_ai_eval_run_rule_company" model="ir.rule">
+        <field name="name">Ejecuciones de prueba: empresa activa</field>
+        <field name="model_id" ref="model_chatroom_ai_eval_run"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

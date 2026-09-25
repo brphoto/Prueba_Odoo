@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_ec_data_consent_form" model="ir.ui.view">
+        <field name="name">ec.data.consent.form</field>
+        <field name="model">ec.data.consent</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_revoke" type="object" string="Revocar Consentimiento"
+                            invisible="state != 'granted'" class="btn-secondary"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="consent_type_id"/>
+                            <field name="date_given"/>
+                            <field name="policy_version"/>
+                            <field name="signed_by"/>
+                        </group>
+                        <group>
+                            <field name="registered_by_id" readonly="1"/>
+                            <field name="date_revoked" invisible="state != 'revoked'"/>
+                            <field name="revoke_reason" invisible="state != 'revoked'"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ec_data_consent_list" model="ir.ui.view">
+        <field name="name">ec.data.consent.list</field>
+        <field name="model">ec.data.consent</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'revoked'">
+                <field name="partner_id"/>
+                <field name="consent_type_id"/>
+                <field name="date_given"/>
+                <field name="policy_version"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'granted'"
+                       decoration-danger="state == 'revoked'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ec_data_consent_search" model="ir.ui.view">
+        <field name="name">ec.data.consent.search</field>
+        <field name="model">ec.data.consent</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner_id"/>
+                <field name="consent_type_id"/>
+                <filter string="Otorgados" name="filter_granted" domain="[('state', '=', 'granted')]"/>
+                <filter string="Revocados" name="filter_revoked" domain="[('state', '=', 'revoked')]"/>
+                <separator/>
+                <filter string="Fecha de Otorgamiento" name="filter_date" date="date_given"/>
+                <group name="group_by_group">
+                    <filter string="Estado" name="groupby_state" context="{'group_by': 'state'}"/>
+                    <filter string="Tipo de Consentimiento" name="groupby_type" context="{'group_by': 'consent_type_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ec_data_consent" model="ir.actions.act_window">
+        <field name="name">Consentimientos de Datos</field>
+        <field name="res_model">ec.data.consent</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_ec_data_consent_search"/>
+        <field name="context">{'search_default_filter_granted': 1}</field>
+    </record>
+
+    <record id="view_ec_data_consent_type_list" model="ir.ui.view">
+        <field name="name">ec.data.consent.type.list</field>
+        <field name="model">ec.data.consent.type</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="description"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_ec_data_consent_type" model="ir.actions.act_window">
+        <field name="name">Tipos de Consentimiento</field>
+        <field name="res_model">ec.data.consent.type</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <menuitem id="menu_ec_data_consent_root" name="Protección de Datos"
+              parent="contacts.menu_contacts" sequence="50"/>
+    <menuitem id="menu_ec_data_consent" name="Consentimientos" parent="menu_ec_data_consent_root"
+              action="action_ec_data_consent" sequence="10"/>
+    <menuitem id="menu_ec_data_consent_type" name="Tipos de Consentimiento" parent="menu_ec_data_consent_root"
+              action="action_ec_data_consent_type" sequence="20"/>
+
+</odoo>

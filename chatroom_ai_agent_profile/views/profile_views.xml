@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_agent_profile_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.agent.profile.list</field>
+        <field name="model">chatroom.ai.agent.profile</field>
+        <field name="arch" type="xml">
+            <list string="Perfiles del agente">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="agent_name"/>
+                <field name="line_ids" widget="many2many_tags" optional="show"/>
+                <field name="tone" optional="show"/>
+                <field name="gap_count" string="Vacíos abiertos"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_agent_profile_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.agent.profile.form</field>
+        <field name="model">chatroom.ai.agent.profile</field>
+        <field name="arch" type="xml">
+            <form string="Perfil del agente">
+                <header>
+                    <button name="action_open_setup" type="object" string="Puesta en marcha"
+                            class="btn-primary" icon="fa-magic" invisible="is_ready"/>
+                    <field name="is_ready" invisible="1"/>
+                    <button name="action_open_simulator" type="object" string="Probar agente"
+                            class="btn-primary" icon="fa-comments"/>
+                    <button name="action_run_tests" type="object" string="Ejecutar pruebas" icon="fa-check-square-o"/>
+                    <field name="auto_reply_on" invisible="1"/>
+                    <button name="action_enable_auto_reply" type="object" string="Activar respuesta automática"
+                            icon="fa-bolt" invisible="auto_reply_on"
+                            confirm="La IA empezará a responder los mensajes entrantes: sola lo que esté respaldado y el resto como borrador para aprobar. ¿Continuar?"/>
+                    <button name="action_disable_auto_reply" type="object" string="Pausar respuesta automática"
+                            icon="fa-pause" invisible="not auto_reply_on"/>
+                    <button name="%(chatroom_ai_agent_profile.action_history_import)d" type="action"
+                            string="Aprender de chats anteriores" icon="fa-history"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_gaps" type="object" class="oe_stat_button" icon="fa-question-circle">
+                            <field name="gap_count" widget="statinfo" string="Vacíos"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="alert alert-light border mb-3 o_agent_profile_readiness" role="status"
+                         invisible="not id">
+                        <field name="readiness_html" nolabel="1"/>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="Ej.: Agente principal"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="agent_name"/>
+                            <field name="role"/>
+                            <field name="tone"/>
+                            <field name="use_emojis"/>
+                        </group>
+                        <group>
+                            <field name="line_ids" widget="many2many_tags" placeholder="Todas las líneas"/>
+                            <field name="knowledge_mode" widget="radio"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Tablero" name="dashboard" invisible="not id">
+                            <field name="dashboard_html" nolabel="1"/>
+                            <button name="action_view_events" type="object" string="Ver toda la actividad"
+                                    class="btn-link" icon="fa-bar-chart"/>
+                        </page>
+                        <page string="Empresa y objetivo" name="identity">
+                            <group>
+                                <field name="business_description"
+                                       placeholder="Ej.: Somos una empresa de ... en ...; ofrecemos ...; atendemos de lunes a viernes de ... a ...; trabajamos con ..."/>
+                                <field name="objective"/>
+                                <field name="style_notes" placeholder="Ej.: nombramos a los clientes por su nombre; evitamos la palabra «barato»."/>
+                            </group>
+                        </page>
+                        <page string="Instrucciones" name="instructions">
+                            <group>
+                                <field name="instructions"/>
+                                <field name="restrictions"/>
+                            </group>
+                        </page>
+                        <page string="Guiones" name="playbooks">
+                            <p class="text-muted">
+                                Qué datos reunir según lo que necesita el cliente. La IA los pide de a uno o dos,
+                                no repite lo ya contestado y al completarlos hace lo indicado.
+                            </p>
+                            <field name="playbook_ids">
+                                <list>
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="code"/>
+                                    <field name="when_to_use"/>
+                                    <field name="on_complete"/>
+                                    <field name="active" widget="boolean_toggle"/>
+                                </list>
+                                <form string="Guion">
+                                    <group>
+                                        <group>
+                                            <field name="name"/>
+                                            <field name="code"/>
+                                            <field name="intent"/>
+                                            <field name="active"/>
+                                        </group>
+                                        <group>
+                                            <field name="on_complete" widget="radio"/>
+                                        </group>
+                                    </group>
+                                    <group>
+                                        <field name="when_to_use"/>
+                                        <field name="goal"/>
+                                    </group>
+                                    <field name="field_ids">
+                                        <list editable="bottom">
+                                            <field name="sequence" widget="handle"/>
+                                            <field name="label"/>
+                                            <field name="key"/>
+                                            <field name="required"/>
+                                            <field name="hint"/>
+                                        </list>
+                                    </field>
+                                </form>
+                            </field>
+                        </page>
+                        <page string="Búsqueda en el conocimiento" name="search">
+                            <group>
+                                <field name="synonyms" placeholder="precio: costo, valor, cuánto cuesta"/>
+                                <field name="semantic_search"/>
+                                <field name="catalog_in_prompt"/>
+                            </group>
+                            <button name="action_embed_knowledge" type="object" icon="fa-refresh"
+                                    string="Preparar búsqueda por significado ahora" class="btn-secondary"
+                                    invisible="not semantic_search"/>
+                        </page>
+                        <page string="Costos y voz" name="cost">
+                            <group>
+                                <group string="Uso de IA">
+                                    <field name="cost_mode" widget="radio"/>
+                                    <field name="cache_days" invisible="cost_mode == 'quality'"/>
+                                </group>
+                                <group string="Respuestas con voz">
+                                    <field name="voice_replies" widget="radio"/>
+                                    <field name="voice_name" invisible="voice_replies == 'never'"/>
+                                    <button name="action_preview_voice" type="object" string="Escuchar la voz"
+                                            icon="fa-volume-up" class="btn-link"
+                                            invisible="voice_replies == 'never'"/>
+                                </group>
+                            </group>
+                            <p class="text-muted">
+                                El comienzo de las instrucciones es igual en todas las conversaciones: el proveedor lo
+                                reutiliza y lo cobra con descuento. En «Equilibrado» no se verifica lo que la IA copió
+                                casi textual de la información publicada, y la respuesta a una misma primera pregunta
+                                se reutiliza sin consultar a la IA mientras la información no cambie.
+                            </p>
+                        </page>
+                        <page string="Seguimiento" name="followup">
+                            <group>
+                                <field name="followup_hours"/>
+                                <field name="followup_message" invisible="followup_hours &lt;= 0"/>
+                            </group>
+                            <p class="text-muted">
+                                Si el cliente deja de responder a mitad de un guion, se le escribe una sola vez,
+                                dentro de la ventana de 24 horas de WhatsApp.
+                            </p>
+                        </page>
+                        <page string="Respuestas rápidas" name="quick">
+                            <p class="text-muted">
+                                Se responden sin IA ni tokens. Variables: {nombre}, {agente}, {empresa}.
+                                Cualquier otro mensaje lo responde la IA con el conocimiento.
+                            </p>
+                            <group>
+                                <field name="greeting_message"/>
+                                <field name="thanks_message"/>
+                            </group>
+                        </page>
+                        <page string="Autonomía" name="autonomy">
+                            <group>
+                                <field name="bootstrap_autonomy"/>
+                                <field name="bootstrap_min_confidence" invisible="not bootstrap_autonomy"/>
+                                <field name="verify_before_send" invisible="not bootstrap_autonomy"/>
+                            </group>
+                            <p class="text-muted">
+                                Desde el primer día responde sola lo que está en la información publicada o que
+                                solo pide datos del guion, con confianza suficiente y sin cifras que no estén en
+                                la información. Lo demás queda como borrador para aprobar hasta que ese tipo de
+                                conversación gane autonomía con datos (Aprendizaje y autonomía).
+                            </p>
+                        </page>
+                        <page string="Instrucciones completas" name="prompt">
+                            <p class="text-muted">Así recibe la IA este perfil (antes del conocimiento y los ejemplos).</p>
+                            <field name="prompt_preview" nolabel="1" class="font-monospace"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_agent_profile" model="ir.actions.act_window">
+        <field name="name">Perfil del agente</field>
+        <field name="res_model">chatroom.ai.agent.profile</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Crea el perfil del agente</p>
+            <p>Define quién es, qué hace la empresa, qué debe lograr y qué datos reunir.</p>
+        </field>
+    </record>
+</odoo>

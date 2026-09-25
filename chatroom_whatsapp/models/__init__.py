@@ -31,3 +31,4 @@ from . import chatroom_onboarding_wizard
 from . import chatroom_webhook_event
 from . import sale_order
 from . import account_move
+from . import ir_actions_report

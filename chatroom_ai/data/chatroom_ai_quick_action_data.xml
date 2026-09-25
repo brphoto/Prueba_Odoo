@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Acciones de IA de ejemplo. noupdate: el administrador puede cambiarlas
+     o archivarlas y una actualización del módulo no las pisa. -->
+<odoo noupdate="1">
+
+    <record id="quick_action_reply" model="chatroom.ai.quick.action">
+        <field name="name">Respuesta sugerida</field>
+        <field name="sequence">10</field>
+        <field name="company_id" eval="False"/>
+        <field name="icon">fa-comment</field>
+        <field name="shortcut">responder</field>
+        <field name="description">Redacta la respuesta al último mensaje del cliente.</field>
+        <field name="output_mode">reply</field>
+        <field name="instruction">Eres un asistente de atención al cliente por WhatsApp de {empresa}. Redacta la respuesta al último mensaje de {cliente}: breve, cordial y orientada a resolver su consulta o avanzar la venta. Si falta información para responder con seguridad, pide el dato concreto que falta.</field>
+    </record>
+
+    <record id="quick_action_rewrite" model="chatroom.ai.quick.action">
+        <field name="name">Mejorar mi borrador</field>
+        <field name="sequence">20</field>
+        <field name="company_id" eval="False"/>
+        <field name="icon">fa-pencil</field>
+        <field name="shortcut">mejorar</field>
+        <field name="description">Corrige ortografía y claridad de lo que escribiste, sin cambiar el sentido.</field>
+        <field name="output_mode">rewrite</field>
+        <field name="use_knowledge" eval="False"/>
+        <field name="use_memory" eval="False"/>
+        <field name="instruction">Mejora el borrador que escribió el agente: corrige ortografía y gramática, hazlo claro y amable, y mantén exactamente el mismo sentido, datos y compromisos. No agregues información nueva.</field>
+    </record>
+
+    <record id="quick_action_price" model="chatroom.ai.quick.action">
+        <field name="name">Responder con precio y stock</field>
+        <field name="sequence">30</field>
+        <field name="company_id" eval="False"/>
+        <field name="icon">fa-tags</field>
+        <field name="shortcut">precio</field>
+        <field name="description">Responde usando los productos, precios y existencias actuales de Odoo.</field>
+        <field name="output_mode">reply</field>
+        <field name="use_catalog" eval="True"/>
+        <field name="instruction">Responde a {cliente} sobre los productos que pregunta usando solo el catálogo relacionado que se te entrega, con el precio y la disponibilidad tal como aparecen. Si el producto no está en el catálogo, dilo y ofrece alternativas del mismo catálogo o pregunta más detalles.</field>
+    </record>
+
+    <record id="quick_action_followup" model="chatroom.ai.quick.action">
+        <field name="name">Seguimiento de cotización</field>
+        <field name="sequence">40</field>
+        <field name="company_id" eval="False"/>
+        <field name="icon">fa-refresh</field>
+        <field name="shortcut">seguimiento</field>
+        <field name="description">Retoma la conversación usando sus pedidos y facturas.</field>
+        <field name="output_mode">reply</field>
+        <field name="use_customer_history" eval="True"/>
+        <field name="tone">friendly</field>
+        <field name="max_words">60</field>
+        <field name="instruction">Escribe un mensaje de seguimiento para {cliente} que retome su último pedido o cotización del historial comercial. Pregunta si tiene dudas y propone un siguiente paso concreto (confirmar, ajustar cantidades o agendar). No presiones.</field>
+    </record>
+
+    <record id="quick_action_complaint" model="chatroom.ai.quick.action">
+        <field name="name">Respuesta a reclamo</field>
+        <field name="sequence">50</field>
+        <field name="company_id" eval="False"/>
+        <field name="icon">fa-life-ring</field>
+        <field name="shortcut">reclamo</field>
+        <field name="description">Responde con empatía a un cliente molesto.</field>
+        <field name="output_mode">reply</field>
+        <field name="use_customer_history" eval="True"/>
+        <field name="tone">empathetic</field>
+        <field name="instruction">El cliente {cliente} está molesto. Redacta una respuesta que reconozca su malestar, explique qué vas a revisar y le indique el próximo paso y quién le responderá. No culpes al cliente ni prometas compensaciones que no estén en las políticas.</field>
+    </record>
+
+    <record id="quick_action_summary" model="chatroom.ai.quick.action">
+        <field name="name">Resumen de conversación</field>
+        <field name="sequence">60</field>
+        <field name="company_id" eval="False"/>
+        <field name="icon">fa-file-text-o</field>
+        <field name="shortcut">resumen</field>
+        <field name="description">Resume qué quiere el cliente y en qué quedó.</field>
+        <field name="output_mode">summary</field>
+        <field name="use_knowledge" eval="False"/>
+        <field name="language">es</field>
+        <field name="instruction">Resume esta conversación de WhatsApp para un agente humano en un párrafo corto de máximo 5 líneas: qué quiere el cliente, qué se le respondió y en qué quedó.</field>
+    </record>
+
+    <record id="quick_action_handover" model="chatroom.ai.quick.action">
+        <field name="name">Nota para traspaso</field>
+        <field name="sequence">70</field>
+        <field name="company_id" eval="False"/>
+        <field name="icon">fa-exchange</field>
+        <field name="shortcut">traspaso</field>
+        <field name="description">Deja una nota interna para el compañero que tome el caso.</field>
+        <field name="output_mode">note</field>
+        <field name="use_knowledge" eval="False"/>
+        <field name="use_customer_history" eval="True"/>
+        <field name="language">es</field>
+        <field name="instruction">Prepara una nota interna para el compañero que retomará este caso: situación actual, qué pidió {cliente}, qué se le prometió, pendientes y datos importantes. Usa viñetas cortas.</field>
+    </record>
+
+    <record id="quick_action_intent" model="chatroom.ai.quick.action">
+        <field name="name">Clasificar intención</field>
+        <field name="sequence">80</field>
+        <field name="company_id" eval="False"/>
+        <field name="icon">fa-tag</field>
+        <field name="shortcut">intencion</field>
+        <field name="description">Etiqueta la conversación como consulta, venta, soporte o queja.</field>
+        <field name="output_mode">intent</field>
+        <field name="use_knowledge" eval="False"/>
+        <field name="use_memory" eval="False"/>
+        <field name="instruction">Clasifica la intención del cliente en esta conversación. Responde ÚNICAMENTE con un JSON de la forma {"intent": "consulta|venta|soporte|queja|otro"}, sin texto adicional.</field>
+    </record>
+
+    <record id="quick_action_translate" model="chatroom.ai.quick.action">
+        <field name="name">Traducir mi borrador</field>
+        <field name="sequence">90</field>
+        <field name="company_id" eval="False"/>
+        <field name="icon">fa-language</field>
+        <field name="shortcut">traducir</field>
+        <field name="description">Traduce lo que escribiste al idioma del cliente.</field>
+        <field name="output_mode">rewrite</field>
+        <field name="use_knowledge" eval="False"/>
+        <field name="use_memory" eval="False"/>
+        <field name="instruction">Traduce el borrador del agente al idioma que usa el cliente en la conversación, con tono natural. Conserva datos, cifras y nombres exactamente iguales.</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Lo del día a día arriba; lo técnico, en «Avanzado» -->
+    <menuitem id="menu_ai_center" name="Centro de IA"
+              parent="chatroom_ai_agent.menu_chatroom_ai_agent" sequence="1" action="action_ai_center"
+              groups="chatroom_whatsapp.group_chatroom_manager,chatroom_ai.group_chatroom_ai_manager"/>
+    <menuitem id="menu_ai_center_operation" name="Centro de IA"
+              parent="chatroom_whatsapp.menu_chatroom_operation" sequence="5" action="action_ai_center"
+              groups="chatroom_whatsapp.group_chatroom_manager,chatroom_ai.group_chatroom_ai_manager"/>
+    <menuitem id="menu_ai_advanced" name="Avanzado"
+              parent="chatroom_ai_agent.menu_chatroom_ai_agent" sequence="90"/>
+    <menuitem id="menu_agent_profile_root" name="Agente de atención"
+              parent="menu_ai_advanced" sequence="5"
+              groups="chatroom_whatsapp.group_chatroom_manager,chatroom_ai.group_chatroom_ai_manager"/>
+    <menuitem id="menu_web_import" name="Cargar información desde la web"
+              parent="menu_agent_profile_root" sequence="42" action="action_web_import"/>
+    <record id="chatroom_ai_agent.menu_chatroom_ai_operation" model="ir.ui.menu">
+        <field name="parent_id" ref="menu_ai_advanced"/>
+    </record>
+    <record id="chatroom_ai_agent.menu_chatroom_ai_configuration" model="ir.ui.menu">
+        <field name="parent_id" ref="menu_ai_advanced"/>
+    </record>
+    <record id="chatroom_ai_agent.menu_chatroom_ai_governance" model="ir.ui.menu">
+        <field name="parent_id" ref="menu_ai_advanced"/>
+    </record>
+    <record id="chatroom_ai_learning.menu_ai_learning_root" model="ir.ui.menu">
+        <field name="parent_id" ref="menu_ai_advanced"/>
+    </record>
+    <menuitem id="menu_agent_profile" name="Perfil y guiones"
+              parent="menu_agent_profile_root" sequence="10" action="action_agent_profile"/>
+    <menuitem id="menu_agent_simulator" name="Probar agente"
+              parent="menu_agent_profile_root" sequence="20" action="action_agent_simulator"/>
+    <menuitem id="menu_knowledge_gap" name="Vacíos y preguntas por publicar"
+              parent="menu_agent_profile_root" sequence="30" action="action_knowledge_gap"/>
+    <menuitem id="menu_agent_event" name="Tablero del agente"
+              parent="menu_agent_profile_root" sequence="5" action="action_agent_event"/>
+    <menuitem id="menu_reply_cache" name="Respuestas reutilizadas"
+              parent="menu_agent_profile_root" sequence="45" action="action_reply_cache"/>
+    <menuitem id="menu_history_import" name="Aprender de chats anteriores"
+              parent="menu_agent_profile_root" sequence="40" action="action_history_import"/>
+    <menuitem id="menu_ai_inbox" name="Para aprobar"
+              parent="chatroom_whatsapp.menu_chatroom_operation" sequence="6" action="action_ai_inbox"
+              groups="chatroom_whatsapp.group_chatroom_user"/>
+    <menuitem id="menu_agent_setup" name="Puesta en marcha"
+              parent="chatroom_ai_agent.menu_chatroom_ai_agent" sequence="2" action="action_agent_setup"
+              groups="chatroom_whatsapp.group_chatroom_manager,chatroom_ai.group_chatroom_ai_manager"/>
+</odoo>

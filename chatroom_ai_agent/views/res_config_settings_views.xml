@@ -84,8 +84,14 @@
                             <field name="chatroom_ai_auto_reply_min_confidence"/>
                         </setting>
                         <setting id="chatroom_ai_auto_reply_cooldown_setting"
-                                 help="Tiempo mínimo entre respuestas generadas automáticamente en una misma conversación.">
-                            <field name="chatroom_ai_auto_reply_cooldown_minutes"/>
+                                 help="Freno anti-bucle: si la IA responde más de esta cantidad de veces en la ventana (por ejemplo, conversando con otro bot), se pausa.">
+                            <field name="chatroom_ai_auto_reply_burst_limit"/>
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="chatroom_ai_auto_reply_cooldown_minutes" class="col-lg-7 o_light_label"/>
+                                    <field name="chatroom_ai_auto_reply_cooldown_minutes" class="col-lg-3"/>
+                                </div>
+                            </div>
                         </setting>
                         <setting id="chatroom_ai_auto_reply_daily_limit_setting"
                                  help="Límite diario por conversación para evitar bucles o consumo inesperado.">

@@ -51,7 +51,24 @@ class ChatroomWhatsappNumber(models.Model):
              "User / token permanente configurado en Ajustes. Completalo "
              "solo si esta línea vive en otra WhatsApp Business Account "
              "con su propio token.")
-    business_account_id = fields.Char(string="WhatsApp Business Account ID (WABA)")
+    business_account_id = fields.Char(
+        string="WhatsApp Business Account ID (WABA)",
+        help="Vacío si esta línea vive en la WABA general de Ajustes. "
+             "Complétalo si el número está en otra WABA: sus plantillas se "
+             "sincronizan aparte y solo se ofrecen en sus conversaciones.")
+    # Una línea puede vivir en otra App de Meta (otro cliente, otra marca).
+    # Cada App firma su webhook con su propio App Secret y valida la
+    # suscripción con su propio Verify Token: el webhook acepta el general
+    # de Ajustes o el de cualquier línea activa.
+    app_secret = fields.Char(
+        string="App Secret (si es otra App de Meta)",
+        groups="chatroom_whatsapp.group_chatroom_manager",
+        help="Solo si esta línea pertenece a una App de Meta distinta de la "
+             "general. Se usa para verificar la firma de su webhook.")
+    webhook_verify_token = fields.Char(
+        string="Verify Token del webhook (si es otra App de Meta)",
+        groups="chatroom_whatsapp.group_chatroom_manager",
+        help="El token que pusiste al suscribir el webhook en esa otra App.")
 
     member_ids = fields.Many2many(
         'res.users', 'chatroom_whatsapp_number_user_rel', 'number_id', 'user_id',
@@ -209,6 +226,50 @@ class ChatroomWhatsappNumber(models.Model):
         si está vacía, delega en el reparto general de todos los agentes."""
         self.ensure_one()
         return self.env['chatroom.channel']._get_next_assignee(self.member_ids or None)
+
+    def _get_waba_id(self):
+        """WABA de la línea: la propia o, si no tiene, la general."""
+        self.ensure_one()
+        return self.business_account_id or self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_whatsapp.business_account_id') or False
+
+    @api.model
+    def _get_webhook_secrets(self):
+        """App Secrets válidos para firmar el webhook: el general y los de
+        las líneas activas de otras Apps. Sin duplicados ni vacíos."""
+        secrets = [self.env['ir.config_parameter'].sudo().get_param('chatroom_whatsapp.app_secret')]
+        secrets += self.sudo().search([
+            ('app_secret', '!=', False)]).mapped('app_secret')
+        return list(dict.fromkeys(secret for secret in secrets if secret))
+
+    @api.model
+    def _get_webhook_verify_tokens(self):
+        tokens = [self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_whatsapp.webhook_verify_token')]
+        tokens += self.sudo().search([
+            ('webhook_verify_token', '!=', False)]).mapped('webhook_verify_token')
+        return list(dict.fromkeys(token for token in tokens if token))
+
+    @api.model
+    def _lines_for_user(self, user=None):
+        """Líneas por las que el usuario puede atender.
+
+        Supervisores y administradores, todas las activas. Un agente, las
+        suyas (donde es miembro) y las que no tienen equipo asignado, que
+        por definición atiende cualquiera.
+        """
+        user = user or self.env.user
+        lines = self.sudo().search([('active', '=', True), ('company_id', 'in', user.company_ids.ids)])
+        # Crons y procesos internos (superusuario) pueden usar cualquier línea.
+        if (self.env.su and user == self.env.user) or user.has_group(
+                'chatroom_whatsapp.group_chatroom_supervisor'):
+            return lines
+        return lines.filtered(lambda line: not line.member_ids or user in line.member_ids)
+
+    @api.model
+    def get_available_lines(self):
+        """Líneas que la interfaz ofrece al iniciar una conversación."""
+        return [{'id': line.id, 'name': line.name} for line in self._lines_for_user()]
 
     @api.model
     def _find_by_phone_number_id(self, phone_number_id):

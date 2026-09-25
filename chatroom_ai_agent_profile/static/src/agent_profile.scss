@@ -1,0 +1,41 @@
+// Estado de la IA en la lista de chats: se ve de un vistazo qué necesita atención.
+.o_ai_list_state {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 1.35rem;
+    height: 1.35rem;
+    margin-left: 0.25rem;
+    border-radius: 50%;
+    font-size: 0.7rem;
+
+    &.o_ai_state_ai {
+        color: $success;
+        background-color: rgba($success, 0.15);
+    }
+    &.o_ai_state_draft {
+        color: $warning;
+        background-color: rgba($warning, 0.18);
+    }
+    &.o_ai_state_human {
+        color: $info;
+        background-color: rgba($info, 0.18);
+    }
+}
+
+// Aviso de traspaso con los datos reunidos y el botón para tomar la conversación.
+.o_chatroom_ai_handoff {
+    .o_ai_handoff_data {
+        margin: 0.35rem 0 0.4rem;
+        padding-left: 1rem;
+        font-size: 0.85rem;
+    }
+}
+
+// Bandeja «Para aprobar»: la respuesta de la IA se lee completa.
+.o_ai_inbox .o_data_cell[name="suggested_text"],
+.o_ai_inbox .o_data_cell[name="customer_question"] {
+    white-space: pre-wrap;
+    min-width: 16rem;
+}

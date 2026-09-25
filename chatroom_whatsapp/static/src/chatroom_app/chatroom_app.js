@@ -127,6 +127,12 @@ export class ChatroomApp extends Component {
 
         onWillStart(async () => {
             await Promise.all([this._loadChannels(), this._loadNumbers(), this._loadStages()]);
+            // Abrir directo una conversación: {tag: "chatroom_whatsapp.chatroom_app",
+            // params: {channel_id}} (bandeja de aprobación, avisos de traspaso...).
+            const initialChannelId = Number(this.props.action?.params?.channel_id) || false;
+            if (initialChannelId) {
+                this.selectChannel(initialChannelId);
+            }
         });
 
         onMounted(() => {
@@ -524,6 +530,11 @@ export class ChatroomApp extends Component {
         }
     }
 
+    /** Campos de cada conversación en la lista (las extensiones agregan los suyos). */
+    channelFields() {
+        return CHANNEL_FIELDS;
+    }
+
     async _loadChannels({ keepSpinner = false } = {}) {
         const generation = ++this._channelsLoadGeneration;
         if (!keepSpinner) {
@@ -532,7 +543,7 @@ export class ChatroomApp extends Component {
         try {
             const limit = this._channelLimit;
             const channels = await this.orm.searchRead(
-                "chatroom.channel", this._buildDomain(), CHANNEL_FIELDS,
+                "chatroom.channel", this._buildDomain(), this.channelFields(),
                 { order: CHANNEL_ORDER, limit });
             if (generation !== this._channelsLoadGeneration) {
                 return;

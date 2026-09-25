@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_history_import_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.history.import.form</field>
+        <field name="model">chatroom.ai.history.import</field>
+        <field name="arch" type="xml">
+            <form string="Aprender de chats anteriores">
+                <field name="state" invisible="1"/>
+                <div class="alert alert-info" role="status" invisible="state == 'done'">
+                    Analiza lo que tu equipo ya respondió por WhatsApp: guarda esas respuestas como ejemplos y
+                    propone preguntas frecuentes (sin datos personales) para que las publiques con un clic.
+                </div>
+                <group invisible="state == 'done'">
+                    <group>
+                        <field name="profile_id" options="{'no_create': True}"/>
+                        <field name="date_from"/>
+                        <field name="max_conversations"/>
+                    </group>
+                    <group>
+                        <field name="create_examples"/>
+                        <field name="propose_faq"/>
+                        <field name="create_cases"/>
+                        <field name="max_cases" invisible="not create_cases"/>
+                    </group>
+                </group>
+                <div invisible="state != 'done'">
+                    <field name="result_html" nolabel="1"/>
+                </div>
+                <footer>
+                    <button name="action_run" type="object" string="Analizar" class="btn-primary"
+                            invisible="state == 'done'"/>
+                    <button name="action_open_proposals" type="object" string="Revisar preguntas propuestas"
+                            class="btn-primary" invisible="state != 'done'"/>
+                    <button string="Cerrar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_history_import" model="ir.actions.act_window">
+        <field name="name">Aprender de chats anteriores</field>
+        <field name="res_model">chatroom.ai.history.import</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

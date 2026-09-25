@@ -10,6 +10,7 @@
                 <field name="name"/>
                 <field name="display_phone_number"/>
                 <field name="phone_number_id"/>
+                <field name="business_account_id" optional="hide"/>
                 <field name="member_ids" widget="many2many_tags"/>
                 <field name="channel_count"/>
             </list>
@@ -52,7 +53,22 @@
                         </group>
                     </group>
                     <group string="Agentes de esta línea">
-                        <field name="member_ids" nolabel="1" widget="many2many_tags"/>
+                        <div class="text-muted" colspan="2">
+                            Los agentes solo ven las conversaciones de las líneas donde son
+                            miembros (y las que se les asignen). Supervisores y
+                            administradores ven todas. Para que un mismo cliente tenga un
+                            chat separado en cada número, activa «Una conversación por
+                            línea» en Ajustes.
+                        </div>
+                        <field name="member_ids" nolabel="1" widget="many2many_tags" colspan="2"/>
+                    </group>
+                    <group string="Otra App de Meta (opcional)">
+                        <div class="text-muted" colspan="2">
+                            Solo si este número está en una App de Meta distinta de la
+                            general de Ajustes. Esa App debe apuntar al mismo webhook.
+                        </div>
+                        <field name="app_secret" password="True"/>
+                        <field name="webhook_verify_token" password="True"/>
                     </group>
                 </sheet>
                 <chatter/>

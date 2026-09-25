@@ -19,6 +19,12 @@ class ChatroomChannel(models.Model):
 
     def _ai_build_conversation(self, extra_system=None):
         conversation = super()._ai_build_conversation(extra_system=extra_system)
+        # Con chatroom_ai instalado, el conocimiento ya lo agrega su
+        # _ai_build_conversation (con la consulta del cliente y respetando las
+        # fuentes de cada acción rápida). Repetirlo aquí duplicaba el contexto
+        # enviado a la IA y los tokens consumidos.
+        if hasattr(self, '_ai_sources'):
+            return conversation
         context = self.env['ai.knowledge.base'].get_sales_context(self)
         if context:
             conversation[0]['content'] = (

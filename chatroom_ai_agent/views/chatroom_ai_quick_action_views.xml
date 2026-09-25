@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_chatroom_ai_quick_action_form_agent" model="ir.ui.view">
+        <field name="name">chatroom.ai.quick.action.form.agent</field>
+        <field name="model">chatroom.ai.quick.action</field>
+        <field name="inherit_id" ref="chatroom_ai.view_chatroom_ai_quick_action_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='output_mode']" position="after">
+                <field name="agent_task_type" invisible="output_mode != 'agent_task'"
+                       required="output_mode == 'agent_task'"/>
+            </xpath>
+            <xpath expr="//div[hasclass('alert-info')][1]" position="before">
+                <div class="alert alert-info" role="status" invisible="output_mode != 'agent_task'">
+                    El agente prepara una tarea con esta instrucción (oportunidad, cotización,
+                    actividad, link de pago...). Nada se ejecuta hasta que alguien la apruebe.
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Preferencia en «Mis preferencias» del usuario. -->
+    <record id="view_users_form_simple_modif_chatroom_ai_agent" model="ir.ui.view">
+        <field name="name">res.users.preferences.chatroom.ai.agent</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form_simple_modif"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Chatroom" name="chatroom_ai_agent_prefs">
+                    <group>
+                        <field name="chatroom_ai_agent_panel" readonly="0"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

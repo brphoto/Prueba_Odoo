@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="frame" x1="25" y1="20" x2="230" y2="238" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F2937"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="agent" x1="46" y1="36" x2="216" y2="218" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F59E0B"/>
+      <stop offset=".5" stop-color="#EC4899"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+  </defs>
+
+  <!-- Marco compartido con los iconos de Chatroom -->
+  <rect x="24" y="18" width="208" height="220" rx="25" fill="#0B1220"/>
+  <rect x="25.5" y="19.5" width="205" height="217" rx="23.5" fill="url(#frame)" stroke="#475569" stroke-width="3"/>
+  <rect x="38" y="32" width="180" height="180" rx="9" fill="#111827" stroke="#334155" stroke-width="2"/>
+  <rect x="46" y="40" width="164" height="164" rx="18" fill="url(#agent)" filter="url(#shadow)"/>
+
+  <!-- Agente con auricular -->
+  <circle cx="112" cy="98" r="30" fill="#F8FAFC"/>
+  <path d="M62 170c4-26 25-42 50-42s46 16 50 42z" fill="#F8FAFC"/>
+  <path d="M80 98a32 32 0 0 1 64 0" fill="none" stroke="#1F2937" stroke-width="6" stroke-linecap="round"/>
+  <rect x="74" y="94" width="12" height="20" rx="5" fill="#1F2937"/>
+  <path d="M80 114c0 12 10 18 22 18" fill="none" stroke="#1F2937" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Burbuja con lista de guion -->
+  <rect x="140" y="58" width="58" height="50" rx="12" fill="#FFFFFF"/>
+  <path d="M152 108l-6 12 16-12z" fill="#FFFFFF"/>
+  <path d="m150 74 4 4 7-8" fill="none" stroke="#10B981" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="166" y="71" width="24" height="5" rx="2.5" fill="#94A3B8"/>
+  <path d="m150 92 4 4 7-8" fill="none" stroke="#10B981" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="166" y="89" width="18" height="5" rx="2.5" fill="#94A3B8"/>
+
+  <text x="128" y="229" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#CBD5E1">AGENTE IA</text>
+</svg>

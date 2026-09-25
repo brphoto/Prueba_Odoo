@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_polizas_vehicle_user,access.polizas.vehicle.user,model_polizas_vehicles,base.group_user,1,1,1,1
+access_polizas_vehicle_brand_user,access.polizas.vehicle.brand.user,model_polizas_vehicles_brand,base.group_user,1,1,1,1
+access_polizas_vehicle_model_user,access.polizas.vehicle.model.user,model_polizas_vehicles_model,base.group_user,1,1,1,1

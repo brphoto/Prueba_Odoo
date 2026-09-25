@@ -110,6 +110,8 @@ class TestChatroomAiSales(TransactionCase):
         self.assertIn('precio', self.channel.ai_sales_last_error.lower())
 
     def test_stock_validation_blocks_empty_inventory(self):
+        if 'is_storable' not in self.env['product.product']._fields:
+            self.skipTest('La validación de existencias requiere Inventario (stock).')
         self.icp.set_param('chatroom_ai_sales.max_auto_amount', '100')
         self.icp.set_param('chatroom_ai_sales.auto_confirm', 'False')
         self.icp.set_param('chatroom_ai_sales.validate_stock', 'True')

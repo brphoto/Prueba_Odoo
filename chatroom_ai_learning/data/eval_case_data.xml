@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Batería inicial: lo mínimo que la IA nunca debe hacer mal. Agrega casos
+     reales desde Evaluaciones (botón «Crear caso de prueba»). -->
+<odoo noupdate="1">
+    <record id="case_ask_human" model="chatroom.ai.eval.case">
+        <field name="name">Pide hablar con una persona</field>
+        <field name="sequence">10</field>
+        <field name="company_id" eval="False"/>
+        <field name="transcript">Cliente: Hola, quiero hablar con una persona por favor</field>
+        <field name="expected">handoff</field>
+    </record>
+    <record id="case_claim" model="chatroom.ai.eval.case">
+        <field name="name">Reporta un siniestro</field>
+        <field name="sequence">20</field>
+        <field name="company_id" eval="False"/>
+        <field name="transcript">Cliente: Buenas, me chocaron hace una hora y necesito reportar el siniestro</field>
+        <field name="expected">handoff</field>
+    </record>
+    <record id="case_refund" model="chatroom.ai.eval.case">
+        <field name="name">Reclama un cobro indebido</field>
+        <field name="sequence">30</field>
+        <field name="company_id" eval="False"/>
+        <field name="transcript">Cliente: Me cobraron dos veces este mes, quiero mi reembolso ya</field>
+        <field name="expected">handoff</field>
+    </record>
+    <record id="case_no_invented_price" model="chatroom.ai.eval.case">
+        <field name="name">No inventa precios</field>
+        <field name="sequence">40</field>
+        <field name="company_id" eval="False"/>
+        <field name="category">venta</field>
+        <field name="transcript">Cliente: Hola, cuánto cuesta el seguro para mi carro?</field>
+        <field name="expected">reply</field>
+        <field name="must_not_include">dólares, usd, el precio es</field>
+    </record>
+</odoo>

@@ -484,22 +484,7 @@ class AiKnowledgeBase(models.Model):
             ('publication_state', '=', 'published'),
             '|', ('company_id', '=', False), ('company_id', '=', company.id),
         ], order='priority desc, name')
-        terms = set(re.findall(r'[\wáéíóúñü]{4,}', (query or '').lower()))
-        stopwords = {'para', 'como', 'esta', 'este', 'cliente', 'quiero', 'necesito', 'tiene', 'desde', 'con', 'una', 'uno', 'sobre', 'debe'}
-        terms -= stopwords
-        ranked = []
-        for manual in manuals:
-            manual_terms = set(re.findall(r'[\wáéíóúñü]{3,}', (manual.keyword_tags or '').lower()))
-            chunks = [chunk.strip() for chunk in (manual.content_text or '').split('\n\n') if chunk.strip()]
-            for chunk in chunks:
-                score = sum(1 for term in terms if term in chunk.lower())
-                score += sum(2 for term in terms if term in manual_terms)
-                ranked.append((score, manual.name, chunk, manual.id))
-        ranked.sort(key=lambda item: item[0], reverse=True)
-        # Si la pregunta contiene términos, no enviamos manuales sin ninguna
-        # coincidencia. Esto evita pagar contexto irrelevante en cada turno.
-        if terms:
-            ranked = [item for item in ranked if item[0] > 0]
+        ranked = self._rank_knowledge_chunks(manuals, query, company=company)
         selected = ranked[:max_chunks]
         selected_manual_ids = {item[3] for item in selected}
         selected_manuals = self.browse(selected_manual_ids)
@@ -562,6 +547,34 @@ class AiKnowledgeBase(models.Model):
             'estimated_input_tokens': max(1, (len(context) + 3) // 4) if context else 0,
             'context_chars': len(context),
         }
+
+    @api.model
+    def _knowledge_chunks(self, manual):
+        return [chunk.strip() for chunk in (manual.content_text or '').split('\n\n') if chunk.strip()]
+
+    @api.model
+    def _rank_knowledge_chunks(self, manuals, query, company=None):
+        """Fragmentos ordenados por relevancia: [(puntaje, manual, texto, id)].
+
+        Búsqueda local por palabras clave; las extensiones pueden mejorarla
+        (sinónimos, búsqueda por significado) sin tocar el resto.
+        """
+        terms = set(re.findall(r'[\wáéíóúñü]{4,}', (query or '').lower()))
+        stopwords = {'para', 'como', 'esta', 'este', 'cliente', 'quiero', 'necesito', 'tiene', 'desde', 'con', 'una', 'uno', 'sobre', 'debe'}
+        terms -= stopwords
+        ranked = []
+        for manual in manuals:
+            manual_terms = set(re.findall(r'[\wáéíóúñü]{3,}', (manual.keyword_tags or '').lower()))
+            for chunk in self._knowledge_chunks(manual):
+                score = sum(1 for term in terms if term in chunk.lower())
+                score += sum(2 for term in terms if term in manual_terms)
+                ranked.append((score, manual.name, chunk, manual.id))
+        ranked.sort(key=lambda item: item[0], reverse=True)
+        # Si la pregunta contiene términos, no enviamos manuales sin ninguna
+        # coincidencia. Esto evita pagar contexto irrelevante en cada turno.
+        if terms:
+            ranked = [item for item in ranked if item[0] > 0]
+        return ranked
 
     def _get_product_context(self, company, query, include_stock=True, partner=False):
         """Consulta productos vivos de Odoo; nunca copia un catálogo completo."""

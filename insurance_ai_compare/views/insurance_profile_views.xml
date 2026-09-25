@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_insurance_client_profile_list" model="ir.ui.view">
+        <field name="name">insurance.client.profile.list</field>
+        <field name="model">insurance.client.profile</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="partner_id"/>
+                <field name="template_id"/>
+                <field name="completion" widget="progressbar"/>
+                <field name="write_date" string="Actualizado"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_insurance_client_profile_form" model="ir.ui.view">
+        <field name="name">insurance.client.profile.form</field>
+        <field name="model">insurance.client.profile</field>
+        <field name="arch" type="xml">
+            <form string="Perfil del cliente">
+                <header>
+                    <button name="action_open_compare" type="object" string="Crear comparativo" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="template_id" options="{'no_create': True}"/>
+                            <field name="channel_id" readonly="1" invisible="not channel_id"/>
+                        </group>
+                        <group>
+                            <field name="completion" widget="progressbar"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="summary"/>
+                        <field name="priorities"/>
+                        <field name="missing_fields"/>
+                    </group>
+                    <group string="Datos (editables)">
+                        <field name="data_json" nolabel="1" colspan="2"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_insurance_client_profile" model="ir.actions.act_window">
+        <field name="name">Perfiles de clientes</field>
+        <field name="res_model">insurance.client.profile</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aún no hay perfiles</p>
+            <p>Se crean desde el chat con <code>/perfil</code>: la IA toma los datos que dio el
+               cliente y te dice cuáles faltan para cotizar.</p>
+        </field>
+    </record>
+</odoo>

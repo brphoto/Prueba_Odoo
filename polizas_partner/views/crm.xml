@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="inherit_view_crm_lead_form" model="ir.ui.view">
+        <field name="name">model.name.view.form.inherit</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+        <xpath expr="//button[@name='action_schedule_meeting']" position="after">
+            <button name="action_ver_polizas"
+                    type="object"
+                    string="Polizas Asociadas"
+                    class="oe_stat_button" icon="fa-file"
+                    context="{'default_partner_id': partner_id}" invisible="poliza_count == 0">
+
+            <field name="poliza_count" widget="statinfo"/>
+            </button>
+                    
+                    
+        </xpath>
+        </field>
+    </record>
+
+</odoo>

@@ -165,7 +165,10 @@ class TestChatroomAiAutonomy(TransactionCase):
         self.assertEqual(task.state, 'planned')
         self.assertEqual(task.autonomy_decision, 'allow')
         self.assertEqual(task.autonomy_policy_id, policy)
-        self.assertFalse(task.action_ids.filtered(lambda action: action.key == 'create_lead').requires_approval)
+        # La política autoriza la tarea, pero la acción sigue marcada como
+        # sensible: la definición de la herramienta no se rebaja.
+        self.assertTrue(task.policy_approved)
+        self.assertTrue(task.action_ids.filtered(lambda action: action.key == 'create_lead').requires_approval)
 
     def test_agent_task_stays_pending_when_policy_requires_approval(self):
         partner = self.env.ref('base.partner_root')

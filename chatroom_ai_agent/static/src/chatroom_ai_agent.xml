@@ -4,13 +4,17 @@
         <!-- Usamos un ancla del template base: las clases t-attf no siempre
              existen todavía cuando Owl aplica las herencias de assets. -->
         <xpath expr="//div[hasclass('o_chatroom_contact_actions_block')]" position="before">
-            <div t-attf-class="o_chatroom_contact_docs o_chatroom_ai_agent {{ aiAgent.open ? 'o_chatroom_ai_agent_open' : '' }}">
+            <div t-if="aiAgent.panelPref !== 'hidden'"
+                 t-attf-class="o_chatroom_contact_docs o_chatroom_ai_agent {{ aiAgent.open ? 'o_chatroom_ai_agent_open' : '' }}">
                 <div class="o_chatroom_contact_section_header" role="button" tabindex="0"
                      t-att-aria-expanded="aiAgent.open ? 'true' : 'false'"
                      t-on-click.stop="toggleAiAgent"
                      t-on-keydown="onAiAgentHeaderKeydown">
                     <h6 class="mb-0"><i class="fa fa-cogs"/> Agente IA
-                        <span class="o_chatroom_ai_agent_status" t-if="aiAgent.task">
+                        <span class="o_chatroom_ai_agent_badge o_attention" t-if="aiAgentNeedsApproval()">
+                            Por aprobar
+                        </span>
+                        <span class="o_chatroom_ai_agent_status" t-elif="aiAgent.task">
                             · <t t-esc="aiAgent.task.state_label"/>
                         </span>
                     </h6>
@@ -21,67 +25,12 @@
                         Tu usuario no tiene el grupo de acceso al Agente IA. Solicita al administrador que active “Usuario del agente IA”.
                     </div>
                     <t t-if="aiAgent.canUse !== false">
-                    <div class="o_chatroom_ai_agent_intro">
-                        <div class="o_chatroom_ai_agent_intro_icon"><i class="fa fa-magic"/></div>
-                        <div>
-                            <strong>Asistente operativo</strong>
-                            <p>Analiza la conversación y propone el siguiente paso con control humano.</p>
-                        </div>
-                    </div>
-                    <div class="o_chatroom_ai_agent_route mb-2" t-if="aiAgent.route">
-                        <div class="o_chatroom_ai_agent_eyebrow">Ruta detectada</div>
-                        <div class="o_chatroom_ai_agent_route_row">
-                            <strong t-esc="aiAgent.route.label"/>
-                            <span class="o_chatroom_ai_agent_route_badge">Sugerida</span>
-                        </div>
-                        <small t-if="aiAgent.route.message" class="o_chatroom_ai_agent_route_message">
-                            “<t t-esc="aiAgent.route.message"/>”
-                        </small>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-primary w-100 mb-2 o_chatroom_ai_agent_primary"
-                            t-att-disabled="aiAgent.busy"
-                            t-on-click="runCommercialRouter">
-                        <i t-if="aiAgent.busy" class="fa fa-spinner fa-spin"/>
-                        <i t-else="" class="fa fa-route me-1"/> Preparar atención comercial
-                    </button>
-                    <div class="o_chatroom_ai_agent_playbook mb-2" t-if="aiAgent.playbooks.length">
-                        <div class="o_chatroom_ai_agent_section_title">Acción guardada</div>
-                        <select class="form-select form-select-sm" t-on-change="(ev) => aiAgent.selectedPlaybookId = ev.target.value">
-                            <option value="">Selecciona una acción para este chat...</option>
-                            <option t-foreach="aiAgent.playbooks" t-as="playbook" t-key="playbook.id" t-att-value="playbook.id">
-                                <t t-esc="playbook.name"/> · <t t-esc="playbook.task_type_label"/>
-                            </option>
-                        </select>
-                        <small class="d-block mt-1">Crea una tarea con contexto del cliente y conserva la aprobación configurada.</small>
-                        <button type="button" class="btn btn-sm btn-outline-primary w-100 mt-2"
-                                t-att-disabled="aiAgent.busy || !aiAgent.selectedPlaybookId"
-                                t-on-click="applyAiPlaybook">
-                            <i t-if="aiAgent.busy" class="fa fa-spinner fa-spin"/>
-                            <i t-else="" class="fa fa-play-circle me-1"/> Aplicar al chat actual
-                        </button>
-                    </div>
-                    <div class="o_chatroom_ai_agent_metrics mb-2">
-                        <div class="o_chatroom_ai_agent_metric">
-                            <strong t-esc="aiAgent.metrics.pending_count"/>
-                            <span>Pendientes</span>
-                        </div>
-                        <div class="o_chatroom_ai_agent_metric">
-                            <strong t-esc="aiAgent.metrics.approval_count"/>
-                            <span>Por aprobar</span>
-                        </div>
-                        <div class="o_chatroom_ai_agent_metric" t-if="aiAgent.metrics.high_risk_count">
-                            <strong t-esc="aiAgent.metrics.high_risk_count"/>
-                            <span>Alto riesgo</span>
-                        </div>
-                    </div>
-                    <div class="o_chatroom_ai_agent_mode mb-2">
-                        <i class="fa fa-shield"/>
-                        <div><strong>Modo <t t-esc="aiAgent.metrics.mode"/></strong><span>Las acciones sensibles conservan aprobación.</span></div>
-                    </div>
                     <div role="alert" class="alert alert-danger py-2 px-2 mb-2" t-if="aiAgent.error">
                         <t t-esc="aiAgent.error"/>
                     </div>
-                    <div class="o_chatroom_ai_agent_task" t-if="aiAgent.task">
+
+                    <!-- 1. Lo urgente primero: la tarea de esta conversación. -->
+                    <div t-attf-class="o_chatroom_ai_agent_task {{ aiAgentNeedsApproval() ? 'o_attention' : '' }}" t-if="aiAgent.task">
                         <div class="o_chatroom_ai_agent_task_header">
                             <strong t-esc="aiAgent.task.name"/>
                             <span class="o_chatroom_ai_agent_task_badge"><t t-esc="aiAgent.task.state_label"/></span>
@@ -92,13 +41,69 @@
                             <strong><i class="fa fa-check-circle me-1"/> Resultado</strong>
                             <div class="mt-1" t-esc="aiAgent.task.result_preview"/>
                         </div>
+                        <button type="button"
+                                t-attf-class="btn btn-sm w-100 mt-2 {{ aiAgentNeedsApproval() ? 'btn-primary' : 'btn-outline-secondary' }}"
+                                t-att-disabled="aiAgent.busy"
+                                t-on-click="openAiAgentTask">
+                            <i class="fa fa-check-square-o me-1"/>
+                            <t t-esc="aiAgentNeedsApproval() ? 'Revisar y aprobar' : 'Ver tarea'"/>
+                        </button>
                     </div>
-                    <button type="button" class="btn btn-sm btn-primary w-100 o_chatroom_ai_agent_primary"
-                            t-att-disabled="aiAgent.busy"
-                            t-on-click="createAiAgentTask">
-                        <i t-if="aiAgent.busy" class="fa fa-spinner fa-spin"/>
-                        <i t-else="" class="fa fa-plus-circle me-1"/> Crear plan operativo
-                    </button>
+
+                    <!-- 2. Lo que detecta, en una línea. -->
+                    <div class="o_chatroom_ai_agent_route_hint" t-if="aiAgent.route">
+                        <i class="fa fa-lightbulb-o"/>
+                        <span>
+                            Parece <strong t-esc="aiAgent.route.label"/>
+                            <small t-if="aiAgent.route.message" class="d-block o_chatroom_ai_agent_route_message">“<t t-esc="aiAgent.route.message"/>”</small>
+                        </span>
+                    </div>
+
+                    <!-- 3. Qué hacer: un solo selector y un botón. -->
+                    <div class="o_chatroom_ai_agent_run">
+                        <select class="form-select form-select-sm" aria-label="Qué debe preparar el agente"
+                                t-att-disabled="aiAgent.busy"
+                                t-on-change="(ev) => aiAgent.choice = ev.target.value">
+                            <option t-foreach="aiAgentChoices()" t-as="choice" t-key="choice.value"
+                                    t-att-value="choice.value"
+                                    t-att-selected="choice.value === aiAgent.choice">
+                                <t t-esc="choice.label"/>
+                            </option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-primary"
+                                t-att-disabled="aiAgent.busy"
+                                t-on-click="runAiAgentChoice">
+                            <i t-if="aiAgent.busy" class="fa fa-spinner fa-spin"/>
+                            <i t-else="" class="fa fa-play"/> Preparar
+                        </button>
+                    </div>
+
+                    <!-- 4. Contexto y ayuda, discretos. -->
+                    <div class="o_chatroom_ai_agent_footer">
+                        <span>
+                            <i class="fa fa-shield"/> Modo <t t-esc="aiAgentModeLabel()"/>
+                            · <t t-esc="aiAgent.metrics.approval_count"/> por aprobar
+                            · <t t-esc="aiAgent.metrics.pending_count"/> en curso
+                        </span>
+                        <span class="o_chatroom_ai_agent_links">
+                            <button type="button" class="btn btn-link btn-sm p-0" t-on-click="openAiAgentQueue">Ver cola</button>
+                            <button type="button" class="btn btn-link btn-sm p-0" t-on-click="() => aiAgent.showHelp = !aiAgent.showHelp">¿Qué es esto?</button>
+                            <button type="button" class="btn btn-link btn-sm p-0" t-on-click="hideAiAgentPanel">Ocultar panel</button>
+                        </span>
+                    </div>
+                    <div class="o_chatroom_ai_agent_help" t-if="aiAgent.showHelp">
+                        <p class="mb-1">
+                            El <strong>Agente IA</strong> no redacta mensajes (eso lo hace el
+                            <em>Asistente IA</em>): prepara <strong>acciones en Odoo</strong> a partir
+                            de la conversación, como crear la oportunidad, la cotización, una
+                            actividad o el link de pago.
+                        </p>
+                        <p class="mb-0">
+                            Elige qué preparar y pulsa <em>Preparar</em>. Las acciones sensibles
+                            quedan <strong>por aprobar</strong> mientras el modo sea supervisado:
+                            nada se ejecuta sin que pulses <em>Revisar y aprobar</em>.
+                        </p>
+                    </div>
                     </t>
                 </div>
             </div>

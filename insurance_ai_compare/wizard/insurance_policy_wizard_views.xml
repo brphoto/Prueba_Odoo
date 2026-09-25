@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_insurance_policy_wizard_form" model="ir.ui.view">
+        <field name="name">insurance.policy.wizard.form</field>
+        <field name="model">insurance.policy.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Emitir póliza">
+                <p class="text-muted">Se crea la póliza con la aseguradora, las primas y las
+                    <field name="coverage_count" class="fw-bold"/> cobertura(s) incluidas de la opción elegida.</p>
+                <group>
+                    <group>
+                        <field name="compare_id" invisible="1"/>
+                        <field name="offer_id" options="{'no_create': True, 'no_open': True}"/>
+                        <field name="numero_poliza"/>
+                        <field name="fecha_inicio"/>
+                    </group>
+                    <group>
+                        <field name="executive_id" options="{'no_create': True}"/>
+                        <field name="poliza_type_id" options="{'no_create': True}"/>
+                        <field name="ramo_id" options="{'no_create': True}"/>
+                        <field name="tipo_pago"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Emitir póliza" class="btn-primary"/>
+                    <button special="cancel" string="Cancelar"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

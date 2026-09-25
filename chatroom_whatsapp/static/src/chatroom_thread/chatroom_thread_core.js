@@ -29,6 +29,7 @@ const MESSAGE_FIELDS = [
     "wa_message_id",
     "own_reaction",
     "partner_reaction",
+    "ai_transcript",
 ];
 
 // Cuántos mensajes se traen de golpe. Una conversación de meses puede

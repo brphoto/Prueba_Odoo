@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="ir_cron_ai_followups" model="ir.cron">
+        <field name="name">Chatroom IA: recordar guiones a medias</field>
+        <field name="model_id" ref="chatroom_whatsapp.model_chatroom_channel"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_ai_followups()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+    <record id="ir_cron_embed_knowledge" model="ir.cron">
+        <field name="name">Chatroom IA: preparar búsqueda por significado</field>
+        <field name="model_id" ref="chatroom_sales_intelligence.model_ai_knowledge_base"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_embed_missing()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active">True</field>
+    </record>
+    <record id="ir_cron_clean_reply_cache" model="ir.cron">
+        <field name="name">Chatroom IA: limpiar respuestas reutilizables vencidas</field>
+        <field name="model_id" ref="model_chatroom_ai_reply_cache"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_clean()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active">True</field>
+    </record>
+    <record id="ir_cron_daily_summary" model="ir.cron">
+        <field name="name">Chatroom IA: resumen diario del agente</field>
+        <field name="model_id" ref="model_chatroom_ai_agent_profile"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_daily_summary()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).strftime('%Y-%m-%d 12:00:00')"/>
+        <field name="active">True</field>
+    </record>
+</odoo>

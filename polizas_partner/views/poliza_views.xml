@@ -1,0 +1,144 @@
+<odoo>
+    <record id="view_poliza_partner_tree" model="ir.ui.view">
+        <field name="name">poliza.partner.tree</field>
+        <field name="model">poliza.partner</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name='name'/>
+                <field name="partner_id"/>
+                <field name="numero_poliza"/>
+                <field name="aseguradora_id"/>
+                <field name='tipo_pago'/>
+                <field name="forma_pago" />
+                <field name="fecha_inicio"/>
+                <field name="fecha_fin"/>
+                <field name="comision_cxc_id"/>
+                <field name="comision_cxp_id"/>
+                <field name='number_polizas' string="Número de Pólizas" />
+                <field name='poliza_renovada_id' string="Póliza Renovada" />
+                <field name='last_reminder_date' string="Último Recordatorio" optional='show'/>
+                <field name='comercial_id' string="Comercial" optional='show' />
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_poliza_partner_form" model="ir.ui.view">
+        <field name="name">poliza.partner.form</field>
+        <field name="model">poliza.partner</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="approve_poliza" string="Aprobar" type="object" class="btn btn-primary" invisible="state != 'draft'"/>
+                    <button name="cancel_poliza" string="Rechazar" type="object" class="btn btn-danger" invisible="state != 'vigente'"/>
+                    <button name="no_renovada_poliza" string="No Renovar" type="object" class="btn btn-secondary" invisible="state == 'draft'"/>
+                    <button name="set_draft" string="Volver a Borrador" type="object" class="btn btn-light" invisible="state == 'draft'"/>
+                    <button name="action_renovar_poliza" string="Renovar Póliza" type="object" class="btn btn-success" />
+                    <field name="state" widget="statusbar"/>
+                </header>
+
+                <sheet>
+                    <group string="Datos Generales">
+                        <group col="2">
+                            <field name="partner_id"/>
+                            <field name="aseguradora_id"/>
+                            <field name="numero_poliza"/>
+                            <field name="fecha_inicio"/>
+                            <field name="prima_total"/>
+                            <field name="client_activity" invisible="1"/>
+                            <field name="comision_broker"/>
+                            <field name="comision_cxc_id" options="{'no_create': True}" invisible="not comision_cxc_id" readonly='1' />
+                            <field name='poliza_renovada_id' readonly="1" options="{'no_create': True}"/>
+                        </group>
+
+                        <group col="2">
+                            <field name="ramo_id"/>
+                            <field name='comercial_id'/>
+                            <field name="poliza_type"/>
+                            <field name="fecha_fin"/>
+                            <field name="prima_neta"/>
+                            <field name="tipo_pago"/>
+                            <field name="forma_pago" invisible="tipo_pago == 'contado' or tipo_pago == False"/>
+                            <field name="comision_executivo"/>
+                            <field name="comision_cxp_id" options="{'no_create': True}" invisible="not comision_cxp_id" readonly='1'/>
+                        </group>
+                    </group>
+
+                    <group string="Documentación" col="2">
+                        <field name="files_ids" widget="many2many_binary"/>
+                    </group>
+
+                    <div class="d-flex justify-content-start mb-2">
+                        <button name="action_generar_cuotas" string="Generar Cuotas" type="object" class="btn btn-primary" invisible="tipo_pago != 'cuotas'"/>
+                    </div>
+
+                    <group name="cuotas_group" string="Plan de Cuotas" col="1" invisible="tipo_pago != 'cuotas'">
+                        <field name="cuota_ids" colspan="4" widget="one2many_list" options="{'no_create': False}">
+                            <list editable="bottom" string="Tabla de Cuotas">
+                                <field name="numero"/>
+                                <field name="fecha_pago"/>
+                                <field name="monto"/>
+                                <field name="pagado"/>
+                            </list>
+                        </field>
+                    </group>
+                </sheet>
+
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+
+
+
+    <record id="action_polizas_partner" model="ir.actions.act_window">
+        <field name="name">Pólizas</field>
+        <field name="res_model">poliza.partner</field>
+        <field name="view_mode">list,form</field>
+
+    </record>
+
+
+    <record id="action_polizas_aseguradoras" model="ir.actions.act_window">
+        <field name="name">Aseguradoras</field>
+        <field name="res_model">polizas.aseguradoras</field>
+        <field name="view_mode">list,form</field>
+
+    </record>
+
+    <record id="action_polizas_ramos" model="ir.actions.act_window">
+        <field name="name">Ejecutivos</field>
+        <field name="res_model">polizas.ramos</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="action_tipo_polizas" model="ir.actions.act_window">
+        <field name="name">Tipo de Pólizas</field>
+        <field name="res_model">poliza.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="action_polizas_actividad" model="ir.actions.act_window">
+        <field name="name">Actividad</field>
+        <field name="res_model">res.partner.activity</field>
+        <field name="view_mode">list,form</field>
+
+    </record>
+    <record id="action_polizas_ramo" model="ir.actions.act_window">
+        <field name="name">Ramo</field>
+        <field name="res_model">poliza.ramo</field>
+        <field name="view_mode">list,form</field>
+
+    </record>
+
+
+
+    <record id="action_server_create_partner_if_missing_ramos" model="ir.actions.server">
+        <field name="name">Crear Partner Asociado</field>
+        <field name="model_id" ref="model_polizas_ramos"/>
+        <field name="binding_model_id" ref="model_polizas_ramos"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">records.action_create_partner_if_missing()</field>
+    </record>
+
+
+</odoo>

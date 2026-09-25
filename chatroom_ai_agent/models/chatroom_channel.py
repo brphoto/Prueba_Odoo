@@ -139,7 +139,10 @@ class ChatroomChannel(models.Model):
             ('channel_id', '=', self.id),
             ('state', '!=', 'cancelled'),
         ], order='create_date desc, id desc', limit=1)
-        tasks = self.env['chatroom.ai.task'].sudo()
+        # Sin sudo: los contadores son los de las tareas que este usuario puede
+        # ver (las suyas y las de sus conversaciones), no los de toda la empresa
+        # ni los de otras líneas.
+        tasks = self.env['chatroom.ai.task']
         pending_domain = [('state', 'in', ('awaiting_approval', 'planned', 'running'))]
         icp = self.env['ir.config_parameter'].sudo()
         playbooks = []
@@ -161,6 +164,9 @@ class ChatroomChannel(models.Model):
                 })
         return {
             'can_use': True,
+            'panel_pref': self.env.user.chatroom_ai_agent_panel or 'auto',
+            'channel_pending_count': tasks.search_count(
+                pending_domain + [('channel_id', '=', self.id)]),
             'pending_count': tasks.search_count(pending_domain),
             'approval_count': tasks.search_count([('state', '=', 'awaiting_approval')]),
             'high_risk_count': tasks.search_count([
@@ -199,6 +205,30 @@ class ChatroomChannel(models.Model):
         if not playbook or not playbook.active:
             raise UserError(_('La acción guardada no está disponible.'))
         return playbook.apply_to_channel(self)
+
+    def action_ai_agent_open_task(self, task_id):
+        """Abre la tarea del agente para revisarla y aprobar sus acciones."""
+        self.ensure_one()
+        task = self.env['chatroom.ai.task'].browse(int(task_id)).exists()
+        if not task or task.channel_id != self:
+            raise UserError(_('La tarea no pertenece a esta conversación.'))
+        return {
+            'type': 'ir.actions.act_window', 'name': task.display_name,
+            'res_model': 'chatroom.ai.task', 'res_id': task.id,
+            'views': [(False, 'form')], 'target': 'new',
+        }
+
+    def _ai_quick_action_run_agent_task(self, action, draft_text=''):
+        """Acción rápida que en vez de redactar prepara una tarea del agente
+        con la instrucción de la acción; las acciones sensibles quedan
+        esperando aprobación."""
+        self.ensure_one()
+        task = self.env['chatroom.ai.task'].create_from_channel(
+            self, task_type=action.agent_task_type or 'orchestrate',
+            prompt=action._render_instruction(self, draft_text), approval_required=True)
+        task.action_plan()
+        return {'mode': 'agent_task', 'task_id': task.id, 'task_name': task.display_name,
+                'action': self.action_ai_agent_open_task(task.id)}
 
     def action_ai_agent_create_task(self):
         self.ensure_one()

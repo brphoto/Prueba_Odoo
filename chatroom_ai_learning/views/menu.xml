@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_ai_learning_root" name="Aprendizaje y autonomía"
+              parent="chatroom_ai_agent.menu_chatroom_ai_agent" sequence="15"
+              groups="chatroom_whatsapp.group_chatroom_manager,chatroom_ai.group_chatroom_ai_manager"/>
+    <menuitem id="menu_ai_autonomy_level" name="Autonomía por tipo"
+              parent="menu_ai_learning_root" sequence="10" action="action_ai_autonomy_level"/>
+    <menuitem id="menu_ai_evaluation" name="Evaluaciones (modo sombra)"
+              parent="menu_ai_learning_root" sequence="20" action="action_ai_evaluation"/>
+    <menuitem id="menu_ai_example" name="Ejemplos aprendidos"
+              parent="menu_ai_learning_root" sequence="30" action="action_ai_example"/>
+    <menuitem id="menu_ai_handoff_rule" name="Reglas de traspaso"
+              parent="menu_ai_learning_root" sequence="40" action="action_ai_handoff_rule"/>
+    <menuitem id="menu_ai_memory_review" name="Memorias propuestas"
+              parent="menu_ai_learning_root" sequence="50" action="action_ai_memory_review"/>
+    <menuitem id="menu_ai_eval_case" name="Casos de prueba"
+              parent="menu_ai_learning_root" sequence="60" action="action_ai_eval_case"/>
+    <menuitem id="menu_ai_eval_run" name="Resultados de pruebas"
+              parent="menu_ai_learning_root" sequence="70" action="action_ai_eval_run"/>
+    <menuitem id="menu_ai_eval_run_now" name="Ejecutar pruebas ahora"
+              parent="menu_ai_learning_root" sequence="80" action="action_ai_eval_run_now"/>
+</odoo>

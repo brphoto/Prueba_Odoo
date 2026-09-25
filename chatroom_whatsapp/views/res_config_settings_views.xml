@@ -43,6 +43,10 @@
                             <button name="action_test_whatsapp_connection" type="object"
                                     string="Probar conexión" class="btn-secondary"/>
                         </setting>
+                        <setting id="chatroom_conversation_per_line_setting"
+                                 help="Actívalo si cada número lo atiende un equipo distinto: cada agente ve solo las conversaciones de las Líneas de WhatsApp donde es miembro, sin cruzarse con las de otros números.">
+                            <field name="chatroom_conversation_per_line"/>
+                        </setting>
                         <setting id="chatroom_auto_assign_setting"
                                  help="Reparte las conversaciones nuevas entre los agentes del grupo 'Chatroom / Agente', priorizando al que menos conversaciones abiertas tenga">
                             <field name="chatroom_auto_assign"/>
@@ -187,6 +191,20 @@
                         <setting id="chatroom_ai_auto_reply_setting"
                                  help="Envía la respuesta generada sin revisión de un agente. Úsalo con precaución">
                             <field name="chatroom_ai_auto_reply"/>
+                        </setting>
+                        <setting id="chatroom_ai_queue_setting"
+                                 help="Agrupa los mensajes seguidos del cliente y responde una sola vez, en segundo plano">
+                            <field name="chatroom_ai_queue"/>
+                            <div class="content-group" invisible="not chatroom_ai_queue">
+                                <div class="row mt8">
+                                    <label for="chatroom_ai_debounce_seconds" class="col-lg-7 o_light_label"/>
+                                    <field name="chatroom_ai_debounce_seconds" class="col-lg-3"/>
+                                </div>
+                                <div class="row">
+                                    <label for="chatroom_ai_typing_indicator" class="col-lg-7 o_light_label"/>
+                                    <field name="chatroom_ai_typing_indicator" class="col-lg-3"/>
+                                </div>
+                            </div>
                         </setting>
                         <setting id="chatroom_ai_require_approval_setting"
                                  help="Deja la respuesta preparada para revisión humana antes de enviarla. Recomendado">

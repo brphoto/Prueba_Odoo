@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Todos los tipos empiezan supervisados; los reclamos los atiende siempre una
+     persona. noupdate: un administrador puede cambiarlos. -->
+<odoo noupdate="1">
+    <record id="level_consulta" model="chatroom.ai.autonomy.level">
+        <field name="category">consulta</field>
+    </record>
+    <record id="level_venta" model="chatroom.ai.autonomy.level">
+        <field name="category">venta</field>
+    </record>
+    <record id="level_soporte" model="chatroom.ai.autonomy.level">
+        <field name="category">soporte</field>
+    </record>
+    <record id="level_queja" model="chatroom.ai.autonomy.level">
+        <field name="category">queja</field>
+        <field name="state">blocked</field>
+        <field name="status_note">Siempre lo atiende una persona.</field>
+    </record>
+    <record id="level_otro" model="chatroom.ai.autonomy.level">
+        <field name="category">otro</field>
+    </record>
+</odoo>

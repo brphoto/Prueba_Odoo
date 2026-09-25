@@ -1,0 +1,42 @@
+<odoo>
+    
+
+    <record id="inherit_view_id_polizas_partner_vehicles" model="ir.ui.view">
+        <field name="name">poliza.partner.view.form.inherit</field>
+        <field name="model">poliza.partner</field>
+        <field name="inherit_id" ref="polizas_partner.view_poliza_partner_form"/>
+        <field name="arch" type="xml">
+        <xpath expr="//field[@name='client_activity']" position="after">
+          
+            <field name='brand'/>
+            <field name='model'/>
+            <field name="year" />
+            <field name="plate" />
+        </xpath>
+            
+        </field>
+    </record>
+
+
+        <record id="action_vehicles" model="ir.actions.act_window">
+            <field name="name">Vehicle</field>
+            <field name="res_model">polizas.vehicles</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="action_vehicles_brand" model="ir.actions.act_window">
+        <field name="name">Marca de Vehiculo</field>
+        <field name="res_model">polizas.vehicles.brand</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+        <record id="action_model_vehicle" model="ir.actions.act_window">
+        <field name="name">Modelo de Vehiculo</field>
+        <field name="res_model">polizas.vehicles.model</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_configuracion_action_vehicle" name="Vehiculos" parent="polizas_partner.menu_configuracion" action="action_vehicles"/>
+    <menuitem id="menu_configuracion_action_marca" name="Marca" parent="polizas_partner.menu_configuracion" action="action_vehicles_brand"/>
+    <menuitem id="menu_configuracion_action_modelo" name="Modelo" parent="polizas_partner.menu_configuracion" action="action_model_vehicle"/>
+</odoo>

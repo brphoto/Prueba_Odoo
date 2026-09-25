@@ -1,0 +1,189 @@
+// Centro de IA: una pantalla, cuatro pestañas.
+.o_ai_center {
+    background-color: $o-webclient-background-color;
+
+    .o_ai_center_header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 1rem 1.5rem 0;
+        background-color: $o-view-background-color;
+        border-bottom: 1px solid $border-color;
+    }
+    .o_ai_center_title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding-bottom: 0.75rem;
+    }
+    .o_ai_center_avatar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 50%;
+        color: $white;
+        background: linear-gradient(135deg, $primary, $info);
+        font-size: 1.2rem;
+    }
+    .o_ai_center_dot {
+        display: inline-block;
+        width: 0.55rem;
+        height: 0.55rem;
+        margin-right: 0.25rem;
+        border-radius: 50%;
+        &.o_on { background-color: $success; }
+        &.o_off { background-color: $gray-500; }
+    }
+    .o_ai_center_tabs {
+        display: flex;
+        gap: 0.25rem;
+        overflow-x: auto;
+    }
+    .o_ai_center_tab {
+        padding: 0.6rem 1rem;
+        border: 0;
+        border-bottom: 3px solid transparent;
+        background: none;
+        color: $text-muted;
+        font-weight: 500;
+        white-space: nowrap;
+        &.active {
+            color: $primary;
+            border-bottom-color: $primary;
+        }
+        &:hover { color: $body-color; }
+    }
+    .o_ai_center_body {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 1.25rem 1.5rem 3rem;
+    }
+    .o_ai_center_grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1rem;
+    }
+    .o_ai_center_block {
+        margin-bottom: 1rem;
+        padding: 1rem 1.25rem;
+        border: 1px solid $border-color;
+        border-radius: 0.75rem;
+        background-color: $o-view-background-color;
+        h4 { font-size: 1.05rem; margin-bottom: 0.75rem; }
+    }
+    .o_ai_center_card {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 0;
+        border-top: 1px solid $border-color;
+        &:first-of-type { border-top: 0; }
+        &.o_ai_draft_card, &.o_ai_gap_card { display: block; }
+    }
+    .o_ai_draft_question {
+        margin: 0.35rem 0 0.5rem;
+        padding: 0.4rem 0.6rem;
+        border-left: 3px solid $info;
+        background-color: rgba($info, 0.08);
+        border-radius: 0.25rem;
+    }
+    .o_ai_draft_actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-top: 0.5rem;
+    }
+    .o_ai_center_empty {
+        padding: 3rem 1rem;
+        text-align: center;
+        color: $text-muted;
+        .fa { font-size: 2.5rem; color: $success; margin-bottom: 0.5rem; }
+    }
+    .o_ai_modes {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 0.75rem;
+    }
+    .o_ai_mode {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding: 0.9rem 1rem;
+        text-align: left;
+        border: 2px solid $border-color;
+        border-radius: 0.75rem;
+        background-color: $o-view-background-color;
+        span { color: $text-muted; font-size: 0.85rem; }
+        &.active {
+            border-color: $primary;
+            background-color: rgba($primary, 0.06);
+        }
+    }
+    .o_ai_kpis {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    .o_ai_kpi {
+        display: flex;
+        flex-direction: column;
+        padding: 0.9rem 1rem;
+        border: 1px solid $border-color;
+        border-radius: 0.75rem;
+        background-color: $o-view-background-color;
+        b { font-size: 1.5rem; }
+        span { color: $text-muted; font-size: 0.8rem; }
+    }
+    .o_ai_trend {
+        display: flex;
+        align-items: flex-end;
+        gap: 0.4rem;
+        height: 140px;
+    }
+    .o_ai_trend_col {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: center;
+        height: 100%;
+        span { font-size: 0.7rem; color: $text-muted; }
+    }
+    .o_ai_trend_bar {
+        width: 100%;
+        border-radius: 0.3rem 0.3rem 0 0;
+        background: linear-gradient(180deg, $info, $primary);
+    }
+    .o_ai_ask_answer {
+        margin-top: 0.75rem;
+        padding: 0.75rem 1rem;
+        white-space: pre-wrap;
+        border-radius: 0.5rem;
+        background-color: rgba($primary, 0.06);
+    }
+}
+
+// Borrador de la IA sobre el cuadro de texto del chat.
+.o_ai_composer_draft {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0 0.5rem 0.35rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.85rem;
+    color: $primary;
+    border-radius: 0.5rem;
+    background-color: rgba($primary, 0.08);
+    .o_ai_composer_draft_label { flex: 1 1 auto; }
+    .btn-link { padding: 0 0.3rem; }
+}

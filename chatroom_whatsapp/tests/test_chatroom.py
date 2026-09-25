@@ -471,13 +471,17 @@ class TestChatroomWhatsapp(TransactionCase):
             channel.action_send_product_catalog(product.ids)
 
     def test_catalog_returns_live_price_and_stock_for_conversation(self):
-        product = self.env['product.product'].create({
+        # Inventario (stock) es opcional: sin él no hay existencias que leer.
+        has_stock = 'is_storable' in self.env['product.product']._fields
+        values = {
             'name': 'Laptop Odoo Demo',
             'default_code': 'LAP-DEMO',
             'list_price': 850.0,
             'sale_ok': True,
-            'is_storable': True,
-        })
+        }
+        if has_stock:
+            values['is_storable'] = True
+        product = self.env['product.product'].create(values)
         partner = self.env['res.partner'].create({
             'name': 'Cliente catálogo',
             'phone': '+593999123456',
@@ -493,8 +497,12 @@ class TestChatroomWhatsapp(TransactionCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]['id'], product.id)
         self.assertEqual(rows[0]['list_price'], product.lst_price)
-        self.assertTrue(rows[0]['stock_known'])
-        self.assertIn('Disponible', rows[0]['stock_label'])
+        if has_stock:
+            self.assertTrue(rows[0]['stock_known'])
+            self.assertIn('Disponible', rows[0]['stock_label'])
+        else:
+            self.assertFalse(rows[0]['stock_known'])
+            self.assertIn('Consultar', rows[0]['stock_label'])
 
     def test_quote_from_cart_uses_all_customer_selected_lines(self):
         partner = self.env['res.partner'].create({

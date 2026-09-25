@@ -1,0 +1,114 @@
+// Menú de acciones de IA del compositor (✨ y atajos "/").
+.o_chatroom_ai_quick_menu {
+    max-height: 280px;
+    overflow-y: auto;
+    margin-bottom: 6px;
+    padding: 4px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 10px;
+    background: $o-view-background-color;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.o_chatroom_ai_quick_menu_title {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    padding: 4px 8px 6px;
+    font-size: 0.78em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+
+    small {
+        font-weight: 400;
+        text-transform: none;
+        letter-spacing: 0;
+    }
+}
+
+.o_chatroom_ai_quick_empty {
+    padding: 10px;
+    font-size: 0.85em;
+    text-align: center;
+}
+
+.o_chatroom_ai_quick_item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 7px 8px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+
+    &.o_active,
+    &:focus-visible {
+        background: rgba(113, 75, 103, 0.12);
+        outline: none;
+    }
+}
+
+.o_chatroom_ai_quick_icon {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    background: rgba(113, 75, 103, 0.12);
+    color: #714b67;
+}
+
+.o_chatroom_ai_quick_text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.o_chatroom_ai_quick_name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.o_chatroom_ai_quick_shortcut {
+    margin-left: 6px;
+    font-weight: 400;
+    font-family: $font-family-monospace;
+    font-size: 0.85em;
+    opacity: 0.7;
+}
+
+.o_chatroom_ai_quick_desc {
+    opacity: 0.75;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.o_chatroom_ai_quick_mode {
+    flex: 0 0 auto;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 0.72em;
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.o_chatroom_ai_quick_btn .fa-magic {
+    color: #714b67;
+}
+
+@media (max-width: 576px) {
+    .o_chatroom_ai_quick_menu_title small,
+    .o_chatroom_ai_quick_desc {
+        display: none;
+    }
+}

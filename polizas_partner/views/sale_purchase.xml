@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+     <record id="view_order_form_plastic" model="ir.ui.view">
+        <field name="name">sale.order.view.form.plastic</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='date_order']" position="after">
+                <field name="comision_cxc_id"  readonly='1'/>
+              
+            </xpath>
+            
+        </field>
+    </record>
+
+    <record id="inherit_view_id_inherit_purchase_order_polizas" model="ir.ui.view">
+        <field name="name">purchase.order.view.form.inherit</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='date_order']" position="after">
+                <field name="comision_cxp_id" readonly='1'/>
+            </xpath>
+            
+        </field>
+    </record>
+
+    
+
+</odoo>

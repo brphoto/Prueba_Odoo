@@ -1,0 +1,423 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ Autonomía por tipo de conversación ============ -->
+    <record id="view_ai_autonomy_level_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.autonomy.level.list</field>
+        <field name="model">chatroom.ai.autonomy.level</field>
+        <field name="arch" type="xml">
+            <list string="Autonomía de la IA" create="0"
+                  decoration-success="state == 'automatic'" decoration-muted="state == 'blocked'">
+                <field name="name" string="Tipo de conversación"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'automatic'"
+                       decoration-info="state == 'supervised'"
+                       decoration-danger="state == 'blocked'"/>
+                <field name="success_rate" string="Acierto %" widget="progressbar"/>
+                <field name="sample_count" string="Evaluaciones"/>
+                <field name="progress" string="Datos reunidos" widget="progressbar"/>
+                <field name="unsafe_count" string="No seguras"/>
+                <field name="escalated_count" string="Derivadas" optional="hide"/>
+                <field name="status_note" string="Situación"/>
+                <field name="locked" string="Fijado a mano" optional="show"/>
+                <field name="last_change" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ai_autonomy_level_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.autonomy.level.form</field>
+        <field name="model">chatroom.ai.autonomy.level</field>
+        <field name="arch" type="xml">
+            <form string="Nivel de autonomía">
+                <header>
+                    <button name="action_recompute" type="object" string="Recalcular con los datos" class="btn-primary"/>
+                    <button name="action_set_automatic" type="object" string="Permitir que responda sola"
+                            invisible="state == 'automatic' and locked"
+                            confirm="La IA responderá sola este tipo de conversación aunque no haya reunido los datos. ¿Continuar?"/>
+                    <button name="action_set_supervised" type="object" string="Supervisar"
+                            invisible="state == 'supervised' and locked"/>
+                    <button name="action_set_blocked" type="object" string="Siempre una persona"
+                            invisible="state == 'blocked' and locked"/>
+                    <button name="action_unlock" type="object" string="Dejar que decidan los datos"
+                            invisible="not locked"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-info" role="status">
+                        <field name="status_note" readonly="1"/>
+                    </div>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="category"/>
+                            <field name="line_id" placeholder="Todas las líneas"/>
+                            <field name="locked"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Datos recientes">
+                            <field name="success_rate" widget="progressbar"/>
+                            <field name="sample_count"/>
+                            <field name="progress" widget="progressbar"/>
+                            <field name="unsafe_count"/>
+                            <field name="escalated_count"/>
+                            <field name="last_change"/>
+                        </group>
+                    </group>
+                    <p class="text-muted">
+                        Supervisado: la IA prepara el borrador y una persona lo aprueba. Automático:
+                        responde sola; lo ganó con suficientes evaluaciones y un acierto alto sin
+                        respuestas inseguras, y lo pierde sola si la calidad baja.
+                    </p>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ai_autonomy_level" model="ir.actions.act_window">
+        <field name="name">Autonomía por tipo de conversación</field>
+        <field name="res_model">chatroom.ai.autonomy.level</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ============ Evaluaciones (modo sombra y correcciones) ============ -->
+    <record id="view_ai_evaluation_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.evaluation.list</field>
+        <field name="model">chatroom.ai.evaluation</field>
+        <field name="arch" type="xml">
+            <list string="Evaluaciones" create="0"
+                  decoration-success="verdict == 'good'" decoration-warning="verdict == 'acceptable'"
+                  decoration-danger="verdict in ('bad', 'unsafe')" decoration-muted="state != 'done'">
+                <field name="create_date" string="Fecha"/>
+                <field name="channel_id" optional="show"/>
+                <field name="category"/>
+                <field name="source"/>
+                <field name="customer_message"/>
+                <field name="verdict" widget="badge"/>
+                <field name="score" widget="percentage" optional="show"/>
+                <field name="state" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ai_evaluation_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.evaluation.form</field>
+        <field name="model">chatroom.ai.evaluation</field>
+        <field name="arch" type="xml">
+            <form string="Evaluación">
+                <header>
+                    <button name="action_create_test_case" type="object" string="Crear caso de prueba"
+                            invisible="state != 'done'"/>
+                    <field name="verdict" widget="statusbar" options="{'clickable': '1'}"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="channel_id"/>
+                            <field name="category"/>
+                            <field name="line_id"/>
+                        </group>
+                        <group>
+                            <field name="source"/>
+                            <field name="state"/>
+                            <field name="score" widget="percentage"/>
+                            <field name="example_id" invisible="not example_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="customer_message"/>
+                        <field name="ai_text"/>
+                        <field name="human_text"/>
+                        <field name="reason"/>
+                        <field name="error_message" invisible="not error_message"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ai_evaluation_search" model="ir.ui.view">
+        <field name="name">chatroom.ai.evaluation.search</field>
+        <field name="model">chatroom.ai.evaluation</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="customer_message"/>
+                <field name="channel_id"/>
+                <filter name="bad" string="Incorrectas o no seguras" domain="[('verdict', 'in', ('bad', 'unsafe'))]"/>
+                <filter name="shadow" string="Modo sombra" domain="[('source', '=', 'shadow')]"/>
+                <filter name="pending" string="Pendientes" domain="[('state', '=', 'pending')]"/>
+                <group>
+                    <filter name="group_category" string="Tipo" context="{'group_by': 'category'}"/>
+                    <filter name="group_verdict" string="Veredicto" context="{'group_by': 'verdict'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ai_evaluation" model="ir.actions.act_window">
+        <field name="name">Evaluaciones de la IA</field>
+        <field name="res_model">chatroom.ai.evaluation</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aún no hay evaluaciones</p>
+            <p>Aparecen solas: cuando alguien del equipo responde, la IA redacta en silencio su
+               propia respuesta (modo sombra) o se compara el borrador que usó el agente.</p>
+        </field>
+    </record>
+
+    <!-- ============ Ejemplos aprendidos ============ -->
+    <record id="view_ai_example_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.example.list</field>
+        <field name="model">chatroom.ai.example</field>
+        <field name="arch" type="xml">
+            <list string="Ejemplos aprendidos">
+                <field name="category"/>
+                <field name="customer_message"/>
+                <field name="approved_text"/>
+                <field name="source" optional="show"/>
+                <field name="line_id" optional="hide"/>
+                <field name="use_count" string="Usos"/>
+                <field name="last_used" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ai_example_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.example.form</field>
+        <field name="model">chatroom.ai.example</field>
+        <field name="arch" type="xml">
+            <form string="Ejemplo aprendido">
+                <sheet>
+                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger" invisible="active"/>
+                    <group>
+                        <group>
+                            <field name="category"/>
+                            <field name="line_id" placeholder="Todas las líneas"/>
+                            <field name="source"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                        <group>
+                            <field name="use_count"/>
+                            <field name="last_used"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="customer_message"/>
+                        <field name="approved_text"/>
+                        <field name="ai_text"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ai_example" model="ir.actions.act_window">
+        <field name="name">Ejemplos aprendidos</field>
+        <field name="res_model">chatroom.ai.example</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">La IA aún no aprendió ejemplos</p>
+            <p>Se guardan solos cuando el equipo corrige a la IA. Archiva los que no quieras que imite.</p>
+        </field>
+    </record>
+
+    <!-- ============ Reglas de traspaso ============ -->
+    <record id="view_ai_handoff_rule_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.handoff.rule.list</field>
+        <field name="model">chatroom.ai.handoff.rule</field>
+        <field name="arch" type="xml">
+            <list string="Reglas de traspaso">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="trigger"/>
+                <field name="notify"/>
+                <field name="pause_ai"/>
+                <field name="match_count" string="Veces"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ai_handoff_rule_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.handoff.rule.form</field>
+        <field name="model">chatroom.ai.handoff.rule</field>
+        <field name="arch" type="xml">
+            <form string="Regla de traspaso">
+                <sheet>
+                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title"><h1><field name="name" placeholder="Ej. El cliente pide una persona"/></h1></div>
+                    <group>
+                        <group string="Cuándo">
+                            <field name="trigger"/>
+                            <field name="keywords" invisible="trigger != 'keywords'" required="trigger == 'keywords'"
+                                   placeholder="hablar con una persona, asesor humano"/>
+                            <field name="intent" invisible="trigger != 'intent'" required="trigger == 'intent'"/>
+                            <field name="negative_requires_urgency" invisible="trigger != 'negative'"/>
+                            <field name="min_confidence" invisible="trigger != 'low_confidence'"/>
+                        </group>
+                        <group string="Qué hace">
+                            <field name="pause_ai"/>
+                            <field name="notify"/>
+                            <field name="post_summary"/>
+                            <field name="active" widget="boolean_toggle"/>
+                            <field name="company_id" groups="base.group_multi_company" placeholder="Todas las empresas"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="customer_message" placeholder="Vacío: no se le escribe al cliente"/>
+                    </group>
+                    <group>
+                        <field name="match_count"/>
+                        <field name="last_match"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ai_handoff_rule" model="ir.actions.act_window">
+        <field name="name">Reglas de traspaso a una persona</field>
+        <field name="res_model">chatroom.ai.handoff.rule</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ============ Memoria automática ============ -->
+    <record id="view_ai_memory_list_review" model="ir.ui.view">
+        <field name="name">chatroom.ai.memory.list.review</field>
+        <field name="model">chatroom.ai.memory</field>
+        <field name="arch" type="xml">
+            <list string="Memorias por revisar" create="0">
+                <field name="partner_id"/>
+                <field name="name"/>
+                <field name="content"/>
+                <field name="memory_type"/>
+                <field name="confidence" widget="percentage"/>
+                <field name="review_state" widget="badge"/>
+                <button name="action_approve_memory" type="object" string="Aprobar" icon="fa-check"
+                        invisible="review_state == 'approved'"/>
+                <button name="action_reject_memory" type="object" string="Descartar" icon="fa-times"
+                        invisible="review_state == 'rejected'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_ai_memory_review" model="ir.actions.act_window">
+        <field name="name">Memorias propuestas por la IA</field>
+        <field name="res_model">chatroom.ai.memory</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_ai_memory_list_review"/>
+        <field name="domain">[('source', '=', 'conversation')]</field>
+        <field name="context">{'active_test': False}</field>
+    </record>
+
+    <!-- ============ Pruebas de regresión ============ -->
+    <record id="view_ai_eval_case_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.eval.case.list</field>
+        <field name="model">chatroom.ai.eval.case</field>
+        <field name="arch" type="xml">
+            <list string="Casos de prueba">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="category"/>
+                <field name="expected"/>
+                <field name="last_result" widget="badge" decoration-success="last_result == 'pass'"
+                       decoration-danger="last_result == 'fail'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ai_eval_case_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.eval.case.form</field>
+        <field name="model">chatroom.ai.eval.case</field>
+        <field name="arch" type="xml">
+            <form string="Caso de prueba">
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="expected"/>
+                            <field name="category"/>
+                            <field name="last_result"/>
+                        </group>
+                        <group>
+                            <field name="must_include" invisible="expected != 'reply'"/>
+                            <field name="must_not_include" invisible="expected != 'reply'"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="transcript" placeholder="Cliente: Hola, ¿cuál es su horario?"/>
+                        <field name="reference_answer" invisible="expected != 'reply'"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ai_eval_case" model="ir.actions.act_window">
+        <field name="name">Casos de prueba</field>
+        <field name="res_model">chatroom.ai.eval.case</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_ai_eval_run_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.eval.run.list</field>
+        <field name="model">chatroom.ai.eval.run</field>
+        <field name="arch" type="xml">
+            <list string="Ejecuciones" create="0" decoration-danger="froze_autonomy">
+                <field name="create_date" string="Fecha"/>
+                <field name="pass_rate" widget="progressbar"/>
+                <field name="passed_count"/>
+                <field name="case_count"/>
+                <field name="froze_autonomy"/>
+                <field name="summary"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ai_eval_run_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.eval.run.form</field>
+        <field name="model">chatroom.ai.eval.run</field>
+        <field name="arch" type="xml">
+            <form string="Ejecución de pruebas" create="0">
+                <header>
+                    <button name="action_run_again" type="object" string="Ejecutar de nuevo" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-danger" role="alert" invisible="not froze_autonomy">
+                        <field name="summary" readonly="1"/>
+                    </div>
+                    <div class="alert alert-success" role="status" invisible="froze_autonomy">
+                        <field name="summary" readonly="1"/>
+                    </div>
+                    <group>
+                        <field name="pass_rate" widget="progressbar"/>
+                        <field name="froze_autonomy" invisible="1"/>
+                    </group>
+                    <field name="result_ids">
+                        <list decoration-success="passed" decoration-danger="not passed">
+                            <field name="case_id"/>
+                            <field name="passed"/>
+                            <field name="detail"/>
+                            <field name="answer" optional="show"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ai_eval_run" model="ir.actions.act_window">
+        <field name="name">Resultados de las pruebas</field>
+        <field name="res_model">chatroom.ai.eval.run</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_ai_eval_run_now" model="ir.actions.server">
+        <field name="name">Ejecutar pruebas ahora</field>
+        <field name="model_id" ref="model_chatroom_ai_eval_run"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_run_from_menu()</field>
+    </record>
+</odoo>

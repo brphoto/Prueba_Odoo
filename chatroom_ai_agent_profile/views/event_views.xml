@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_agent_event_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.agent.event.list</field>
+        <field name="model">chatroom.ai.agent.event</field>
+        <field name="arch" type="xml">
+            <list string="Actividad del agente" create="0" edit="0"
+                  decoration-success="kind in ('sent', 'local')" decoration-info="kind in ('approval', 'followup')"
+                  decoration-warning="kind in ('review', 'handoff')" decoration-danger="kind == 'error'">
+                <field name="create_date" string="Fecha"/>
+                <field name="channel_id"/>
+                <field name="kind" widget="badge"/>
+                <field name="reason"/>
+                <field name="intent" optional="show"/>
+                <field name="line_id" optional="hide"/>
+                <field name="latency_ms" optional="show"/>
+                <field name="cached" optional="show"/>
+                <field name="tokens" optional="show" sum="Total"/>
+                <field name="cost" optional="show" sum="Total"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_agent_event_graph" model="ir.ui.view">
+        <field name="name">chatroom.ai.agent.event.graph</field>
+        <field name="model">chatroom.ai.agent.event</field>
+        <field name="arch" type="xml">
+            <graph string="Actividad del agente" type="bar" stacked="1">
+                <field name="date" interval="day"/>
+                <field name="kind"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_agent_event_pivot" model="ir.ui.view">
+        <field name="name">chatroom.ai.agent.event.pivot</field>
+        <field name="model">chatroom.ai.agent.event</field>
+        <field name="arch" type="xml">
+            <pivot string="Actividad del agente">
+                <field name="intent" type="row"/>
+                <field name="kind" type="col"/>
+                <field name="cost" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_agent_event_search" model="ir.ui.view">
+        <field name="name">chatroom.ai.agent.event.search</field>
+        <field name="model">chatroom.ai.agent.event</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="channel_id"/>
+                <field name="reason"/>
+                <filter name="last_30" string="Últimos 30 días"
+                        domain="[('date', '&gt;=', (context_today() - relativedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                <filter name="alone" string="Respondió sola" domain="[('kind', 'in', ('sent', 'local'))]"/>
+                <filter name="human" string="Necesitó a una persona" domain="[('kind', 'in', ('approval', 'review', 'handoff'))]"/>
+                <group>
+                    <filter name="group_kind" string="Resultado" context="{'group_by': 'kind'}"/>
+                    <filter name="group_intent" string="Tipo de conversación" context="{'group_by': 'intent'}"/>
+                    <filter name="group_reason" string="Motivo" context="{'group_by': 'reason'}"/>
+                    <filter name="group_line" string="Línea" context="{'group_by': 'line_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_reply_cache_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.reply.cache.list</field>
+        <field name="model">chatroom.ai.reply.cache</field>
+        <field name="arch" type="xml">
+            <list string="Respuestas reutilizadas" create="0">
+                <field name="question"/>
+                <field name="reply"/>
+                <field name="hits"/>
+                <field name="last_hit"/>
+                <field name="expires_at"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_reply_cache" model="ir.actions.act_window">
+        <field name="name">Respuestas reutilizadas</field>
+        <field name="res_model">chatroom.ai.reply.cache</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aún no hay respuestas reutilizadas</p>
+            <p>Cuando la IA responde sola una primera pregunta con la información publicada, la misma
+               pregunta de otro cliente se responde igual, sin consultar a la IA, hasta que cambie la
+               información. Borra una fila para que la IA la vuelva a redactar.</p>
+        </field>
+    </record>
+
+    <record id="action_agent_event" model="ir.actions.act_window">
+        <field name="name">Tablero del agente</field>
+        <field name="res_model">chatroom.ai.agent.event</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="context">{'search_default_last_30': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todavía no hay actividad</p>
+            <p>Aquí verás qué respondió la IA sola, qué quedó para aprobar y qué pasó a una persona.</p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_insurance_compare_client" model="ir.actions.report">
+        <field name="name">Comparativo para el cliente</field>
+        <field name="model">insurance.compare</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">insurance_ai_compare.report_insurance_compare_client</field>
+        <field name="report_file">insurance_ai_compare.report_insurance_compare_client</field>
+        <field name="print_report_name">'Comparativo %s' % (object.name or '').replace('/', '-')</field>
+        <field name="binding_model_id" ref="model_insurance_compare"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_insurance_compare_internal" model="ir.actions.report">
+        <field name="name">Comparativo interno (negociación)</field>
+        <field name="model">insurance.compare</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">insurance_ai_compare.report_insurance_compare_internal</field>
+        <field name="report_file">insurance_ai_compare.report_insurance_compare_internal</field>
+        <field name="print_report_name">'Comparativo interno %s' % (object.name or '').replace('/', '-')</field>
+        <field name="binding_model_id" ref="model_insurance_compare"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_insurance_compare_styles">
+        <style>
+            .o_icr h2 { font-size: 20px; margin-bottom: 2px; }
+            .o_icr .o_icr_sub { color: #667085; font-size: 11px; margin-bottom: 12px; }
+            .o_icr table.o_icr_matrix { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+            .o_icr .o_icr_matrix th, .o_icr .o_icr_matrix td { border: 1px solid #d0d5dd; padding: 4px 6px; vertical-align: top; }
+            .o_icr .o_icr_matrix thead th { background: #f2f4f7; text-align: center; }
+            .o_icr .o_icr_matrix tbody th { text-align: left; background: #fafafa; width: 26%; }
+            .o_icr .o_icr_best { background: #ecfdf3 !important; }
+            .o_icr .o_icr_pill { display: inline-block; padding: 1px 6px; border-radius: 8px; font-weight: bold; font-size: 9.5px; }
+            .o_icr .o_icr_yes { color: #067647; background: #dcfae6; }
+            .o_icr .o_icr_limited { color: #b54708; background: #fef0c7; }
+            .o_icr .o_icr_no { color: #b42318; background: #fee4e2; }
+            .o_icr .o_icr_unknown { color: #98a2b3; }
+            .o_icr .o_icr_note { color: #667085; font-size: 10px; margin-top: 4px; }
+            .o_icr .o_icr_box { border: 1px solid #abefc6; background: #ecfdf3; padding: 8px 10px; margin: 12px 0; border-radius: 4px; }
+            .o_icr .o_icr_card { border: 1px solid #eaecf0; padding: 6px 9px; margin-bottom: 8px; page-break-inside: avoid; }
+            .o_icr .o_icr_legal { color: #667085; font-size: 9px; margin-top: 14px; border-top: 1px solid #eaecf0; padding-top: 6px; }
+            .o_icr .o_icr_draft { color: #b42318; border: 2px solid #b42318; padding: 4px 8px; font-weight: bold; text-align: center; margin-bottom: 10px; }
+            .o_icr .o_icr_pre { white-space: pre-line; }
+        </style>
+    </template>
+
+    <!-- Cuerpo común: `internal` agrega puntaje detallado y negociación. -->
+    <template id="report_insurance_compare_body">
+        <t t-set="offers" t-value="doc._matrix_offers()"/>
+        <t t-set="best" t-value="doc.recommended_offer_id"/>
+        <t t-set="money" t-value="lambda amount: doc.currency_id.format(amount) if amount else '—'"/>
+        <div class="page o_icr">
+            <t t-call="insurance_ai_compare.report_insurance_compare_styles"/>
+            <div class="o_icr_draft" t-if="doc.state not in ('approved', 'sent', 'won')">
+                BORRADOR · pendiente de aprobación del asesor
+            </div>
+            <h2>Comparativo de seguros · <t t-esc="doc.template_id.name"/></h2>
+            <div class="o_icr_sub">
+                <t t-esc="doc.name"/> · Cliente: <strong t-esc="doc.partner_id.name"/>
+                · Asesor: <t t-esc="doc.advisor_id.name"/>
+                · <t t-esc="context_timestamp(datetime.datetime.now()).strftime('%d/%m/%Y')"/>
+            </div>
+
+            <div t-if="doc.profile_id and doc.profile_id.summary" class="o_icr_card">
+                <strong>Perfil del cliente</strong>
+                <div class="o_icr_pre" t-esc="doc.profile_id.summary"/>
+            </div>
+            <div t-if="doc.priorities" class="o_icr_card">
+                <strong>Qué valora el cliente</strong>
+                <div class="o_icr_pre" t-esc="doc.priorities"/>
+            </div>
+
+            <div class="o_icr_box" t-if="best">
+                <strong>Opción recomendada: <t t-esc="best.insurer_id.name"/></strong>
+                (prima total <t t-esc="money(best.premium_total)"/>)
+                <div class="o_icr_pre" t-if="doc.recommendation_reason" t-esc="doc.recommendation_reason"/>
+                <div class="o_icr_note" t-if="best.rank and best.rank != 1">
+                    No es la de mayor puntaje general (puesto #<t t-esc="best.rank"/>): se recomienda por
+                    lo que más valora el cliente.
+                </div>
+            </div>
+
+            <table class="o_icr_matrix" t-if="offers">
+                <thead>
+                    <tr>
+                        <th/>
+                        <th t-foreach="offers" t-as="offer" t-att-class="'o_icr_best' if offer == best else ''">
+                            <t t-esc="offer.insurer_id.name"/>
+                            <div t-if="offer.rank">#<t t-esc="offer.rank"/></div>
+                            <div t-else="" class="o_icr_no">Descartada</div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><th>Prima total</th><td t-foreach="offers" t-as="offer" t-att-class="'o_icr_best' if offer == best else ''"><t t-esc="money(offer.premium_total)"/></td></tr>
+                    <tr><th>Prima neta</th><td t-foreach="offers" t-as="offer" t-att-class="'o_icr_best' if offer == best else ''"><t t-esc="money(offer.premium_net)"/></td></tr>
+                    <tr><th>Forma de pago</th><td t-foreach="offers" t-as="offer" t-att-class="'o_icr_best' if offer == best else ''"><t t-esc="offer.payment_terms or '—'"/></td></tr>
+                    <tr><th>Suma asegurada</th><td t-foreach="offers" t-as="offer" t-att-class="'o_icr_best' if offer == best else ''"><t t-esc="money(offer.sum_insured)"/></td></tr>
+                    <tr><th>Deducible</th><td t-foreach="offers" t-as="offer" t-att-class="'o_icr_best' if offer == best else ''"><t t-esc="offer.deductible_text or '—'"/></td></tr>
+                    <tr t-foreach="doc.template_id.coverage_ids" t-as="coverage">
+                        <th><t t-esc="coverage.name"/><t t-if="coverage.required"> *</t></th>
+                        <td t-foreach="offers" t-as="offer" t-att-class="'o_icr_best' if offer == best else ''">
+                            <t t-set="line" t-value="offer.line_ids.filtered(lambda item: item.coverage_id == coverage)[:1]"/>
+                            <t t-set="cov_state" t-value="line.state if line else 'unknown'"/>
+                            <span t-attf-class="o_icr_#{cov_state} #{'o_icr_pill' if cov_state != 'unknown' else ''}">
+                                <t t-if="cov_state == 'yes'">Sí</t>
+                                <t t-elif="cov_state == 'limited'">Limitada</t>
+                                <t t-elif="cov_state == 'no'">No</t>
+                                <t t-else="">Sin dato</t>
+                            </span>
+                            <div t-if="line and line.limit_text" t-esc="line.limit_text"/>
+                            <div t-if="line and line.source_page" style="color:#98a2b3">pág. <t t-esc="line.source_page"/></div>
+                        </td>
+                    </tr>
+                    <tr><th>Asistencias</th><td t-foreach="offers" t-as="offer" t-att-class="'o_icr_best' if offer == best else ''"><div class="o_icr_pre" t-esc="offer.assistances or '—'"/></td></tr>
+                    <tr><th>Puntaje (0-100)</th><td t-foreach="offers" t-as="offer" t-att-class="'o_icr_best' if offer == best else ''"><strong t-esc="'%.1f' % offer.score_total"/></td></tr>
+                    <t t-if="internal">
+                        <tr><th>· Precio</th><td t-foreach="offers" t-as="offer"><t t-esc="'%.1f' % offer.score_price"/></td></tr>
+                        <tr><th>· Deducible</th><td t-foreach="offers" t-as="offer"><t t-esc="'%.1f' % offer.score_deductible"/></td></tr>
+                        <tr><th>· Coberturas</th><td t-foreach="offers" t-as="offer"><t t-esc="'%.1f' % offer.score_coverage"/></td></tr>
+                        <tr><th>· Servicio</th><td t-foreach="offers" t-as="offer"><t t-esc="'%.1f' % offer.score_service"/></td></tr>
+                    </t>
+                </tbody>
+            </table>
+            <p style="font-size:9px;color:#667085">Sí = incluida · Limitada = con límite o condiciones · No = no incluida · * cobertura obligatoria.
+                Pesos: precio <t t-esc="'%g' % doc.template_id.weight_price"/>%, deducible <t t-esc="'%g' % doc.template_id.weight_deductible"/>%,
+                coberturas <t t-esc="'%g' % doc.template_id.weight_coverage"/>%, asistencias y servicio <t t-esc="'%g' % doc.template_id.weight_service"/>%.</p>
+
+            <t t-if="doc.analysis_summary">
+                <h4>Análisis</h4>
+                <div class="o_icr_pre" t-esc="doc.analysis_summary"/>
+            </t>
+            <t t-foreach="offers" t-as="offer">
+                <div class="o_icr_card" t-if="offer.advantages or offer.disadvantages or offer.disqualified">
+                    <strong t-esc="offer.insurer_id.name"/>
+                    <div t-if="offer.disqualified" class="o_icr_no">Descartada: <t t-esc="offer.disqualified_reason"/></div>
+                    <div t-if="offer.advantages"><em>Ventajas</em><div class="o_icr_pre" t-esc="offer.advantages"/></div>
+                    <div t-if="offer.disadvantages"><em>Desventajas</em><div class="o_icr_pre" t-esc="offer.disadvantages"/></div>
+                    <div t-if="internal and offer.improvements"><em>Qué pedirle para mejorar</em><div class="o_icr_pre" t-esc="offer.improvements"/></div>
+                    <div t-if="offer.exclusions"><em>Exclusiones relevantes</em><div class="o_icr_pre" t-esc="offer.exclusions"/></div>
+                </div>
+            </t>
+            <div t-if="internal and doc.negotiation_notes" class="o_icr_card">
+                <strong>Negociación (uso interno)</strong>
+                <div class="o_icr_pre" t-esc="doc.negotiation_notes"/>
+            </div>
+            <div class="o_icr_legal">
+                <div t-if="doc.approved_by_id">Aprobado por <t t-esc="doc.approved_by_id.name"/>.</div>
+                <div class="o_icr_pre" t-esc="doc.legal_note"/>
+                <div>Datos tomados de las cotizaciones entregadas por cada aseguradora; «pág.» indica
+                    la página del documento original.</div>
+            </div>
+        </div>
+    </template>
+
+    <template id="report_insurance_compare_client">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <t t-set="internal" t-value="False"/>
+                    <t t-call="insurance_ai_compare.report_insurance_compare_body"/>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_insurance_compare_internal">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <t t-set="internal" t-value="True"/>
+                    <t t-call="insurance_ai_compare.report_insurance_compare_body"/>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <record id="mail_template_insurance_compare" model="mail.template">
+        <field name="name">Comparativo de seguros: envío al cliente</field>
+        <field name="model_id" ref="model_insurance_compare"/>
+        <field name="subject">Comparativo de seguros {{ object.name }}</field>
+        <field name="email_to">{{ object.partner_id.email }}</field>
+        <field name="partner_to">{{ object.partner_id.id }}</field>
+        <field name="report_template_ids" eval="[(4, ref('action_report_insurance_compare_client'))]"/>
+        <field name="body_html" type="html">
+            <div>
+                <p>Hola <t t-out="object.partner_id.name or ''"/>,</p>
+                <p>Te comparto el comparativo de las cotizaciones de <t t-out="object.template_id.name or ''"/>.</p>
+                <p t-if="object.client_explanation"><t t-out="object.client_explanation"/></p>
+                <p>Quedo atento a tus comentarios.</p>
+                <p><t t-out="object.advisor_id.name or ''"/></p>
+            </div>
+        </field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+</odoo>

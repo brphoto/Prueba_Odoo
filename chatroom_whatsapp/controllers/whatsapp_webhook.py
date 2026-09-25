@@ -27,14 +27,18 @@ class WhatsAppWebhookController(http.Controller):
     @http.route('/chatroom_whatsapp/webhook', type='http', auth='public',
                 methods=['GET'], csrf=False)
     def whatsapp_webhook_verify(self, **kwargs):
-        """Verificación inicial del webhook exigida por Meta."""
-        verify_token = request.env['ir.config_parameter'].sudo().get_param(
-            'chatroom_whatsapp.webhook_verify_token')
+        """Verificación inicial del webhook exigida por Meta.
+
+        Vale el Verify Token general o el de cualquier línea que viva en
+        otra App de Meta: cada App suscribe el mismo webhook con el suyo.
+        """
+        verify_tokens = request.env['chatroom.whatsapp.number'].sudo()._get_webhook_verify_tokens()
         mode = kwargs.get('hub.mode')
-        token = kwargs.get('hub.verify_token')
+        token = kwargs.get('hub.verify_token') or ''
         challenge = kwargs.get('hub.challenge')
 
-        if mode == 'subscribe' and verify_token and token == verify_token:
+        if mode == 'subscribe' and any(
+                hmac.compare_digest(token, expected) for expected in verify_tokens):
             return request.make_response(challenge or '')
         _logger.warning("Fallo de verificación del webhook de WhatsApp")
         return request.make_response('Forbidden', status=403)
@@ -210,9 +214,11 @@ class WhatsAppWebhookController(http.Controller):
 
     # ------------------------------------------------------------------
     def _is_valid_signature(self, raw_body):
-        app_secret = request.env['ir.config_parameter'].sudo().get_param(
-            'chatroom_whatsapp.app_secret')
-        if not app_secret:
+        # Una línea puede vivir en otra App de Meta con su propio App
+        # Secret: la firma vale si coincide con cualquiera de los secretos
+        # configurados (el general o el de alguna línea activa).
+        app_secrets = request.env['chatroom.whatsapp.number'].sudo()._get_webhook_secrets()
+        if not app_secrets:
             # Sin App Secret configurado no hay forma de verificar que el
             # POST venga realmente de Meta: el endpoint es auth='public',
             # así que dejar pasar acá equivale a aceptar mensajes,
@@ -224,9 +230,10 @@ class WhatsAppWebhookController(http.Controller):
             return False
 
         signature = request.httprequest.headers.get('X-Hub-Signature-256', '')
-        expected = 'sha256=' + hmac.new(
-            app_secret.encode(), raw_body, hashlib.sha256).hexdigest()
-        return hmac.compare_digest(signature, expected)
+        return any(
+            hmac.compare_digest(signature, 'sha256=' + hmac.new(
+                app_secret.encode(), raw_body, hashlib.sha256).hexdigest())
+            for app_secret in app_secrets)
 
     @staticmethod
     def _already_processed(env, wa_message_id):
@@ -323,6 +330,8 @@ class WhatsAppWebhookController(http.Controller):
             if not channel._maybe_send_away_message():
                 if ai_message_queue is None:
                     channel._ai_process_inbound_message(message)
+                elif channel._ai_queue_enabled():
+                    channel._ai_enqueue_inbound(message)
                 else:
                     ai_message_queue.append(message.id)
 
@@ -384,6 +393,8 @@ class WhatsAppWebhookController(http.Controller):
         if not channel._maybe_send_away_message():
             if ai_message_queue is None:
                 channel._ai_process_inbound_message(message)
+            elif channel._ai_queue_enabled():
+                channel._ai_enqueue_inbound(message)
             else:
                 ai_message_queue.append(message.id)
 

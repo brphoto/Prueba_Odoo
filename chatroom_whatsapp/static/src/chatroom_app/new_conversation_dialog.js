@@ -38,8 +38,10 @@ export class NewConversationDialog extends Component {
         });
 
         onWillStart(async () => {
-            this.state.numbers = await this.orm.searchRead(
-                "chatroom.whatsapp.number", [["active", "=", true]], ["name"], { order: "name" });
+            // Solo las líneas que este usuario puede atender: un agente no
+            // escribe desde el número de otro equipo.
+            this.state.numbers = await this.orm.call(
+                "chatroom.whatsapp.number", "get_available_lines", []);
         });
     }
 

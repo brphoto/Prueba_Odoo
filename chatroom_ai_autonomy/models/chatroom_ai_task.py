@@ -184,13 +184,14 @@ class ChatroomAiTaskAutonomy(models.Model):
             'autonomy_evaluated_at': fields.Datetime.now(),
         }
         if policy.mode == 'autonomous' and decision == 'allow':
-            # The policy is the per-task approval gate. It does not modify the
-            # global tool definition; it only authorizes this concrete task.
-            self.action_ids.filtered(lambda line: self._autonomy_action_key(line)).write({
-                'requires_approval': False,
-            })
+            # La política es la aprobación de ESTA tarea. No toca la definición
+            # de las herramientas ni la marca de cada acción (el agente impide
+            # rebajarla): deja constancia de que la política la autorizó y el
+            # control de ejecución lo acepta como aprobación.
+            self.sudo().write({'policy_approved': True})
             values.update({'approval_required': False, 'state': 'planned', 'error_message': False})
         elif decision in ('approval', 'blocked'):
+            self.sudo().write({'policy_approved': False})
             values.update({'approval_required': True, 'state': 'awaiting_approval', 'error_message': reason})
         self.write(values)
         self._audit('Autonomía evaluada', 'done', message=reason)

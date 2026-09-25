@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_chatroom_ai_quick_action_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.quick.action.list</field>
+        <field name="model">chatroom.ai.quick.action</field>
+        <field name="arch" type="xml">
+            <list string="Acciones de IA">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="shortcut" string="Atajo"/>
+                <field name="output_mode" string="Resultado"/>
+                <field name="line_ids" widget="many2many_tags" optional="show"/>
+                <field name="use_count" string="Usos" optional="show"/>
+                <field name="suggestion_count" optional="hide"/>
+                <field name="helpful_rate" string="% útiles" widget="progressbar" optional="show"/>
+                <field name="edit_rate" string="% editados" widget="progressbar" optional="show"/>
+                <field name="last_used" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_ai_quick_action_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.quick.action.form</field>
+        <field name="model">chatroom.ai.quick.action</field>
+        <field name="arch" type="xml">
+            <form string="Acción de IA">
+                <sheet>
+                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_suggestions" type="object"
+                                class="oe_stat_button" icon="fa-comments">
+                            <field name="suggestion_count" widget="statinfo" string="Borradores"/>
+                        </button>
+                        <div class="oe_stat_button" invisible="not suggestion_count">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="helpful_rate" widget="float" digits="[3,0]" nolabel="1"/>%</span>
+                                <span class="o_stat_text">útiles</span>
+                            </div>
+                        </div>
+                        <div class="oe_stat_button" invisible="not suggestion_count">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="edit_rate" widget="float" digits="[3,0]" nolabel="1"/>%</span>
+                                <span class="o_stat_text">editados</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="Ej. Responder con precio y stock"/></h1>
+                        <field name="description" placeholder="Cuándo usarla, en una frase (lo ve el agente)"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="output_mode" widget="radio"/>
+                        </group>
+                        <group>
+                            <field name="shortcut" placeholder="precio"/>
+                            <field name="icon" placeholder="fa-magic"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info" role="status" invisible="output_mode != 'rewrite'">
+                        El agente escribe un borrador en el mensaje y la IA lo reemplaza por la versión
+                        mejorada. Nada se envía hasta que el agente pulse enviar.
+                    </div>
+                    <div class="alert alert-info" role="status" invisible="output_mode != 'intent'">
+                        La instrucción debe pedir un JSON como
+                        <code>{"intent": "consulta|venta|soporte|queja|otro"}</code>.
+                    </div>
+                    <notebook>
+                        <page string="Instrucción" name="instruction">
+                            <field name="instruction" nolabel="1"
+                                   placeholder="Qué debe hacer la IA. Ej.: Responde a {cliente} sobre precios usando solo el catálogo..."/>
+                            <group string="Variables disponibles" class="mt-3">
+                                <field name="variables_help" nolabel="1" colspan="2" readonly="1"/>
+                            </group>
+                            <group string="Estilo">
+                                <group>
+                                    <field name="tone"/>
+                                    <field name="language"/>
+                                </group>
+                                <group>
+                                    <field name="max_words"/>
+                                    <field name="history_messages"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Conocimiento" name="sources">
+                            <p class="text-muted">
+                                Qué información de Odoo recibe la IA además de la conversación.
+                                Menos fuentes = respuestas más enfocadas y menos consumo.
+                            </p>
+                            <group>
+                                <group>
+                                    <field name="use_knowledge" widget="boolean_toggle"/>
+                                    <field name="use_memory" widget="boolean_toggle"/>
+                                </group>
+                                <group>
+                                    <field name="use_catalog" widget="boolean_toggle"/>
+                                    <field name="use_customer_history" widget="boolean_toggle"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Quién la ve" name="visibility">
+                            <group>
+                                <field name="line_ids" widget="many2many_tags"
+                                       placeholder="Todas las líneas"/>
+                                <field name="group_ids" widget="many2many_tags"
+                                       placeholder="Todos los agentes"/>
+                                <field name="company_id" groups="base.group_multi_company"
+                                       placeholder="Todas las empresas"/>
+                            </group>
+                        </page>
+                        <page string="Uso y calidad" name="quality">
+                            <group>
+                                <group>
+                                    <field name="use_count"/>
+                                    <field name="last_used"/>
+                                    <field name="suggestion_count"/>
+                                    <field name="sent_count"/>
+                                </group>
+                                <group>
+                                    <field name="helpful_count"/>
+                                    <field name="edited_count"/>
+                                    <field name="unsafe_count"/>
+                                </group>
+                            </group>
+                            <p class="text-muted">
+                                Si muchos borradores se editan o se marcan como no seguros,
+                                ajusta la instrucción o las fuentes de conocimiento.
+                            </p>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_chatroom_ai_quick_action_search" model="ir.ui.view">
+        <field name="name">chatroom.ai.quick.action.search</field>
+        <field name="model">chatroom.ai.quick.action</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="shortcut"/>
+                <field name="line_ids"/>
+                <filter name="archived" string="Archivadas" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_mode" string="Resultado" context="{'group_by': 'output_mode'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_chatroom_ai_quick_action" model="ir.actions.act_window">
+        <field name="name">Acciones de IA</field>
+        <field name="res_model">chatroom.ai.quick.action</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Crea una acción de IA</p>
+            <p>Cada acción es una instrucción reutilizable que el agente ejecuta desde el chat
+               (panel «Asistente IA», botón ✨ o escribiendo <code>/atajo</code> en el mensaje).
+               Elige qué conocimiento usa y qué hace con el resultado.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_chatroom_ai_quick_action" name="Acciones de IA"
+              parent="chatroom_whatsapp.menu_chatroom_config" sequence="20"
+              action="action_chatroom_ai_quick_action"
+              groups="chatroom_whatsapp.group_chatroom_manager,chatroom_ai.group_chatroom_ai_manager"/>
+
+    <!-- Persona y acciones exclusivas en cada línea de WhatsApp. -->
+    <record id="view_chatroom_whatsapp_number_form_ai" model="ir.ui.view">
+        <field name="name">chatroom.whatsapp.number.form.ai</field>
+        <field name="model">chatroom.whatsapp.number</field>
+        <field name="inherit_id" ref="chatroom_whatsapp.view_chatroom_whatsapp_number_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Asistente IA de esta línea" name="ai_persona">
+                    <div class="text-muted" colspan="2">
+                        Cómo habla la IA en este número (marca, tono, qué ofrece y qué no debe
+                        prometer). Se aplica a sugerencias, acciones rápidas y agente.
+                    </div>
+                    <field name="ai_persona" nolabel="1" colspan="2"
+                           placeholder="Ej.: Eres el asistente de Tienda Norte. Tuteas al cliente, eres breve y solo hablas de productos de hogar. Nunca confirmes fechas de entrega."/>
+                    <field name="ai_quick_action_ids" widget="many2many_tags" colspan="2"
+                           placeholder="Acciones que solo aparecen en esta línea"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

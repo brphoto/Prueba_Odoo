@@ -1170,3 +1170,83 @@
         color: $o-main-text-color;
     }
 }
+
+// Panel compacto (19.0.1.1): tarea primero, sugerencia en una línea, un solo
+// selector de "qué preparar" y contexto discreto al pie.
+.o_chatroom_ai_agent {
+    .o_chatroom_ai_agent_badge {
+        display: inline-block;
+        margin-left: 6px;
+        padding: 1px 8px;
+        border-radius: 999px;
+        font-size: .72em;
+        font-weight: 600;
+        vertical-align: middle;
+
+        &.o_attention {
+            background: rgba(245, 158, 11, .18);
+            color: #b45309;
+        }
+    }
+
+    .o_chatroom_ai_agent_task.o_attention {
+        border-color: rgba(245, 158, 11, .55);
+        box-shadow: 0 0 0 1px rgba(245, 158, 11, .25);
+    }
+
+    .o_chatroom_ai_agent_route_hint {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 8px;
+        padding: 7px 9px;
+        border-radius: 8px;
+        background: rgba(113, 75, 103, .08);
+
+        > .fa {
+            margin-top: 2px;
+            color: #b7791f;
+        }
+    }
+
+    .o_chatroom_ai_agent_run {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 8px;
+
+        select {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        button {
+            flex: 0 0 auto;
+        }
+    }
+
+    .o_chatroom_ai_agent_footer {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 4px 10px;
+        color: var(--chatroom-ui-text-muted, #667085);
+        font-size: .72rem;
+
+        .o_chatroom_ai_agent_links {
+            display: inline-flex;
+            gap: 10px;
+        }
+
+        .btn-link {
+            font-size: inherit;
+        }
+    }
+
+    .o_chatroom_ai_agent_help {
+        margin-top: 8px;
+        padding: 8px 10px;
+        border: 1px dashed var(--chatroom-ui-border, #e5e7eb);
+        border-radius: 8px;
+        font-size: .76rem;
+    }
+}

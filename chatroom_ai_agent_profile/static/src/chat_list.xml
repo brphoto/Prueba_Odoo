@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="chatroom_whatsapp.ChatroomApp" t-inherit-mode="extension">
+        <xpath expr="//span[hasclass('o_chatroom_app_list_name')]" position="after">
+            <span t-if="aiListState(channel)"
+                  t-attf-class="o_ai_list_state {{ aiListState(channel).css }}"
+                  t-att-title="aiListState(channel).label" t-att-aria-label="aiListState(channel).label">
+                <i t-attf-class="fa {{ aiListState(channel).icon }}"/>
+            </span>
+        </xpath>
+    </t>
+</templates>

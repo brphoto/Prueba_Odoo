@@ -10,6 +10,7 @@
                         string="Sincronizar con Meta" class="btn-primary"/>
                 <field name="name"/>
                 <field name="language"/>
+                <field name="business_account_id" optional="show"/>
                 <field name="category"/>
                 <field name="variable_count" string="Variables"/>
                 <field name="last_synced_at" string="Última sincronización" optional="hide"/>
@@ -53,6 +54,7 @@
                         <group class="o_chatroom_template_meta_card">
                             <field name="language" string="Idioma" readonly="waba_template_id"/>
                             <field name="category" string="Categoría" readonly="waba_template_id"/>
+                            <field name="business_account_id" readonly="waba_template_id"/>
                         </group>
                         <group class="o_chatroom_template_meta_card">
                             <field name="header_type" string="Tipo de encabezado" readonly="waba_template_id"/>
@@ -121,6 +123,7 @@
             <form string="Enviar plantilla de WhatsApp" class="o_chatroom_template_send_wizard">
                 <group class="o_chatroom_workflow_step">
                     <field name="channel_id" invisible="1"/>
+                    <field name="waba_id" invisible="1"/>
                     <field name="template_id"/>
                     <field name="variable_count" string="Cantidad de variables"/>
                     <field name="variables_text"

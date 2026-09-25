@@ -8,9 +8,13 @@ class ChatroomSendTemplateWizard(models.TransientModel):
     _description = "Enviar plantilla de WhatsApp"
 
     channel_id = fields.Many2one('chatroom.channel', required=True)
+    # WABA del número por el que sale la conversación: solo sus plantillas
+    # existen para ese número en Meta.
+    waba_id = fields.Char(compute='_compute_waba_id')
     template_id = fields.Many2one(
         'chatroom.template', required=True, string="Plantilla",
-        domain=[('status', '=', 'approved')])
+        domain="[('status', '=', 'approved'), '|', ('business_account_id', '=', False), "
+               "('business_account_id', '=', waba_id)]")
     variable_count = fields.Integer(related='template_id.variable_count')
     variables_text = fields.Text(
         string="Variables",
@@ -21,6 +25,11 @@ class ChatroomSendTemplateWizard(models.TransientModel):
     missing_variable_count = fields.Integer(compute='_compute_readiness')
     ready_to_send = fields.Boolean(compute='_compute_readiness')
     readiness_message = fields.Char(compute='_compute_readiness')
+
+    @api.depends('channel_id')
+    def _compute_waba_id(self):
+        for rec in self:
+            rec.waba_id = rec.channel_id._get_waba_id() if rec.channel_id else False
 
     @api.onchange('template_id')
     def _onchange_template_id(self):
@@ -79,6 +88,12 @@ class ChatroomSendTemplateWizard(models.TransientModel):
             raise UserError(_("El cliente se dio de baja; primero debe volver a autorizar los mensajes."))
         if not self.template_id or self.template_id.status != 'approved':
             raise UserError(_("Solo puedes enviar una plantilla aprobada por Meta."))
+        template_waba = self.template_id.business_account_id
+        if template_waba and self.waba_id and template_waba != self.waba_id:
+            raise UserError(_(
+                "La plantilla «%(template)s» es de otra WABA y no existe para el "
+                "número de esta conversación. Elige una plantilla de su WABA.") % {
+                    'template': self.template_id.name})
         values = [v for v in (self.variables_text or '').splitlines()]
         if len(values) < self.template_id.variable_count or any(
                 not values[index].strip()

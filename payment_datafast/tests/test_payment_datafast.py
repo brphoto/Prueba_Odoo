@@ -1,6 +1,11 @@
+from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
 
+# post_install: con -u, un test at_install corre antes de que módulos como
+# purchase_stock estén en el registro, pero su columna obligatoria
+# (res_partner.group_rfq) ya existe y crear un contacto falla.
+@tagged('post_install', '-at_install')
 class TestPaymentDatafast(TransactionCase):
 
     @classmethod

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Lee las cotizaciones en cola. Además de su intervalo, se dispara al
+         instante (ir.cron._trigger) cada vez que se encola una lectura. -->
+    <record id="ir_cron_insurance_extract" model="ir.cron">
+        <field name="name">Comparativo de seguros: leer cotizaciones con IA</field>
+        <field name="model_id" ref="model_insurance_compare"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_process_offers(limit=5)</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+</odoo>

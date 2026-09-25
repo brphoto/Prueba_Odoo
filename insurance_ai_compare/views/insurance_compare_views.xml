@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Cotización de una aseguradora (se abre como diálogo) -->
+    <record id="view_insurance_compare_offer_form" model="ir.ui.view">
+        <field name="name">insurance.compare.offer.form</field>
+        <field name="model">insurance.compare.offer</field>
+        <field name="arch" type="xml">
+            <form string="Cotización">
+                <header>
+                    <button name="action_retry" type="object" string="Leer de nuevo con IA"
+                            invisible="state not in ('error', 'extracted', 'manual')" class="btn-secondary"/>
+                    <button name="action_mark_manual" type="object" string="Cargar datos a mano"
+                            invisible="state not in ('draft', 'error')" class="btn-secondary"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,queued,extracted"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-danger" role="alert" invisible="state != 'error'">
+                        <field name="error_message" readonly="1"/>
+                    </div>
+                    <div class="alert alert-warning" role="status" invisible="not review_count">
+                        Hay <field name="review_count" class="fw-bold"/> cobertura(s) con datos dudosos
+                        (resaltadas). Corrígelas o márcalas como revisadas.
+                    </div>
+                    <div class="alert alert-info" role="status" invisible="not truncated">
+                        El documento era muy largo y se leyó solo su comienzo. Revisa que no falten coberturas.
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="insurer_id" options="{'no_create': True}"/></h1>
+                    </div>
+                    <group>
+                        <group string="Documento">
+                            <field name="document" filename="document_name"/>
+                            <field name="document_name" invisible="1"/>
+                            <field name="page_count" invisible="not page_count"/>
+                            <field name="confidence" widget="percentage" invisible="not confidence"/>
+                            <field name="compare_id" readonly="1"/>
+                            <field name="compare_template_id" invisible="1"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group string="Condiciones">
+                            <field name="premium_total"/>
+                            <field name="premium_net"/>
+                            <field name="payment_terms"/>
+                            <field name="installments"/>
+                            <field name="sum_insured"/>
+                            <field name="deductible_text"/>
+                            <field name="deductible_amount"/>
+                            <field name="deductible_known" string="Deducible confirmado"/>
+                            <field name="valid_until"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Coberturas" name="lines">
+                            <field name="line_ids">
+                                <list editable="bottom"
+                                      decoration-warning="needs_review and not reviewed"
+                                      decoration-muted="state == 'no'">
+                                    <field name="name"/>
+                                    <field name="coverage_id" options="{'no_create': True}"/>
+                                    <field name="state"/>
+                                    <field name="limit_text"/>
+                                    <field name="deductible_text" optional="show"/>
+                                    <field name="source_page" optional="show"/>
+                                    <field name="source_text" optional="hide"/>
+                                    <field name="confidence" widget="percentage" optional="show"/>
+                                    <field name="needs_review" column_invisible="1"/>
+                                    <field name="reviewed" widget="boolean_toggle"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Asistencias y exclusiones" name="extras">
+                            <group>
+                                <field name="assistances" placeholder="Una por línea"/>
+                                <field name="exclusions" placeholder="Una por línea"/>
+                            </group>
+                        </page>
+                        <page string="Análisis" name="analysis">
+                            <group>
+                                <group>
+                                    <field name="score_total"/>
+                                    <field name="rank"/>
+                                    <field name="disqualified"/>
+                                    <field name="disqualified_reason" invisible="not disqualified"/>
+                                </group>
+                                <group>
+                                    <field name="score_price"/>
+                                    <field name="score_deductible"/>
+                                    <field name="score_coverage"/>
+                                    <field name="score_service"/>
+                                </group>
+                            </group>
+                            <group>
+                                <field name="advantages"/>
+                                <field name="disadvantages"/>
+                                <field name="improvements"/>
+                            </group>
+                        </page>
+                        <page string="Datos leídos por la IA" name="raw"
+                              groups="insurance_ai_compare.group_insurance_compare_manager">
+                            <field name="extracted_json" readonly="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_insurance_compare_offer_list" model="ir.ui.view">
+        <field name="name">insurance.compare.offer.list</field>
+        <field name="model">insurance.compare.offer</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="compare_id"/>
+                <field name="insurer_id"/>
+                <field name="state" widget="badge"/>
+                <field name="premium_total"/>
+                <field name="score_total"/>
+                <field name="rank"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Comparativo -->
+    <record id="view_insurance_compare_form" model="ir.ui.view">
+        <field name="name">insurance.compare.form</field>
+        <field name="model">insurance.compare</field>
+        <field name="arch" type="xml">
+            <form string="Comparativo de seguros" class="o_insurance_compare_form">
+                <header>
+                    <button name="action_extract" type="object" string="Leer cotizaciones con IA"
+                            class="btn-primary" invisible="state not in ('draft', 'review', 'analyzed')"
+                            data-hotkey="l"/>
+                    <button name="action_refresh" type="object" string="Actualizar"
+                            invisible="state != 'extracting'" class="btn-primary"/>
+                    <button name="action_compute_scores" type="object" string="Recalcular puntaje"
+                            invisible="state not in ('review', 'analyzed')"/>
+                    <button name="action_analyze" type="object" string="Analizar con IA"
+                            class="btn-primary" invisible="state != 'review'" data-hotkey="a"/>
+                    <button name="action_analyze" type="object" string="Analizar de nuevo"
+                            invisible="state != 'analyzed'"/>
+                    <button name="action_approve" type="object" string="Aprobar"
+                            class="btn-primary" invisible="state not in ('review', 'analyzed')"/>
+                    <button name="action_send_whatsapp" type="object" string="Enviar por WhatsApp"
+                            class="btn-primary" invisible="state not in ('approved', 'sent')"/>
+                    <button name="action_send_email" type="object" string="Enviar por email"
+                            invisible="state not in ('approved', 'sent')"/>
+                    <button name="action_print_client" type="object" string="PDF para el cliente"
+                            invisible="state in ('draft', 'extracting')"/>
+                    <button name="action_print_internal" type="object" string="PDF interno"
+                            invisible="state in ('draft', 'extracting')"/>
+                    <button name="action_create_policy" type="object" string="Emitir póliza"
+                            class="btn-success" invisible="state not in ('approved', 'sent')"/>
+                    <button name="action_back_to_review" type="object" string="Volver a revisión"
+                            invisible="state not in ('approved', 'sent')"/>
+                    <button name="action_mark_lost" type="object" string="Perdido"
+                            invisible="state in ('won', 'lost')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,review,analyzed,approved,sent,won"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-warning d-flex align-items-center justify-content-between gap-2"
+                         role="alert" invisible="consent_ok or not partner_id">
+                        <span>
+                            <i class="fa fa-shield me-1"/>
+                            Falta el consentimiento LOPDP «Asesoría de seguros con IA» del cliente.
+                            Sin él no se pueden analizar sus datos con IA.
+                        </span>
+                        <button name="action_register_consent" type="object" class="btn btn-sm btn-warning"
+                                string="Registrar consentimiento"/>
+                    </div>
+                    <div class="alert alert-info" role="status" invisible="state != 'extracting'">
+                        <i class="fa fa-spinner fa-spin me-1"/>
+                        Leyendo <field name="pending_count" class="fw-bold"/> cotización(es) con IA en segundo plano.
+                        Puedes seguir trabajando; pulsa «Actualizar» para ver el avance.
+                    </div>
+                    <div class="alert alert-warning" role="status" invisible="not review_count or state not in ('review', 'analyzed')">
+                        <i class="fa fa-search me-1"/>
+                        Hay <field name="review_count" class="fw-bold"/> dato(s) dudoso(s) en las cotizaciones.
+                        Ábrelas y revísalos antes de analizar y aprobar.
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="partner_id" readonly="state not in ('draft', 'review')"/>
+                            <field name="template_id" options="{'no_create': True}"
+                                   readonly="state not in ('draft',)"/>
+                            <field name="profile_id" options="{'no_create': True}"/>
+                            <field name="priorities" placeholder="Ej.: precio bajo, auto de reemplazo, deducible mínimo"/>
+                        </group>
+                        <group>
+                            <field name="advisor_id"/>
+                            <field name="lead_id"/>
+                            <field name="channel_id" readonly="1" invisible="not channel_id"/>
+                            <field name="consent_ok" invisible="1"/>
+                            <field name="approved_by_id" invisible="not approved_by_id"/>
+                            <field name="policy_id" invisible="not policy_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Cotizaciones" name="offers">
+                            <field name="offer_ids" context="{'default_compare_id': id}">
+                                <list editable="bottom" decoration-danger="state == 'error'"
+                                      decoration-muted="disqualified">
+                                    <field name="insurer_id" options="{'no_create': True}"/>
+                                    <field name="document" filename="document_name" widget="binary"/>
+                                    <field name="document_name" column_invisible="1"/>
+                                    <field name="state" widget="badge"
+                                           decoration-success="state in ('extracted', 'manual')"
+                                           decoration-info="state in ('queued', 'processing')"
+                                           decoration-danger="state == 'error'"/>
+                                    <field name="premium_total"/>
+                                    <field name="review_count" string="Por revisar"/>
+                                    <field name="score_total"/>
+                                    <field name="rank"/>
+                                    <field name="disqualified" column_invisible="1"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <button name="action_open" type="object" icon="fa-pencil-square-o"
+                                            title="Revisar coberturas" string="Revisar"/>
+                                </list>
+                            </field>
+                            <p class="text-muted small mt-2">
+                                Agrega una línea por aseguradora y sube su PDF. Luego pulsa
+                                «Leer cotizaciones con IA». Si un PDF es escaneado y no se puede
+                                leer, ábrelo y usa «Cargar datos a mano».
+                            </p>
+                        </page>
+                        <page string="Cuadro comparativo" name="matrix">
+                            <group>
+                                <field name="recommended_offer_id" options="{'no_create': True, 'no_open': True}"/>
+                                <field name="ai_recommended_offer_id" readonly="1"
+                                       invisible="not ai_recommended_offer_id"/>
+                            </group>
+                            <field name="matrix_html" nolabel="1" readonly="1"/>
+                        </page>
+                        <page string="Análisis y recomendación" name="analysis">
+                            <div class="alert alert-light" role="status" invisible="analyzed_at">
+                                Pulsa «Analizar con IA» cuando las cotizaciones estén revisadas.
+                            </div>
+                            <group>
+                                <field name="recommendation_reason"/>
+                                <field name="analysis_summary"/>
+                                <field name="client_explanation"/>
+                                <field name="analyzed_at" readonly="1" invisible="not analyzed_at"/>
+                            </group>
+                            <field name="offers_analysis_html" nolabel="1" readonly="1"/>
+                        </page>
+                        <page string="Perfil del cliente" name="profile">
+                            <group>
+                                <field name="profile_summary"/>
+                                <field name="profile_missing"/>
+                            </group>
+                        </page>
+                        <page string="Negociación (interno)" name="negotiation">
+                            <p class="text-muted">Qué pedirle a cada aseguradora para que su oferta sea la
+                                mejor. No aparece en el PDF del cliente.</p>
+                            <field name="negotiation_notes" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_insurance_compare_list" model="ir.ui.view">
+        <field name="name">insurance.compare.list</field>
+        <field name="model">insurance.compare</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="template_id"/>
+                <field name="offer_count" string="Cotizaciones"/>
+                <field name="recommended_offer_id"/>
+                <field name="advisor_id" widget="many2one_avatar_user" optional="show"/>
+                <field name="create_date" string="Creado" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-info="state in ('extracting', 'review')"
+                       decoration-warning="state == 'analyzed'"
+                       decoration-success="state in ('approved', 'sent', 'won')"
+                       decoration-muted="state == 'lost'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_insurance_compare_search" model="ir.ui.view">
+        <field name="name">insurance.compare.search</field>
+        <field name="model">insurance.compare</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="offer_ids" string="Aseguradora" filter_domain="[('offer_ids.insurer_id', 'ilike', self)]"/>
+                <filter name="mine" string="Mis comparativos" domain="[('advisor_id', '=', uid)]"/>
+                <filter name="to_review" string="Por revisar" domain="[('state', '=', 'review')]"/>
+                <filter name="to_approve" string="Por aprobar" domain="[('state', '=', 'analyzed')]"/>
+                <filter name="open" string="Abiertos" domain="[('state', 'not in', ('won', 'lost'))]"/>
+                <group>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_template" string="Ramo" context="{'group_by': 'template_id'}"/>
+                    <filter name="group_advisor" string="Asesor" context="{'group_by': 'advisor_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_insurance_compare" model="ir.actions.act_window">
+        <field name="name">Comparativos de seguros</field>
+        <field name="res_model">insurance.compare</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_open': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Crea tu primer comparativo</p>
+            <p>Sube las cotizaciones de cada aseguradora en PDF: la IA extrae primas,
+               deducibles y coberturas, Odoo calcula el puntaje y obtienes el cuadro
+               comparativo, la recomendación y el PDF para el cliente.</p>
+        </field>
+    </record>
+</odoo>

@@ -66,12 +66,15 @@ class ChatroomAiUsageEvent(models.Model):
     task_type = fields.Selection([
         ('general', 'General'), ('reply', 'Respuesta'), ('summary', 'Resumen'),
         ('classification', 'Clasificación'), ('next_action', 'Próxima acción'),
-        ('agent', 'Agente'),
+        ('agent', 'Agente'), ('document', 'Documentos'),
     ], string='Tipo de tarea', default='general', index=True)
     channel_id = fields.Many2one('chatroom.channel', string='Conversación', ondelete='set null', index=True)
     input_tokens = fields.Integer(string='Tokens de entrada')
     output_tokens = fields.Integer(string='Tokens de salida')
     total_tokens = fields.Integer(string='Tokens totales')
+    cached_tokens = fields.Integer(
+        string='Tokens de entrada en caché',
+        help='Parte de la entrada que el proveedor reutilizó de una consulta anterior (se cobra con descuento).')
     estimated_cost = fields.Float(
         string='Costo local estimado', digits=(16, 8), readonly=True,
         help='Estimación local basada en la tarifa manual configurada para el modelo. '
@@ -101,8 +104,17 @@ class ChatroomAiUsageEvent(models.Model):
                 input_rate, output_rate, currency = provider_model._pricing_for_model(
                     values.get('model'))
                 if input_rate or output_rate:
+                    # La entrada en caché se cobra con descuento (50 % en OpenAI).
+                    cached = min(max(int(values.get('cached_tokens') or 0), 0), input_tokens)
+                    try:
+                        discount = float(self.env['ir.config_parameter'].sudo().get_param(
+                            'chatroom_ai_usage.cached_input_discount', '0.5'))
+                    except (TypeError, ValueError):
+                        discount = 0.5
+                    discount = min(max(discount, 0.0), 1.0)
                     values['estimated_cost'] = (
-                        input_tokens * input_rate + output_tokens * output_rate
+                        (input_tokens - cached) * input_rate + cached * input_rate * (1 - discount)
+                        + output_tokens * output_rate
                     ) / 1000000.0
                     values['cost_currency'] = currency
                     values['cost_source'] = 'configured'

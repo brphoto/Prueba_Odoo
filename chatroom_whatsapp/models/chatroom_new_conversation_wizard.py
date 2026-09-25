@@ -16,7 +16,8 @@ class ChatroomNewConversationWizard(models.TransientModel):
         help="Con código de país. Si lo dejás vacío se usa el teléfono "
              "del contacto.")
     whatsapp_number_id = fields.Many2one(
-        'chatroom.whatsapp.number', string="Línea de WhatsApp")
+        'chatroom.whatsapp.number', string="Línea de WhatsApp",
+        domain=lambda self: [('id', 'in', self.env['chatroom.whatsapp.number']._lines_for_user().ids)])
     contact_name = fields.Char(string="Nombre del nuevo contacto")
     contact_email = fields.Char(string="Email")
     lead_name = fields.Char(string="Nombre de oportunidad")

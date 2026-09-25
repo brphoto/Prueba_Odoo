@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="consent_type_tratamiento_datos" model="ec.data.consent.type">
+            <field name="name">Tratamiento de Datos Personales</field>
+            <field name="code">TRATAMIENTO</field>
+            <field name="description">Autorización para almacenar y procesar datos personales del socio para la gestión de su membresía y beneficios.</field>
+        </record>
+        <record id="consent_type_comunicaciones" model="ec.data.consent.type">
+            <field name="name">Comunicaciones (Email/SMS/WhatsApp)</field>
+            <field name="code">COMUNICACIONES</field>
+            <field name="description">Autorización para enviar comunicaciones informativas y promocionales por medios electrónicos.</field>
+        </record>
+        <record id="consent_type_uso_imagen" model="ec.data.consent.type">
+            <field name="name">Uso de Imagen</field>
+            <field name="code">IMAGEN</field>
+            <field name="description">Autorización para el uso de fotografías/video del socio en materiales de difusión de la organización.</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,16 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_poliza_partner,access.poliza.partner,model_poliza_partner,base.group_user,1,1,1,1
+access_polizas_aseguradoras,access.polizas.aseguradoras,model_polizas_aseguradoras,base.group_user,1,1,1,1
+access_polizas_ramos,access.polizas.ramos,model_polizas_ramos,base.group_user,1,1,1,1
+access_poliza_type,access.poliza.type,model_poliza_type,base.group_user,1,1,1,1
+access_res_partner_activity,access.res.partner.activity,model_res_partner_activity,base.group_user,1,1,1,1
+access_polizas_recordatorio_template,access.polizas.recordatorio.template,model_polizas_recordatorio_template,base.group_user,1,1,1,1
+access_comision_cxc,access.comision.cxc,model_comision_cxc,base.group_user,1,1,1,1
+access_comision_cxp,access.comision.cxp,model_comision_cxp,base.group_user,1,1,1,1
+access_poliza_partner_cuota,access.poliza.partner.cuota,model_poliza_partner_cuota,base.group_user,1,1,1,1
+access_poliza_ramo,access.poliza.ramo,model_poliza_ramo,base.group_user,1,1,1,1
+access_poliza_cobertura,access.poliza.cobertura,model_poliza_cobertura,base.group_user,1,1,1,1
+access_poliza_bien_asegurado,access.poliza.bien.asegurado,model_poliza_bien_asegurado,base.group_user,1,1,1,1
+access_poliza_activo,access.poliza.activo,model_poliza_activo,base.group_user,1,1,1,1
+access_poliza_siniestro,access.poliza.siniestro,model_poliza_siniestro,base.group_user,1,1,1,1
+access_poliza_devengamiento,access.poliza.devengamiento,model_poliza_devengamiento,base.group_user,1,1,1,1

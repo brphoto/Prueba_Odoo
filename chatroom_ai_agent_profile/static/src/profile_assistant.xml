@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="chatroom_whatsapp.ContactPanel" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o_chatroom_ai_assistant_compact_bar')]" position="before">
+            <div class="o_chatroom_ai_playbook d-flex align-items-center gap-1 mb-2" t-if="aiAssistant.playbook">
+                <span t-attf-class="badge rounded-pill {{ aiAssistant.playbook.done ? 'text-bg-success' : 'text-bg-light border' }}"
+                      t-att-title="aiPlaybookTitle()">
+                    <i class="fa fa-list-ol me-1"/>
+                    <t t-esc="aiAssistant.playbook.name"/>:
+                    <t t-esc="aiAssistant.playbook.filled"/>/<t t-esc="aiAssistant.playbook.total"/>
+                    <t t-if="aiAssistant.playbook.done"> ✓</t>
+                </span>
+                <button type="button" class="btn btn-link btn-sm p-0 o_chatroom_ai_playbook_reset"
+                        title="Reiniciar guion" aria-label="Reiniciar guion"
+                        t-on-click.stop="resetAiPlaybook">
+                    <i class="fa fa-undo"/>
+                </button>
+            </div>
+        </xpath>
+        <xpath expr="//div[hasclass('o_chatroom_ai_handoff')]" position="inside">
+            <ul class="o_ai_handoff_data mb-1" t-if="aiAssistant.playbook and aiAssistant.playbook.collected and aiAssistant.playbook.collected.length">
+                <li t-foreach="aiAssistant.playbook.collected" t-as="item" t-key="item_index">
+                    <b t-esc="item.label"/>: <t t-esc="item.value"/>
+                </li>
+            </ul>
+            <button type="button" class="btn btn-sm btn-primary o_ai_take_over mt-1"
+                    t-if="aiAssistant.canTakeOver" t-on-click.stop="takeOverConversation">
+                <i class="fa fa-hand-paper-o me-1"/> Tomar conversación
+            </button>
+        </xpath>
+    </t>
+</templates>

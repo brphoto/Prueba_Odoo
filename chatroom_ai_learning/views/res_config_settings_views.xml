@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_ai_learning" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.chatroom.ai.learning</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="chatroom_whatsapp.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='chatroom_whatsapp']" position="inside">
+                <block title="IA: aprendizaje y autonomía" name="chatroom_ai_learning">
+                    <setting id="learning_frozen_setting" invisible="not learning_autonomy_frozen"
+                             help="Las pruebas de regresión no pasaron: todo queda supervisado hasta que vuelvan a pasar.">
+                        <field name="learning_autonomy_frozen"/>
+                    </setting>
+                    <setting id="learning_graduated_setting"
+                             help="Cada tipo de conversación responde solo cuando ganó ese nivel con datos, y vuelve a supervisado si la calidad baja.">
+                        <field name="learning_graduated_autonomy"/>
+                        <div class="content-group" invisible="not learning_graduated_autonomy">
+                            <div class="row mt8">
+                                <label for="learning_min_samples" class="col-lg-7 o_light_label"/>
+                                <field name="learning_min_samples" class="col-lg-3"/>
+                            </div>
+                            <div class="row">
+                                <label for="learning_promote_rate" class="col-lg-7 o_light_label"/>
+                                <field name="learning_promote_rate" class="col-lg-3"/>
+                            </div>
+                            <div class="row">
+                                <label for="learning_demote_rate" class="col-lg-7 o_light_label"/>
+                                <field name="learning_demote_rate" class="col-lg-3"/>
+                            </div>
+                            <div class="row">
+                                <label for="learning_window" class="col-lg-7 o_light_label"/>
+                                <field name="learning_window" class="col-lg-3"/>
+                            </div>
+                        </div>
+                    </setting>
+                    <setting id="learning_shadow_setting"
+                             help="La IA redacta en silencio y se compara con lo que responde el equipo. Nunca envía nada.">
+                        <field name="learning_shadow_enabled"/>
+                        <div class="content-group" invisible="not learning_shadow_enabled">
+                            <div class="row mt8">
+                                <label for="learning_shadow_rate" class="col-lg-7 o_light_label"/>
+                                <field name="learning_shadow_rate" class="col-lg-3"/>
+                            </div>
+                            <div class="row">
+                                <label for="learning_shadow_daily_limit" class="col-lg-7 o_light_label"/>
+                                <field name="learning_shadow_daily_limit" class="col-lg-3"/>
+                            </div>
+                        </div>
+                    </setting>
+                    <setting id="learning_handoff_setting"
+                             help="Reclamos, siniestros, pagos o el pedido de una persona pausan la IA, avisan y dejan un resumen.">
+                        <field name="learning_handoff_enabled"/>
+                        <div class="content-group">
+                            <div class="row mt8">
+                                <label for="learning_resume_after_hours" class="col-lg-7 o_light_label"/>
+                                <field name="learning_resume_after_hours" class="col-lg-3"/>
+                            </div>
+                        </div>
+                    </setting>
+                    <setting id="learning_memory_setting"
+                             help="Al terminar una conversación la IA propone datos estables del cliente (con su consentimiento).">
+                        <field name="learning_memory_enabled"/>
+                        <div class="content-group" invisible="not learning_memory_enabled">
+                            <div class="row mt8">
+                                <label for="learning_memory_min_confidence" class="col-lg-7 o_light_label"/>
+                                <field name="learning_memory_min_confidence" class="col-lg-3"/>
+                            </div>
+                        </div>
+                    </setting>
+                    <setting id="learning_eval_setting"
+                             help="Si las pruebas de regresión bajan de este valor, la autonomía se congela sola.">
+                        <field name="learning_eval_min_pass_rate"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

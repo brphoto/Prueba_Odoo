@@ -115,6 +115,12 @@ class ChatroomChannel(models.Model):
     last_message_preview = fields.Char(compute='_compute_message_stats', store=True)
     ai_suggested_reply = fields.Text(string="Sugerencia de IA")
     ai_summary = fields.Text(string="Resumen de IA")
+    # Cola de respuestas de IA: se responde unos segundos después del último
+    # mensaje del cliente (agrupa los mensajes seguidos) y sobrevive a un
+    # reinicio del servidor porque vive en la base.
+    ai_reply_due_at = fields.Datetime(string='Respuesta de IA programada', copy=False, index=True)
+    ai_burst_started_at = fields.Datetime(string='Inicio de la ráfaga de mensajes', copy=False)
+    ai_queue_attempts = fields.Integer(string='Intentos de la cola de IA', copy=False)
     ai_intent = fields.Selection(
         [('consulta', "Consulta"),
          ('venta', "Venta"),
@@ -514,9 +520,15 @@ class ChatroomChannel(models.Model):
         help="Minutos entre el primer mensaje del cliente y la primera "
              "respuesta saliente de un agente.")
 
-    _external_id_type_uniq = models.Constraint(
-        'unique(external_id, channel_type, company_id)',
-        "Ya existe una conversación abierta para este contacto en este canal.",
+    # La línea forma parte de la clave para poder tener una conversación por
+    # contacto Y por línea (ajuste "Una conversación por línea"), de modo que
+    # los agentes de un número no vean el historial de otro. COALESCE hace que
+    # "sin línea" cuente como un valor más: PostgreSQL trata cada NULL como
+    # distinto y permitiría duplicados. Reemplaza a la restricción
+    # external_id_type_uniq (ver migrations/19.0.2.2.0).
+    _external_id_line_uniq = models.UniqueIndex(
+        '(external_id, channel_type, company_id, COALESCE(whatsapp_number_id, 0))',
+        "Ya existe una conversación para este contacto en esta línea.",
     )
 
     @api.model
@@ -662,17 +674,9 @@ class ChatroomChannel(models.Model):
         """
         whatsapp_number = self.env['chatroom.whatsapp.number']._find_by_phone_number_id(
             meta_phone_number_id)
-        channel = self.search([
-            ('channel_type', '=', channel_type),
-            ('external_id', '=', external_id),
-            ('company_id', '=', self.env.company.id),
-        ], limit=1)
+        channel = self._find_existing_channel(channel_type, external_id, whatsapp_number)
         if channel:
-            # Un contacto puede escribir por varias líneas. Conservamos una
-            # sola conversación por contacto y actualizamos la línea de
-            # entrada para que las respuestas salgan por el número correcto.
-            if whatsapp_number and channel.whatsapp_number_id != whatsapp_number:
-                channel.whatsapp_number_id = whatsapp_number.id
+            self._follow_incoming_line(channel, whatsapp_number)
             return channel
 
         # Dos mensajes del mismo contacto NUEVO pueden llegar a la vez:
@@ -716,19 +720,79 @@ class ChatroomChannel(models.Model):
                     'assigned_user_id': assignee.id,
                 })
         except pg_errors.UniqueViolation:
-            ganador = self.search([
-                ('channel_type', '=', channel_type),
-                ('external_id', '=', external_id),
-                ('company_id', '=', self.env.company.id),
-            ], limit=1)
+            ganador = self._find_existing_channel(channel_type, external_id, whatsapp_number)
             if not ganador:
                 raise
             _logger.info(
                 "Carrera controlada: el canal de %s ya lo creó otro worker",
                 external_id)
-            if whatsapp_number and ganador.whatsapp_number_id != whatsapp_number:
-                ganador.whatsapp_number_id = whatsapp_number.id
+            self._follow_incoming_line(ganador, whatsapp_number)
             return ganador
+
+    @api.model
+    def _line_for_new_conversation(self, whatsapp_number_id=False):
+        """Línea por la que sale una conversación que iniciamos nosotros.
+
+        Un agente solo puede usar sus líneas: así no escribe a un cliente
+        desde el número de otro equipo. Si no elige ninguna y tiene líneas
+        propias, se usa la primera; supervisores pueden usar cualquiera.
+        """
+        Number = self.env['chatroom.whatsapp.number']
+        allowed = Number._lines_for_user()
+        if whatsapp_number_id:
+            line = Number.browse(whatsapp_number_id).exists()
+            if line and line not in allowed:
+                raise UserError(_(
+                    "No puedes iniciar conversaciones por la línea «%s»: no eres "
+                    "miembro de su equipo.") % line.sudo().name)
+            return line
+        if self.env.su or self.env.user.has_group('chatroom_whatsapp.group_chatroom_supervisor'):
+            return Number
+        own = allowed.filtered(lambda line: self.env.user in line.member_ids)
+        return own[:1]
+
+    @api.model
+    def _conversation_per_line(self):
+        """True si cada línea lleva su propia conversación con el contacto.
+
+        Es lo que hay que usar cuando cada número lo atiende un equipo
+        distinto: si el mismo cliente escribe a Ventas y a Soporte, cada
+        equipo ve solo su chat. Desactivado, el contacto tiene una única
+        conversación que se mueve a la última línea por la que escribió.
+        """
+        return self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_whatsapp.conversation_per_line', 'False') in ('True', 'true', '1')
+
+    @api.model
+    def _find_existing_channel(self, channel_type, external_id, whatsapp_number=None):
+        """Conversación existente del contacto, según el modo de líneas.
+
+        Con "una conversación por línea" se busca exactamente la de esa
+        línea (o la sin línea, si el mensaje llegó por el número general).
+        Sin ese modo vale cualquiera del contacto, pero si quedaron varias
+        (de cuando el modo estuvo activo) se prefiere la de la misma línea.
+        """
+        whatsapp_number = whatsapp_number or self.env['chatroom.whatsapp.number']
+        domain = [
+            ('channel_type', '=', channel_type),
+            ('external_id', '=', external_id),
+            ('company_id', '=', self.env.company.id),
+        ]
+        if channel_type == 'whatsapp' and self._conversation_per_line():
+            return self.search(
+                domain + [('whatsapp_number_id', '=', whatsapp_number.id or False)], limit=1)
+        channels = self.search(domain, order='last_message_date desc, id desc')
+        same_line = channels.filtered(lambda channel: channel.whatsapp_number_id == whatsapp_number)
+        return (same_line or channels)[:1]
+
+    @api.model
+    def _follow_incoming_line(self, channel, whatsapp_number):
+        """Sin conversación por línea, la conversación única del contacto
+        pasa a la línea por la que acaba de escribir, para que la respuesta
+        salga por ese número. Con conversación por línea no hace falta: ya
+        se encontró la de esa línea."""
+        if whatsapp_number and channel.whatsapp_number_id != whatsapp_number:
+            channel.whatsapp_number_id = whatsapp_number.id
 
     @api.model
     def action_start_conversation(self, partner_id, phone=False, whatsapp_number_id=False):
@@ -754,20 +818,17 @@ class ChatroomChannel(models.Model):
                 "Necesito un número de WhatsApp válido (con código de "
                 "país) para %s.") % partner.name)
 
+        # La línea se valida antes de tocar nada: un agente no puede usar
+        # el número de otro equipo.
+        whatsapp_number = self._line_for_new_conversation(whatsapp_number_id)
         if not partner.whatsapp_id:
             partner.whatsapp_id = digits
-
-        channel = self.search([
-            ('channel_type', '=', 'whatsapp'),
-            ('external_id', '=', digits),
-        ], limit=1)
+        channel = self._find_existing_channel('whatsapp', digits, whatsapp_number)
         if channel:
             if not channel.partner_id:
                 channel.partner_id = partner.id
             return channel.id
 
-        whatsapp_number = self.env['chatroom.whatsapp.number'].browse(whatsapp_number_id) \
-            if whatsapp_number_id else self.env['chatroom.whatsapp.number']
         channel = self.create({
             'channel_type': 'whatsapp',
             'external_id': digits,
@@ -914,9 +975,13 @@ class ChatroomChannel(models.Model):
                     name.replace(' ', '_') for name in mentioned_names}:
                 if agent.partner_id:
                     mentioned_partners.append(agent.partner_id.id)
+        # message_type='comment': es una nota escrita por una persona, como
+        # «Registrar nota» del chatter. Con el tipo por defecto (notification)
+        # get_internal_notes no la encontraba y la nota no aparecía en el chat.
         self.message_post(
             body=body,
             partner_ids=mentioned_partners,
+            message_type='comment',
             subtype_xmlid='mail.mt_note',
         )
         self._notify_thread_update()
@@ -1288,6 +1353,14 @@ class ChatroomChannel(models.Model):
         self.last_away_message_date = fields.Datetime.now()
         return True
 
+    def _get_waba_id(self):
+        """WABA del número por el que sale esta conversación."""
+        self.ensure_one()
+        if self.whatsapp_number_id:
+            return self.whatsapp_number_id._get_waba_id()
+        return self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_whatsapp.business_account_id') or False
+
     def _get_meta_credentials(self):
         """Si la conversación pertenece a una línea con Phone Number ID
         propio, se usa esa; si no, se cae al número único de Ajustes
@@ -1440,7 +1513,7 @@ class ChatroomChannel(models.Model):
         mimetype = attachment.mimetype or mimetypes.guess_type(attachment.name or '')[0] \
             or 'application/octet-stream'
         files = {
-            'file': (attachment.name, base64.b64decode(attachment.datas), mimetype),
+            'file': (attachment.name, attachment.raw, mimetype),
         }
         response = self._meta_request(
             'POST', url, headers={"Authorization": f"Bearer {token}"},
@@ -1467,9 +1540,10 @@ class ChatroomChannel(models.Model):
             return self.action_send_text(body, reply_to_id=reply_to_id)
 
         reply_to = self._get_reply_context(reply_to_id)
-        token, phone_number_id, api_version = self._get_meta_credentials()
-        url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
-        headers = {"Authorization": f"Bearer {token}"}
+        # Las credenciales se validan ya: un error de configuración se ve al
+        # instante, no minutos después en un mensaje fallido.
+        self._get_meta_credentials()
+        queue = self._use_async_media()
         messages = self.env['chatroom.message']
 
         for index, att_vals in enumerate(attachments):
@@ -1495,43 +1569,99 @@ class ChatroomChannel(models.Model):
                 'attachment_ids': [(4, attachment.id)],
                 'sender_user_id': self.env.user.id,
                 'reply_to_id': reply_here.id if reply_here else False,
+                'media_queued': queue,
             })
-
-            try:
-                media_id = self._upload_whatsapp_media(attachment)
-                media_payload = {'id': media_id}
-                if caption and media_type in ('image', 'video', 'document'):
-                    media_payload['caption'] = caption
-                payload = {
-                    "messaging_product": "whatsapp",
-                    "to": self.external_id,
-                    "type": media_type,
-                    media_type: media_payload,
-                }
-                if reply_here:
-                    payload["context"] = {"message_id": reply_here.wa_message_id}
-                response = self._meta_request('POST', url, json=payload, headers=headers, timeout=60)
-                response.raise_for_status()
-                data = response.json()
-                wa_message_id = data.get('messages', [{}])[0].get('id')
-                if not wa_message_id:
-                    raise UserError(_("Meta respondió sin confirmar el envío (falta el ID del mensaje)."))
-                message.write({'wa_message_id': wa_message_id, 'state': 'sent'})
-            except (requests.RequestException, KeyError, UserError) as exc:
-                _logger.error("Error enviando adjunto de WhatsApp: %s", exc)
-                message.write({'state': 'failed'})
-                messages |= message
-                self._notify_thread_update()
-                raise UserError(_("No se pudo enviar el archivo: %s") % exc)
-
             messages |= message
+            if not queue:
+                try:
+                    self._deliver_media_message(message)
+                except UserError:
+                    self._notify_thread_update()
+                    raise
 
         self.write({
             'last_message_date': fields.Datetime.now(),
             'state': 'open',
         })
         self._notify_thread_update()
+        if queue:
+            cron = self.env.ref('chatroom_whatsapp.ir_cron_send_queued_media', raise_if_not_found=False)
+            if cron:
+                cron._trigger()
         return messages
+
+    def _use_async_media(self):
+        """Los adjuntos salen en segundo plano: el agente no espera la subida
+        a Meta (dos llamadas a Internet por archivo). Se puede forzar por
+        contexto (`chatroom_async_media`) o desactivar con el parámetro
+        `chatroom_whatsapp.async_media`. En tests, síncrono salvo que se pida."""
+        forced = self.env.context.get('chatroom_async_media')
+        if forced is not None:
+            return bool(forced)
+        if modules.module.current_test:
+            return False
+        return self._ai_param_enabled('chatroom_whatsapp.async_media', default=True)
+
+    def _deliver_media_message(self, message):
+        """Sube el adjunto de un mensaje pendiente a Meta y lo envía."""
+        self.ensure_one()
+        attachment = message.attachment_ids[:1]
+        token, phone_number_id, api_version = self._get_meta_credentials()
+        url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
+        headers = {"Authorization": f"Bearer {token}"}
+        media_type = message.message_type
+        try:
+            media_id = self._upload_whatsapp_media(attachment)
+            media_payload = {'id': media_id}
+            if message.body and media_type in ('image', 'video', 'document'):
+                media_payload['caption'] = message.body
+            payload = {
+                "messaging_product": "whatsapp",
+                "to": self.external_id,
+                "type": media_type,
+                media_type: media_payload,
+            }
+            if message.reply_to_id.wa_message_id:
+                payload["context"] = {"message_id": message.reply_to_id.wa_message_id}
+            response = self._meta_request('POST', url, json=payload, headers=headers, timeout=60)
+            response.raise_for_status()
+            data = response.json()
+            wa_message_id = data.get('messages', [{}])[0].get('id')
+            if not wa_message_id:
+                raise UserError(_("Meta respondió sin confirmar el envío (falta el ID del mensaje)."))
+            message.write({'wa_message_id': wa_message_id, 'state': 'sent', 'media_queued': False})
+        except (requests.RequestException, KeyError, UserError) as exc:
+            _logger.error("Error enviando adjunto de WhatsApp: %s", exc)
+            message.write({'state': 'failed', 'media_queued': False})
+            raise UserError(_("No se pudo enviar el archivo: %s") % exc)
+        return True
+
+    @api.model
+    def _cron_send_queued_media(self, limit=20):
+        """Entrega los adjuntos en cola, en orden. Cada uno se confirma por
+        separado: un fallo queda en su mensaje (y lo retoma el reintento
+        automático) sin frenar a los demás."""
+        messages = self.env['chatroom.message'].search([
+            ('media_queued', '=', True), ('state', '=', 'pending'),
+            ('direction', '=', 'outbound'),
+        ], order='id', limit=limit)
+        auto_commit = not modules.module.current_test
+        for message in messages:
+            channel = message.channel_id
+            try:
+                with self.env.cr.savepoint():
+                    channel._deliver_media_message(message)
+            except Exception as exc:  # noqa: BLE001
+                _logger.info('Adjunto %s no enviado: %s', message.id, exc)
+                message.write({'state': 'failed', 'media_queued': False})
+            channel._notify_thread_update()
+            if auto_commit:
+                self.env.cr.commit()
+        if len(messages) == limit:
+            cron = self.env.ref('chatroom_whatsapp.ir_cron_send_queued_media', raise_if_not_found=False)
+            if cron:
+                cron._trigger()
+        return len(messages)
 
     def action_send_reaction(self, message_id, emoji):
         """Reacciona con un emoji a un mensaje puntual (estilo WhatsApp: la
@@ -2463,7 +2593,8 @@ class ChatroomChannel(models.Model):
             'POST', api_url,
             headers={"Authorization": f"Bearer {api_key}"},
             json={"model": model, "messages": messages},
-            timeout=30,
+            # Un análisis de documentos largos puede pedir más tiempo.
+            timeout=self.env.context.get('chatroom_ai_timeout') or 30,
         )
         if response.status_code == 404:
             # Un 404 suele indicar una base URL, ruta o modelo incorrectos.
@@ -2502,11 +2633,18 @@ class ChatroomChannel(models.Model):
 
     def _ai_build_conversation(self, extra_system=None):
         self.ensure_one()
-        history = self.message_ids.sorted('date')[-self._ai_history_limit():]
+        messages = self.message_ids.sorted('date')
+        # Con `chatroom_ai_history_until` (id de un mensaje) la IA ve la
+        # conversación tal como estaba en ese momento: lo usa el modo sombra
+        # para no ver la respuesta humana que va a comparar.
+        until = self.env.context.get('chatroom_ai_history_until')
+        if until:
+            messages = messages.filtered(lambda message: message.id <= until)
+        history = messages[-self._ai_history_limit():]
         conversation = [
             {"role": "user" if m.direction == 'inbound' else "assistant",
-             "content": m.body or ''}
-            for m in history if m.body
+             "content": m._ai_text()}
+            for m in history if m._ai_text()
         ]
         system_prompt = extra_system or _(
             "Eres un asistente de atención al cliente por WhatsApp. "
@@ -2960,6 +3098,122 @@ class ChatroomChannel(models.Model):
 
         if reply:
             self._ai_stage_or_send_reply(reply)
+
+    # ------------------------------------------------------------------
+    # Cola de respuestas de IA
+    # ------------------------------------------------------------------
+    def _ai_queue_enabled(self):
+        return self._ai_param_enabled('chatroom_whatsapp.ai_queue', default=True)
+
+    def _ai_queue_seconds(self, key, default, maximum):
+        raw = self.env['ir.config_parameter'].sudo().get_param(key, default)
+        try:
+            return max(0, min(int(raw), maximum))
+        except (TypeError, ValueError):
+            return default
+
+    def _ai_enqueue_inbound(self, message):
+        """Programa la respuesta de IA en vez de darla al instante.
+
+        Espera unos segundos por si el cliente sigue escribiendo; cada
+        mensaje nuevo reinicia la espera, con un tope desde el primero para
+        que nunca quede sin respuesta.
+        """
+        self.ensure_one()
+        now = fields.Datetime.now()
+        wait = self._ai_queue_seconds('chatroom_whatsapp.ai_debounce_seconds', 6, 60)
+        max_wait = max(wait, self._ai_queue_seconds('chatroom_whatsapp.ai_max_wait_seconds', 20, 120))
+        start = self.ai_burst_started_at if self.ai_reply_due_at and self.ai_burst_started_at else now
+        due = max(now, min(now + timedelta(seconds=wait), start + timedelta(seconds=max_wait)))
+        self.sudo().write({'ai_reply_due_at': due, 'ai_burst_started_at': start, 'ai_queue_attempts': 0})
+        cron = self.env.ref('chatroom_whatsapp.ir_cron_ai_reply_queue', raise_if_not_found=False)
+        if cron:
+            cron.sudo()._trigger(due)
+        return due
+
+    def _ai_pending_inbound(self, limit=20):
+        """Mensajes del cliente que llegaron después de la última respuesta."""
+        self.ensure_one()
+        Message = self.env['chatroom.message']
+        last_outbound = Message.search([('channel_id', '=', self.id), ('direction', '=', 'outbound')],
+                                       order='id desc', limit=1)
+        domain = [('channel_id', '=', self.id), ('direction', '=', 'inbound')]
+        if last_outbound:
+            domain.append(('id', '>', last_outbound.id))
+        return Message.search(domain, order='id desc', limit=limit).sorted('id')
+
+    def _ai_prepare_pending_media(self, messages):
+        """Gancho: transcribir audios o describir imágenes antes de responder."""
+        return True
+
+    def _ai_send_typing_indicator(self, message):
+        """Muestra «escribiendo…» en WhatsApp mientras la IA prepara la respuesta."""
+        self.ensure_one()
+        if (self.channel_type != 'whatsapp' or not message.wa_message_id
+                or not self._ai_param_enabled('chatroom_whatsapp.ai_typing_indicator', default=True)):
+            return False
+        try:
+            token, phone_number_id, api_version = self._get_meta_credentials()
+            self._meta_request(
+                'POST', f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages",
+                json={"messaging_product": "whatsapp", "status": "read", "message_id": message.wa_message_id,
+                      "typing_indicator": {"type": "text"}},
+                headers={"Authorization": f"Bearer {token}"}, timeout=5, max_retries=0,
+            )
+            return True
+        except Exception as exc:  # noqa: BLE001 - es solo cortesía visual
+            _logger.info('Sin indicador de escritura en %s: %s', self.id, exc)
+            return False
+
+    def _ai_process_queued(self):
+        """Responde una vez a todo lo que el cliente escribió en la ráfaga."""
+        self.ensure_one()
+        self.write({'ai_reply_due_at': False, 'ai_burst_started_at': False})
+        pending = self._ai_pending_inbound()
+        if not pending:
+            return {'status': 'nothing_pending'}
+        self._ai_prepare_pending_media(pending)
+        self._ai_send_typing_indicator(pending[-1])
+        return self._ai_process_inbound_message(pending[-1])
+
+    @api.model
+    def _cron_process_ai_queue(self, limit=20):
+        """Procesa las respuestas de IA vencidas, una conversación a la vez.
+
+        Cada conversación se bloquea (SKIP LOCKED) y se confirma por separado:
+        un error en una no frena a las demás y se reintenta hasta 3 veces.
+        """
+        now = fields.Datetime.now()
+        channels = self.sudo().search([('ai_reply_due_at', '!=', False), ('ai_reply_due_at', '<=', now)],
+                                      order='ai_reply_due_at, id', limit=limit)
+        auto_commit = not modules.module.current_test
+        done = 0
+        for channel in channels:
+            try:
+                with self.env.cr.savepoint():
+                    self.env.cr.execute(
+                        'SELECT id FROM chatroom_channel WHERE id = %s AND ai_reply_due_at IS NOT NULL '
+                        'FOR UPDATE SKIP LOCKED', [channel.id])
+                    if not self.env.cr.fetchone():
+                        continue
+                    result = channel._ai_process_queued()
+                    _logger.info('Cola de IA: conversación %s -> %s', channel.id,
+                                 result.get('status') if isinstance(result, dict) else result)
+                done += 1
+            except Exception as exc:  # noqa: BLE001 - se reintenta
+                _logger.exception('Cola de IA: falló la conversación %s: %s', channel.id, exc)
+                attempts = channel.ai_queue_attempts + 1
+                channel.write({
+                    'ai_queue_attempts': attempts,
+                    'ai_reply_due_at': now + timedelta(minutes=attempts) if attempts < 3 else False,
+                })
+            if auto_commit:
+                self.env.cr.commit()
+        if len(channels) == limit:
+            cron = self.env.ref('chatroom_whatsapp.ir_cron_ai_reply_queue', raise_if_not_found=False)
+            if cron:
+                cron._trigger()
+        return done
 
     def _ai_process_inbound_message(self, message):
         """Automatizaciones opcionales al recibir un mensaje: clasificar

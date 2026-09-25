@@ -15,7 +15,7 @@
                     <i t-attf-class="fa {{ aiAssistant.open ? 'fa-chevron-down' : 'fa-chevron-right' }}"/>
                 </div>
                 <div class="o_chatroom_ai_assistant_body" t-if="aiAssistant.open">
-                    <div role="status" class="alert alert-danger py-1 px-2 mb-2" t-if="aiAssistant.aiPaused">
+                    <div role="status" class="alert alert-danger py-1 px-2 mb-2" t-if="aiAssistant.aiPaused and !aiAssistant.handoffReason">
                         <i class="fa fa-pause"/> IA pausada por seguridad o por atencion humana. Reactivala desde el control de la conversacion despues de revisar el caso.
                     </div>
                     <div role="status" class="alert alert-warning py-2 px-2 mb-2" t-if="!aiAssistant.providerReady and !aiAssistant.loading">
@@ -26,12 +26,15 @@
                     </div>
                     <div class="o_chatroom_ai_assistant_compact_bar">
                         <select class="form-select form-select-sm" aria-label="Acción de IA"
-                                t-att-value="aiAssistant.mode"
-                                t-att-disabled="aiAssistant.busy || !aiAssistant.providerReady"
-                                t-on-change="onAiModeChange">
-                            <option value="suggestion">Respuesta sugerida</option>
-                            <option value="summary">Resumen de conversación</option>
-                            <option value="intent">Clasificar intención</option>
+                                t-att-value="aiAssistant.actionId || ''"
+                                t-att-disabled="aiAssistant.busy || !aiAssistant.providerReady || !aiAssistant.quickActions.length"
+                                t-on-change="onAiActionChange">
+                            <option t-if="!aiAssistant.quickActions.length" value="">Sin acciones de IA disponibles</option>
+                            <option t-foreach="aiAssistant.quickActions" t-as="quickAction" t-key="quickAction.id"
+                                    t-att-value="quickAction.id"
+                                    t-att-selected="quickAction.id === aiAssistant.actionId">
+                                <t t-esc="quickAction.name"/><t t-if="quickAction.shortcut"> · /<t t-esc="quickAction.shortcut"/></t>
+                            </option>
                         </select>
                         <select class="form-select form-select-sm o_chatroom_ai_model_select"
                                 aria-label="Modelo de IA"
@@ -46,12 +49,23 @@
                             </option>
                         </select>
                         <button type="button" class="btn btn-sm btn-primary"
-                                t-att-disabled="aiAssistant.busy || !aiAssistant.providerReady"
+                                t-att-disabled="aiAssistant.busy || !aiAssistant.providerReady || !aiAssistant.actionId"
                                 t-on-click="runAiAction">
                             <i t-if="aiAssistant.busy" class="fa fa-spinner fa-spin"/>
                             <i t-else="" class="fa fa-play"/> Ejecutar
                         </button>
+                        <button type="button" class="btn btn-sm btn-link px-1"
+                                t-if="aiAssistant.canConfigure"
+                                title="Configurar acciones de IA" aria-label="Configurar acciones de IA"
+                                t-on-click="openAiQuickActionConfig">
+                            <i class="fa fa-cog"/>
+                        </button>
                     </div>
+                    <small class="o_chatroom_ai_action_hint d-block mt-1" t-if="selectedAiAction()">
+                        <i t-attf-class="fa {{ selectedAiAction().icon }} me-1"/>
+                        <t t-esc="selectedAiAction().description"/>
+                        <t t-if="selectedAiAction().output_mode === 'rewrite'"> Usa lo que escribiste en el mensaje.</t>
+                    </small>
                     <div class="o_chatroom_ai_assistant_result" t-if="aiAssistant.suggestion">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <strong>Respuesta preparada</strong>
@@ -119,16 +133,24 @@
                             <span class="badge rounded-pill text-bg-light">No se envía</span>
                         </div>
                         <div class="o_chatroom_ai_assistant_text mt-2" t-esc="aiAssistant.summary"/>
-                        <small class="d-block mt-2 text-muted">Sirve para orientar al agente y revisar el caso. Para redactar un mensaje, elige «Respuesta sugerida».</small>
+                        <small class="d-block mt-2 text-muted">Sirve para orientar al agente y revisar el caso. Para redactar un mensaje, elige una acción de respuesta.</small>
                     </div>
                     <div class="o_chatroom_ai_assistant_meta">
+                        <span t-if="aiAssistant.intent"><i class="fa fa-tag"/> Intención: <strong t-esc="aiAssistant.intent"/></span>
+                        <span t-if="aiAssistant.knowledgeCount"><i class="fa fa-book"/> <t t-esc="aiAssistant.knowledgeCount"/> manuales</span>
+                        <button type="button" class="btn btn-link btn-sm p-0 o_chatroom_ai_details_toggle"
+                                t-att-aria-expanded="aiAssistant.showDetails ? 'true' : 'false'"
+                                t-on-click="toggleAiDetails">
+                            <i t-attf-class="fa {{ aiAssistant.showDetails ? 'fa-angle-up' : 'fa-angle-down' }}"/>
+                            <t t-esc="aiAssistant.showDetails ? 'Menos detalles' : 'Detalles de seguridad y consumo'"/>
+                        </button>
+                    </div>
+                    <div class="o_chatroom_ai_assistant_meta" t-if="aiAssistant.showDetails">
                         <span t-if="aiAssistant.safetyPolicy"><i class="fa fa-lock"/> Guardia: <strong><t t-esc="aiAssistant.safetyPolicy.enabled ? 'activa' : 'desactivada'"/></strong></span>
                         <span t-if="aiAssistant.safetyPolicy &amp;&amp; aiAssistant.safetyPolicy.enabled"><i class="fa fa-check-circle"/> Confianza minima: <strong t-esc="safetyConfidenceLabel()"/></span>
                         <span t-if="aiAssistant.safetyPolicy &amp;&amp; aiAssistant.safetyPolicy.enabled"><i class="fa fa-clock-o"/> Limite: <strong><t t-esc="aiAssistant.safetyPolicy.daily_limit"/> / dia</strong></span>
                         <span t-if="aiAssistant.budget"><i class="fa fa-credit-card"/> Saldo: <strong t-esc="budgetLabel()"/></span>
-                        <span t-if="aiAssistant.intent"><i class="fa fa-tag"/> Intención: <strong t-esc="aiAssistant.intent"/></span>
                         <span><i class="fa fa-shield"/> Aprobación humana: <strong><t t-esc="aiAssistant.approvalRequired ? 'activa' : 'desactivada'"/></strong></span>
-                        <span t-if="aiAssistant.knowledgeCount"><i class="fa fa-book"/> <t t-esc="aiAssistant.knowledgeCount"/> manuales</span>
                         <span t-if="aiAssistant.usage &amp;&amp; aiAssistant.usage.requests"><i class="fa fa-bar-chart"/> <t t-esc="aiAssistant.usage.requests"/> solicitudes · <t t-esc="aiAssistant.usage.tokens"/> tokens</span>
                     </div>
                 </div>

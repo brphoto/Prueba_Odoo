@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="ir_cron_send_crm_followup_messages" model="ir.cron">
+        <field name="name">Enviar mensajes de seguimiento Polizas</field>
+        <field name="model_id" ref="model_poliza_partner"/>
+        <field name="state">code</field>
+        <field name="code">model._send_followup_messages_polizas()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="ir_cron_poliza_devengamiento_mensual" model="ir.cron">
+        <field name="name">Pólizas: devengamiento mensual</field>
+        <field name="model_id" ref="model_poliza_partner"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_generar_devengamiento_mensual()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="active">True</field>
+    </record>
+
+
+<record id="ir_cron_pasar_a_vencida" model="ir.cron">
+    <field name="name">[Póliza] Cambiar a vencida automáticamente</field>
+    <field name="model_id" ref="model_poliza_partner"/>
+    <field name="state">code</field>
+    <field name="code">model.cron_cambiar_estado_vencida()</field>
+    <field name="interval_number">1</field>
+    <field name="interval_type">days</field>
+    <field name="active">True</field>
+</record>
+
+</odoo>
