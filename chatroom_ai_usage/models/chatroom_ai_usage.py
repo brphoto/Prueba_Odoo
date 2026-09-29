@@ -104,16 +104,20 @@ class ChatroomAiUsageEvent(models.Model):
                 input_rate, output_rate, currency = provider_model._pricing_for_model(
                     values.get('model'))
                 if input_rate or output_rate:
-                    # La entrada en caché se cobra con descuento (50 % en OpenAI).
+                    # La entrada en caché se cobra más barata: con la tarifa del
+                    # modelo si está configurada o con el descuento general
+                    # (50 % en OpenAI).
                     cached = min(max(int(values.get('cached_tokens') or 0), 0), input_tokens)
-                    try:
-                        discount = float(self.env['ir.config_parameter'].sudo().get_param(
-                            'chatroom_ai_usage.cached_input_discount', '0.5'))
-                    except (TypeError, ValueError):
-                        discount = 0.5
-                    discount = min(max(discount, 0.0), 1.0)
+                    cached_rate = provider_model._cached_rate_for_model(values.get('model'))
+                    if cached_rate is None:
+                        try:
+                            discount = float(self.env['ir.config_parameter'].sudo().get_param(
+                                'chatroom_ai_usage.cached_input_discount', '0.5'))
+                        except (TypeError, ValueError):
+                            discount = 0.5
+                        cached_rate = input_rate * (1 - min(max(discount, 0.0), 1.0))
                     values['estimated_cost'] = (
-                        (input_tokens - cached) * input_rate + cached * input_rate * (1 - discount)
+                        (input_tokens - cached) * input_rate + cached * cached_rate
                         + output_tokens * output_rate
                     ) / 1000000.0
                     values['cost_currency'] = currency

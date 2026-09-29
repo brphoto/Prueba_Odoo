@@ -18,6 +18,7 @@ class ChatroomAiProviderModel(models.Model):
     model_id = fields.Char(string='Identificador API', required=True, index=True)
     provider = fields.Selection([
         ('openai', 'OpenAI Platform'),
+        ('meta', 'Meta Model API'),
         ('compatible', 'Proveedor compatible'),
     ], default='openai', required=True)
     owned_by = fields.Char(string='Propietario')
@@ -33,6 +34,10 @@ class ChatroomAiProviderModel(models.Model):
         string='Precio salida / 1M tokens', digits=(16, 8),
         help='Precio manual de referencia en USD por un millón de tokens de salida. '
              'Se usa únicamente para estimar costos locales en Odoo.')
+    cached_input_price_per_million = fields.Float(
+        string='Precio entrada en caché / 1M tokens', digits=(16, 8),
+        help='Lo que cobra el proveedor por la parte del prompt que reutiliza (OpenAI: la mitad; Meta: '
+             'mucho menos). Vacío: se aplica el descuento general de caché.')
     pricing_source = fields.Selection([
         ('manual', 'Configurado manualmente'),
         ('unavailable', 'Sin tarifa configurada'),
@@ -61,7 +66,7 @@ class ChatroomAiProviderModel(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
-        if {'input_price_per_million', 'output_price_per_million'} & set(vals):
+        if {'input_price_per_million', 'output_price_per_million', 'cached_input_price_per_million'} & set(vals):
             vals = dict(vals)
             vals.setdefault('pricing_source', 'manual')
             vals['pricing_updated_at'] = fields.Datetime.now()
@@ -140,12 +145,18 @@ class ChatroomAiProviderModel(models.Model):
         )
         if any(token in lowered for token in excluded):
             return False
-        return lowered.startswith(('gpt-', 'o1', 'o3', 'o4', 'chatgpt-'))
+        # Los «-contributor» de Meta son más baratos porque Meta entrena con las
+        # conversaciones: no se ofrecen para chats con datos de clientes.
+        if lowered.endswith('-contributor'):
+            return False
+        return lowered.startswith(('gpt-', 'o1', 'o3', 'o4', 'chatgpt-', 'muse-spark'))
 
     @api.model
     def _is_recommended(self, model_id):
         lowered = (model_id or '').lower()
-        return lowered.startswith(('gpt-4.1', 'gpt-4o-mini', 'gpt-5', 'o3', 'o4'))
+        if lowered.endswith('-contributor'):
+            return False
+        return lowered.startswith(('gpt-4.1', 'gpt-4o-mini', 'gpt-5', 'o3', 'o4', 'muse-spark-1.3'))
 
     @api.model
     def _provider_created_datetime(self, value):
@@ -185,6 +196,29 @@ class ChatroomAiProviderModel(models.Model):
             max(record.output_price_per_million or 0.0, 0.0),
             'usd',
         )
+    @api.model
+    def _cached_rate_for_model(self, model_id):
+        """Precio por millón de la entrada en caché, o None si no está configurado."""
+        record = self.sudo().search(['|', ('model_id', '=', model_id), ('name', '=', model_id)], limit=1) \
+            if model_id else self
+        if not record or record.pricing_source != 'manual' or not record.cached_input_price_per_million:
+            return None
+        return max(record.cached_input_price_per_million, 0.0)
+
+    @api.model
+    def _published_pricing(self, model_id):
+        """Tarifa publicada por el proveedor (entrada, salida, caché) para precargar.
+
+        Solo se usa si el modelo aún no tiene tarifa; el administrador la puede
+        cambiar. Fuente: páginas de precios de OpenAI y Meta (sept. 2026).
+        """
+        lowered = (model_id or '').lower()
+        if lowered.startswith('muse-spark'):
+            return (0.10, 0.20, 0.002) if lowered.endswith('-contributor') else (1.25, 4.25, 0.15)
+        if lowered == 'gpt-4o-mini':
+            return 0.15, 0.60, 0.075
+        return None
+
     @api.model
     def action_sync_from_provider(self):
         icp = self.env['ir.config_parameter'].sudo()
@@ -235,7 +269,7 @@ class ChatroomAiProviderModel(models.Model):
             values = {
                 'name': model_id,
                 'model_id': model_id,
-                'provider': 'openai' if 'api.openai.com' in base else 'compatible',
+                'provider': self.env['chatroom.channel']._ai_provider_kind(base),
                 'owned_by': entry.get('owned_by') or False,
                 'remote_created': self._provider_created_datetime(entry.get('created')),
                 'supports_chat': supports_chat,
@@ -243,6 +277,10 @@ class ChatroomAiProviderModel(models.Model):
                 'last_synced': now,
             }
             record = known.get(model_id)
+            published = self._published_pricing(model_id)
+            if published and (not record or record.pricing_source != 'manual'):
+                values.update(input_price_per_million=published[0], output_price_per_million=published[1],
+                              cached_input_price_per_million=published[2], pricing_source='manual')
             if record:
                 record.write(values)
             else:

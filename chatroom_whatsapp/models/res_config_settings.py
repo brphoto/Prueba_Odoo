@@ -206,6 +206,20 @@ class ResConfigSettings(models.TransientModel):
             "Clave del proveedor de IA. Se guarda cifrada y solo la ven los "
             "administradores. Sin ella, las funciones de IA quedan "
             "desactivadas aunque la casilla de arriba esté marcada."))
+    chatroom_ai_reasoning_effort = fields.Selection([
+        ('off', 'No enviar'), ('minimal', 'Mínimo'), ('low', 'Bajo'), ('medium', 'Medio'), ('high', 'Alto'),
+    ], string="Razonamiento del modelo", config_parameter='chatroom_whatsapp.ai_reasoning_effort',
+        help="Solo para modelos que razonan (Meta Muse Spark, OpenAI o-series/GPT-5). Vacío: automático "
+             "(bajo con Meta, sin enviar con los demás). Más razonamiento = más lento y más caro.")
+    chatroom_ai_media_provider_url = fields.Char(
+        string="Endpoint para audio y búsqueda",
+        config_parameter='chatroom_ai.media_provider_url',
+        help="Opcional. Proveedor para transcribir audios, responder con voz y la búsqueda por significado "
+             "(embeddings). Útil si el chat usa un proveedor que no los ofrece, por ejemplo Meta: aquí "
+             "va https://api.openai.com/v1. Vacío: se usa el proveedor principal.")
+    chatroom_ai_media_api_key = fields.Char(
+        string="API Key para audio y búsqueda",
+        config_parameter='chatroom_ai.media_api_key')
     chatroom_ai_model = fields.Char(
         string="Modelo IA",
         config_parameter='chatroom_whatsapp.ai_model',

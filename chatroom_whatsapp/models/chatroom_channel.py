@@ -2559,6 +2559,30 @@ class ChatroomChannel(models.Model):
         return self._ai_param_enabled(
             'chatroom_whatsapp.ai_require_approval', default=True)
 
+    @api.model
+    def _ai_provider_kind(self, url):
+        """openai | meta | compatible, según el endpoint configurado."""
+        host = (url or '').lower()
+        if 'api.meta.ai' in host:
+            return 'meta'
+        if 'api.openai.com' in host:
+            return 'openai'
+        return 'compatible'
+
+    @api.model
+    def _ai_request_extras(self, api_url, model):
+        """Parámetros adicionales del proveedor para chat/completions.
+
+        Los modelos de Meta (Muse Spark) siempre razonan: con esfuerzo bajo
+        responden más rápido y gastan menos tokens de razonamiento. En Ajustes
+        se puede fijar otro nivel o desactivarlo («off»).
+        """
+        effort = (self.env['ir.config_parameter'].sudo().get_param(
+            'chatroom_whatsapp.ai_reasoning_effort') or '').strip().lower()
+        if not effort:
+            effort = 'low' if self._ai_provider_kind(api_url) == 'meta' else ''
+        return {'reasoning_effort': effort} if effort and effort != 'off' else {}
+
     def _ai_stage_or_send_reply(self, reply):
         """Prepara una respuesta para el agente o la envía si se autorizó."""
         self.ensure_one()
@@ -2592,7 +2616,8 @@ class ChatroomChannel(models.Model):
         response = self._meta_request(
             'POST', api_url,
             headers={"Authorization": f"Bearer {api_key}"},
-            json={"model": model, "messages": messages},
+            json=dict({"model": model, "messages": messages},
+                      **self._ai_request_extras(api_url, model)),
             # Un análisis de documentos largos puede pedir más tiempo.
             timeout=self.env.context.get('chatroom_ai_timeout') or 30,
         )

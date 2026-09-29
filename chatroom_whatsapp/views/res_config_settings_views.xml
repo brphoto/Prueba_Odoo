@@ -175,6 +175,24 @@
                                     <label for="chatroom_ai_model" string="Modelo"/>
                                     <field name="chatroom_ai_model"/>
                                 </div>
+                                <div class="text-muted small mt4">
+                                    OpenAI: https://api.openai.com/v1 · gpt-4o-mini.
+                                    Meta: https://api.meta.ai/v1 · muse-spark-1.3 (sin voz ni búsqueda por
+                                    significado: configura abajo un proveedor para audio).
+                                </div>
+                                <div class="mt8">
+                                    <label for="chatroom_ai_reasoning_effort" string="Razonamiento"/>
+                                    <field name="chatroom_ai_reasoning_effort" placeholder="Automático"/>
+                                </div>
+                                <div class="mt16">
+                                    <label for="chatroom_ai_media_provider_url" string="Audio y búsqueda (opcional)"/>
+                                    <field name="chatroom_ai_media_provider_url"
+                                           placeholder="Vacío: el mismo proveedor"/>
+                                </div>
+                                <div class="mt8" invisible="not chatroom_ai_media_provider_url">
+                                    <label for="chatroom_ai_media_api_key" string="API Key de audio"/>
+                                    <field name="chatroom_ai_media_api_key" password="True"/>
+                                </div>
                             </div>
                         </setting>
                     </block>

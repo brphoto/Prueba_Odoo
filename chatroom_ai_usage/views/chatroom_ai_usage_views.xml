@@ -40,6 +40,7 @@
                             <separator string="Tarifa para estimación local"/>
                             <field name="input_price_per_million"/>
                             <field name="output_price_per_million"/>
+                            <field name="cached_input_price_per_million"/>
                             <field name="pricing_source" widget="badge"/>
                             <field name="pricing_updated_at" readonly="1"/>
                             <field name="last_synced" readonly="1"/>

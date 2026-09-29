@@ -6,7 +6,7 @@
 Cada sugerencia queda como un registro auditable, con conversación de origen,
 intención, confianza, estado, aprobador y fecha de envío. No reemplaza el
 motor de WhatsApp ni obliga a instalar un proveedor de IA.''',
-    'version': '19.0.1.8.0',
+    'version': '19.0.1.9.0',
     'icon': '/chatroom_ai/static/description/icon.svg',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',

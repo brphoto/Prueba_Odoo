@@ -228,7 +228,8 @@ class ChatroomChannel(models.Model):
                 response = self._meta_request(
                     'POST', api_url,
                     headers={'Authorization': 'Bearer %s' % api_key},
-                    json={'model': model, 'messages': messages},
+                    json=dict({'model': model, 'messages': messages},
+                              **self._ai_request_extras(api_url, model)),
                     timeout=self.env.context.get('chatroom_ai_timeout') or 30,
                 )
                 status = getattr(response, 'status_code', 200)

@@ -131,7 +131,7 @@ class AiKnowledgeBase(models.Model):
             return []
         vectors = []
         try:
-            provider = self.env['chatroom.channel']._ai_provider_base()
+            provider = self.env['chatroom.channel']._ai_provider_base('embeddings')
             if not provider:
                 return []
             base, key = provider

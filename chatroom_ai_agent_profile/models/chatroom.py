@@ -633,7 +633,7 @@ class ChatroomChannel(models.Model):
 
     def _ai_speech(self, text, profile):
         """Nota de voz (ogg/opus, el formato de WhatsApp) con la voz del perfil."""
-        provider = self._ai_provider_base()
+        provider = self._ai_provider_base('speech')
         if not provider or not (text or '').strip():
             return b''
         base, key = provider

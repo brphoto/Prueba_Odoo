@@ -16,7 +16,7 @@ Agente de atención para cualquier negocio, configurado sin código:
 * Probador del agente: conversación simulada con el mismo proceso que
   producción; se guarda como caso de prueba o se corrige para que aprenda.
 ''',
-    'version': '19.0.1.6.0',
+    'version': '19.0.1.7.1',
     'category': 'Productivity/Discuss',
     'author': 'Bryan Cando',
     'license': 'LGPL-3',

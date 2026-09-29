@@ -407,7 +407,9 @@ class ChatroomAiAgentProfile(models.Model):
                                                    ['model'], ['cached_tokens:sum']):
                 cached_tokens += tokens or 0
                 input_rate = Pricing._pricing_for_model(model)[0] if model else 0.0
-                cached_usd += (tokens or 0) * input_rate * discount / 1000000.0
+                cached_rate = Pricing._cached_rate_for_model(model) if model else None
+                saved_rate = input_rate - cached_rate if cached_rate is not None else input_rate * discount
+                cached_usd += (tokens or 0) * max(saved_rate, 0.0) / 1000000.0
         return {'reused_usd': reused * avg_cost, 'reused_tokens': int(reused * avg_tokens),
                 'cached_tokens': cached_tokens, 'cached_usd': cached_usd,
                 'usd': reused * avg_cost + cached_usd}
